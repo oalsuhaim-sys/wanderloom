@@ -7,7 +7,7 @@ import { Plus, Trash2, Search, Hotel, MapPin, Clock, ArrowLeft, ArrowRight, Copy
 const COLORS = ['#2563EB','#7C3AED','#059669','#E11D48','#D97706','#0891B2']
 const TRANSIT_OPTS = [{v:'',l:'— بدون —'},{v:'walk',l:'🚶 مشي'},{v:'car',l:'🚗 سيارة'},{v:'subway',l:'🚇 مترو'},{v:'bus',l:'🚌 باص'}]
 const AR_EN: Record<string,string> = {'أ':'A','ب':'B','ت':'T','ث':'TH','ج':'J','ح':'H','خ':'KH','د':'D','ذ':'Z','ر':'R','ز':'Z','س':'S','ش':'SH','ص':'S','ض':'D','ط':'T','ع':'A','غ':'G','ف':'F','ق':'Q','ك':'K','ل':'L','م':'M','ن':'N','ه':'H','و':'W','ي':'Y','ة':'A','ى':'A','إ':'A','آ':'A','ء':'A'}
-const DEST_MAP: Record<string,string> = {'اليابان':'JP','كوريا':'KR','ألمانيا':'DE','فرنسا':'FR','إيطاليا':'IT','إسبانيا':'ES','بريطانيا':'UK','هولندا':'NL','التشيك':'CZ','المجر':'HU','سويسرا':'CH','بولندا':'PL','السويد':'SE','روسيا':'RU','كندا':'CA','جنوب أفريقيا':'ZA','الصين':'CN','النمسا':'AT','بلجيكا':'BE','اسكتلندا':'UK','أمريكا':'US','البرتغال':'PT'}
+const DEST_MAP: Record<string,string> = {'اليابان':'JP','كوريا':'KR','كوريا الجنوبية':'KR','ألمانيا':'DE','فرنسا':'FR','إيطاليا':'IT','إسبانيا':'ES','بريطانيا':'UK','المملكة المتحدة':'UK','هولندا':'NL','التشيك':'CZ','المجر':'HU','سويسرا':'CH','بولندا':'PL','السويد':'SE','روسيا':'RU','كندا':'CA','جنوب أفريقيا':'ZA','الصين':'CN','النمسا':'AT','بلجيكا':'BE','اسكتلندا':'UK','أمريكا':'US','الولايات المتحدة':'US','البرتغال':'PT'}
 
 type Stop = { place_name:string; category:string; time_slot:string; note:string; image_url:string; transit_mode:string; transit_duration:string; transit_distance:string; place_id?:string }
 type Day = { city:string; title:string; color:string; hotel_name:string; hotel_checkin:string; hotel_checkout:string; stops:Stop[] }

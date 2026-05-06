@@ -36,28 +36,67 @@ export default function ClientDetailPage() {
   const [newNote, setNewNote] = useState('')
   const [newTrip, setNewTrip] = useState({destination:'',profit:'',trip_date:'',notes:''})
   const [showAddTrip, setShowAddTrip] = useState(false)
+  const [loadError, setLoadError] = useState<string | null>(null)
 
   const load = async () => {
-    if(!supabase) return
-    const {data:c} = await supabase.from('clients').select('*').eq('id',clientId).single()
-    if(c){setClient(c);setEditStatus(c.status);setNewCode(c.ref_code||'')}
-
-    const {data:p} = await supabase.from('client_preferences').select('*').eq('client_id',clientId).single()
-    if(p)setPrefs(p)
-
-    const {data:t} = await supabase.from('client_trips').select('*').eq('client_id',clientId).order('created_at',{ascending:false})
-    if(t)setTrips(t)
-
-    const {data:n} = await supabase.from('client_notes').select('*').eq('client_id',clientId).order('created_at',{ascending:false})
-    if(n)setNotes(n)
-
-    // Count referrals
-    if(c?.ref_code){
-      const {count} = await supabase.from('clients').select('*',{count:'exact',head:true}).eq('used_code',c.ref_code)
-      setCodeCount(count||0)
+    setLoadError(null)
+    if (!supabase) {
+      setLoadError('قاعدة البيانات غير مهيأة. أضف مفاتيح Supabase في البيئة.')
+      setLoading(false)
+      return
     }
+    setLoading(true)
+    try {
+      const { data: c, error: cErr } = await supabase.from('clients').select('*').eq('id', clientId).single()
+      if (cErr) {
+        setClient(null)
+        if (cErr.code === 'PGRST116') {
+          setLoadError(null)
+        } else {
+          setLoadError(cErr.message || 'تعذر تحميل بيانات العميل.')
+        }
+        return
+      }
+      if (c) {
+        setClient(c)
+        setEditStatus(c.status)
+        setNewCode(c.ref_code || '')
+      } else {
+        setClient(null)
+      }
 
-    setLoading(false)
+      const { data: p } = await supabase.from('client_preferences').select('*').eq('client_id', clientId).single()
+      if (p) setPrefs(p)
+
+      const { data: t } = await supabase
+        .from('client_trips')
+        .select('*')
+        .eq('client_id', clientId)
+        .order('created_at', { ascending: false })
+      if (t) setTrips(t)
+
+      const { data: n } = await supabase
+        .from('client_notes')
+        .select('*')
+        .eq('client_id', clientId)
+        .order('created_at', { ascending: false })
+      if (n) setNotes(n)
+
+      if (c?.ref_code) {
+        const { count } = await supabase
+          .from('clients')
+          .select('*', { count: 'exact', head: true })
+          .eq('used_code', c.ref_code)
+        setCodeCount(count || 0)
+      } else {
+        setCodeCount(0)
+      }
+    } catch (e) {
+      setClient(null)
+      setLoadError(e instanceof Error ? e.message : 'حدث خطأ غير متوقع أثناء التحميل.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(()=>{load()},[clientId])
@@ -83,7 +122,7 @@ export default function ClientDetailPage() {
 
   const generateCode = async () => {
     if(!supabase||!client)return
-    const name = client.name.slice(0,4).replace(/\s/g,'')
+    const name = (client.name ?? 'WL').slice(0,4).replace(/\s/g,'')
     const num = Math.floor(Math.random()*900+100)
     const code = `WL-${name}-${num}`
     await supabase.from('clients').update({ref_code:code}).eq('id',clientId)
@@ -131,6 +170,12 @@ export default function ClientDetailPage() {
   }
 
   if(loading) return <div dir="rtl" style={{padding:40,textAlign:'center',color:'#9CA3AF'}}>جارٍ التحميل...</div>
+  if(loadError) return (
+    <div dir="rtl" style={{padding:40,textAlign:'center',maxWidth:520,margin:'0 auto'}}>
+      <div style={{color:'#DC2626',fontSize:14,fontWeight:700,lineHeight:1.8}}>{loadError}</div>
+      <button onClick={()=>router.push('/crm/clients')} style={{marginTop:20,padding:'10px 20px',background:'#1C4532',color:'#fff',border:'none',borderRadius:10,cursor:'pointer',fontSize:12,fontWeight:700}}>رجوع للعملاء</button>
+    </div>
+  )
   if(!client) return <div dir="rtl" style={{padding:40,textAlign:'center',color:'#DC2626'}}>العميل غير موجود</div>
 
   const st = STATUS_MAP[client.status]||STATUS_MAP.new

@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState, useRef } from 'react'
+import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { Star, Clock, MapPin, Lock, Send, X, Map, List, ChevronDown, MessageCircle, Sparkles, Navigation2 } from 'lucide-react'
 
@@ -50,35 +51,46 @@ export default function PortalPageClient() {
       setLoading(false)
       return
     }
-    const { data, error: err } = await supabase
-      .from('itineraries')
-      .select(`
+    try {
+      const { data, error: err } = await supabase
+        .from('itineraries')
+        .select(`
         *, 
         clients!inner(name, client_preferences(*)),
         itinerary_days(*, itinerary_stops(*))
       `)
-      .eq('passcode', pc)
-      .single()
+        .eq('passcode', pc)
+        .single()
 
-    if (err || !data) {
-      setError('الرمز غير صحيح، يرجى التأكد من مفتاح الرحلة')
+      if (err || !data) {
+        setError('الرمز غير صحيح، يرجى التأكد من مفتاح الرحلة')
+        setJourney(null)
+        setLoading(false)
+        return
+      }
+
+      if (String(data.status || '') === 'archived') {
+        setError('هذا المسار متوقف حالياً')
+        setJourney(null)
+        setLoading(false)
+        return
+      }
+
+      // Sort days and stops
+      data.itinerary_days?.sort((a:any,b:any) => a.sort_order - b.sort_order)
+      data.itinerary_days?.forEach((d:any) => d.itinerary_stops?.sort((a:any,b:any) => a.sort_order - b.sort_order))
+      setJourney(data)
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : ''
+      setError(
+        msg
+          ? `تعذر الاتصال بقاعدة البيانات. تحقق من الشبكة وحاول مجدداً. (${msg})`
+          : 'تعذر الاتصال بقاعدة البيانات. تحقق من الشبكة وحاول مجدداً.'
+      )
       setJourney(null)
+    } finally {
       setLoading(false)
-      return
     }
-
-    if (String(data.status || '') === 'archived') {
-      setError('هذا المسار متوقف حالياً')
-      setJourney(null)
-      setLoading(false)
-      return
-    }
-
-    // Sort days and stops
-    data.itinerary_days?.sort((a:any,b:any) => a.sort_order - b.sort_order)
-    data.itinerary_days?.forEach((d:any) => d.itinerary_stops?.sort((a:any,b:any) => a.sort_order - b.sort_order))
-    setJourney(data)
-    setLoading(false)
   }
 
   // Leaflet map
@@ -201,6 +213,24 @@ export default function PortalPageClient() {
   if (!journey) {
     return (
       <div dir="rtl" style={{ minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', background:'#07100D', fontFamily:'sans-serif', position:'relative', overflow:'hidden' }}>
+        <div style={{ position:'absolute', top:20, left:0, right:0, zIndex:10, display:'flex', justifyContent:'center', padding:'0 16px' }}>
+          <Link
+            href="/"
+            style={{
+              fontSize:13,
+              fontWeight:800,
+              color:'#E8C96A',
+              textDecoration:'none',
+              padding:'10px 18px',
+              borderRadius:999,
+              border:'1px solid rgba(201,168,76,.35)',
+              background:'rgba(7,16,13,.75)',
+              backdropFilter:'blur(8px)',
+            }}
+          >
+            العودة للموقع الرئيسي
+          </Link>
+        </div>
         <div style={{ position:'absolute', width:700, height:700, borderRadius:'50%', background:'radial-gradient(circle,rgba(28,69,50,.4),transparent 65%)', top:-220, right:-220, filter:'blur(70px)' }} />
         <div style={{ position:'relative', zIndex:2, width:'min(420px,90vw)', textAlign:'center' }}>
           <h1 style={{ fontSize:56, fontWeight:300, color:'#E8C96A', letterSpacing:10, margin:0 }}>Wander</h1>
@@ -238,12 +268,29 @@ export default function PortalPageClient() {
 
       {/* Header */}
       <header style={{ background:'linear-gradient(160deg,#07100D,#0F1E16)', padding:'16px 20px', position:'sticky', top:0, zIndex:100, boxShadow:'0 4px 40px rgba(0,0,0,.3)' }}>
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:12, flexWrap:'wrap' }}>
           <div>
             <div style={{ fontSize:22, fontWeight:600, color:'#C9A84C', letterSpacing:6 }}>Wanderloom</div>
             <div style={{ fontSize:9, color:'rgba(255,255,255,.3)', marginTop:2 }}>مرحباً {clientName} ✦</div>
           </div>
-          <span style={{ fontSize:7.5, color:'rgba(255,255,255,.2)', border:'1px solid rgba(255,255,255,.1)', padding:'4px 12px', borderRadius:24, letterSpacing:2 }}>● PRIVATE</span>
+          <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:8 }}>
+            <span style={{ fontSize:7.5, color:'rgba(255,255,255,.2)', border:'1px solid rgba(255,255,255,.1)', padding:'4px 12px', borderRadius:24, letterSpacing:2 }}>● PRIVATE</span>
+            <Link
+              href="/"
+              style={{
+                fontSize:11,
+                fontWeight:800,
+                color:'#E8D5A8',
+                textDecoration:'none',
+                padding:'6px 12px',
+                borderRadius:10,
+                border:'1px solid rgba(201,168,76,.35)',
+                background:'rgba(255,255,255,.06)',
+              }}
+            >
+              العودة للموقع الرئيسي
+            </Link>
+          </div>
         </div>
         <div style={{ marginTop:10 }}>
           <div style={{ fontSize:15, color:'#fff', fontWeight:800 }}>✈️ {journey.title}</div>
@@ -430,6 +477,22 @@ export default function PortalPageClient() {
 
       {/* Footer */}
       <div style={{ textAlign:'center', padding:'32px 16px 24px', background:'#07100D', marginTop:28 }}>
+        <Link
+          href="/"
+          style={{
+            display:'inline-block',
+            marginBottom:20,
+            fontSize:12,
+            fontWeight:800,
+            color:'#C9A84C',
+            textDecoration:'none',
+            padding:'10px 20px',
+            borderRadius:12,
+            border:'1px solid rgba(201,168,76,.4)',
+          }}
+        >
+          العودة للموقع الرئيسي
+        </Link>
         <div style={{ fontSize:17, color:'#C9A84C', letterSpacing:6, opacity:.6 }}>Wanderloom</div>
         <div style={{ fontSize:8, color:'rgba(255,255,255,.15)', marginTop:5, letterSpacing:4 }}>رحلة مهندسة بعناية · {clientName}</div>
       </div>

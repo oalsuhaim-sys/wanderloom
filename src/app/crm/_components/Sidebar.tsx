@@ -1,21 +1,42 @@
-'use client'
+'use client';
 
-import Link from 'next/link'
-import { usePathname } from 'next/navigation'
-import { LayoutDashboard, Users, Map, CalendarDays, CalendarClock, Route, BarChart3 } from 'lucide-react'
+import type { ComponentType } from 'react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import {
+  LayoutDashboard,
+  Users,
+  Map,
+  Globe,
+  Hotel,
+  CalendarDays,
+  CalendarClock,
+  Route,
+  BarChart3,
+  Sparkles,
+} from 'lucide-react';
 
-const NAV = [
+type NavItem = {
+  href: string;
+  label: string;
+  icon?: ComponentType<{ size?: number; color?: string }>;
+};
+
+const NAV: NavItem[] = [
   { href: '/crm', label: 'الرئيسية', icon: LayoutDashboard },
   { href: '/crm/clients', label: 'العملاء', icon: Users },
   { href: '/crm/vault', label: 'بنك الأماكن', icon: Map },
+  { href: '/crm/destinations', label: 'دليل الوجهات', icon: Globe },
+  { href: '/crm/hotels', label: 'قاعدة الفنادق', icon: Hotel },
+  { href: '/crm/experiences', label: 'التجارب الاستثنائية', icon: Sparkles },
   { href: '/crm/events', label: 'الفعاليات', icon: CalendarDays },
   { href: '/crm/sessions', label: 'الجلسات', icon: CalendarClock },
   { href: '/crm/itineraries', label: 'المسارات', icon: Route },
   { href: '/crm/reports', label: 'التقارير', icon: BarChart3 },
-] as const
+];
 
 export function Sidebar() {
-  const pathname = usePathname() || ''
+  const pathname = usePathname() || '';
 
   return (
     <aside
@@ -29,6 +50,8 @@ export function Sidebar() {
         top: 0,
         height: '100vh',
         borderLeft: '1px solid rgba(201,168,76,.14)',
+        display: 'flex',
+        flexDirection: 'column',
       }}
     >
       <div style={{ marginBottom: 16 }}>
@@ -36,12 +59,12 @@ export function Sidebar() {
         <div style={{ fontSize: 9, color: 'rgba(255,255,255,.28)', marginTop: 4 }}>CRM · إدارة السفر</div>
       </div>
 
-      <nav style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 14 }}>
+      <nav style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 14, flex: 1, overflowY: 'auto' }}>
         {NAV.map((item) => {
           const active =
             pathname === item.href ||
-            (item.href !== '/crm' && (pathname === item.href || pathname.startsWith(item.href + '/')))
-          const Icon = item.icon
+            (item.href !== '/crm' && (pathname === item.href || pathname.startsWith(item.href + '/')));
+          const Icon = item.icon;
           return (
             <Link
               key={item.href}
@@ -61,18 +84,23 @@ export function Sidebar() {
                 letterSpacing: 0.2,
               }}
             >
-              <Icon size={16} color={active ? '#1C4532' : '#C9A84C'} />
+              {Icon ? <Icon size={16} color={active ? '#1C4532' : '#C9A84C'} /> : <span style={{ width: 16 }} aria-hidden />}
               {item.label}
             </Link>
-          )
+          );
         })}
       </nav>
 
       <div style={{ marginTop: 'auto', paddingTop: 16 }}>
-        <div style={{ height: 1, background: 'linear-gradient(90deg,transparent,rgba(201,168,76,.25),transparent)', marginBottom: 12 }} />
+        <div
+          style={{
+            height: 1,
+            background: 'linear-gradient(90deg,transparent,rgba(201,168,76,.25),transparent)',
+            marginBottom: 12,
+          }}
+        />
         <div style={{ fontSize: 9, color: 'rgba(255,255,255,.18)', letterSpacing: 3 }}>WANDERLOOM · INTERNAL</div>
       </div>
     </aside>
-  )
+  );
 }
-

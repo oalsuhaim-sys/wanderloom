@@ -30,19 +30,24 @@ export async function fetchSessionRegistrations(sessionIds: string[]): Promise<F
     return { ok: true, data: filtered, demo: true };
   }
 
-  const { data, error } = await supabaseClient
-    .from('session_registrations')
-    .select('*')
-    .in('session_id', ids)
-    .order('created_at', { ascending: false });
+  try {
+    const { data, error } = await supabaseClient
+      .from('session_registrations')
+      .select('*')
+      .in('session_id', ids)
+      .order('created_at', { ascending: false });
 
-  if (error) {
-    return { ok: false, error: mapPostgrestError(error), details: error };
+    if (error) {
+      return { ok: false, error: mapPostgrestError(error), details: error };
+    }
+
+    const rows = (data ?? []) as SessionRegistration[];
+    rows.sort(
+      (a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
+    );
+    return { ok: true, data: rows };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : 'حدث خطأ غير متوقع أثناء جلب التسجيلات.';
+    return { ok: false, error: msg };
   }
-
-  const rows = (data ?? []) as SessionRegistration[];
-  rows.sort(
-    (a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
-  );
-  return { ok: true, data: rows };
 }

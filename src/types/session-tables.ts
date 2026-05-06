@@ -1,5 +1,5 @@
 /**
- * جدول sessions: id, title, date, session_type, price, spots, description, created_at
+ * جدول sessions: id, title, date, session_type, price, spots (المقاعد المتبقية), description, created_at
  * جدول session_registrations: id, session_id, name, whatsapp, created_at
  */
 

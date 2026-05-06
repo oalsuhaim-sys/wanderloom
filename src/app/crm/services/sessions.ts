@@ -32,13 +32,18 @@ export async function fetchSessions(): Promise<FetchSessionsResult> {
     return { ok: true, data: getDemoSessions(), demo: true };
   }
 
-  const { data, error } = await supabaseClient.from('sessions').select('*').order('date', { ascending: true });
+  try {
+    const { data, error } = await supabaseClient.from('sessions').select('*').order('date', { ascending: true });
 
-  if (error) {
-    return { ok: false, error: mapPostgrestError(error), details: error };
+    if (error) {
+      return { ok: false, error: mapPostgrestError(error), details: error };
+    }
+
+    return { ok: true, data: (data ?? []) as Session[] };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : 'حدث خطأ غير متوقع أثناء جلب الجلسات.';
+    return { ok: false, error: msg };
   }
-
-  return { ok: true, data: (data ?? []) as Session[] };
 }
 
 /** إنشاء جلسة جديدة وإرجاع الصف المُنشأ (يشمل `created_at` من قاعدة البيانات عند التوفر). */
@@ -52,21 +57,26 @@ export async function createSession(payload: SessionInsert): Promise<CreateSessi
     return { ok: true, data: mock, demo: true };
   }
 
-  const { data, error } = await supabaseClient
-    .from('sessions')
-    .insert(payload as Session)
-    .select()
-    .single();
+  try {
+    const { data, error } = await supabaseClient
+      .from('sessions')
+      .insert(payload as Session)
+      .select()
+      .single();
 
-  if (error) {
-    return { ok: false, error: mapPostgrestError(error), details: error };
+    if (error) {
+      return { ok: false, error: mapPostgrestError(error), details: error };
+    }
+
+    if (!data) {
+      return { ok: false, error: 'لم تُرجع العملية أي صف؛ تحقق من سياسات RLS أو القيود على الجدول.' };
+    }
+
+    return { ok: true, data: data as Session };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : 'حدث خطأ غير متوقع أثناء إنشاء الجلسة.';
+    return { ok: false, error: msg };
   }
-
-  if (!data) {
-    return { ok: false, error: 'لم تُرجع العملية أي صف؛ تحقق من سياسات RLS أو القيود على الجدول.' };
-  }
-
-  return { ok: true, data: data as Session };
 }
 
 export async function updateSession(
@@ -82,22 +92,27 @@ export async function updateSession(
     return { ok: true, data: mock, demo: true };
   }
 
-  const { data, error } = await supabaseClient
-    .from('sessions')
-    .update(payload as Session)
-    .eq('id', sessionId)
-    .select()
-    .single();
+  try {
+    const { data, error } = await supabaseClient
+      .from('sessions')
+      .update(payload as Session)
+      .eq('id', sessionId)
+      .select()
+      .single();
 
-  if (error) {
-    return { ok: false, error: mapPostgrestError(error), details: error };
+    if (error) {
+      return { ok: false, error: mapPostgrestError(error), details: error };
+    }
+
+    if (!data) {
+      return { ok: false, error: 'تعذر تحديث الجلسة؛ لم تُرجع قاعدة البيانات أي صف.' };
+    }
+
+    return { ok: true, data: data as Session };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : 'حدث خطأ غير متوقع أثناء تحديث الجلسة.';
+    return { ok: false, error: msg };
   }
-
-  if (!data) {
-    return { ok: false, error: 'تعذر تحديث الجلسة؛ لم تُرجع قاعدة البيانات أي صف.' };
-  }
-
-  return { ok: true, data: data as Session };
 }
 
 export async function deleteSession(sessionId: string): Promise<DeleteSessionResult> {
@@ -105,9 +120,14 @@ export async function deleteSession(sessionId: string): Promise<DeleteSessionRes
     return { ok: true, demo: true };
   }
 
-  const { error } = await supabaseClient.from('sessions').delete().eq('id', sessionId);
-  if (error) {
-    return { ok: false, error: mapPostgrestError(error), details: error };
+  try {
+    const { error } = await supabaseClient.from('sessions').delete().eq('id', sessionId);
+    if (error) {
+      return { ok: false, error: mapPostgrestError(error), details: error };
+    }
+    return { ok: true };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : 'حدث خطأ غير متوقع أثناء حذف الجلسة.';
+    return { ok: false, error: msg };
   }
-  return { ok: true };
 }

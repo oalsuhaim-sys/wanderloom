@@ -4,8 +4,10 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import {
   ArrowUpRight,
+  Building2,
   CalendarClock,
   CalendarDays,
+  Globe2,
   LayoutDashboard,
   Loader2,
   Map,
@@ -84,46 +86,50 @@ export default function CRMDashboardPage() {
 
     setLoading(true);
 
-    const [clientsRes, tripsRes, eventsRes] = await Promise.all([
-      supabase
-        .from('clients')
-        .select('id, name, phone_wa, status, created_at, ref_code, travel_type, job_type')
-        .order('created_at', { ascending: false }),
-      supabase.from('client_trips').select('profit'),
-      supabase
-        .from('events')
-        .select('id, name, country, city, start_date, end_date, impact, category, season')
-        .gte('start_date', todayISO)
-        .order('start_date', { ascending: true })
-        .limit(6),
-    ]);
+    try {
+      const [clientsRes, tripsRes, eventsRes] = await Promise.all([
+        supabase
+          .from('clients')
+          .select('id, name, phone_wa, status, created_at, ref_code, travel_type, job_type')
+          .order('created_at', { ascending: false }),
+        supabase.from('client_trips').select('profit'),
+        supabase
+          .from('events')
+          .select('id, name, country, city, start_date, end_date, impact, category, season')
+          .gte('start_date', todayISO)
+          .order('start_date', { ascending: true })
+          .limit(6),
+      ]);
 
-    if (clientsRes.error || tripsRes.error || eventsRes.error) {
-      applyDemo(
-        clientsRes.error?.message ||
-          tripsRes.error?.message ||
-          eventsRes.error?.message ||
-          'تعذر تحميل البيانات من Supabase.'
-      );
+      if (clientsRes.error || tripsRes.error || eventsRes.error) {
+        applyDemo(
+          clientsRes.error?.message ||
+            tripsRes.error?.message ||
+            eventsRes.error?.message ||
+            'تعذر تحميل البيانات من Supabase.'
+        );
+        return;
+      }
+
+      const clients = (clientsRes.data || []) as ClientRow[];
+      const trips = tripsRes.data || [];
+      const events = (eventsRes.data || []) as EventRow[];
+
+      const revenue = trips.reduce((s: number, t: { profit?: number | null }) => s + (Number(t?.profit) || 0), 0);
+
+      setStats({
+        clientsTotal: clients.length,
+        clientsNew: clients.filter((c) => c.status === 'new').length,
+        tripsCount: trips.length,
+        revenue,
+      });
+      setRecentClients(clients.slice(0, 8));
+      setUpcomingEvents(events);
+    } catch (e) {
+      applyDemo(e instanceof Error ? e.message : 'تعذر تحميل لوحة التحكم. تحقق من الشبكة وحاول مجدداً.');
+    } finally {
       setLoading(false);
-      return;
     }
-
-    const clients = (clientsRes.data || []) as ClientRow[];
-    const trips = tripsRes.data || [];
-    const events = (eventsRes.data || []) as EventRow[];
-
-    const revenue = trips.reduce((s: number, t: { profit?: number | null }) => s + (Number(t?.profit) || 0), 0);
-
-    setStats({
-      clientsTotal: clients.length,
-      clientsNew: clients.filter((c) => c.status === 'new').length,
-      tripsCount: trips.length,
-      revenue,
-    });
-    setRecentClients(clients.slice(0, 8));
-    setUpcomingEvents(events);
-    setLoading(false);
   }, [applyDemo, todayISO]);
 
   useEffect(() => {
@@ -241,6 +247,8 @@ export default function CRMDashboardPage() {
           { href: '/crm', label: 'الرئيسية', icon: LayoutDashboard },
           { href: '/crm/clients', label: 'العملاء', icon: Users },
           { href: '/crm/vault', label: 'بنك الأماكن', icon: Map },
+          { href: '/crm/destinations', label: 'دليل الوجهات', icon: Globe2 },
+          { href: '/crm/hotels', label: 'الفنادق', icon: Building2 },
           { href: '/crm/events', label: 'الفعاليات', icon: CalendarDays },
           { href: '/crm/sessions', label: 'الجلسات', icon: CalendarClock },
           { href: '/crm/itineraries', label: 'المسارات', icon: Route },
