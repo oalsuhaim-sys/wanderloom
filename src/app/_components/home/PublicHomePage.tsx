@@ -1,13 +1,20 @@
+'use client';
+
 import type { ReactNode } from 'react';
-import Image from 'next/image';
 import Link from 'next/link';
-import { Sparkles } from 'lucide-react';
 
 import type { Session } from '@/types/session-tables';
-import { ar } from '@/messages/ar';
+import { useLanguage } from '@/context/LanguageContext';
 
+import { WANDERLOOM_CONTACT_EMAIL } from '@/lib/contact-email';
+import WanderloomQuiz from '@/components/WanderloomQuiz';
+import DestinationAdvisor from '@/components/DestinationAdvisor';
+
+import { AffiliateReferralCapture } from './AffiliateReferralCapture';
 import { GeneralContactSection } from './GeneralContactSection';
 import { GroupTripsSection } from './GroupTripsSection';
+import { LogoWatermarkLayer } from './LogoWatermarkLayer';
+import { PublicHomeHero } from './PublicHomeHero';
 import { PublicNavbar } from './PublicNavbar';
 import { PublicSessionsCards } from './PublicSessionsCards';
 import { ScrollToLeadOnMount } from './ScrollToLeadOnMount';
@@ -19,33 +26,22 @@ type PublicHomePageProps = {
   sessionsDemo: boolean;
 };
 
-function LogoWatermarkLayer() {
-  return (
-    <>
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 bg-[length:min(88vw,640px)] bg-center bg-no-repeat opacity-[0.045] sm:opacity-[0.06]"
-        style={{ backgroundImage: "url('/wanderloom_logo_hq.jpg')" }}
-      />
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_20%,rgba(28,69,50,0.12),transparent_55%)]"
-      />
-    </>
-  );
-}
-
 function SectionFrame({
   id,
   className,
+  clipOverflow = true,
   children,
 }: {
   id?: string;
   className?: string;
+  clipOverflow?: boolean;
   children: ReactNode;
 }) {
   return (
-    <section id={id} className={`relative scroll-mt-28 overflow-hidden ${className ?? ''}`}>
+    <section
+      id={id}
+      className={`relative isolate scroll-mt-28 ${clipOverflow ? 'overflow-hidden' : ''} ${className ?? ''}`}
+    >
       <LogoWatermarkLayer />
       <div className="relative z-10">{children}</div>
     </section>
@@ -53,147 +49,109 @@ function SectionFrame({
 }
 
 export function PublicHomePage({ sessions, sessionsLoadError, sessionsDemo }: PublicHomePageProps) {
-  const h = ar.home;
+  const { t } = useLanguage();
 
   return (
-    <div className="min-h-screen bg-[#050c0a] font-[family-name:var(--font-tajawal),system-ui,sans-serif] text-white antialiased">
+    <main className="bg-wanderloom-pattern min-h-screen font-[family-name:var(--font-tajawal),system-ui,sans-serif] text-[#111111] antialiased">
+      <AffiliateReferralCapture />
       <ScrollToLeadOnMount />
       <PublicNavbar />
 
-      {/* Hero */}
-      <SectionFrame id="top" className="border-b border-white/[0.07]">
-        <div className="relative mx-auto max-w-6xl px-5 py-24 sm:px-8 sm:py-32 lg:py-40">
-          <div className="absolute inset-0 bg-gradient-to-b from-[#0a2218]/90 via-[#050c0a] to-[#050c0a]" aria-hidden />
-          <div className="relative grid items-center gap-14 lg:grid-cols-[1.05fr_0.95fr]">
-            <div>
-              <p className="inline-flex items-center gap-2 rounded-full border border-[#c9a84c]/25 bg-[#c9a84c]/10 px-4 py-1.5 text-[11px] font-black tracking-wide text-[#e8d5a8] sm:text-xs">
-                <Sparkles className="h-3.5 w-3.5" aria-hidden />
-                {ar.brand.heroBadge}
-              </p>
-              <h1 className="mt-8 text-[2.1rem] font-black leading-[1.2] tracking-tight text-white sm:text-5xl lg:text-[3.25rem] lg:leading-[1.15]">
-                {h.heroTitleLine1}
-                <span className="mt-3 block bg-gradient-to-l from-[#f0e4c4] via-[#d4b87a] to-[#9a7b45] bg-clip-text text-transparent">
-                  {h.heroTitleLine2}
-                </span>
-              </h1>
-              <p className="mt-8 max-w-xl text-base font-bold leading-[1.85] text-white/52 sm:text-lg">{h.heroLead}</p>
-              <div className="mt-10 flex flex-wrap gap-3">
-                <Link
-                  href="/sessions"
-                  className="inline-flex items-center justify-center rounded-2xl bg-gradient-to-l from-[#7a5f28] to-[#d4b87a] px-8 py-3.5 text-sm font-black text-[#0a1814] shadow-lg shadow-black/30"
-                >
-                  {h.ctaSessions}
-                </Link>
-                <a
-                  href="/#lead"
-                  className="inline-flex items-center justify-center rounded-2xl border border-white/15 bg-white/[0.04] px-8 py-3.5 text-sm font-black text-white/90 backdrop-blur-sm hover:bg-white/[0.07]"
-                >
-                  {h.ctaLead}
-                </a>
-                <Link
-                  href="/portal"
-                  className="inline-flex items-center justify-center rounded-2xl border border-[#1c4532]/50 bg-[#1c4532]/35 px-6 py-3.5 text-sm font-black text-white/95 hover:bg-[#1c4532]/50"
-                >
-                  {h.ctaPortal}
-                </Link>
-              </div>
-            </div>
-            <div className="relative mx-auto aspect-[4/3] w-full max-w-lg lg:max-w-none">
-              <div className="absolute -inset-3 rounded-[2.5rem] bg-gradient-to-br from-[#c9a84c]/20 via-transparent to-[#1c4532]/30 blur-2xl" aria-hidden />
-              <div className="relative h-full min-h-[260px] overflow-hidden rounded-[2.25rem] ring-1 ring-[#c9a84c]/20 sm:min-h-[320px]">
-                <Image
-                  src="https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=1200&q=88"
-                  alt=""
-                  fill
-                  priority
-                  className="object-cover"
-                  sizes="(max-width: 1024px) 100vw, 45vw"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#050c0a] via-[#050c0a]/20 to-transparent" />
-              </div>
-            </div>
-          </div>
-        </div>
+      <SectionFrame id="top" className="border-b border-[#1e3f20]/10">
+        <PublicHomeHero />
       </SectionFrame>
 
-      {/* من نحن */}
-      <SectionFrame id="about" className="border-b border-white/[0.07] bg-[#f4f1eb] text-[#14221c]">
-        <div className="mx-auto max-w-3xl px-5 py-24 sm:px-8 sm:py-32">
-          <p className="text-center text-xs font-black tracking-[0.35em] text-[#6b5c38]">{h.aboutKicker}</p>
-          <h2 className="mt-4 text-center text-3xl font-black text-[#0f1e16] sm:text-4xl">{h.aboutTitle}</h2>
-          <blockquote className="mt-12 border-r-4 border-[#c9a84c]/70 pr-6 text-lg font-bold leading-[2.05] text-[#2d3a33] sm:text-xl">
-            {h.aboutQuote}
+      <SectionFrame id="about" className="border-b border-[#1e3f20]/10 bg-[#f9f6f0] text-[#14221c]">
+        <div className="mx-auto max-w-3xl px-4 py-16 sm:px-8 sm:py-24 md:py-32">
+          <p className="text-center text-[10px] font-black tracking-[0.35em] text-[#6b5c38] sm:text-xs">
+            {t.about.kicker}
+          </p>
+          <h2 className="mt-4 text-center text-2xl font-black text-[#0f1e16] sm:text-3xl md:text-4xl">
+            {t.about.title}
+          </h2>
+          <blockquote className="mt-8 border-e-4 border-[#1e3f20]/40 pe-4 text-base font-bold leading-[2.05] text-[#2d3a33] sm:mt-12 sm:pe-6 sm:text-lg md:text-xl">
+            {t.about.quote}
           </blockquote>
           <div className="mt-12 flex justify-center">
             <Link
               href="/discover"
-              className="inline-flex items-center justify-center rounded-2xl border-2 border-[#1c4532]/25 bg-[#1c4532] px-10 py-4 text-sm font-black text-[#f0e4c4] shadow-[0_12px_40px_rgba(28,69,50,0.25)] transition hover:bg-[#163a30]"
+              className="inline-flex items-center justify-center rounded-2xl bg-[#1e3f20] px-10 py-4 text-sm font-black text-white shadow-lg shadow-[#1e3f20]/15 transition hover:bg-[#163018]"
             >
-              {h.discoverMore}
+              {t.about.discoverMore}
             </Link>
           </div>
         </div>
       </SectionFrame>
 
-      {/* الجلسات */}
-      <SectionFrame id="sessions" className="border-b border-white/[0.07] bg-[#06120f] py-24 sm:py-32">
-        <div className="mx-auto max-w-6xl px-5 sm:px-8">
-          <div className="mx-auto max-w-2xl text-center">
-            <h2 className="text-3xl font-black text-white sm:text-4xl">{h.sessionsTitle}</h2>
-            <p className="mt-4 text-sm font-bold leading-relaxed text-white/48 sm:text-base">{h.sessionsLead}</p>
-          </div>
-
-          <div className="mt-14">
-            <PublicSessionsCards
-              sessions={sessions}
-              loadError={sessionsLoadError}
-              demo={sessionsDemo}
-            />
-          </div>
+      <SectionFrame id="advisor" className="border-b border-[#1e3f20]/10 bg-[#f9f6f0] py-12 sm:py-20 md:py-28">
+        <div className="mx-auto max-w-6xl px-4 sm:px-8">
+          <DestinationAdvisor />
         </div>
       </SectionFrame>
 
-      {/* المجموعات */}
-      <SectionFrame id="groups" className="border-b border-white/[0.07] bg-[#eef0ec] py-24 text-[#14221c] sm:py-32">
-        <div className="mx-auto max-w-6xl px-5 sm:px-8">
+      <SectionFrame id="quiz" clipOverflow={false} className="my-10 border-b border-[#1e3f20]/10 py-12 sm:my-16 sm:py-20 md:py-28">
+        <div className="mx-auto max-w-6xl space-y-8 px-4 sm:space-y-12 sm:px-8">
+          <WanderloomQuiz />
+        </div>
+      </SectionFrame>
+
+      <SectionFrame id="sessions" className="my-10 border-b border-[#1e3f20]/10 bg-[#f9f6f0] py-16 sm:my-16 sm:py-24 md:py-32">
+        <div className="mx-auto max-w-6xl space-y-8 px-4 sm:space-y-12 sm:px-8">
+          <div className="mx-auto max-w-2xl text-center">
+            <h2 className="text-2xl font-black text-[#111111] sm:text-3xl md:text-4xl">{t.sessions.title}</h2>
+            <p className="mt-3 text-sm font-bold leading-relaxed text-gray-600 sm:mt-4 sm:text-base">
+              {t.sessions.lead}
+            </p>
+          </div>
+
+          <PublicSessionsCards
+            sessions={sessions}
+            loadError={sessionsLoadError}
+            demo={sessionsDemo}
+          />
+        </div>
+      </SectionFrame>
+
+      <SectionFrame id="groups" className="my-10 border-b border-[#1e3f20]/10 bg-[#FDFBF7] py-16 sm:my-16 sm:py-24 md:py-32">
+        <div className="mx-auto max-w-6xl space-y-8 px-4 sm:space-y-12 sm:px-8">
           <div className="mx-auto max-w-3xl text-center">
-            <h2 className="text-3xl font-black sm:text-4xl">{h.groupsTitle}</h2>
-            <p className="mt-6 text-base font-bold leading-[1.9] text-[#3d4a42]">{h.groupsBody}</p>
+            <h2 className="text-2xl font-black text-[#111111] sm:text-3xl md:text-4xl">{t.groups.title}</h2>
+            <p className="mt-4 text-sm font-bold leading-relaxed text-gray-600 sm:mt-6 sm:text-base">{t.groups.body}</p>
           </div>
           <GroupTripsSection />
         </div>
       </SectionFrame>
 
-      {/* تواصل عام */}
-      <SectionFrame id="contact" className="border-b border-white/[0.07] bg-[#06120f] py-24 sm:py-32">
+      <SectionFrame id="contact" className="border-b border-[#1e3f20]/10 py-16 sm:py-24 md:py-32">
         <GeneralContactSection />
       </SectionFrame>
 
-      {/* نموذج تصميم الرحلة */}
-      <SectionFrame id="lead" className="bg-[#050c0a] py-24 sm:py-32">
-        <div className="mx-auto max-w-4xl px-5 sm:px-8">
+      <SectionFrame id="lead" className="bg-[#f9f6f0] py-16 sm:py-24 md:py-32">
+        <div className="mx-auto max-w-4xl px-4 sm:px-8">
           <div className="mx-auto max-w-2xl text-center">
-            <h2 className="text-3xl font-black text-white sm:text-4xl">{h.leadTitle}</h2>
-            <p className="mt-4 text-sm font-bold leading-relaxed text-white/48 sm:text-base">{h.leadBody}</p>
+            <h2 className="text-2xl font-black text-[#111111] sm:text-3xl md:text-4xl">{t.lead.title}</h2>
+            <p className="mt-3 text-sm font-bold leading-relaxed text-gray-600 sm:mt-4 sm:text-base">
+              {t.lead.body}
+            </p>
           </div>
-          <div className="mt-14">
+          <div className="mt-10 sm:mt-14">
             <TripDesignForm />
           </div>
         </div>
       </SectionFrame>
 
-      <footer className="border-t border-white/10 bg-[#030806] py-12 text-center">
-        <p className="text-xs font-black tracking-[0.4em] text-[#c9a84c]/45">{h.footerBrand}</p>
-        <p className="mt-2 text-[11px] font-bold text-white/28">{h.footerTagline}</p>
+      <footer className="border-t border-[#1e3f20]/10 bg-[#f4efe6] px-4 py-10 text-center sm:py-12">
+        <p className="text-xs font-black tracking-[0.4em] text-[#cda04c]/80">{t.footer.brand}</p>
+        <p className="mt-2 text-[11px] font-bold text-gray-500">{t.footer.tagline}</p>
         <p className="mt-5">
           <a
-            href={`mailto:${h.contactEmailAddress}?subject=${encodeURIComponent('استفسار — Wanderloom')}`}
-            className="text-[11px] font-bold text-[#c9a84c]/70 underline decoration-[#c9a84c]/35 underline-offset-4 transition hover:text-[#d4b87a]"
+            href={`mailto:${WANDERLOOM_CONTACT_EMAIL}?subject=${encodeURIComponent(t.footer.emailSubject)}`}
+            className="text-[11px] font-bold text-[#9a7b45] underline decoration-[#cda04c]/40 underline-offset-4 transition hover:text-[#cda04c]"
           >
-            {h.contactEmailAddress}
+            {WANDERLOOM_CONTACT_EMAIL}
           </a>
         </p>
       </footer>
-    </div>
+    </main>
   );
 }

@@ -18,6 +18,7 @@ export default function VaultPage() {
   const [editing, setEditing] = useState<any>(null)
   const [adding, setAdding] = useState(false)
   const [newPlace, setNewPlace] = useState({name:'',country:'',city:'',category:'o',sub_tag:''})
+  const [opNotice, setOpNotice] = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
   const PAGE_SIZE = 50
 
   const loadCountries = async () => {
@@ -69,23 +70,41 @@ export default function VaultPage() {
 
   const saveEdit = async () => {
     if (!supabase || !editing) return
-    await supabase.from('places').update({ name: editing.name, country: editing.country, city: editing.city, category: editing.category, sub_tag: editing.sub_tag }).eq('id', editing.id)
+    setOpNotice(null)
+    const { error } = await supabase.from('places').update({ name: editing.name, country: editing.country, city: editing.city, category: editing.category, sub_tag: editing.sub_tag }).eq('id', editing.id)
+    if (error) {
+      setOpNotice({ type: 'err', text: error.message || 'تعذر حفظ التعديلات.' })
+      return
+    }
     setEditing(null)
+    setOpNotice({ type: 'ok', text: 'تم حفظ التعديلات.' })
     loadPlaces()
   }
 
   const addNewPlace = async () => {
     if (!supabase || !newPlace.name) return
-    await supabase.from('places').insert(newPlace)
+    setOpNotice(null)
+    const { error } = await supabase.from('places').insert(newPlace)
+    if (error) {
+      setOpNotice({ type: 'err', text: error.message || 'تعذر إضافة المكان.' })
+      return
+    }
     setAdding(false)
     setNewPlace({name:'',country:'',city:'',category:'o',sub_tag:''})
+    setOpNotice({ type: 'ok', text: 'تمت إضافة المكان.' })
     loadPlaces()
     loadCountries()
   }
 
   const deletePlace = async (id: string) => {
     if (!supabase || !window.confirm('حذف هذا المكان؟')) return
-    await supabase.from('places').delete().eq('id', id)
+    setOpNotice(null)
+    const { error } = await supabase.from('places').delete().eq('id', id)
+    if (error) {
+      setOpNotice({ type: 'err', text: error.message || 'تعذر حذف المكان.' })
+      return
+    }
+    setOpNotice({ type: 'ok', text: 'تم الحذف.' })
     loadPlaces()
   }
 
@@ -101,6 +120,22 @@ export default function VaultPage() {
 
   return (
     <div dir="rtl" style={{padding:'20px 16px',fontFamily:'sans-serif',maxWidth:1200,margin:'0 auto'}}>
+      {opNotice ? (
+        <div
+          style={{
+            marginBottom: 12,
+            padding: '10px 14px',
+            borderRadius: 12,
+            fontSize: 12,
+            fontWeight: 800,
+            background: opNotice.type === 'ok' ? '#ecfdf5' : '#fef2f2',
+            color: opNotice.type === 'ok' ? '#065f46' : '#991b1b',
+            border: opNotice.type === 'ok' ? '1px solid #a7f3d0' : '1px solid #fecaca',
+          }}
+        >
+          {opNotice.text}
+        </div>
+      ) : null}
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
         <div>
           <div style={{fontSize:22,fontWeight:800,color:'#1C4532'}}>بنك الأماكن</div>

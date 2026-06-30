@@ -10,8 +10,9 @@ import type { Session } from '@/types/session-tables';
 
 import { AvailableSessionsCards } from './_components/AvailableSessionsCards';
 
-const HAS_PUBLIC_SUPABASE_ENV =
-  Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL) && Boolean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+import { isSupabaseConfigured } from '@/lib/supabase-config';
+
+const HAS_PUBLIC_SUPABASE_ENV = isSupabaseConfigured();
 
 export default function PortalSessionsClient() {
   const [sessions, setSessions] = useState<Session[]>([]);

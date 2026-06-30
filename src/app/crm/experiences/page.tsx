@@ -2,58 +2,107 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { ArrowRight, ExternalLink, Loader2, MapPin, Sparkles } from 'lucide-react';
+import { ArrowRight, ExternalLink, Loader2, MapPin, Plus, Sparkles } from 'lucide-react';
 
 import { supabase } from '@/lib/supabase';
-import type { ExperienceCategory, ExperienceRow } from '@/types/experience';
+import {
+  VIP_EXPERIENCE_CATEGORIES,
+  experienceCategoryLabel,
+  isKnownExperienceCategory,
+  type ExperienceRow,
+} from '@/types/experience';
 
-const CATEGORY_OPTIONS: { value: ExperienceCategory; label: string }[] = [
-  { value: 'cooking', label: 'طهي' },
-  { value: 'heritage', label: 'تراث' },
-  { value: 'shopping', label: 'تسوق' },
-  { value: 'relaxation', label: 'استرخاء' },
-];
-
-function categoryLabel(c: string): string {
-  return CATEGORY_OPTIONS.find((o) => o.value === c)?.label ?? c;
-}
+const DEFAULT_CATEGORY = VIP_EXPERIENCE_CATEGORIES[0];
 
 function formatExperienceWhatsApp(e: ExperienceRow): string {
   const loc = e.city ? `${e.country} · ${e.city}` : e.country;
-  const link = e.detail_url?.trim() ? e.detail_url.trim() : '—';
+  const detail = e.detail_url?.trim() ? e.detail_url.trim() : '—';
+  const booking = e.booking_url?.trim() ? e.booking_url.trim() : '';
   return `✨ اقتراح مميز — Wanderloom
 
 📌 ${e.title}
 🌍 ${loc}
-🏷️ التصنيف: ${categoryLabel(e.category)}
+🏷️ التصنيف: ${experienceCategoryLabel(e.category)}
 
 📝 ${e.description}
 
-🔗 ${link}`;
+🔗 ${detail}${booking ? `\n\n📅 حجز: ${booking}` : ''}`;
+}
+
+type ExperienceForm = {
+  title: string;
+  country: string;
+  city: string;
+  description: string;
+  detail_url: string;
+  booking_url: string;
+};
+
+function formatSupabaseError(error: unknown): string {
+  if (!error || typeof error !== 'object') return 'حدث خطأ أثناء الحفظ';
+  const e = error as { message?: string; details?: string; hint?: string; code?: string };
+  const msg = [e.message, e.details, e.hint].filter(Boolean).join(' — ');
+  if (/experiences_category_check|category_check|check constraint/i.test(msg)) {
+    return `${msg} — نفّذ supabase/sql/experiences_vip_categories.sql في Supabase لتحديث التصنيفات.`;
+  }
+  if (e.code) return `${msg} (${e.code})`.trim() || 'حدث خطأ أثناء الحفظ';
+  return msg || 'حدث خطأ أثناء الحفظ';
+}
+
+/** حمولة نظيفة — بدون id أو created_at (يولّدهما Supabase تلقائياً) */
+function buildPayload(formData: ExperienceForm, categoryValue: string): Record<string, unknown> {
+  return {
+    title: formData.title.trim(),
+    country: formData.country.trim(),
+    city: formData.city.trim(),
+    category: categoryValue,
+    description: formData.description.trim(),
+    detail_url: formData.detail_url.trim() || null,
+    booking_url: formData.booking_url.trim() || null,
+  };
+}
+
+function isMissingColumnError(message: string, column: string): boolean {
+  return new RegExp(column, 'i').test(message) && /column|schema cache|does not exist/i.test(message);
 }
 
 export default function ExperiencesCRMPage() {
   const [rows, setRows] = useState<ExperienceRow[]>([]);
   const [countries, setCountries] = useState<string[]>([]);
   const [filterCountry, setFilterCountry] = useState('');
-  const [filterCategory, setFilterCategory] = useState<'' | ExperienceCategory>('');
+  const [filterCategory, setFilterCategory] = useState('');
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [banner, setBanner] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
-  const [toast, setToast] = useState<string | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [category, setCategory] = useState<string>(DEFAULT_CATEGORY);
+  const [formData, setFormData] = useState<ExperienceForm>({
+    title: '',
+    country: '',
+    city: '',
+    description: '',
+    detail_url: '',
+    booking_url: '',
+  });
 
-  useEffect(() => {
-    if (!toast) return;
-    const t = window.setTimeout(() => setToast(null), 2200);
-    return () => window.clearTimeout(t);
-  }, [toast]);
+  const categorySelectOptions = useMemo(() => {
+    const options = [...VIP_EXPERIENCE_CATEGORIES];
+    const trimmed = category.trim();
+    if (trimmed && !isKnownExperienceCategory(trimmed) && !options.includes(trimmed as (typeof options)[number])) {
+      return [trimmed, ...options];
+    }
+    return options;
+  }, [category]);
 
   useEffect(() => {
     if (!supabase) return;
-    (async () => {
+    void (async () => {
       const { data, error } = await supabase.from('experiences').select('country');
       if (error || !data) return;
       const u = [...new Set(data.map((x: { country?: string }) => x.country).filter(Boolean))].sort((a, b) =>
-        String(a).localeCompare(String(b), 'ar')
+        String(a).localeCompare(String(b), 'ar'),
       );
       setCountries(u as string[]);
     })();
@@ -68,7 +117,11 @@ export default function ExperiencesCRMPage() {
     setLoading(true);
     setBanner(null);
     try {
-      let q = supabase.from('experiences').select('*').order('country', { ascending: true }).order('title', { ascending: true });
+      let q = supabase
+        .from('experiences')
+        .select('*')
+        .order('country', { ascending: true })
+        .order('title', { ascending: true });
       if (filterCountry) q = q.eq('country', filterCountry);
       if (filterCategory) q = q.eq('category', filterCategory);
       const { data, error } = await q;
@@ -90,17 +143,138 @@ export default function ExperiencesCRMPage() {
   }, [filterCountry, filterCategory]);
 
   useEffect(() => {
-    load();
+    void load();
   }, [load]);
 
-  async function copyWhatsApp(e: ExperienceRow) {
+  function openWhatsAppShare(e: ExperienceRow) {
     const text = formatExperienceWhatsApp(e);
-    try {
-      await navigator.clipboard.writeText(text);
-      setToast('تم النسخ بنجاح!');
-    } catch {
-      setToast('تعذر النسخ — تأكد من HTTPS والأذونات.');
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer');
+  }
+
+  function resetForm() {
+    setCategory(DEFAULT_CATEGORY);
+    setFormData({
+      title: '',
+      country: '',
+      city: '',
+      description: '',
+      detail_url: '',
+      booking_url: '',
+    });
+    setIsEditing(false);
+    setEditId(null);
+  }
+
+  function closeModal() {
+    setIsModalOpen(false);
+    resetForm();
+  }
+
+  function openCreateModal() {
+    resetForm();
+    setIsModalOpen(true);
+  }
+
+  function openEditModal(e: ExperienceRow) {
+    setIsEditing(true);
+    setEditId(e.id);
+    const cat = e.category?.trim() || DEFAULT_CATEGORY;
+    setCategory(cat || DEFAULT_CATEGORY);
+    setFormData({
+      title: e.title ?? '',
+      country: e.country ?? '',
+      city: e.city ?? '',
+      description: e.description ?? '',
+      detail_url: e.detail_url ?? '',
+      booking_url: e.booking_url ?? '',
+    });
+    setIsModalOpen(true);
+  }
+
+  async function handleDelete(id: string) {
+    if (!supabase) {
+      setBanner({ type: 'err', text: 'قاعدة البيانات غير مهيأة.' });
+      return;
     }
+    if (!confirm('هل أنت متأكد من حذف هذه التجربة؟')) return;
+
+    const { error } = await supabase.from('experiences').delete().eq('id', id);
+    if (error) {
+      console.error(error);
+      setBanner({ type: 'err', text: error.message || 'تعذر حذف التجربة.' });
+      return;
+    }
+    setBanner({ type: 'ok', text: 'تم حذف التجربة.' });
+    void load();
+  }
+
+  function reportSaveError(error: unknown) {
+    console.error('Supabase Save Error:', error);
+    const msg = formatSupabaseError(error);
+    alert(`فشل الحفظ: ${msg}`);
+    setBanner({ type: 'err', text: `فشل الحفظ: ${msg}` });
+  }
+
+  async function persistExperience(payload: Record<string, unknown>) {
+    if (!supabase) return { error: { message: 'قاعدة البيانات غير مهيأة.' } };
+
+    const cleanPayload = { ...payload };
+    delete cleanPayload.id;
+    delete cleanPayload.created_at;
+
+    if (isEditing && editId) {
+      let result = await supabase.from('experiences').update(cleanPayload).eq('id', editId);
+      if (result.error && isMissingColumnError(result.error.message ?? '', 'booking_url')) {
+        const { booking_url: _b, ...withoutBooking } = cleanPayload;
+        result = await supabase.from('experiences').update(withoutBooking).eq('id', editId);
+      }
+      return result;
+    }
+
+    let result = await supabase.from('experiences').insert([cleanPayload]);
+    if (result.error && isMissingColumnError(result.error.message ?? '', 'booking_url')) {
+      const { booking_url: _b, ...withoutBooking } = cleanPayload;
+      result = await supabase.from('experiences').insert([withoutBooking]);
+    }
+    return result;
+  }
+
+  async function handleSubmit(ev: React.FormEvent) {
+    ev.preventDefault();
+    if (!supabase) {
+      setBanner({ type: 'err', text: 'قاعدة البيانات غير مهيأة.' });
+      return;
+    }
+
+    const categoryValue = category.trim();
+    if (!categoryValue) {
+      setBanner({ type: 'err', text: 'يرجى اختيار التصنيف.' });
+      return;
+    }
+    if (!formData.title.trim() || !formData.country.trim() || !formData.description.trim()) {
+      setBanner({ type: 'err', text: 'العنوان والدولة والوصف مطلوبة.' });
+      return;
+    }
+
+    const payload = buildPayload(formData, categoryValue);
+    setSaving(true);
+    setBanner(null);
+
+    const { error } = await persistExperience(payload);
+
+    if (error) {
+      reportSaveError(error);
+      setSaving(false);
+      return;
+    }
+
+    setBanner({
+      type: 'ok',
+      text: isEditing ? 'تم تحديث التجربة بنجاح.' : 'تمت إضافة التجربة بنجاح.',
+    });
+    closeModal();
+    void load();
+    setSaving(false);
   }
 
   const inputStyle = useMemo(
@@ -114,7 +288,7 @@ export default function ExperiencesCRMPage() {
         direction: 'rtl' as const,
         outline: 'none',
       }) as const,
-    []
+    [],
   );
 
   return (
@@ -123,33 +297,50 @@ export default function ExperiencesCRMPage() {
       className="min-h-screen bg-[#eef0ec] font-[family-name:var(--font-tajawal),system-ui,sans-serif]"
       style={{ maxWidth: 1100, margin: '0 auto' }}
     >
-      {toast ? (
-        <div
-          role="status"
+      <div
+        style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 12,
+          marginBottom: 16,
+        }}
+      >
+        <Link
+          href="/crm"
           style={{
-            position: 'fixed',
-            bottom: 24,
-            left: '50%',
-            transform: 'translateX(-50%)',
-            zIndex: 9999,
-            padding: '12px 22px',
-            borderRadius: 14,
-            background: 'linear-gradient(135deg,#1C4532,#163a30)',
-            color: '#f0e4c4',
-            fontSize: 13,
-            fontWeight: 800,
-            boxShadow: '0 12px 40px rgba(0,0,0,.2)',
-            border: '1px solid rgba(201,168,76,.4)',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 8,
+            color: '#6B7280',
+            fontSize: 12,
+            fontWeight: 700,
           }}
         >
-          {toast}
-        </div>
-      ) : null}
-
-      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 16 }}>
-        <Link href="/crm" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, color: '#6B7280', fontSize: 12, fontWeight: 700 }}>
           <ArrowRight size={14} /> لوحة التحكم
         </Link>
+        <button
+          type="button"
+          onClick={openCreateModal}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 8,
+            padding: '10px 18px',
+            borderRadius: 999,
+            border: 'none',
+            background: 'linear-gradient(135deg,#1C4532,#163a30)',
+            color: '#f0e4c4',
+            fontSize: 12,
+            fontWeight: 900,
+            cursor: 'pointer',
+            boxShadow: '0 8px 24px rgba(28,69,50,0.25)',
+          }}
+        >
+          <Plus size={16} strokeWidth={2.5} />
+          إضافة تجربة
+        </button>
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
@@ -169,7 +360,7 @@ export default function ExperiencesCRMPage() {
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 900, color: '#1C4532', margin: 0 }}>التجارب الاستثنائية</h1>
           <p style={{ fontSize: 11, color: '#6B7280', margin: '4px 0 0', fontWeight: 700 }}>
-            اقتراحات مُنتقاة للعميل — انسخ النص وأرسله عبر واتساب
+            اقتراحات مُنتقاة للعميل — حجز مباشر أو مشاركة عبر واتساب
           </p>
         </div>
       </div>
@@ -212,15 +403,11 @@ export default function ExperiencesCRMPage() {
             </option>
           ))}
         </select>
-        <select
-          value={filterCategory}
-          onChange={(e) => setFilterCategory((e.target.value || '') as '' | ExperienceCategory)}
-          style={inputStyle}
-        >
+        <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} style={inputStyle}>
           <option value="">كل التصنيفات</option>
-          {CATEGORY_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
+          {VIP_EXPERIENCE_CATEGORIES.map((c) => (
+            <option key={c} value={c}>
+              {c}
             </option>
           ))}
         </select>
@@ -261,7 +448,9 @@ export default function ExperiencesCRMPage() {
               }}
             >
               <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
-                <h2 style={{ fontSize: 16, fontWeight: 900, color: '#0f1e16', margin: 0, lineHeight: 1.4 }}>{e.title}</h2>
+                <h2 style={{ fontSize: 16, fontWeight: 900, color: '#0f1e16', margin: 0, lineHeight: 1.4 }}>
+                  {e.title}
+                </h2>
                 <span
                   style={{
                     flexShrink: 0,
@@ -273,21 +462,84 @@ export default function ExperiencesCRMPage() {
                     color: '#92400E',
                   }}
                 >
-                  {categoryLabel(e.category)}
+                  {experienceCategoryLabel(e.category)}
                 </span>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, color: '#4B5563' }}>
+              {e.description?.trim() ? (
+                <p className="mt-3 line-clamp-2 whitespace-pre-wrap text-sm text-[#1E2720]/70">
+                  {e.description.trim()}
+                </p>
+              ) : null}
+              <div
+                style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, color: '#4B5563' }}
+              >
                 <MapPin size={14} className="text-[#C9A84C]" />
                 {e.city ? `${e.country} · ${e.city}` : e.country}
               </div>
-              <p style={{ fontSize: 13, fontWeight: 700, color: '#374151', lineHeight: 1.75, margin: 0, flex: 1 }}>{e.description}</p>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 4 }}>
+
+              <div style={{ display: 'flex', gap: 8 }}>
                 <button
                   type="button"
-                  onClick={() => copyWhatsApp(e)}
+                  onClick={() => openEditModal(e)}
+                  className="text-sm font-bold text-[#1C4532] transition hover:text-[#163a30]"
+                >
+                  تعديل
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void handleDelete(e.id)}
+                  className="text-sm font-bold text-red-600 transition hover:text-red-800"
+                >
+                  حذف
+                </button>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 4 }}>
+                {e.booking_url ? (
+                  <a
+                    href={e.booking_url.startsWith('http') ? e.booking_url : `https://${e.booking_url}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      width: '100%',
+                      padding: '10px 14px',
+                      borderRadius: 12,
+                      border: 'none',
+                      background: 'linear-gradient(135deg,#2563EB,#1D4ED8)',
+                      color: '#fff',
+                      fontSize: 12,
+                      fontWeight: 800,
+                      textDecoration: 'none',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 8,
+                    }}
+                  >
+                    <ExternalLink size={14} /> حجز التجربة للعميل
+                  </a>
+                ) : (
+                  <div
+                    style={{
+                      width: '100%',
+                      padding: '10px 14px',
+                      borderRadius: 12,
+                      background: '#F3F4F6',
+                      color: '#9CA3AF',
+                      fontSize: 12,
+                      fontWeight: 800,
+                      textAlign: 'center',
+                    }}
+                  >
+                    رابط الحجز غير متوفر
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => openWhatsAppShare(e)}
                   style={{
-                    flex: 1,
-                    minWidth: 140,
+                    width: '100%',
                     padding: '10px 14px',
                     borderRadius: 12,
                     border: 'none',
@@ -302,35 +554,142 @@ export default function ExperiencesCRMPage() {
                     gap: 8,
                   }}
                 >
-                  نسخ للواتساب
+                  مشاركة واتساب
                 </button>
-                {e.detail_url ? (
-                  <a
-                    href={e.detail_url.startsWith('http') ? e.detail_url : `https://${e.detail_url}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{
-                      padding: '10px 14px',
-                      borderRadius: 12,
-                      border: '1px solid #E5E0D6',
-                      background: '#FAFAF8',
-                      color: '#1C4532',
-                      fontSize: 12,
-                      fontWeight: 800,
-                      textDecoration: 'none',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: 6,
-                    }}
-                  >
-                    <ExternalLink size={14} /> رابط
-                  </a>
-                ) : null}
               </div>
             </article>
           ))}
         </div>
       )}
+
+      {isModalOpen ? (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.45)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 50,
+            padding: 16,
+          }}
+        >
+          <div
+            style={{
+              background: '#fff',
+              borderRadius: 20,
+              padding: 24,
+              width: '100%',
+              maxWidth: 440,
+              maxHeight: '90vh',
+              overflowY: 'auto',
+              boxShadow: '0 20px 50px rgba(0,0,0,0.2)',
+              border: '1px solid #E8E4DC',
+            }}
+          >
+            <h2 style={{ fontSize: 20, fontWeight: 900, color: '#1C4532', margin: '0 0 16px' }}>
+              {isEditing ? 'تعديل التجربة' : 'إضافة تجربة جديدة'}
+            </h2>
+            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <input
+                required
+                placeholder="عنوان التجربة"
+                value={formData.title}
+                onChange={(ev) => setFormData({ ...formData, title: ev.target.value })}
+                style={inputStyle}
+              />
+              <input
+                required
+                placeholder="الدولة"
+                value={formData.country}
+                onChange={(ev) => setFormData({ ...formData, country: ev.target.value })}
+                style={inputStyle}
+              />
+              <input
+                required
+                placeholder="المدينة"
+                value={formData.city}
+                onChange={(ev) => setFormData({ ...formData, city: ev.target.value })}
+                style={inputStyle}
+              />
+              <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <span style={{ fontSize: 11, fontWeight: 800, color: '#6B7280' }}>التصنيف (VIP)</span>
+                <select
+                  required
+                  value={category}
+                  onChange={(ev) => setCategory(ev.target.value)}
+                  style={inputStyle}
+                >
+                  {categorySelectOptions.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <textarea
+                required
+                placeholder="الوصف"
+                rows={4}
+                value={formData.description}
+                onChange={(ev) => setFormData({ ...formData, description: ev.target.value })}
+                style={{ ...inputStyle, resize: 'vertical' as const }}
+              />
+              <input
+                type="url"
+                placeholder="رابط تفاصيل (اختياري)"
+                value={formData.detail_url}
+                onChange={(ev) => setFormData({ ...formData, detail_url: ev.target.value })}
+                style={inputStyle}
+              />
+              <input
+                type="url"
+                placeholder="رابط الحجز للعميل (booking_url)"
+                value={formData.booking_url}
+                onChange={(ev) => setFormData({ ...formData, booking_url: ev.target.value })}
+                style={{ ...inputStyle, border: '1.5px solid #BFDBFE', background: '#EFF6FF' }}
+              />
+              <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
+                <button
+                  type="submit"
+                  disabled={saving}
+                  style={{
+                    flex: 1,
+                    padding: '12px 14px',
+                    borderRadius: 12,
+                    border: 'none',
+                    background: 'linear-gradient(135deg,#1C4532,#163a30)',
+                    color: '#f0e4c4',
+                    fontWeight: 900,
+                    cursor: saving ? 'wait' : 'pointer',
+                    opacity: saving ? 0.7 : 1,
+                  }}
+                >
+                  {saving ? 'جاري الحفظ…' : isEditing ? 'تحديث' : 'حفظ'}
+                </button>
+                <button
+                  type="button"
+                  onClick={closeModal}
+                  disabled={saving}
+                  style={{
+                    flex: 1,
+                    padding: '12px 14px',
+                    borderRadius: 12,
+                    border: '1px solid #E5E0D6',
+                    background: '#F9FAFB',
+                    color: '#4B5563',
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                  }}
+                >
+                  إلغاء
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -1,0 +1,765 @@
+{
+  "brand": {
+    "name": "Wanderloom"
+  },
+  "nav": {
+    "home": "Home",
+    "about": "About Us",
+    "discover": "Discover",
+    "contact": "Contact Us",
+    "sessions": "Sessions",
+    "lead": "Plan your trip",
+    "portal": "Client Portal",
+    "menuAria": "Menu"
+  },
+  "hero": {
+    "badge": "Wanderloom · Luxury journey architecture",
+    "titleLine1": "Wanderloom: Detail, Not Coordination",
+    "titleLine2": "",
+    "subtitle": "Wanderloom is the command center for your next luxury journey. We do not arrange trips the traditional way — we engineer every detail with intelligence and exclusivity to weave a seamless experience worthy of you.",
+    "ctaSessions": "Available sessions",
+    "ctaLead": "Plan your trip",
+    "ctaPortal": "Client portal",
+    "imageAlt": "Infinity terrace and pool at a luxury hotel overlooking the sea and cliffs in Santorini, Greece."
+  },
+  "about": {
+    "kicker": "About us",
+    "title": "Wanderloom",
+    "quote": "We are not a traditional travel agency. Every journey is built inside out: from reading the client’s personality, to engineering day one, to weaving the remaining days as chapters in one harmonious piece. The hotel is a note, the street a measure, the café a pause, the landmark a crescendo — all written in the keys of your taste, not off-the-shelf metrics.",
+    "discoverMore": "Discover more"
+  },
+  "sessions": {
+    "title": "Available Sessions",
+    "lead": "Interactive live sessions in Riyadh that bring you into the Wanderloom community to discuss travel secrets and elevate tourism culture — through practical workshops and inspiring meetings with journey experts."
+  },
+  "groups": {
+    "title": "Open group travel opportunities",
+    "body": "Fully designed journeys you can join as individuals or families for a unique, enjoyable travel experience.",
+    "cardsHint": "Choose one of the paths below to register your group — our team will contact you with dates and program details.",
+    "badge": "Group",
+    "registerCta": "Reserve your seat",
+    "packages": {
+      "japan": {
+        "title": "Family trip to Japan",
+        "blurb": "A route that puts family comfort and variety first: activities for all ages and flexible timing."
+      },
+      "korea": {
+        "title": "Friends trip to Korea",
+        "blurb": "For groups who love urban energy and visual culture: Seoul, street food, and unforgettable photos."
+      },
+      "europe": {
+        "title": "Business trip to Europe",
+        "blurb": "For work teams and delegations: a tight schedule, meeting-friendly hotels, and space to balance work and exploration."
+      }
+    },
+    "modal": {
+      "title": "Group registration",
+      "tripLabel": "Trip",
+      "nameLabel": "Full name *",
+      "namePlaceholder": "Your full name",
+      "waLabel": "WhatsApp number *",
+      "waPlaceholder": "05XXXXXXXX",
+      "emailLabel": "Email *",
+      "emailPlaceholder": "example@email.com",
+      "ageLabel": "Age *",
+      "agePlaceholder": "e.g. 28",
+      "submit": "Reserve seat",
+      "close": "Close"
+    },
+    "errors": {
+      "namePhone": "Please fill in all required fields: your name and WhatsApp number.",
+      "invalidSize": "Please enter group size (a whole number greater than zero).",
+      "emailRequired": "Please enter your email address.",
+      "invalidEmail": "Please enter a valid email address.",
+      "ageRequired": "Please enter your age.",
+      "invalidAge": "Please enter a valid age.",
+      "generic": "Sorry, an error occurred during registration. Please try again."
+    },
+    "success": "Your group was registered successfully! The Wanderloom team will contact you on WhatsApp soon."
+  },
+  "contact": {
+    "title": "Contact us",
+    "lead": "Have a special inquiry or partnership idea? Our team is ready to hear you — outside booking a specific trip.",
+    "whatsappCta": "WhatsApp chat",
+    "emailCta": "Email us",
+    "emailAddress": "oalsuhaim@wanderloomsa.com",
+    "emailSubject": "Inquiry — Wanderloom",
+    "waPresetMessage": "Hello Wanderloom — I have a general inquiry and would like to get in touch."
+  },
+  "lead": {
+    "title": "Plan your trip",
+    "body": "The interactive form below sends your details to our leads table — without reloading the page — so the Wanderloom team can build your route step by step."
+  },
+  "footer": {
+    "brand": "WANDERLOOM",
+    "tagline": "Journey architecture · Sessions · Private routes",
+    "emailSubject": "Inquiry — Wanderloom"
+  },
+  "aboutPage": {
+    "backToHome": "Back to Home",
+    "discoverBadge": "Discover",
+    "titleLine1": "A Symphony Factory",
+    "titleLine2": "Not a Travel Agency",
+    "description": "We don't sell ready-made tickets and programs. We compose your trip like a single musical masterpiece: an intro, a verse, a climax, and a finale — entirely built around who you are, not what is sold to everyone.",
+    "browseSessionsBtn": "Browse Sessions",
+    "startDesignBtn": "Start Designing Your Trip",
+    "sectionModelTitle": "The travel model",
+    "sectionModelBody": "Every client carries a different rhythm: calm or excitement, historical depth or visual wonder, street food or luxury experiences. We read this rhythm in your questionnaire, your conversation, your small details — then turn it into harmonious days where every stop serves the feeling you want to leave with.",
+    "sectionPhilosophyTitle": "Design philosophy",
+    "sectionPhilosophyBody": "A journey with us is not a list of landmarks, but a story. The hotel is chosen as a warm note or a loud interlude; walking the neighborhood is tuned to your energy; time between appointments is left on purpose so the scene can breathe. We believe luxury travel is when the plan disappears from view and only the experience remains.",
+    "sectionYouTitle": "You are the center of the symphony",
+    "sectionYouBody": "We do not impose a destination because it is famous — we build it because it fits your personality. Japan for lovers of fine detail differs from Japan for anime and cultural layers — and each is a project in itself.",
+    "brandTagline": "Luxury journey architecture"
+  },
+  "common": {
+    "yes": "Yes",
+    "no": "No",
+    "free": "Free",
+    "currencySuffix": "SAR"
+  },
+  "quiz": {
+    "kicker": "Discover your destination",
+    "title": "Wanderloom Quiz",
+    "intro": "Four quick questions — we match your answers to one of our 21 official destinations.",
+    "questionLabel": "Question {current} of {total}",
+    "prevQuestion": "← Previous question",
+    "resultKicker": "Your suggested destination",
+    "registerCta": "Design your luxury trip to {country}",
+    "registerTripCta": "Register your trip",
+    "restart": "Retake the quiz",
+    "whyFitCta": "Why does this destination fit you?",
+    "insiderModalTitle": "Secrets you won't find on Google",
+    "insiderModalClose": "Close",
+    "persuasionModalHeader": "Exclusive proof: why {country} fits you",
+    "persuasionBasedOn": "Based on your choice:",
+    "questions": [
+      {
+        "id": "pace",
+        "prompt": "How do you prefer the pace of your travel days?",
+        "options": [
+          {
+            "label": "Calm and organized — I love thoughtful details and serenity",
+            "tags": [
+              "japan",
+              "switzerland"
+            ]
+          },
+          {
+            "label": "Vibrant — city energy and daily surprises",
+            "tags": [
+              "south_korea",
+              "america"
+            ]
+          },
+          {
+            "label": "Slow and refined — quality over density",
+            "tags": [
+              "france",
+              "italy"
+            ]
+          },
+          {
+            "label": "Balanced — nature, comfort, and discovery",
+            "tags": [
+              "canada",
+              "netherlands"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "stay",
+        "prompt": "What makes your stay “perfect”?",
+        "options": [
+          {
+            "label": "Luxury resort or boutique hotel with personal service",
+            "tags": [
+              "austria",
+              "switzerland",
+              "south_africa"
+            ]
+          },
+          {
+            "label": "City center — close to local life and culture",
+            "tags": [
+              "south_korea",
+              "spain",
+              "america"
+            ]
+          },
+          {
+            "label": "Distinctive design and exceptional dining",
+            "tags": [
+              "france",
+              "italy",
+              "portugal"
+            ]
+          },
+          {
+            "label": "Comfortable spaces for family or groups",
+            "tags": [
+              "germany",
+              "sweden",
+              "hungary"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "memory",
+        "prompt": "Which memory do you want to carry home from the trip?",
+        "options": [
+          {
+            "label": "A seamless route — every stop on time and in place",
+            "tags": [
+              "japan",
+              "germany",
+              "czech"
+            ]
+          },
+          {
+            "label": "Spontaneous discovery — places I did not plan",
+            "tags": [
+              "china",
+              "poland",
+              "russia"
+            ]
+          },
+          {
+            "label": "An exclusive experience — dinner, show, or private visit",
+            "tags": [
+              "france",
+              "britain",
+              "belgium"
+            ]
+          },
+          {
+            "label": "Warm shared moments with people I love",
+            "tags": [
+              "italy",
+              "portugal",
+              "netherlands"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "guide",
+        "prompt": "How do you prefer to work with the Wanderloom team?",
+        "options": [
+          {
+            "label": "A detailed draft before booking — I want to see everything",
+            "tags": [
+              "japan",
+              "switzerland",
+              "austria"
+            ]
+          },
+          {
+            "label": "A flexible framework — experts handle the details",
+            "tags": [
+              "america",
+              "south_korea",
+              "spain"
+            ]
+          },
+          {
+            "label": "Luxury standards and carefully curated picks",
+            "tags": [
+              "france",
+              "italy",
+              "south_africa"
+            ]
+          },
+          {
+            "label": "Solutions for different ages and interests",
+            "tags": [
+              "canada",
+              "sweden",
+              "hungary"
+            ]
+          }
+        ]
+      }
+    ],
+    "destinations": {
+      "japan": {
+        "name": "Japan",
+        "tagline": "Precision in every moment",
+        "desc": "A stunning blend of ancient tradition and modern life — enchanting details at every turn.",
+        "vibe": [
+          "Contemplation",
+          "Culture",
+          "Innovation"
+        ],
+        "insiderTips": [
+          "Yanaka, Tokyo: a morning walk before museums open — local cafés absent from mass-tourism lists.",
+          "A Gion-side ryokan booked through our partner network — authentic omotenashi without an English-facing web presence.",
+          "Weekday local train to Kamakura: the Great Buddha and coastal forest without weekend crowds.",
+          "Nishiki Market, Kyoto after 9 p.m.: stalls officially closed, yet kitchen masters serve off-menu dishes for those who know the back alley."
+        ]
+      },
+      "south_korea": {
+        "name": "South Korea",
+        "tagline": "Energy that never sleeps",
+        "desc": "Endless cafés, captivating nature, and nightlife that pulses with life.",
+        "vibe": [
+          "Energy",
+          "Cafés",
+          "Renewal"
+        ]
+      },
+      "china": {
+        "name": "China",
+        "tagline": "Grand history, natural wonder",
+        "desc": "The secrets of the ancient East revealed in mountains and timeless landmarks.",
+        "vibe": [
+          "History",
+          "Grandeur",
+          "Discovery"
+        ]
+      },
+      "canada": {
+        "name": "Canada",
+        "tagline": "A sanctuary of pristine nature",
+        "desc": "Crystal lakes and mountains that offer the deepest escape from noise.",
+        "vibe": [
+          "Nature",
+          "Calm",
+          "Adventure"
+        ]
+      },
+      "south_africa": {
+        "name": "South Africa",
+        "tagline": "Into the heart of the wild",
+        "desc": "Luxury safaris and breathtaking vistas on the continent of wonder.",
+        "vibe": [
+          "Safari",
+          "Wilderness",
+          "Luxury"
+        ]
+      },
+      "germany": {
+        "name": "Germany",
+        "tagline": "Nature’s elegance, precise detail",
+        "desc": "Historic castles and sweeping green landscapes that feel like living stories.",
+        "vibe": [
+          "Castles",
+          "Nature",
+          "Refinement"
+        ]
+      },
+      "spain": {
+        "name": "Spain",
+        "tagline": "Sun, art, and life",
+        "desc": "Streets alive with passion and food that reflects the Mediterranean spirit.",
+        "vibe": [
+          "Passion",
+          "Art",
+          "Life"
+        ]
+      },
+      "italy": {
+        "name": "Italy",
+        "tagline": "La dolce vita",
+        "desc": "Italy is not visited — it is lived: coffee, art, and alleys breathing history.",
+        "vibe": [
+          "Romance",
+          "Food",
+          "Beauty"
+        ]
+      },
+      "france": {
+        "name": "France",
+        "tagline": "Capital of art and taste",
+        "desc": "Parisian elegance, warm cafés, and countryside overflowing with romance.",
+        "vibe": [
+          "Taste",
+          "Romance",
+          "Inspiration"
+        ]
+      },
+      "britain": {
+        "name": "United Kingdom",
+        "tagline": "Royal heritage, misty charm",
+        "desc": "Living history on every street and English countryside that grants stillness.",
+        "vibe": [
+          "Heritage",
+          "Calm",
+          "History"
+        ]
+      },
+      "america": {
+        "name": "United States",
+        "tagline": "Land of boundless variety",
+        "desc": "From the buzz of great cities to the quiet of vast natural reserves.",
+        "vibe": [
+          "Variety",
+          "Energy",
+          "Adventure"
+        ]
+      },
+      "portugal": {
+        "name": "Portugal",
+        "tagline": "Color, warmth, and ocean calm",
+        "desc": "Painted alleys, maritime history, and an atmosphere that wraps you in warmth.",
+        "vibe": [
+          "Warmth",
+          "Color",
+          "Ocean"
+        ]
+      },
+      "belgium": {
+        "name": "Belgium",
+        "tagline": "Chocolate and timeless streets",
+        "desc": "Quiet classic cities and architectural details full of charm.",
+        "vibe": [
+          "Classic",
+          "Taste",
+          "Calm"
+        ]
+      },
+      "netherlands": {
+        "name": "Netherlands",
+        "tagline": "Windmills and waterways",
+        "desc": "Cycle through tulip fields and along Amsterdam’s iconic canals.",
+        "vibe": [
+          "Nature",
+          "Relaxation",
+          "Simplicity"
+        ]
+      },
+      "czech": {
+        "name": "Czech Republic",
+        "tagline": "Central Europe’s fairy-tale gem",
+        "desc": "Old Prague and castles that feel lifted from storybooks.",
+        "vibe": [
+          "Fantasy",
+          "History",
+          "Magic"
+        ]
+      },
+      "poland": {
+        "name": "Poland",
+        "tagline": "Deep history, hidden beauty",
+        "desc": "Rich culture and cities pulsing with authenticity and calm.",
+        "vibe": [
+          "Authenticity",
+          "History",
+          "Discovery"
+        ]
+      },
+      "austria": {
+        "name": "Austria",
+        "tagline": "An alpine melody",
+        "desc": "The Alps, Vienna’s music, and refinement without equal.",
+        "vibe": [
+          "Refinement",
+          "Nature",
+          "Music"
+        ]
+      },
+      "sweden": {
+        "name": "Sweden",
+        "tagline": "Nordic clarity and cool air",
+        "desc": "Quiet nature, endless forests, and design that balances simplicity and grace.",
+        "vibe": [
+          "Clarity",
+          "Design",
+          "Retreat"
+        ]
+      },
+      "russia": {
+        "name": "Russia",
+        "tagline": "Imperial grandeur",
+        "desc": "Vast squares, historic palaces, and winters you never forget.",
+        "vibe": [
+          "Grandeur",
+          "History",
+          "Power"
+        ]
+      },
+      "hungary": {
+        "name": "Hungary",
+        "tagline": "Pearl of the Danube",
+        "desc": "Enchanting Budapest, where thermal waters meet layers of history.",
+        "vibe": [
+          "Charm",
+          "Relaxation",
+          "History"
+        ]
+      },
+      "switzerland": {
+        "name": "Switzerland",
+        "tagline": "Where the world slows down",
+        "desc": "Lakes and trains above the clouds — silence becomes the loudest sound.",
+        "vibe": [
+          "Peace",
+          "Luxury",
+          "Nature"
+        ]
+      }
+    }
+  },
+  "events": {
+    "loading": "Loading sessions…",
+    "loadErrorPrefix": "Sorry, an error occurred while loading sessions.",
+    "emptyTitle": "No sessions available right now — stay tuned",
+    "emptyLeadPrefix": "You can send your request via the",
+    "emptyLeadLink": "Plan your trip form",
+    "emptyLeadSuffix": "and we will contact you when new sessions are available.",
+    "demoBanner": "Demo mode: sample data for display until Supabase is connected in production.",
+    "seatsLeft": "{n} seats left",
+    "full": "Full",
+    "register": "Register now",
+    "modalTitle": "Session registration",
+    "modalClose": "Close",
+    "nameLabel": "Full name *",
+    "namePlaceholder": "e.g. Nora Al-Otaibi",
+    "waLabel": "WhatsApp number *",
+    "waPlaceholder": "05xxxxxxxx",
+    "submit": "Submit registration",
+    "modalFooterPrefix": "Or complete a broader trip request from the",
+    "modalFooterLink": "Plan your trip form",
+    "location": "Location",
+    "mapLocationCta": "View location on map",
+    "clientMissingSession": "Sorry, the session could not be identified. Reload the page and try again.",
+    "clientNameWaRequired": "Please fill in your full name and WhatsApp number — both are required.",
+    "success": "Your registration was sent successfully!",
+    "successWithTime": "Your registration was sent successfully! (Registered at: {time})",
+    "eventsList": [
+      {
+        "matchTitle": "كيف تبني مسارك اليومي في اليابان",
+        "title": "How to Build Your Daily Itinerary in Japan",
+        "desc": "A free session explaining how to theme your days and secrets to choosing neighborhoods."
+      },
+      {
+        "matchTitle": "سيول من الداخل – دليل الكيبوب والثقافة",
+        "title": "Seoul from the Inside – K-Pop & Culture Guide",
+        "desc": "Specialized workshop covering HYBE, Hanok Villages, and the best districts in Seoul."
+      },
+      {
+        "matchTitle": "لقاء حضوري – الرياض",
+        "title": "In-Person Meetup – Riyadh",
+        "desc": "Face-to-face meetup in Riyadh showcasing real itinerary models."
+      },
+      {
+        "matchTitle": "جلسة تجريبية — تخطيط رحلة اليابان",
+        "title": "Demo Session — Planning a Trip to Japan",
+        "desc": "Introductory online session on daily routing in Tokyo and Kyoto."
+      },
+      {
+        "matchTitle": "لقاء حضوري — الرياض",
+        "title": "In-Person Meetup — Riyadh",
+        "desc": "Meetup in Riyadh to review real itinerary samples."
+      }
+    ]
+  },
+  "form": {
+    "section1Title": "Contact",
+    "section1Subtitle": "We start with a clear plan to reach you",
+    "fullName": "Full name *",
+    "fullNamePlaceholder": "How you would like us to address you",
+    "phoneWa": "WhatsApp number *",
+    "phonePlaceholder": "9665xxxxxxxx",
+    "sourceLabel": "How did you hear about Wanderloom?",
+    "sourcePlaceholder": "Select…",
+    "sourceInstagram": "Instagram",
+    "sourceTiktok": "TikTok",
+    "sourceSnap": "Snapchat",
+    "sourceFriend": "Friend referral",
+    "sourceGoogle": "Search / Google",
+    "sourceEvent": "Event or meeting",
+    "sourceOther": "Other",
+    "section2Title": "Destination",
+    "section2Subtitle": "Choose countries first — then only cities for your selected countries appear",
+    "countriesLabel": "Countries * (multiple allowed)",
+    "citiesHeading": "Cities for your selected countries",
+    "travelDate": "Preferred travel date (approximate)",
+    "travelDays": "Trip length (days) *",
+    "travelersCount": "Number of travelers *",
+    "budget": "Approximate budget",
+    "budgetUndecided": "Not decided yet",
+    "budgetEconomical": "Elegant economy",
+    "budgetModerate": "Comfortable mid-range",
+    "budgetComfortable": "Elevated comfort & experience",
+    "budgetPremium": "Luxury with no rough ceiling",
+    "section3Title": "Interests",
+    "section3Subtitle": "What captures your imagination on this trip?",
+    "interestAnime": "Anime & pop culture",
+    "interestHistory": "History & heritage",
+    "interestNature": "Nature & scenery",
+    "interestKpop": "K-pop & K-drama",
+    "interestShopping": "Shopping & fashion",
+    "interestSeasonal": "Seasonal events & festivals",
+    "interestAdventure": "Adventure & local experiences",
+    "interestWorkshops": "Workshops & crafts",
+    "interestSpa": "Wellness & spa",
+    "interestPhoto": "Photography tours",
+    "visitSectionTitle": "Previous visits to your selected destinations",
+    "visitBeforeCountry": "Have you traveled to {country} before?",
+    "section4Title": "Daily rhythm",
+    "section4Subtitle": "We tune the trip pace to your energy",
+    "paceLabel": "Day pace",
+    "paceCalm": "Calm",
+    "paceMedium": "Moderate",
+    "paceActive": "Active",
+    "walkingLabel": "Walking readiness",
+    "walkLow": "Light",
+    "walkMed": "Moderate",
+    "walkHigh": "Ready for longer walks",
+    "dayStartLabel": "Preferred day start",
+    "startEarly": "Early",
+    "startMid": "Mid-morning",
+    "startLate": "Late",
+    "section5Title": "Food & lodging",
+    "section5Subtitle": "Details respected in the design",
+    "foodLabel": "Food preferences (multiple allowed)",
+    "foodHalal": "Halal",
+    "foodSeafood": "Seafood",
+    "foodVegetarian": "Vegetarian",
+    "foodFlex": "Flexible / no strict limits",
+    "lodgingLabel": "Preferred lodging type",
+    "lodgingBoutique": "Boutique",
+    "lodging4": "4 stars",
+    "lodging5": "5 stars",
+    "lodgingRyokan": "Ryokan",
+    "section6Title": "The dream",
+    "section6Subtitle": "One sentence can change every detail",
+    "dreamLabel": "How do you want to feel at the end of this trip? *",
+    "dreamPlaceholder": "Write freely… calm, pride, wonder, closeness to loved ones, or any feeling you want to keep after the last day.",
+    "submit": "Submit trip design",
+    "yes": "Yes",
+    "no": "No"
+  },
+  "tripLabels": {
+    "countries": {
+      "japan": "Japan",
+      "korea": "South Korea",
+      "china": "China",
+      "canada": "Canada",
+      "south_africa": "South Africa",
+      "germany": "Germany",
+      "spain": "Spain",
+      "italy": "Italy",
+      "france": "France",
+      "uk": "United Kingdom",
+      "usa": "United States",
+      "portugal": "Portugal",
+      "belgium": "Belgium",
+      "netherlands": "Netherlands",
+      "czech": "Czech Republic",
+      "poland": "Poland",
+      "austria": "Austria",
+      "sweden": "Sweden",
+      "russia": "Russia",
+      "hungary": "Hungary",
+      "switzerland": "Switzerland"
+    },
+    "cities": {
+      "japan": {
+        "tokyo": "Tokyo",
+        "kyoto": "Kyoto",
+        "osaka": "Osaka",
+        "okinawa": "Okinawa Islands",
+        "hokkaido": "Hokkaido"
+      },
+      "korea": {
+        "seoul": "Seoul",
+        "busan": "Busan",
+        "jeju": "Jeju Island"
+      },
+      "china": {
+        "beijing": "Beijing",
+        "shanghai": "Shanghai",
+        "guangzhou": "Guangzhou"
+      },
+      "canada": {
+        "toronto": "Toronto",
+        "vancouver": "Vancouver",
+        "montreal": "Montreal"
+      },
+      "south_africa": {
+        "cape_town": "Cape Town",
+        "johannesburg": "Johannesburg"
+      },
+      "germany": {
+        "berlin": "Berlin",
+        "munich": "Munich",
+        "frankfurt": "Frankfurt"
+      },
+      "spain": {
+        "madrid": "Madrid",
+        "barcelona": "Barcelona",
+        "malaga": "Málaga / Andalusia"
+      },
+      "italy": {
+        "rome": "Rome",
+        "milan": "Milan",
+        "venice": "Venice",
+        "florence": "Florence"
+      },
+      "france": {
+        "paris": "Paris",
+        "nice": "Nice",
+        "cannes": "Cannes"
+      },
+      "uk": {
+        "london": "London",
+        "edinburgh": "Edinburgh",
+        "manchester": "Manchester"
+      },
+      "usa": {
+        "new_york": "New York",
+        "los_angeles": "Los Angeles",
+        "miami": "Miami",
+        "orlando": "Orlando"
+      },
+      "portugal": {
+        "lisbon": "Lisbon",
+        "porto": "Porto",
+        "algarve": "Algarve",
+        "azores": "Azores",
+        "madeira": "Madeira"
+      },
+      "belgium": {
+        "brussels": "Brussels",
+        "bruges": "Bruges"
+      },
+      "netherlands": {
+        "amsterdam": "Amsterdam",
+        "rotterdam": "Rotterdam",
+        "hague": "The Hague"
+      },
+      "czech": {
+        "prague": "Prague",
+        "karlovy_vary": "Karlovy Vary"
+      },
+      "poland": {
+        "warsaw": "Warsaw",
+        "krakow": "Krakow"
+      },
+      "austria": {
+        "vienna": "Vienna",
+        "salzburg": "Salzburg",
+        "zell_am_see": "Zell am See"
+      },
+      "sweden": {
+        "stockholm": "Stockholm",
+        "gothenburg": "Gothenburg"
+      },
+      "russia": {
+        "moscow": "Moscow",
+        "saint_petersburg": "Saint Petersburg"
+      },
+      "hungary": {
+        "budapest": "Budapest"
+      },
+      "switzerland": {
+        "geneva": "Geneva",
+        "interlaken": "Interlaken",
+        "zermatt": "Zermatt"
+      }
+    }
+  }
+}

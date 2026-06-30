@@ -3,438 +3,504 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import {
-  ArrowUpRight,
-  Building2,
-  CalendarClock,
+  Award,
+  BarChart3,
   CalendarDays,
-  Globe2,
-  LayoutDashboard,
   Loader2,
-  Map,
+  Radar,
   Route,
-  TrendingUp,
+  Sparkles,
+  UserRound,
   Users,
+  AlertCircle,
 } from 'lucide-react';
 
-import { DEMO_CLIENTS, DEMO_EVENTS, DEMO_STATS } from '@/lib/crm-demo';
+import { useCrmEmployee } from '@/app/crm/_components/CrmEmployeeProvider';
 import { supabase } from '@/lib/supabase';
-import { isSupabaseConfigured } from '@/lib/supabase-config';
 
-type DashboardStats = {
-  clientsTotal: number;
-  clientsNew: number;
-  tripsCount: number;
-  revenue: number;
+const NAVY = '#001f3f';
+const GOLD = '#d4af37';
+
+type ClientJoin = { name?: string | null };
+
+type RadarRow = {
+  id: number;
+  title: string | null;
+  destination: string | null;
+  customer_name: string | null;
+  status: string | null;
+  created_at: string | null;
+  clients?: ClientJoin | ClientJoin[] | null;
 };
 
-type ClientRow = {
-  id: string;
-  name: string;
-  phone_wa?: string | null;
-  status?: string | null;
-  created_at?: string | null;
-  ref_code?: string | null;
-  travel_type?: string | null;
-  job_type?: string | null;
-};
+function resolveRadarClientName(row: RadarRow): string {
+  const raw = row.clients;
+  const client = Array.isArray(raw) ? raw[0] : raw;
+  const joined = String(client?.name ?? '').trim();
+  return joined || row.customer_name?.trim() || '—';
+}
 
-type EventRow = {
-  id: string;
-  name: string;
-  country?: string | null;
-  city?: string | null;
-  start_date?: string | null;
-  end_date?: string | null;
-  impact?: string | null;
-  category?: string | null;
-  season?: string | null;
-};
+function todayLabelArabic(): string {
+  try {
+    return new Intl.DateTimeFormat('ar-SA-u-ca-gregory', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    }).format(new Date());
+  } catch {
+    return new Date().toLocaleDateString('ar-SA');
+  }
+}
 
-export default function CRMDashboardPage() {
+function formatCreatedAtArabic(iso: string | null | undefined): string {
+  if (!iso) return '—';
+  try {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return '—';
+    return new Intl.DateTimeFormat('ar-SA-u-ca-gregory', {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+    }).format(d);
+  } catch {
+    return '—';
+  }
+}
+
+function statusBadge(status: string | null | undefined): { label: string; className: string } {
+  const s = String(status ?? '').trim().toLowerCase();
+  const map: Record<string, { label: string; className: string }> = {
+    draft: { label: 'مسودة', className: 'text-slate-800 bg-slate-100 ring-slate-200' },
+    sent: { label: 'مُرسل', className: 'text-sky-900 bg-sky-100 ring-sky-200' },
+    active: { label: 'نشطة', className: 'text-emerald-900 bg-emerald-100 ring-emerald-200' },
+    archived: { label: 'مؤرشفة', className: 'text-amber-950 bg-amber-100 ring-amber-300' },
+    confirmed: { label: 'مؤكّدة', className: 'text-emerald-900 bg-emerald-100 ring-emerald-200' },
+    template: { label: 'قالب', className: 'text-violet-900 bg-violet-100 ring-violet-200' },
+  };
+  return map[s] ?? { label: status?.trim() || '—', className: 'text-slate-700 bg-slate-100 ring-slate-200' };
+}
+
+function formatStatNumber(value: number): string {
+  const safe = Number.isFinite(value) ? Math.max(0, value) : 0;
+  return safe.toLocaleString('en-US');
+}
+
+/** عدد المسارات الفردية (غير قالب). */
+async function fetchPrivateItinerariesCount(): Promise<number> {
+  if (!supabase) return 0;
+  const { count, error } = await supabase
+    .from('itineraries')
+    .select('*', { count: 'exact', head: true })
+    .not('is_template', 'eq', true)
+    .or('trip_type.eq.Individual,trip_type.is.null');
+  if (error) {
+    console.warn('[crm dashboard] private itineraries count:', error.message);
+    return 0;
+  }
+  return count ?? 0;
+}
+
+/** مقاعد محجوزة في رحلات المجموعات — من customers (لا يوجد جدول group_registrations). */
+async function fetchGroupTripSeatsBooked(): Promise<number> {
+  if (!supabase) return 0;
+
+  const { data, error } = await supabase
+    .from('customers')
+    .select('group_size, travelers_count')
+    .filter('trip_form->>lead_type', 'eq', 'group_trip_seat');
+
+  if (!error) {
+    return sumGroupTripSeatsBooked(data ?? []);
+  }
+
+  if (error) {
+    console.warn('[crm dashboard] group seats (trip_form filter):', error.message);
+  }
+
+  const { count, error: countError } = await supabase
+    .from('customers')
+    .select('*', { count: 'exact', head: true })
+    .ilike('destination_dream', 'حجز مقعد%');
+
+  if (countError) {
+    console.warn('[crm dashboard] group seats (destination fallback):', countError.message);
+    return 0;
+  }
+
+  return count ?? 0;
+}
+
+function sumGroupTripSeatsBooked(
+  rows: { group_size?: number | null; travelers_count?: number | null }[] | null,
+): number {
+  if (!rows?.length) return 0;
+  return rows.reduce((acc, r) => {
+    const groupSize = Number(r.group_size);
+    const travelers = Number(r.travelers_count);
+    const seats =
+      Number.isFinite(groupSize) && groupSize > 0
+        ? groupSize
+        : Number.isFinite(travelers) && travelers > 0
+          ? travelers
+          : 1;
+    return acc + seats;
+  }, 0);
+}
+
+export default function CRMHomeDashboardPage() {
+  const { employee, loading: empLoading } = useCrmEmployee();
+  const displayName = employee?.full_name?.trim() || null;
+
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [demo, setDemo] = useState(false);
-  const [stats, setStats] = useState<DashboardStats>({
-    clientsTotal: 0,
-    clientsNew: 0,
-    tripsCount: 0,
-    revenue: 0,
-  });
-  const [recentClients, setRecentClients] = useState<ClientRow[]>([]);
-  const [upcomingEvents, setUpcomingEvents] = useState<EventRow[]>([]);
-
-  const todayISO = useMemo(() => new Date().toISOString().slice(0, 10), []);
-
-  const applyDemo = useCallback((reason?: string) => {
-    setDemo(true);
-    setStats({ ...DEMO_STATS });
-    setRecentClients(DEMO_CLIENTS as ClientRow[]);
-    setUpcomingEvents(DEMO_EVENTS as EventRow[]);
-    if (reason) setError(reason);
-    else setError('');
-  }, []);
+  const [error, setError] = useState<string | null>(null);
+  const [clientsTotal, setClientsTotal] = useState<number>(0);
+  const [individualItineraries, setIndividualItineraries] = useState<number>(0);
+  const [groupsTotal, setGroupsTotal] = useState<number>(0);
+  const [totalBookings, setTotalBookings] = useState<number>(0);
+  const [radarRows, setRadarRows] = useState<RadarRow[]>([]);
 
   const loadDashboard = useCallback(async () => {
-    setError('');
-    setDemo(false);
-
     if (!supabase) {
-      applyDemo();
+      setError('قاعدة البيانات غير مهيأة.');
       setLoading(false);
       return;
     }
-
     setLoading(true);
-
+    setError(null);
     try {
-      const [clientsRes, tripsRes, eventsRes] = await Promise.all([
+      const [
+        clientsRes,
+        indItinRes,
+        groupsRes,
+        privateItinerariesCount,
+        groupSeatsBooked,
+        radarRes,
+      ] = await Promise.all([
+        supabase.from('clients').select('*', { count: 'exact', head: true }),
         supabase
-          .from('clients')
-          .select('id, name, phone_wa, status, created_at, ref_code, travel_type, job_type')
-          .order('created_at', { ascending: false }),
-        supabase.from('client_trips').select('profit'),
+          .from('itineraries')
+          .select('*', { count: 'exact', head: true })
+          .not('is_template', 'eq', true)
+          .or('trip_type.eq.Individual,trip_type.is.null'),
+        supabase.from('group_trips').select('*', { count: 'exact', head: true }),
+        fetchPrivateItinerariesCount(),
+        fetchGroupTripSeatsBooked(),
         supabase
-          .from('events')
-          .select('id, name, country, city, start_date, end_date, impact, category, season')
-          .gte('start_date', todayISO)
-          .order('start_date', { ascending: true })
-          .limit(6),
+          .from('itineraries')
+          .select('id, title, destination, customer_name, status, created_at, clients(name)')
+          .not('is_template', 'eq', true)
+          .order('created_at', { ascending: false })
+          .limit(5),
       ]);
 
-      if (clientsRes.error || tripsRes.error || eventsRes.error) {
-        applyDemo(
-          clientsRes.error?.message ||
-            tripsRes.error?.message ||
-            eventsRes.error?.message ||
-            'تعذر تحميل البيانات من Supabase.'
-        );
-        return;
+      const errs = [
+        clientsRes.error?.message,
+        indItinRes.error?.message,
+        groupsRes.error?.message,
+        radarRes.error?.message,
+      ].filter(Boolean);
+
+      setClientsTotal(clientsRes.count ?? 0);
+      setIndividualItineraries(indItinRes.count ?? 0);
+      setGroupsTotal(groupsRes.count ?? 0);
+      setTotalBookings(privateItinerariesCount + groupSeatsBooked);
+      setRadarRows((radarRes.data as RadarRow[]) ?? []);
+
+      if (errs.length) {
+        setError(errs.join(' · ') || null);
       }
-
-      const clients = (clientsRes.data || []) as ClientRow[];
-      const trips = tripsRes.data || [];
-      const events = (eventsRes.data || []) as EventRow[];
-
-      const revenue = trips.reduce((s: number, t: { profit?: number | null }) => s + (Number(t?.profit) || 0), 0);
-
-      setStats({
-        clientsTotal: clients.length,
-        clientsNew: clients.filter((c) => c.status === 'new').length,
-        tripsCount: trips.length,
-        revenue,
-      });
-      setRecentClients(clients.slice(0, 8));
-      setUpcomingEvents(events);
     } catch (e) {
-      applyDemo(e instanceof Error ? e.message : 'تعذر تحميل لوحة التحكم. تحقق من الشبكة وحاول مجدداً.');
+      console.error('[crm dashboard]', e);
+      setError('تعذر تحميل بيانات اللوحة. تحقّق من الشبكة والصلاحيات.');
     } finally {
       setLoading(false);
     }
-  }, [applyDemo, todayISO]);
+  }, []);
 
   useEffect(() => {
-    loadDashboard();
+    void loadDashboard();
   }, [loadDashboard]);
 
-  const envOk = isSupabaseConfigured();
+  const statCards = useMemo(
+    () => [
+      {
+        label: 'إجمالي العملاء (VIP)',
+        value: clientsTotal,
+        sub: 'من جدول العملاء',
+        icon: UserRound,
+        iconBg: 'bg-[#001f3f]/8 text-[#001f3f]',
+      },
+      {
+        label: 'الرحلات الفردية',
+        value: individualItineraries,
+        sub: 'Individual أو غير مُعرّف + غير قالب',
+        icon: Route,
+        iconBg: 'bg-sky-500/10 text-sky-800',
+      },
+      {
+        label: 'إجمالي القروبات',
+        value: groupsTotal,
+        sub: 'الرحلات الجماعية المجدولة',
+        icon: Users,
+        iconBg: 'bg-emerald-600/10 text-emerald-800',
+      },
+      {
+        label: 'إجمالي الحجوزات',
+        value: totalBookings,
+        sub: 'الرحلات الخاصة والمقاعد الجماعية',
+        icon: BarChart3,
+        iconBg: 'bg-[#001f3f] text-[#d4af37]',
+      },
+    ],
+    [clientsTotal, individualItineraries, groupsTotal, totalBookings],
+  );
 
-  if (loading) {
+  const QUICK_ACTIONS = [
+    {
+      href: '/crm/itineraries',
+      title: 'إضافة / إدارة رحلات فردية',
+      desc: 'قائمة المسارات وفتح مسار أو بناء مسار VIP',
+      icon: Route,
+    },
+    {
+      href: '/crm/groups',
+      title: 'إدارة القروبات',
+      desc: 'رحلات المجموعات والمقاعد',
+      icon: Users,
+    },
+    {
+      href: '/crm/clients',
+      title: 'سجل العملاء',
+      desc: 'بيانات الـ CRM والتواصل',
+      icon: UserRound,
+    },
+    {
+      href: '/crm/features',
+      title: 'دليل الميزات',
+      desc: 'شرح الوحدات للفريق',
+      icon: Award,
+    },
+  ] as const;
+
+  function StatSkeleton() {
     return (
-      <div style={{ minHeight: '70vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ textAlign: 'center', color: '#6B7280', fontWeight: 900 }}>
-          <Loader2 size={22} style={{ marginBottom: 10, animation: 'spin 1s linear infinite' }} />
-          جارٍ تحميل لوحة التحكم...
+      <article className="relative overflow-hidden rounded-2xl border border-slate-200/90 bg-white p-5 shadow-lg">
+        <div className="flex animate-pulse items-start justify-between gap-3">
+          <div className="flex-1 space-y-3 text-right">
+            <div className="ms-auto h-3 w-32 rounded-full bg-slate-200" />
+            <div className="ms-auto h-8 w-24 rounded-xl bg-slate-200" />
+            <div className="ms-auto h-3 w-full max-w-[9rem] rounded-full bg-slate-100" />
+          </div>
+          <span className="h-12 w-12 shrink-0 rounded-xl bg-slate-100" />
         </div>
-        <style>{`@keyframes spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }`}</style>
-      </div>
+      </article>
     );
   }
 
   return (
-    <div dir="rtl" style={{ maxWidth: 1100, margin: '0 auto' }}>
-      {/* شريط وضع Demo */}
-      {demo && (
-        <div
-          style={{
-            marginBottom: 14,
-            borderRadius: 16,
-            padding: '12px 14px',
-            background: 'linear-gradient(135deg,#FFFBEB,#FEF3C7)',
-            border: '1px solid #FDE68A',
-            color: '#92400E',
-            fontSize: 12,
-            fontWeight: 900,
-            lineHeight: 1.6,
-          }}
-        >
-          <strong>وضع تجريبي (Demo)</strong> — تعمل لوحة التحكم بدون اتصال ناجح بقاعدة البيانات.
-          {!envOk && (
-            <>
-              {' '}
-              أضف <code style={{ background: 'rgba(255,255,255,.6)', padding: '2px 6px', borderRadius: 6 }}>.env.local</code> مع{' '}
-              <code style={{ background: 'rgba(255,255,255,.6)', padding: '2px 6px', borderRadius: 6 }}>NEXT_PUBLIC_SUPABASE_URL</code> و{' '}
-              <code style={{ background: 'rgba(255,255,255,.6)', padding: '2px 6px', borderRadius: 6 }}>NEXT_PUBLIC_SUPABASE_ANON_KEY</code>.
-            </>
-          )}
-          {error && (
-            <>
-              <br />
-              <span style={{ fontWeight: 700, opacity: 0.95 }}>التفاصيل: {error}</span>
-            </>
-          )}
-        </div>
-      )}
-
-      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12, marginBottom: 14, flexWrap: 'wrap' }}>
-        <div>
-          <div style={{ fontSize: 22, fontWeight: 900, color: '#1C4532' }}>لوحة التحكم</div>
-          <div style={{ fontSize: 12, color: '#6B7280', fontWeight: 800, marginTop: 4 }}>
-            نظرة عامة على العملاء والرحلات والفعاليات — النشر:{' '}
-            <span style={{ color: '#1C4532' }}>wanderloom-travel.vercel.app/crm</span>
-          </div>
-        </div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-          <Link
-            href="/crm/sessions"
-            style={{
-              textDecoration: 'none',
-              padding: '10px 14px',
-              borderRadius: 14,
-              background: '#fff',
-              color: '#1C4532',
-              fontSize: 12,
-              fontWeight: 900,
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 8,
-              border: '1px solid #E8E4DC',
-              boxShadow: '0 1px 4px rgba(0,0,0,.04)',
-            }}
-          >
-            <CalendarClock size={16} /> الجلسات
-          </Link>
-          <Link
-            href="/crm/clients"
-            style={{
-              textDecoration: 'none',
-              padding: '10px 14px',
-              borderRadius: 14,
-              background: 'linear-gradient(135deg,#8A6B2A,#C9A84C)',
-              color: '#1C4532',
-              fontSize: 12,
-              fontWeight: 900,
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 8,
-              border: '1px solid rgba(201,168,76,.55)',
-            }}
-          >
-            <ArrowUpRight size={16} /> إدارة العملاء
-          </Link>
-        </div>
-      </div>
-
-      {/* روابط سريعة */}
-      <div
+    <div className="min-h-full bg-gray-50 pb-14 font-[family-name:var(--font-tajawal),system-ui,sans-serif]" dir="rtl">
+      {/* رأس */}
+      <header
+        className="relative overflow-hidden rounded-2xl border px-4 py-6 shadow-xl sm:px-10 sm:py-10"
         style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
-          gap: 10,
-          marginBottom: 14,
+          borderColor: `${GOLD}55`,
+          background: `linear-gradient(135deg, ${NAVY} 0%, #003366 52%, ${NAVY} 100%)`,
+          boxShadow: `0 20px 50px rgba(0,31,63,0.35)`,
         }}
       >
-        {[
-          { href: '/crm', label: 'الرئيسية', icon: LayoutDashboard },
-          { href: '/crm/clients', label: 'العملاء', icon: Users },
-          { href: '/crm/vault', label: 'بنك الأماكن', icon: Map },
-          { href: '/crm/destinations', label: 'دليل الوجهات', icon: Globe2 },
-          { href: '/crm/hotels', label: 'الفنادق', icon: Building2 },
-          { href: '/crm/events', label: 'الفعاليات', icon: CalendarDays },
-          { href: '/crm/sessions', label: 'الجلسات', icon: CalendarClock },
-          { href: '/crm/itineraries', label: 'المسارات', icon: Route },
-          { href: '/portal/sessions', label: 'بوابة العميل (جلسات)', icon: CalendarClock },
-        ].map((item) => {
-          const Icon = item.icon;
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              style={{
-                textDecoration: 'none',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                padding: '10px 12px',
-                borderRadius: 14,
-                background: '#FAFAF8',
-                border: '1px solid #F3F0EB',
-                color: '#1C4532',
-                fontSize: 11,
-                fontWeight: 900,
-              }}
-            >
-              <Icon size={15} color="#C9A84C" />
-              {item.label}
-            </Link>
-          );
-        })}
-      </div>
-
-      {/* Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginBottom: 14 }}>
-        {[
-          { label: 'عدد العملاء', val: stats.clientsTotal.toLocaleString('ar-SA'), icon: <Users size={18} color="#1C4532" />, tint: '#1C4532' },
-          { label: 'عملاء جدد', val: stats.clientsNew.toLocaleString('ar-SA'), icon: <Users size={18} color="#2563EB" />, tint: '#2563EB' },
-          { label: 'الرحلات', val: stats.tripsCount.toLocaleString('ar-SA'), icon: <TrendingUp size={18} color="#059669" />, tint: '#059669' },
-          { label: 'الإيرادات', val: `${stats.revenue.toLocaleString('ar-SA')} ر.س`, icon: <TrendingUp size={18} color="#C2410C" />, tint: '#C2410C' },
-        ].map((s, i) => (
-          <div key={i} style={{ background: '#fff', borderRadius: 16, padding: 14, boxShadow: '0 1px 6px rgba(0,0,0,.04)', border: '1px solid #F3F0EB' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-              <div
-                style={{
-                  width: 34,
-                  height: 34,
-                  borderRadius: 12,
-                  background: '#F6F4F0',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  border: '1px solid #E8E4DC',
-                }}
-              >
-                {s.icon}
-              </div>
-              <div style={{ fontSize: 10, fontWeight: 900, color: '#6B7280' }}>{s.label}</div>
-            </div>
-            <div style={{ fontSize: 18, fontWeight: 1000, color: s.tint }}>{s.val}</div>
+        <div aria-hidden className="pointer-events-none absolute -start-28 top-0 h-72 w-72 rounded-full blur-3xl" style={{ background: `${GOLD}22` }} />
+        <div aria-hidden className="pointer-events-none absolute bottom-0 end-0 h-48 w-48 rounded-full blur-3xl opacity-70" style={{ background: `${GOLD}18` }} />
+        <div className="relative flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
+          <div className="text-right">
+            <p className="text-[11px] font-black uppercase tracking-[0.38em]" style={{ color: `${GOLD}dd` }}>
+              Wanderloom CRM
+            </p>
+            <h1 className="mt-2 text-3xl font-black leading-tight text-white sm:text-4xl">
+              مركز القيادة والإحصائيات&nbsp;📊
+            </h1>
+            <p className="mt-4 max-w-xl text-base font-semibold leading-relaxed text-white/82">
+              {displayName ? (
+                <>
+                  يسعدنا أن نراك، <span style={{ color: GOLD }}>{displayName}</span>. لمحة حقيقية من قاعدة البيانات — محدَّثة
+                  عند فتح هذه الصفحة.
+                </>
+              ) : empLoading ? (
+                <span className="inline-block h-5 w-64 animate-pulse rounded bg-white/10" />
+              ) : (
+                <>مركز الإحصائيات جاهز: الأرقام أدناه تُجلب مباشرة من Supabase.</>
+              )}
+            </p>
           </div>
-        ))}
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: '1.1fr .9fr', gap: 14, alignItems: 'start' }}>
-        <section style={{ background: '#fff', borderRadius: 16, padding: 14, boxShadow: '0 1px 6px rgba(0,0,0,.04)', border: '1px solid #F3F0EB' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-            <div style={{ fontSize: 13, fontWeight: 1000, color: '#1C4532' }}>آخر العملاء</div>
-            <Link href="/crm/clients" style={{ fontSize: 11, fontWeight: 900, color: '#1C4532', textDecoration: 'none' }}>
-              عرض الكل →
-            </Link>
+          <div className="shrink-0 rounded-2xl border border-white/12 bg-white/6 px-5 py-4 text-right backdrop-blur-md md:min-w-[220px]">
+            <span className="flex items-center justify-end gap-2 text-[11px] font-black uppercase tracking-wider text-white/70">
+              <CalendarDays className="h-4 w-4 shrink-0 text-[#d4af37]" aria-hidden />
+              اليوم
+            </span>
+            <p className="mt-1 text-sm font-bold leading-relaxed text-white">{todayLabelArabic()}</p>
           </div>
+        </div>
+      </header>
 
-          {recentClients.length === 0 ? (
-            <div style={{ padding: 14, borderRadius: 14, border: '1px dashed #E5E0D6', color: '#9CA3AF', fontSize: 12, fontWeight: 900 }}>
-              لا يوجد عملاء بعد.
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {recentClients.map((c) => (
-                <Link
-                  key={c.id}
-                  href={demo ? '/crm/clients' : `/crm/clients/${c.id}`}
-                  style={{
-                    textDecoration: 'none',
-                    color: 'inherit',
-                    padding: '10px 12px',
-                    borderRadius: 14,
-                    background: '#FAFAF8',
-                    border: '1px solid #F3F0EB',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    gap: 10,
-                  }}
+      {error ? (
+        <div
+          className="mt-6 flex items-start gap-3 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-right text-sm text-rose-900 shadow-sm"
+          role="alert"
+        >
+          <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-rose-600" aria-hidden />
+          <span className="font-bold">{error}</span>
+        </div>
+      ) : null}
+
+      {/* بطاقات */}
+      <section className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-label="إحصائيات سريعة">
+        {loading
+          ? [0, 1, 2, 3].map((k) => <StatSkeleton key={k} />)
+          : statCards.map((s) => {
+              const Icon = s.icon;
+              return (
+                <article
+                  key={s.label}
+                  className="group relative overflow-hidden rounded-2xl border border-slate-200/90 bg-white p-5 shadow-lg transition duration-300 hover:-translate-y-0.5 hover:shadow-xl"
                 >
-                  <div style={{ minWidth: 0 }}>
-                    <div
-                      style={{
-                        fontSize: 12,
-                        fontWeight: 1000,
-                        color: '#1C4532',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                      }}
+                  <div
+                    className="pointer-events-none absolute inset-0 opacity-0 transition group-hover:opacity-100"
+                    style={{ backgroundImage: 'linear-gradient(to bottom left, transparent, rgba(212,175,55,0.08))' }}
+                    aria-hidden
+                  />
+                  <div className="relative flex items-start justify-between gap-3">
+                    <div className="min-w-0 text-right">
+                      <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">{s.label}</p>
+                      <p className="mt-2 text-2xl font-bold text-gray-900" dir="ltr">
+                        {formatStatNumber(s.value ?? 0)}
+                      </p>
+                      <p className="mt-1 text-xs text-gray-500">{s.sub}</p>
+                    </div>
+                    <span
+                      className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl shadow-inner ring-2 ring-black/5 ${s.iconBg}`}
                     >
-                      {c.name}
-                    </div>
-                    <div style={{ fontSize: 10, color: '#6B7280', fontWeight: 800, marginTop: 2 }}>
-                      {c.phone_wa ? `📱 ${c.phone_wa}` : ''} {c.travel_type ? `· 🧳 ${c.travel_type}` : ''}{' '}
-                      {c.ref_code ? `· 🔑 ${c.ref_code}` : ''}
-                    </div>
+                      <Icon className="h-6 w-6" aria-hidden strokeWidth={2} />
+                    </span>
                   </div>
-                  <div style={{ fontSize: 10, color: '#9CA3AF', fontWeight: 900, whiteSpace: 'nowrap' }}>
-                    {c.created_at ? new Date(c.created_at).toLocaleDateString('ar-SA') : ''}
-                  </div>
-                </Link>
-              ))}
-            </div>
-          )}
-        </section>
+                </article>
+              );
+            })}
+      </section>
 
-        <section style={{ background: '#fff', borderRadius: 16, padding: 14, boxShadow: '0 1px 6px rgba(0,0,0,.04)', border: '1px solid #F3F0EB' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <CalendarDays size={16} color="#C9A84C" />
-              <div style={{ fontSize: 13, fontWeight: 1000, color: '#1C4532' }}>الفعاليات القادمة</div>
+      {/* الوصول السريع — قبل الرادار لجذب الانتباه للإجراءات */}
+      <section className="mt-10 text-right" aria-label="الوصول السريع">
+        <h2 className="mb-5 flex flex-wrap items-center justify-end gap-2 text-xl font-black" style={{ color: NAVY }}>
+          <Sparkles className="h-5 w-5" style={{ color: GOLD }} aria-hidden />
+          الوصول السريع
+        </h2>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {QUICK_ACTIONS.map((a) => {
+            const Icon = a.icon;
+            return (
+              <Link
+                key={a.href}
+                href={a.href}
+                className="group flex flex-col rounded-2xl border-2 border-[#001f3f]/12 bg-white p-6 shadow-lg transition hover:-translate-y-1 hover:border-[#d4af37]/60 hover:shadow-xl"
+              >
+                <span
+                  className="flex h-12 w-12 items-center justify-center rounded-xl shadow-md ring-2 transition ring-[#001f3f]/12 group-hover:ring-[#d4af37]/50"
+                  style={{ backgroundColor: NAVY, color: GOLD }}
+                >
+                  <Icon className="h-6 w-6" aria-hidden strokeWidth={2} />
+                </span>
+                <span className="mt-5 text-lg font-black transition" style={{ color: NAVY }}>
+                  {a.title}
+                </span>
+                <span className="mt-2 text-sm font-semibold leading-relaxed text-slate-600">{a.desc}</span>
+                <span className="mt-4 text-xs font-black opacity-0 transition group-hover:opacity-100" style={{ color: `${GOLD}cc` }}>
+                  انتقال الآن ▸
+                </span>
+              </Link>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* الرادار */}
+      <section className="mt-10 rounded-2xl border border-slate-200 bg-white shadow-lg" aria-label="آخر الرحلات">
+        <div
+          className="flex flex-col gap-2 border-b border-slate-100 px-6 py-5 text-right sm:flex-row sm:items-center sm:justify-between"
+          style={{
+            background: `linear-gradient(to left, rgba(0,31,63,0.04), transparent)`,
+          }}
+        >
+          <div className="flex items-center gap-3">
+            <div>
+              <h2 className="text-lg font-black" style={{ color: NAVY }}>
+                الرادار الحي 📡
+              </h2>
+              <p className="text-xs font-semibold text-slate-600">آخر 5 مسارات مضافة (غير قوالب الجدول)</p>
             </div>
-            <Link href="/crm/events" style={{ fontSize: 11, fontWeight: 900, color: '#1C4532', textDecoration: 'none' }}>
-              عرض →
-            </Link>
+            <span
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl shadow-inner"
+              style={{ backgroundColor: NAVY, color: GOLD }}
+            >
+              <Radar className="h-5 w-5" aria-hidden strokeWidth={2.2} />
+            </span>
           </div>
+          <Link
+            href="/crm/itineraries"
+            className="self-end text-xs font-black underline decoration-[#d4af37]/65 underline-offset-4 transition hover:opacity-90 sm:self-auto"
+            style={{ color: NAVY }}
+          >
+            كل المسارات ←
+          </Link>
+        </div>
 
-          {upcomingEvents.length === 0 ? (
-            <div style={{ padding: 14, borderRadius: 14, border: '1px dashed #E5E0D6', color: '#9CA3AF', fontSize: 12, fontWeight: 900 }}>
-              لا توجد فعاليات قادمة.
+        <div className="overflow-x-auto">
+          {loading ? (
+            <div className="flex min-h-[240px] items-center justify-center gap-3 px-6 py-12 text-[#001f3f]" dir="rtl">
+              <Loader2 className="h-8 w-8 animate-spin" style={{ color: GOLD }} aria-hidden />
+              <span className="text-sm font-bold">جاري تحميل الرادار...</span>
             </div>
+          ) : radarRows.length === 0 ? (
+            <div className="px-6 py-12 text-center text-sm font-bold text-slate-600">لا توجد مسارات لعرضها بعد.</div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {upcomingEvents.map((e) => {
-                const imp = String(e.impact || '');
-                const tint = imp === 'feature' ? '#059669' : imp === 'obstacle' ? '#DC2626' : '#6B7280';
-                const bg = imp === 'feature' ? '#D1FAE5' : imp === 'obstacle' ? '#FEE2E2' : '#F3F4F6';
-                return (
-                  <div key={e.id} style={{ padding: '10px 12px', borderRadius: 14, background: '#FAFAF8', border: '1px solid #F3F0EB' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-                      <div
-                        style={{
-                          fontSize: 12,
-                          fontWeight: 1000,
-                          color: '#1C4532',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
-                        {e.name}
-                      </div>
-                      <span
-                        style={{
-                          padding: '4px 10px',
-                          borderRadius: 999,
-                          background: bg,
-                          color: tint,
-                          fontSize: 10,
-                          fontWeight: 1000,
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
-                        {imp || '—'}
-                      </span>
-                    </div>
-                    <div style={{ fontSize: 10, color: '#6B7280', fontWeight: 800, marginTop: 4 }}>
-                      {e.country ? `🌍 ${e.country}` : ''} {e.city ? `· 📍 ${e.city}` : ''}{' '}
-                      {e.start_date ? `· 📅 ${e.start_date}` : ''}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+            <table className="w-full min-w-[640px] text-right text-sm">
+              <thead>
+                <tr className="border-b border-slate-100 bg-slate-50/90 text-[11px] font-black uppercase tracking-wider text-slate-500">
+                  <th className="px-6 py-3">اسم الرحلة</th>
+                  <th className="px-6 py-3">اسم العميل</th>
+                  <th className="px-6 py-3">الوجهة</th>
+                  <th className="px-6 py-3">تاريخ الإنشاء</th>
+                  <th className="px-6 py-3 text-center">الحالة</th>
+                </tr>
+              </thead>
+              <tbody>
+                {radarRows.map((row) => {
+                  const b = statusBadge(row.status);
+                  return (
+                    <tr
+                      key={row.id}
+                      className="border-b border-slate-100 last:border-0 transition hover:bg-[#d4af37]/06"
+                    >
+                      <td className="max-w-[12rem] truncate px-6 py-4 font-bold text-slate-900" title={row.title ?? ''}>
+                        {row.title?.trim() || '—'}
+                      </td>
+                      <td className="px-6 py-4 font-semibold text-slate-700">{resolveRadarClientName(row)}</td>
+                      <td className="px-6 py-4 font-semibold text-slate-700">{row.destination?.trim() || '—'}</td>
+                      <td className="whitespace-nowrap px-6 py-4 font-medium text-slate-600">
+                        {formatCreatedAtArabic(row.created_at)}
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        <span
+                          className={`inline-flex rounded-full px-3 py-1 text-[11px] font-black ring-1 ring-inset ${b.className}`}
+                        >
+                          {b.label}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           )}
-        </section>
-      </div>
-
-      <div style={{ marginTop: 16, textAlign: 'center', fontSize: 10, fontWeight: 800, color: '#D1D5DB', letterSpacing: 4 }}>
-        WANDERLOOM CRM
-      </div>
+        </div>
+      </section>
     </div>
   );
 }

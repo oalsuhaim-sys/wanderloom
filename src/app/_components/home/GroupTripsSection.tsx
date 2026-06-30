@@ -1,41 +1,138 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Loader2, Users, X } from 'lucide-react';
 
 import { submitGroupTripLead } from '@/app/actions/submitGroupTripLead';
-import { ar } from '@/messages/ar';
+import GroupTripLeaderBadge from '@/app/crm/groups/_components/GroupTripLeaderBadge';
+import { useLanguage } from '@/context/LanguageContext';
+import { supabaseClient } from '@/lib/supabaseClient';
+import type { GroupTripRow } from '@/types/group-trip';
 
-const h = ar.home;
-
-const PACKAGES = [
-  {
-    title: h.groupTripJapanTitle,
-    blurb: h.groupTripJapanBlurb,
-    ring: 'ring-[#c9a84c]/35',
-    chip: 'bg-[#1c4532]/15 text-[#1c4532]',
-  },
-  {
-    title: h.groupTripKoreaTitle,
-    blurb: h.groupTripKoreaBlurb,
-    ring: 'ring-sky-300/40',
-    chip: 'bg-sky-50 text-sky-900',
-  },
-  {
-    title: h.groupTripEuropeTitle,
-    blurb: h.groupTripEuropeBlurb,
-    ring: 'ring-violet-300/40',
-    chip: 'bg-violet-50 text-violet-900',
-  },
+const CARD_STYLES = [
+  { ring: 'ring-[#cda04c]/35', chip: 'bg-[#1e3f20]/10 text-[#1e3f20]' },
+  { ring: 'ring-sky-300/40', chip: 'bg-sky-50 text-sky-900' },
+  { ring: 'ring-violet-300/40', chip: 'bg-violet-50 text-violet-900' },
 ] as const;
 
+type DisplayTrip = GroupTripRow & {
+  title: string;
+  description: string;
+  badge: string;
+  ring: string;
+  chip: string;
+};
+
+const GROUP_TRIPS_SELECT =
+  'id, title_ar, title_en, description_ar, description_en, badge_ar, badge_en, sort_order, leader_id, leader_name';
+
+const INITIAL_REG_FORM = {
+  fullName: '',
+  whatsapp: '',
+  email: '',
+  age: '',
+};
+
+const REG_FIELD_CLASS =
+  'w-full rounded-lg border border-[#1e3f20]/20 bg-[#FDFBF7] p-3 text-sm font-bold text-[#111111] outline-none transition-colors placeholder:text-gray-400 focus:border-[#cda04c]';
+
+function GroupTripCardSkeleton() {
+  return (
+    <div className="flex animate-pulse flex-col rounded-2xl border border-gray-100 bg-white p-8 shadow-sm md:p-10">
+      <div className="h-6 w-20 rounded-full bg-stone-200" />
+      <div className="mt-4 h-6 w-3/4 rounded-lg bg-stone-200" />
+      <div className="mt-3 space-y-2">
+        <div className="h-3 w-full rounded bg-stone-100" />
+        <div className="h-3 w-5/6 rounded bg-stone-100" />
+      </div>
+      <div className="mt-6 h-12 rounded-2xl bg-stone-200" />
+    </div>
+  );
+}
+
 export function GroupTripsSection() {
-  const [open, setOpen] = useState<(typeof PACKAGES)[number] | null>(null);
-  const [name, setName] = useState('');
-  const [whatsapp, setWhatsapp] = useState('');
-  const [groupSize, setGroupSize] = useState('8');
+  const { locale, dir, t } = useLanguage();
+  const g = t.groups;
+
+  const [trips, setTrips] = useState<GroupTripRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+
+  const [open, setOpen] = useState<DisplayTrip | null>(null);
+  const [formData, setFormData] = useState(INITIAL_REG_FORM);
   const [submitting, setSubmitting] = useState(false);
   const [msg, setMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadTrips() {
+      setLoading(true);
+      setFetchError(null);
+
+      if (!supabaseClient) {
+        if (!cancelled) {
+          setTrips([]);
+          setFetchError('Supabase is not configured.');
+          setLoading(false);
+        }
+        return;
+      }
+
+      const { data, error } = await supabaseClient
+        .from('group_trips')
+        .select(GROUP_TRIPS_SELECT)
+        .eq('is_active', true)
+        .order('sort_order', { ascending: true });
+
+      let rows = data;
+      let fetchErr = error;
+
+      if (fetchErr && /leader_/i.test(fetchErr.message ?? '')) {
+        const fallback = await supabaseClient
+          .from('group_trips')
+          .select('id, title_ar, title_en, description_ar, description_en, badge_ar, badge_en, sort_order')
+          .eq('is_active', true)
+          .order('sort_order', { ascending: true });
+        rows = fallback.data;
+        fetchErr = fallback.error;
+      }
+
+      if (cancelled) return;
+
+      if (fetchErr) {
+        setTrips([]);
+        setFetchError(fetchErr.message);
+        setLoading(false);
+        return;
+      }
+
+      setTrips((rows ?? []) as GroupTripRow[]);
+      setLoading(false);
+    }
+
+    void loadTrips();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const displayTrips = useMemo<DisplayTrip[]>(
+    () =>
+      trips.map((trip, index) => {
+        const style = CARD_STYLES[index % CARD_STYLES.length];
+        const isAr = locale === 'ar';
+        return {
+          ...trip,
+          title: isAr ? trip.title_ar : trip.title_en,
+          description: isAr ? trip.description_ar : trip.description_en,
+          badge: isAr ? trip.badge_ar : trip.badge_en,
+          ring: style.ring,
+          chip: style.chip,
+        };
+      }),
+    [trips, locale],
+  );
 
   function closeModal() {
     if (submitting) return;
@@ -43,40 +140,56 @@ export function GroupTripsSection() {
     setMsg(null);
   }
 
+  function resetRegForm() {
+    setFormData(INITIAL_REG_FORM);
+  }
+
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!open) return;
-    const gs = parseInt(groupSize, 10);
-    if (!name.trim() || !whatsapp.trim()) {
-      setMsg({ type: 'err', text: ar.errors.trip.namePhone });
+    const ageNum = parseInt(formData.age, 10);
+
+    if (!formData.fullName.trim() || !formData.whatsapp.trim()) {
+      setMsg({ type: 'err', text: g.errors.namePhone });
       return;
     }
-    if (!Number.isFinite(gs) || gs < 1) {
-      setMsg({ type: 'err', text: ar.errors.groupTrip.invalidSize });
+    if (!formData.email.trim()) {
+      setMsg({ type: 'err', text: g.errors.emailRequired });
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
+      setMsg({ type: 'err', text: g.errors.invalidEmail });
+      return;
+    }
+    if (!formData.age.trim()) {
+      setMsg({ type: 'err', text: g.errors.ageRequired });
+      return;
+    }
+    if (!Number.isFinite(ageNum) || ageNum < 1 || ageNum > 120) {
+      setMsg({ type: 'err', text: g.errors.invalidAge });
       return;
     }
 
     setSubmitting(true);
     setMsg(null);
     const res = await submitGroupTripLead({
-      full_name: name.trim(),
-      phone_wa: whatsapp.trim(),
-      group_size: gs,
+      full_name: formData.fullName.trim(),
+      phone_wa: formData.whatsapp.trim(),
+      email: formData.email.trim(),
+      age: ageNum,
       trip_label: open.title,
     });
     setSubmitting(false);
 
     if (!res.ok) {
-      setMsg({ type: 'err', text: res.error ?? ar.errors.session.genericRegistration });
+      setMsg({ type: 'err', text: res.error ?? g.errors.generic });
       return;
     }
 
-    setMsg({ type: 'ok', text: res.message ?? ar.success.groupTripRegistered });
+    setMsg({ type: 'ok', text: res.message ?? g.success });
     setTimeout(() => {
       closeModal();
-      setName('');
-      setWhatsapp('');
-      setGroupSize('8');
+      resetRegForm();
       setMsg(null);
     }, 2200);
   }
@@ -84,111 +197,157 @@ export function GroupTripsSection() {
   return (
     <>
       <p className="mx-auto mt-6 max-w-2xl text-center text-sm font-bold leading-relaxed text-[#3d4a42] sm:text-base">
-        {h.groupsCardsHint}
+        {g.cardsHint}
       </p>
 
-      <div className="mx-auto mt-12 grid max-w-5xl gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {PACKAGES.map((pkg) => (
-          <article
-            key={pkg.title}
-            className={`flex flex-col rounded-[1.75rem] border border-stone-200/90 bg-white p-6 shadow-[0_12px_40px_rgba(20,34,28,0.08)] ring-1 ${pkg.ring}`}
-          >
-            <span className={`w-fit rounded-full px-3 py-1 text-[10px] font-black ${pkg.chip}`}>
-              <Users className="mb-0.5 mr-1 inline h-3.5 w-3.5 align-middle" aria-hidden />
-              مجموعة
-            </span>
-            <h3 className="mt-4 text-lg font-black leading-snug text-[#0f1e16]">{pkg.title}</h3>
-            <p className="mt-3 flex-1 text-sm font-bold leading-relaxed text-[#4a5650]">{pkg.blurb}</p>
-            <button
-              type="button"
-              onClick={() => {
-                setOpen(pkg);
-                setName('');
-                setWhatsapp('');
-                setGroupSize('8');
-                setMsg(null);
-              }}
-              className="mt-6 w-full rounded-2xl bg-[#1c4532] py-3.5 text-sm font-black text-[#f0e4c4] shadow-md transition hover:bg-[#163a30]"
+      {loading ? (
+        <div className="mx-auto mt-10 grid max-w-5xl grid-cols-1 gap-6 sm:mt-12 sm:grid-cols-2 lg:grid-cols-3">
+          <GroupTripCardSkeleton />
+          <GroupTripCardSkeleton />
+          <GroupTripCardSkeleton />
+        </div>
+      ) : displayTrips.length === 0 ? (
+        <div className="mx-auto mt-12 max-w-xl rounded-[1.75rem] border border-[#1e3f20]/10 bg-white px-6 py-12 text-center shadow-sm">
+          <Loader2 className="mx-auto mb-3 h-8 w-8 animate-spin text-[#1e3f20]/40" aria-hidden />
+          <p className="text-sm font-bold text-[#3d4a42]">
+            {locale === 'ar'
+              ? 'لا توجد رحلات مجموعات متاحة حالياً.'
+              : 'No group trips are available right now.'}
+          </p>
+          {fetchError ? (
+            <p className="mt-2 text-xs font-bold text-[#6b5c38]/80">{fetchError}</p>
+          ) : null}
+        </div>
+      ) : (
+        <div className="mx-auto mt-10 grid max-w-5xl grid-cols-1 gap-6 sm:mt-12 sm:grid-cols-2 lg:grid-cols-3">
+          {displayTrips.map((trip) => (
+            <article
+              key={trip.id}
+              className={`flex flex-col rounded-2xl border border-gray-100 bg-white p-5 shadow-sm ring-1 sm:p-8 md:p-10 ${trip.ring}`}
             >
-              {h.groupRegisterCta}
-            </button>
-          </article>
-        ))}
-      </div>
+              <span className={`w-fit rounded-full px-3 py-1 text-[10px] font-black ${trip.chip}`}>
+                <Users className="mb-0.5 me-1 inline h-3.5 w-3.5 align-middle" aria-hidden />
+                {trip.badge}
+              </span>
+              <h3 className="mt-4 text-lg font-black leading-snug text-[#0f1e16]">{trip.title}</h3>
+              {trip.leader_name?.trim() ? (
+                <div className="mt-3">
+                  <GroupTripLeaderBadge name={trip.leader_name} compact />
+                </div>
+              ) : null}
+              <p className="mt-3 flex-1 text-sm font-bold leading-relaxed text-[#4a5650]">
+                {trip.description}
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setOpen(trip);
+                  resetRegForm();
+                  setMsg(null);
+                }}
+                className="mt-6 w-full rounded-2xl bg-[#1e3f20] py-3.5 text-sm font-black text-white shadow-md transition hover:bg-[#163018]"
+              >
+                {g.registerCta}
+              </button>
+            </article>
+          ))}
+        </div>
+      )}
 
       {open ? (
         <div
-          className="fixed inset-0 z-[340] flex items-end justify-center bg-black/60 p-4 backdrop-blur-sm sm:items-center"
+          className="fixed inset-0 z-[340] flex items-end justify-center bg-black/60 p-0 backdrop-blur-sm sm:items-center sm:p-4"
           role="dialog"
           aria-modal="true"
           aria-labelledby="group-trip-modal-title"
           onClick={() => closeModal()}
         >
           <div
-            className="w-full max-w-md rounded-3xl border border-[#c9a84c]/30 bg-[#071612] p-6 shadow-2xl"
+            className="max-h-[92dvh] w-[95%] max-w-md overflow-y-auto rounded-t-3xl border border-[#1e3f20]/15 bg-white p-4 shadow-2xl sm:max-h-[min(90vh,720px)] sm:w-full sm:rounded-3xl sm:p-6 md:w-3/4 md:max-w-lg lg:w-1/2 lg:max-w-xl"
             onClick={(e) => e.stopPropagation()}
-            dir="rtl"
+            dir={dir}
           >
             <div className="flex items-start justify-between gap-2">
               <div>
-                <h3 id="group-trip-modal-title" className="text-sm font-black text-[#d4b87a]">
-                  {h.groupModalTitle}
+                <h3 id="group-trip-modal-title" className="text-sm font-black text-[#1e3f20]">
+                  {g.modal.title}
                 </h3>
-                <p className="mt-1 text-xs font-bold text-white/45">
-                  {h.groupModalTrip}: {open.title}
+                <p className="mt-1 text-xs font-bold text-gray-500">
+                  {g.modal.tripLabel}: {open.title}
                 </p>
               </div>
               <button
                 type="button"
                 disabled={submitting}
                 onClick={closeModal}
-                className="rounded-full bg-white/10 p-2 text-white hover:bg-white/15 disabled:opacity-50"
-                aria-label={h.groupModalClose}
+                className="rounded-full bg-gray-100 p-2 text-gray-700 hover:bg-gray-200 disabled:opacity-50"
+                aria-label={g.modal.close}
               >
                 <X className="h-4 w-4" />
               </button>
             </div>
 
-            <form onSubmit={onSubmit} className="mt-5 space-y-3">
-              <div>
-                <label className="mb-1 block text-xs font-black text-white/80">{h.groupNameLabel}</label>
-                <input
-                  required
-                  className="w-full rounded-xl border border-white/12 bg-black/30 px-3 py-2.5 text-sm font-bold text-white outline-none ring-[#c9a84c] placeholder:text-white/30 focus:ring-2"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder={h.groupNamePlaceholder}
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-black text-white/80">{h.groupWaLabel}</label>
-                <input
-                  required
-                  type="tel"
-                  dir="ltr"
-                  className="w-full rounded-xl border border-white/12 bg-black/30 px-3 py-2.5 text-sm font-bold text-white outline-none ring-[#c9a84c] placeholder:text-white/30 focus:ring-2"
-                  value={whatsapp}
-                  onChange={(e) => setWhatsapp(e.target.value)}
-                  placeholder={h.groupWaPlaceholder}
-                  autoComplete="tel"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-black text-white/80">{h.groupSizeLabel}</label>
-                <input
-                  required
-                  type="number"
-                  min={1}
-                  max={199}
-                  className="w-full rounded-xl border border-white/12 bg-black/30 px-3 py-2.5 text-sm font-bold text-white outline-none ring-[#c9a84c] focus:ring-2"
-                  value={groupSize}
-                  onChange={(e) => setGroupSize(e.target.value)}
-                />
+            <form onSubmit={onSubmit} className="mt-5">
+              <div className="space-y-4">
+                <div>
+                  <label className="mb-2 block text-sm font-bold text-gray-800">{g.modal.nameLabel}</label>
+                  <input
+                    type="text"
+                    required
+                    className={REG_FIELD_CLASS}
+                    placeholder={g.modal.namePlaceholder}
+                    value={formData.fullName}
+                    onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-sm font-bold text-gray-800">{g.modal.emailLabel}</label>
+                  <input
+                    type="email"
+                    required
+                    dir="ltr"
+                    className={REG_FIELD_CLASS}
+                    placeholder={g.modal.emailPlaceholder}
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    autoComplete="email"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div>
+                    <label className="mb-2 block text-sm font-bold text-gray-800">{g.modal.waLabel}</label>
+                    <input
+                      type="tel"
+                      required
+                      dir="ltr"
+                      className={REG_FIELD_CLASS}
+                      placeholder={g.modal.waPlaceholder}
+                      value={formData.whatsapp}
+                      onChange={(e) => setFormData({ ...formData, whatsapp: e.target.value })}
+                      autoComplete="tel"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-2 block text-sm font-bold text-gray-800">{g.modal.ageLabel}</label>
+                    <input
+                      type="number"
+                      required
+                      min={1}
+                      max={120}
+                      className={REG_FIELD_CLASS}
+                      placeholder={g.modal.agePlaceholder}
+                      value={formData.age}
+                      onChange={(e) => setFormData({ ...formData, age: e.target.value })}
+                    />
+                  </div>
+                </div>
               </div>
 
               {msg ? (
                 <div
-                  className={`rounded-xl border px-3 py-2 text-xs font-black ${
+                  className={`mt-4 rounded-xl border px-3 py-2 text-xs font-black ${
                     msg.type === 'ok'
                       ? 'border-emerald-400/40 bg-emerald-950/50 text-emerald-100'
                       : 'border-red-400/40 bg-red-950/50 text-red-100'
@@ -201,10 +360,10 @@ export function GroupTripsSection() {
               <button
                 type="submit"
                 disabled={submitting}
-                className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-l from-[#7a5f28] to-[#d4b87a] py-3 text-sm font-black text-[#0a1814] disabled:opacity-60"
+                className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-[#cda04c] py-3 text-sm font-black text-white transition hover:bg-[#b3893d] disabled:opacity-60"
               >
                 {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                {h.groupSubmit}
+                {g.modal.submit}
               </button>
             </form>
           </div>

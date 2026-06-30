@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { ArrowRight, ExternalLink, Hotel, MessageCircle, Pencil, Plus, Save, Trash2, X } from 'lucide-react';
+import { ArrowRight, ExternalLink, Hotel, MessageCircle, Pencil, Phone, Plus, Save, Trash2, UserRound, X } from 'lucide-react';
 
 import { supabase } from '@/lib/supabase';
 import type { HotelCategory, HotelRow } from '@/types/hotel';
@@ -78,6 +78,11 @@ function formatHotelWhatsApp(h: HotelRow): string {
 🔗 رابط الفندق: ${url}`;
 }
 
+/** حقول النماذج — نص غامق يغلب إعدادات الوضع الداكن للنظام (وراثة body) + autofill */
+const CRM_FORM_FIELD =
+  'w-full rounded-[10px] border border-gray-300 bg-white px-2.5 py-2.5 text-[13px] font-bold text-gray-900 placeholder:text-gray-600 placeholder:opacity-100 outline-none focus:ring-2 focus:ring-[#1C4532]/25 [color-scheme:light] [caret-color:#0a1d37] [&:-webkit-autofill]:shadow-[inset_0_0_0_1000px_rgb(255,255,255)] [&:-webkit-autofill]:[-webkit-text-fill-color:rgb(17,24,39)]';
+const CRM_FORM_FIELD_LTR = `${CRM_FORM_FIELD} text-left`;
+
 export default function HotelsCRMPage() {
   const [countries, setCountries] = useState<string[]>([]);
   const [filterCountry, setFilterCountry] = useState('');
@@ -96,19 +101,24 @@ export default function HotelsCRMPage() {
     category: 'smart_choice' as HotelCategory,
     booking_url: '',
     notes: '',
+    manager_name: '',
+    contact_number: '',
   });
 
   const loadCountries = useCallback(async () => {
     if (!supabase) return;
     try {
       const { data, error } = await supabase.from('hotels').select('country');
-      if (error) throw error;
+      if (error) {
+        console.error('[CRM hotels] loadCountries Supabase error:', error);
+        throw error;
+      }
       const list = (data ?? [])
         .map((r: { country?: string }) => r.country)
         .filter((c): c is string => Boolean(c?.trim()));
       setCountries([...new Set(list)].sort((a, b) => a.localeCompare(b, 'ar')));
     } catch (e) {
-      console.error(e);
+      console.error('[CRM hotels] loadCountries failed:', e);
     }
   }, []);
 
@@ -118,6 +128,9 @@ export default function HotelsCRMPage() {
     if (!supabase) {
       setLoading(false);
       setBanner({ type: 'err', text: 'قاعدة البيانات غير مهيأة. أضف مفاتيح Supabase في البيئة.' });
+      console.warn(
+        '[CRM hotels] supabase is null — أضف NEXT_PUBLIC_SUPABASE_URL و NEXT_PUBLIC_SUPABASE_ANON_KEY في .env.local وأعد تشغيل dev',
+      );
       return;
     }
     setLoading(true);
@@ -127,9 +140,19 @@ export default function HotelsCRMPage() {
       if (filterCountry) q = q.eq('country', filterCountry);
       if (filterCategory) q = q.eq('category', filterCategory);
       const { data, error } = await q;
-      if (error) throw error;
-      setAllRows((data ?? []) as HotelRow[]);
+      if (error) {
+        console.error('[CRM hotels] Supabase select error:', error);
+        throw error;
+      }
+      const list = (data ?? []) as HotelRow[];
+      if (list.length === 0) {
+        console.warn(
+          '[CRM hotels] 0 rows — إن وُجدت بيانات في Table Editor فتحقق من RLS (SELECT لدور anon)، أو أزل تصفية الدولة/التصنيف، أو تأكد من اسم الجدول public.hotels.',
+        );
+      }
+      setAllRows(list);
     } catch (e) {
+      console.error('[CRM hotels] loadHotels failed:', e);
       const msg = e instanceof Error ? e.message : 'تعذر تحميل الفنادق.';
       setBanner({
         type: 'err',
@@ -148,12 +171,12 @@ export default function HotelsCRMPage() {
   const rows = useMemo(() => {
     const qsearch = search.trim().toLowerCase();
     if (!qsearch) return allRows;
-    return allRows.filter(
-      (h) =>
-        h.name.toLowerCase().includes(qsearch) ||
-        h.city.toLowerCase().includes(qsearch) ||
-        (h.notes && h.notes.toLowerCase().includes(qsearch))
-    );
+    return allRows.filter((h) => {
+      const name = String(h.name ?? '').toLowerCase();
+      const city = String(h.city ?? '').toLowerCase();
+      const notes = String(h.notes ?? '').toLowerCase();
+      return name.includes(qsearch) || city.includes(qsearch) || notes.includes(qsearch);
+    });
   }, [allRows, search]);
 
   useEffect(() => {
@@ -192,6 +215,8 @@ export default function HotelsCRMPage() {
           category: editing.category,
           booking_url: editing.booking_url?.trim() || null,
           notes: editing.notes?.trim() || null,
+          manager_name: editing.manager_name?.trim() || null,
+          contact_number: editing.contact_number?.trim() || null,
         })
         .eq('id', editing.id);
       if (error) throw error;
@@ -222,6 +247,8 @@ export default function HotelsCRMPage() {
         category: newRow.category,
         booking_url: newRow.booking_url.trim() || null,
         notes: newRow.notes.trim() || null,
+        manager_name: newRow.manager_name.trim() || null,
+        contact_number: newRow.contact_number.trim() || null,
       });
       if (error) throw error;
       setAdding(false);
@@ -232,6 +259,8 @@ export default function HotelsCRMPage() {
         category: 'smart_choice',
         booking_url: '',
         notes: '',
+        manager_name: '',
+        contact_number: '',
       });
       setBanner({ type: 'ok', text: 'تمت إضافة الفندق.' });
       await loadHotels();
@@ -261,20 +290,6 @@ export default function HotelsCRMPage() {
     }
   };
 
-  const inputStyle = useMemo(
-    () =>
-      ({
-        width: '100%',
-        padding: 10,
-        border: '1.5px solid #E5E0D6',
-        borderRadius: 10,
-        fontSize: 13,
-        direction: 'rtl' as const,
-        outline: 'none',
-      }) as const,
-    []
-  );
-
   const btn = (bg: string, color: string) => ({
     padding: '8px 14px',
     background: bg,
@@ -292,7 +307,7 @@ export default function HotelsCRMPage() {
   return (
     <div
       dir="rtl"
-      className="min-h-screen bg-[#eef0ec] font-[family-name:var(--font-tajawal),system-ui,sans-serif]"
+      className="min-h-screen bg-[#eef0ec] font-[family-name:var(--font-tajawal),system-ui,sans-serif] text-gray-900 [color-scheme:light]"
       style={{ padding: '20px 16px', maxWidth: 1200, margin: '0 auto' }}
     >
       {toast ? (
@@ -419,12 +434,12 @@ export default function HotelsCRMPage() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="بحث بالاسم أو المدينة أو ملاحظات الموظفين…"
-          style={inputStyle}
+          className={CRM_FORM_FIELD}
         />
         <select
           value={filterCountry}
           onChange={(e) => setFilterCountry(e.target.value)}
-          style={inputStyle}
+          className={CRM_FORM_FIELD}
         >
           <option value="">كل الدول ({countries.length})</option>
           {countries.map((c) => (
@@ -436,7 +451,7 @@ export default function HotelsCRMPage() {
         <select
           value={filterCategory}
           onChange={(e) => setFilterCategory((e.target.value || '') as '' | HotelCategory)}
-          style={inputStyle}
+          className={CRM_FORM_FIELD}
         >
           <option value="">كل التصنيفات</option>
           {CATEGORY_OPTIONS.map((o) => (
@@ -468,24 +483,24 @@ export default function HotelsCRMPage() {
               value={newRow.name}
               onChange={(e) => setNewRow({ ...newRow, name: e.target.value })}
               placeholder="اسم الفندق *"
-              style={inputStyle}
+              className={CRM_FORM_FIELD}
             />
             <input
               value={newRow.country}
               onChange={(e) => setNewRow({ ...newRow, country: e.target.value })}
               placeholder="الدولة *"
-              style={inputStyle}
+              className={CRM_FORM_FIELD}
             />
             <input
               value={newRow.city}
               onChange={(e) => setNewRow({ ...newRow, city: e.target.value })}
               placeholder="المدينة"
-              style={inputStyle}
+              className={CRM_FORM_FIELD}
             />
             <select
               value={newRow.category}
               onChange={(e) => setNewRow({ ...newRow, category: e.target.value as HotelCategory })}
-              style={inputStyle}
+              className={CRM_FORM_FIELD}
             >
               {CATEGORY_OPTIONS.map((o) => (
                 <option key={o.value} value={o.value} title={o.hint}>
@@ -498,7 +513,20 @@ export default function HotelsCRMPage() {
               onChange={(e) => setNewRow({ ...newRow, booking_url: e.target.value })}
               placeholder="رابط Booking / الموقع"
               dir="ltr"
-              style={{ ...inputStyle, direction: 'ltr' }}
+              className={CRM_FORM_FIELD_LTR}
+            />
+            <input
+              value={newRow.manager_name}
+              onChange={(e) => setNewRow({ ...newRow, manager_name: e.target.value })}
+              placeholder="اسم المسؤول"
+              className={CRM_FORM_FIELD}
+            />
+            <input
+              value={newRow.contact_number}
+              onChange={(e) => setNewRow({ ...newRow, contact_number: e.target.value })}
+              placeholder="رقم التواصل"
+              dir="ltr"
+              className={CRM_FORM_FIELD_LTR}
             />
           </div>
           <textarea
@@ -506,7 +534,7 @@ export default function HotelsCRMPage() {
             onChange={(e) => setNewRow({ ...newRow, notes: e.target.value })}
             placeholder="ملاحظاتك عن الفندق…"
             rows={3}
-            style={{ ...inputStyle, marginTop: 10, resize: 'vertical' as const }}
+            className={`${CRM_FORM_FIELD} mt-2.5 resize-y`}
           />
           <button type="button" onClick={addHotel} style={{ ...btn('#1C4532', '#fff'), marginTop: 12 }}>
             <Save size={16} /> حفظ الفندق
@@ -531,7 +559,9 @@ export default function HotelsCRMPage() {
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {rows.map((h) => (
+          {rows.map((h) => {
+            const bookingHref = normalizeUrl(h.booking_url)
+            return (
             <div
               key={h.id}
               style={{
@@ -548,22 +578,22 @@ export default function HotelsCRMPage() {
                     <input
                       value={editing.name}
                       onChange={(e) => setEditing({ ...editing, name: e.target.value })}
-                      style={inputStyle}
+                      className={CRM_FORM_FIELD}
                     />
                     <input
                       value={editing.country}
                       onChange={(e) => setEditing({ ...editing, country: e.target.value })}
-                      style={inputStyle}
+                      className={CRM_FORM_FIELD}
                     />
                     <input
                       value={editing.city}
                       onChange={(e) => setEditing({ ...editing, city: e.target.value })}
-                      style={inputStyle}
+                      className={CRM_FORM_FIELD}
                     />
                     <select
                       value={editing.category}
                       onChange={(e) => setEditing({ ...editing, category: e.target.value as HotelCategory })}
-                      style={inputStyle}
+                      className={CRM_FORM_FIELD}
                     >
                       {categoryOptionsForEdit(String(editing.category)).map((o) => (
                         <option key={o.value} value={o.value} title={o.hint}>
@@ -576,14 +606,27 @@ export default function HotelsCRMPage() {
                       onChange={(e) => setEditing({ ...editing, booking_url: e.target.value })}
                       placeholder="رابط"
                       dir="ltr"
-                      style={{ ...inputStyle, direction: 'ltr' }}
+                      className={CRM_FORM_FIELD_LTR}
+                    />
+                    <input
+                      value={editing.manager_name ?? ''}
+                      onChange={(e) => setEditing({ ...editing, manager_name: e.target.value })}
+                      placeholder="اسم المسؤول"
+                      className={CRM_FORM_FIELD}
+                    />
+                    <input
+                      value={editing.contact_number ?? ''}
+                      onChange={(e) => setEditing({ ...editing, contact_number: e.target.value })}
+                      placeholder="رقم التواصل"
+                      dir="ltr"
+                      className={CRM_FORM_FIELD_LTR}
                     />
                   </div>
                   <textarea
                     value={editing.notes ?? ''}
                     onChange={(e) => setEditing({ ...editing, notes: e.target.value })}
                     rows={2}
-                    style={{ ...inputStyle, marginTop: 8 }}
+                    className={`${CRM_FORM_FIELD} mt-2 resize-y`}
                   />
                   <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
                     <button type="button" onClick={saveEdit} style={btn('#1C4532', '#fff')}>
@@ -597,8 +640,8 @@ export default function HotelsCRMPage() {
               ) : (
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start', flexWrap: 'wrap' }}>
                   <div style={{ flex: 1, minWidth: 200 }}>
-                    <div style={{ fontSize: 16, fontWeight: 800, color: '#1C4532' }}>{h.name}</div>
-                    <div style={{ fontSize: 12, color: '#6B7280', marginTop: 4 }}>
+                    <div style={{ fontSize: 16, fontWeight: 800, color: '#0a1d37' }}>{h.name}</div>
+                    <div style={{ fontSize: 12, color: '#374151', fontWeight: 700, marginTop: 4 }}>
                       {h.city ? `${h.city} · ` : ''}
                       {h.country}
                       <span
@@ -615,14 +658,50 @@ export default function HotelsCRMPage() {
                         {categoryLabel(h.category)}
                       </span>
                     </div>
+                    {h.manager_name?.trim() || h.contact_number?.trim() ? (
+                      <div
+                        style={{
+                          display: 'flex',
+                          flexWrap: 'wrap',
+                          gap: 12,
+                          marginTop: 8,
+                          fontSize: 12,
+                          fontWeight: 700,
+                          color: '#374151',
+                        }}
+                      >
+                        {h.manager_name?.trim() ? (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                            <UserRound size={14} color="#1C4532" aria-hidden />
+                            {h.manager_name.trim()}
+                          </span>
+                        ) : null}
+                        {h.contact_number?.trim() ? (
+                          <a
+                            href={`tel:${h.contact_number.trim().replace(/\s+/g, '')}`}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 6,
+                              color: '#1C4532',
+                              textDecoration: 'none',
+                            }}
+                            dir="ltr"
+                          >
+                            <Phone size={14} color="#C9A84C" aria-hidden />
+                            {h.contact_number.trim()}
+                          </a>
+                        ) : null}
+                      </div>
+                    ) : null}
                     {h.notes ? (
-                      <div style={{ fontSize: 12, color: '#4B5563', marginTop: 8, lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: '#111827', marginTop: 8, lineHeight: 1.65, whiteSpace: 'pre-wrap' }}>
                         {h.notes}
                       </div>
                     ) : null}
-                    {h.booking_url ? (
+                    {bookingHref ? (
                       <a
-                        href={normalizeUrl(h.booking_url) ?? '#'}
+                        href={bookingHref}
                         target="_blank"
                         rel="noopener noreferrer"
                         style={{
@@ -661,6 +740,25 @@ export default function HotelsCRMPage() {
                       <MessageCircle size={16} color="#25D366" />
                       نسخ للواتساب
                     </button>
+                    {bookingHref ? (
+                      <a
+                        href={bookingHref}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-[10px] border border-blue-200 bg-blue-50 px-3 py-2 text-[11px] font-extrabold text-blue-700 transition hover:bg-blue-100"
+                      >
+                        رابط الحجز 🔗
+                      </a>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled
+                        title="لا يوجد رابط"
+                        className="inline-flex cursor-not-allowed items-center gap-1.5 whitespace-nowrap rounded-[10px] border border-gray-200 bg-gray-50 px-3 py-2 text-[11px] font-extrabold text-gray-400"
+                      >
+                        رابط الحجز 🔗
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => setEditing({ ...h })}
@@ -701,7 +799,8 @@ export default function HotelsCRMPage() {
                 </div>
               )}
             </div>
-          ))}
+            )
+          })}
         </div>
       )}
     </div>

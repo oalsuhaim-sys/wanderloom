@@ -8,97 +8,75 @@ import {
   ChevronDown,
   CloudSun,
   Globe2,
-  ListChecks,
   Loader2,
-  Pencil,
-  Save,
   Search,
   Shield,
   Sparkles,
-  X,
 } from 'lucide-react';
 
 import { supabase } from '@/lib/supabase';
-import {
-  CRM_DESTINATIONS_GUIDE,
-  type CrmGuideCityDef,
-  type CrmGuideCountryDef,
-} from '@/lib/crm-destinations-guide-data';
-import type { DestinationsGuideRow } from '@/types/destinations-guide';
 
 import {
   SALES_VOICE_EXAMPLES,
   SALES_VOICE_INTRO,
-  SALES_VOICE_PLACEHOLDER,
 } from './sales-voice-examples';
 
-type Draft = {
-  culture: string;
-  guidelines: string;
-  weather_seasons: string;
-  professional_impression: string;
-  highlights: string;
+type Destination = {
+  id: string;
+  country_name: string;
+  city_name: string;
+  culture_info: string | null;
+  guidelines_tips: string | null;
+  weather_seasons: string | null;
+  professional_impression: string | null;
 };
 
-const emptyDraft = (): Draft => ({
-  culture: '',
-  guidelines: '',
-  weather_seasons: '',
-  professional_impression: '',
-  highlights: '',
-});
-
-function rowToDraft(row: DestinationsGuideRow | undefined): Draft {
-  if (!row) return emptyDraft();
-  return {
-    culture: row.culture ?? '',
-    guidelines: row.guidelines ?? '',
-    weather_seasons: row.weather_seasons ?? '',
-    professional_impression: row.professional_impression ?? '',
-    highlights: row.highlights ?? '',
-  };
-}
-
-function compositeKey(countryId: string, cityId: string) {
-  return `${countryId}:${cityId}`;
-}
-
 export default function DestinationsGuidePage() {
-  const [byKey, setByKey] = useState<Record<string, DestinationsGuideRow>>({});
+  const [rows, setRows] = useState<Destination[]>([]);
   const [loading, setLoading] = useState(true);
   const [banner, setBanner] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
   const [search, setSearch] = useState('');
-  const [editingCityId, setEditingCityId] = useState<string | null>(null);
-  const [editingCountryId, setEditingCountryId] = useState<string | null>(null);
-  const [draft, setDraft] = useState<Draft>(emptyDraft());
-  const [saving, setSaving] = useState(false);
 
   const loadAll = useCallback(async () => {
     if (!supabase) {
       setLoading(false);
       setBanner({ type: 'err', text: 'قاعدة البيانات غير مهيأة.' });
+      console.warn(
+        '[CRM destinations_guide] supabase is null — أضف NEXT_PUBLIC_SUPABASE_URL و NEXT_PUBLIC_SUPABASE_ANON_KEY في .env.local وأعد تشغيل dev',
+      );
       return;
     }
     setLoading(true);
     setBanner(null);
     try {
-      const { data, error } = await supabase.from('destinations_guide').select('*');
-      if (error) throw error;
-      const map: Record<string, DestinationsGuideRow> = {};
-      for (const r of (data ?? []) as DestinationsGuideRow[]) {
-        map[compositeKey(r.country_id, r.city_id)] = r;
+      const { data, error } = await supabase
+        .from('destinations_guide')
+        .select('id, country_name, city_name, culture_info, guidelines_tips, weather_seasons, professional_impression')
+        .order('country_name', { ascending: true });
+
+      if (error) {
+        console.error(error);
+        throw error;
       }
-      setByKey(map);
+
+      const list = (data ?? []) as Destination[];
+      if (list.length === 0) {
+        console.warn(
+          '[CRM destinations_guide] 0 rows — إن وُجدت بيانات في Table Editor فتحقق من سياسات RLS (SELECT لدور anon على public.destinations_guide).',
+        );
+      }
+      setRows(list);
     } catch (e) {
-      const msg = e instanceof Error ? e.message : '';
+      console.error('[CRM destinations_guide] loadAll failed:', e);
+      const msg = e instanceof Error ? e.message : String(e);
       setBanner({
         type: 'err',
         text:
           msg.includes('destinations_guide') || msg.includes('relation')
-            ? 'جدول destinations_guide غير موجود. نفّذ supabase/sql/destinations_guide.sql في Supabase.'
+            ? 'جدول destinations_guide غير موجود أو اسم الجدول غير صحيح.'
             : msg || 'تعذر تحميل الدليل.',
       });
-      setByKey({});
+      setRows([]);
     } finally {
       setLoading(false);
     }
@@ -108,78 +86,36 @@ export default function DestinationsGuidePage() {
     loadAll();
   }, [loadAll]);
 
-  const filteredCountries = useMemo((): CrmGuideCountryDef[] => {
+  const grouped = useMemo(() => {
     const q = search.trim();
-    if (!q) return [...CRM_DESTINATIONS_GUIDE];
-    return CRM_DESTINATIONS_GUIDE.flatMap((c) => {
-      const countryMatch = c.labelAr.includes(q);
-      const cities = countryMatch ? [...c.cities] : c.cities.filter((ci) => ci.labelAr.includes(q));
-      if (cities.length === 0) return [];
-      return [{ ...c, cities }];
-    });
-  }, [search]);
+    const filtered = !q
+      ? rows
+      : rows.filter((r) => r.country_name.includes(q) || r.city_name.includes(q));
 
-  const startEdit = (countryId: string, city: CrmGuideCityDef) => {
-    setEditingCountryId(countryId);
-    setEditingCityId(city.id);
-    setDraft(rowToDraft(byKey[compositeKey(countryId, city.id)]));
-  };
-
-  const cancelEdit = () => {
-    setEditingCityId(null);
-    setEditingCountryId(null);
-    setDraft(emptyDraft());
-  };
-
-  const saveCity = async (countryId: string, cityId: string) => {
-    if (!supabase) return;
-    setSaving(true);
-    setBanner(null);
-    try {
-      const payload = {
-        country_id: countryId,
-        city_id: cityId,
-        culture: draft.culture.trim(),
-        guidelines: draft.guidelines.trim(),
-        weather_seasons: draft.weather_seasons.trim(),
-        professional_impression: draft.professional_impression.trim(),
-        highlights: draft.highlights.trim(),
-        updated_at: new Date().toISOString(),
-      };
-      const { error } = await supabase.from('destinations_guide').upsert(payload, {
-        onConflict: 'country_id,city_id',
-      });
-      if (error) throw error;
-      setBanner({ type: 'ok', text: 'تم حفظ المعلومات بنجاح.' });
-      cancelEdit();
-      await loadAll();
-    } catch (e) {
-      setBanner({
-        type: 'err',
-        text: e instanceof Error ? e.message : 'تعذر الحفظ.',
-      });
-    } finally {
-      setSaving(false);
+    const map = new Map<string, Destination[]>();
+    for (const r of filtered) {
+      const key = r.country_name || '— بدون دولة —';
+      const list = map.get(key) ?? [];
+      list.push(r);
+      map.set(key, list);
     }
-  };
-
-  const countryCount = CRM_DESTINATIONS_GUIDE.length;
+    return [...map.entries()].map(([country, cities]) => ({
+      country,
+      cities,
+    }));
+  }, [rows, search]);
 
   const sectionClass =
     'rounded-xl border border-[#1c4532]/10 bg-[#f8faf8] px-4 py-3 text-sm leading-relaxed text-[#2d3d35]';
 
   const labelClass = 'mb-1 flex items-center gap-2 text-xs font-black text-[#1c4532]';
-
-  const CityCard = ({ country, city }: { country: CrmGuideCountryDef; city: CrmGuideCityDef }) => {
-    const row = byKey[compositeKey(country.id, city.id)];
+  const CityCard = ({ row }: { row: Destination }) => {
     const filled = [
-      row?.culture,
-      row?.guidelines,
-      row?.weather_seasons,
-      row?.professional_impression,
-      row?.highlights,
+      row.culture_info,
+      row.guidelines_tips,
+      row.weather_seasons,
+      row.professional_impression,
     ].some((t) => t && String(t).trim());
-    const isEditing = editingCountryId === country.id && editingCityId === city.id;
 
     return (
       <article
@@ -188,124 +124,45 @@ export default function DestinationsGuidePage() {
       >
         <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h3 className="text-lg font-black text-[#0f1e16]">{city.labelAr}</h3>
+            <h3 className="text-lg font-black text-[#0f1e16]">{row.city_name}</h3>
             <p className="mt-0.5 text-xs font-bold text-[#6b7280]">
-              {filled ? 'محتوى مسجّل' : 'بانتظار إدخال المدير أو تشغيل سكربت البذور'}
+              {filled ? 'محتوى مسجّل' : 'لا يوجد محتوى بعد لهذه المدينة'}
             </p>
           </div>
-          {!isEditing ? (
-            <button
-              type="button"
-              onClick={() => startEdit(country.id, city)}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-[#1c4532] px-3 py-2 text-xs font-black text-[#f0e4c4] transition hover:bg-[#163a30]"
-            >
-              <Pencil className="h-3.5 w-3.5" />
-              تعديل
-            </button>
-          ) : (
-            <div className="flex gap-2">
-              <button
-                type="button"
-                disabled={saving}
-                onClick={() => saveCity(country.id, city.id)}
-                className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-l from-[#7a5f28] to-[#d4b87a] px-3 py-2 text-xs font-black text-[#0a1814] disabled:opacity-50"
-              >
-                {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-                حفظ
-              </button>
-              <button
-                type="button"
-                onClick={cancelEdit}
-                className="rounded-xl border border-[#e5e0d6] bg-white px-3 py-2 text-xs font-black text-[#4b5563]"
-              >
-                <X className="inline h-3.5 w-3.5" /> إلغاء
-              </button>
-            </div>
-          )}
         </div>
 
-        {isEditing ? (
-          <div className="space-y-3">
-            {(
-              [
-                ['culture', 'الثقافة والجو العام', draft.culture],
-                ['weather_seasons', 'الطقس والمواسم', draft.weather_seasons],
-                ['highlights', 'أبرز المعالم والأنشطة', draft.highlights],
-                ['guidelines', 'إرشادات عملية للموظف', draft.guidelines],
-              ] as const
-            ).map(([key, arLabel, val]) => (
-              <label key={key} className="block">
-                <span className="mb-1 block text-xs font-black text-[#1c4532]">{arLabel}</span>
-                <textarea
-                  className="min-h-[88px] w-full rounded-xl border border-[#e5e0d6] bg-[#fafaf8] px-3 py-2 text-sm font-bold text-[#14221c] outline-none ring-[#c9a84c] focus:ring-2"
-                  value={val}
-                  onChange={(e) => setDraft({ ...draft, [key]: e.target.value })}
-                />
-              </label>
-            ))}
-            <label className="block rounded-2xl border border-[#c9a84c]/35 bg-[#fffef6] p-4 ring-1 ring-[#1c4532]/5">
-              <span className="mb-1 block text-xs font-black text-[#1c4532]">
-                انطباع خبير Wanderloom — لغة بيعية ذهبية
-              </span>
-              <p className="mb-2 text-[11px] font-bold leading-relaxed text-[#5c4a32]">{SALES_VOICE_INTRO}</p>
-              <textarea
-                className="min-h-[160px] w-full rounded-xl border border-[#e5e0d6] bg-white px-3 py-2 text-sm font-bold leading-relaxed text-[#14221c] outline-none ring-[#c9a84c] focus:ring-2"
-                placeholder={SALES_VOICE_PLACEHOLDER}
-                value={draft.professional_impression}
-                onChange={(e) => setDraft({ ...draft, professional_impression: e.target.value })}
-              />
-            </label>
+        <div className="space-y-3">
+          <div className={sectionClass}>
+            <div className={labelClass}>
+              <BookOpen className="h-4 w-4 text-[#c9a84c]" />
+              الثقافة والجو العام
+            </div>
+            <p className="whitespace-pre-wrap font-bold">{row.culture_info?.trim() || '—'}</p>
           </div>
-        ) : (
-          <div className="space-y-3">
-            <div className={sectionClass}>
-              <div className={labelClass}>
-                <BookOpen className="h-4 w-4 text-[#c9a84c]" />
-                الثقافة والجو العام
-              </div>
-              <p className="whitespace-pre-wrap font-bold">
-                {row?.culture?.trim() || '— لم يُضف بعد —'}
-              </p>
+          <div className={sectionClass}>
+            <div className={labelClass}>
+              <CloudSun className="h-4 w-4 text-[#c9a84c]" />
+              الطقس والمواسم
             </div>
-            <div className={sectionClass}>
-              <div className={labelClass}>
-                <CloudSun className="h-4 w-4 text-[#c9a84c]" />
-                الطقس والمواسم
-              </div>
-              <p className="whitespace-pre-wrap font-bold">
-                {row?.weather_seasons?.trim() || '— لم يُضف بعد —'}
-              </p>
-            </div>
-            <div className={sectionClass}>
-              <div className={labelClass}>
-                <ListChecks className="h-4 w-4 text-[#c9a84c]" />
-                أبرز المعالم والأنشطة
-              </div>
-              <p className="whitespace-pre-wrap font-bold">
-                {row?.highlights?.trim() || '— لم يُضف بعد —'}
-              </p>
-            </div>
-            <div className={sectionClass}>
-              <div className={labelClass}>
-                <Shield className="h-4 w-4 text-[#c9a84c]" />
-                إرشادات عملية
-              </div>
-              <p className="whitespace-pre-wrap font-bold">
-                {row?.guidelines?.trim() || '— لم يُضف بعد —'}
-              </p>
-            </div>
-            <div className={`${sectionClass} border-[#c9a84c]/25 bg-[#fffef8]`}>
-              <div className={labelClass}>
-                <Sparkles className="h-4 w-4 text-[#c9a84c]" />
-                انطباع خبير Wanderloom
-              </div>
-              <p className="whitespace-pre-wrap font-bold leading-relaxed">
-                {row?.professional_impression?.trim() ||
-                  '— لم يُضف بعد — املأ بصوت فاخر يجمع المشهد، الانطباع، ونصيحة للموظف. —'}
-              </p>
-            </div>
+            <p className="whitespace-pre-wrap font-bold">{row.weather_seasons?.trim() || '—'}</p>
           </div>
-        )}
+          <div className={sectionClass}>
+            <div className={labelClass}>
+              <Shield className="h-4 w-4 text-[#c9a84c]" />
+              إرشادات عملية
+            </div>
+            <p className="whitespace-pre-wrap font-bold">{row.guidelines_tips?.trim() || '—'}</p>
+          </div>
+          <div className={`${sectionClass} border-[#c9a84c]/25 bg-[#fffef8]`}>
+            <div className={labelClass}>
+              <Sparkles className="h-4 w-4 text-[#c9a84c]" />
+              انطباع خبير Wanderloom
+            </div>
+            <p className="whitespace-pre-wrap font-bold leading-relaxed">
+              {row.professional_impression?.trim() || '—'}
+            </p>
+          </div>
+        </div>
       </article>
     );
   };
@@ -326,7 +183,7 @@ export default function DestinationsGuidePage() {
           </Link>
           <div className="flex items-center gap-2 text-xs font-black text-[#6b7280]">
             <Globe2 className="h-4 w-4 text-[#c9a84c]" />
-            {countryCount} دولة · دليل حصرٍ للموظفين
+            {grouped.length} دولة · من قاعدة البيانات
           </div>
         </div>
 
@@ -403,13 +260,13 @@ export default function DestinationsGuidePage() {
           <div className="flex justify-center py-20">
             <Loader2 className="h-10 w-10 animate-spin text-[#1c4532]" />
           </div>
-        ) : filteredCountries.length === 0 ? (
+        ) : grouped.length === 0 ? (
           <p className="py-16 text-center text-sm font-bold text-[#6b7280]">لا نتائج مطابقة لبحثك.</p>
         ) : (
           <div className="space-y-4">
-            {filteredCountries.map((country) => (
+            {grouped.map(({ country, cities }) => (
               <details
-                key={country.id}
+                key={country}
                 className="group rounded-2xl border border-[#c9a84c]/30 bg-white shadow-[0_8px_28px_rgba(20,34,28,0.07)] ring-1 ring-[#1c4532]/5 open:shadow-lg"
                 open={Boolean(search.trim())}
               >
@@ -419,16 +276,16 @@ export default function DestinationsGuidePage() {
                       <Globe2 className="h-5 w-5" />
                     </span>
                     <div>
-                      <h2 className="text-lg font-black text-[#0f1e16]">{country.labelAr}</h2>
-                      <p className="text-xs font-bold text-[#6b7280]">{country.cities.length} مدينة</p>
+                      <h2 className="text-lg font-black text-[#0f1e16]">{country}</h2>
+                      <p className="text-xs font-bold text-[#6b7280]">{cities.length} مدينة</p>
                     </div>
                   </div>
                   <ChevronDown className="h-5 w-5 shrink-0 text-[#c9a84c] transition group-open:-rotate-180" />
                 </summary>
                 <div className="border-t border-[#e8e4dc] px-4 pb-5 pt-2 sm:px-5">
                   <div className="grid gap-6 lg:grid-cols-2">
-                    {country.cities.map((city) => (
-                      <CityCard key={city.id} country={country} city={city} />
+                    {cities.map((r) => (
+                      <CityCard key={r.id} row={r} />
                     ))}
                   </div>
                 </div>

@@ -65,7 +65,7 @@ export const ar = {
       'لديك استفسار خاص أو فكرة لتعاون؟ فريقنا مستعد لسماعك وتلبية احتياجاتك — خارج إطار حجز رحلة محددة.',
     contactWhatsAppCta: 'محادثة واتساب',
     contactEmailCta: 'مراسلة بريدية',
-    contactEmailAddress: 'info@wanderloomsa.com',
+    contactEmailAddress: 'oalsuhaim@wanderloomsa.com',
     contactWaPresetMessage:
       'مرحباً Wanderloom — لدي استفسار عام وأود التواصل معكم.',
     leadTitle: 'سجّل رحلتك',
@@ -262,6 +262,10 @@ export const ar = {
     groupTrip: {
       missingPackage: 'يرجى اختيار نوع رحلة المجموعة.',
       invalidSize: 'يرجى إدخال عدد أفراد المجموعة (رقم صحيح أكبر من صفر).',
+      emailRequired: 'يرجى إدخال البريد الإلكتروني.',
+      invalidEmail: 'يرجى إدخال بريد إلكتروني صحيح.',
+      ageRequired: 'يرجى إدخال العمر.',
+      invalidAge: 'يرجى إدخال عمر صحيح.',
     },
   },
 

@@ -1,41 +1,66 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { CalendarClock, Loader2, MapPin, Ticket, Users, X } from 'lucide-react';
 
 import { registerSessionAction } from '@/app/actions/registerSession';
+import { useLanguage } from '@/context/LanguageContext';
 import type { Session } from '@/types/session-tables';
-import { ar } from '@/messages/ar';
 
 import { requestScrollToTripForm } from './ScrollToLeadOnMount';
 
-const s = ar.sessions;
-const c = ar.common;
-
-/** يمنع تعطّل الواجهة إن غاب مفتاح الترجمة `seatsLeft` في الكاش أو نسخة قديمة من `ar`. */
-function formatSeatsRemaining(left: number): string {
-  const tpl = s.seatsLeft ?? '{n} مقعد متبقي';
+function formatSeatsRemaining(tpl: string, left: number): string {
   return String(tpl).replace(/\{n\}/g, String(left));
 }
 
-function formatRegistrationSuccess(at: string): string {
-  const withTime = s.successWithTime;
-  const base = s.success ?? 'تم إرسال تسجيلك بنجاح!';
-  if (at && typeof withTime === 'string' && withTime.includes('{time}')) {
-    return withTime.replace('{time}', at);
+function formatRegistrationSuccess(
+  base: string,
+  withTimeTpl: string,
+  at: string,
+): string {
+  if (at && withTimeTpl.includes('{time}')) {
+    return withTimeTpl.replace('{time}', at);
   }
   if (at) return `${base} (${at})`;
   return base;
 }
 
-function formatSessionDate(value: string) {
+type EventListEntry = {
+  matchTitle: string;
+  title: string;
+  desc: string;
+};
+
+function normalizeSessionTitle(title: string): string {
+  return title.replace(/\s+/g, ' ').trim().replace(/[–—−]/g, '-');
+}
+
+function resolveEventCopy(
+  session: Session,
+  index: number,
+  eventsList: EventListEntry[],
+): { title: string; description: string } {
+  const raw = String(session.title ?? '').trim();
+  const normalized = normalizeSessionTitle(raw);
+  const entry =
+    eventsList.find(
+      (e) => e.matchTitle === raw || normalizeSessionTitle(e.matchTitle) === normalized,
+    ) ?? eventsList[index];
+
+  return {
+    title: entry?.title ?? raw,
+    description: entry?.desc ?? String(session.description ?? ''),
+  };
+}
+
+function formatSessionDate(value: string, locale: 'ar' | 'en') {
   const day = String(value).slice(0, 10);
   try {
     const d = new Date(day + 'T12:00:00');
     if (Number.isNaN(d.getTime())) return value;
-    return d.toLocaleDateString('ar-SA', {
+    return d.toLocaleDateString(locale === 'ar' ? 'ar-SA' : 'en-US', {
       weekday: 'long',
       day: 'numeric',
       month: 'long',
@@ -44,16 +69,6 @@ function formatSessionDate(value: string) {
   } catch {
     return value;
   }
-}
-
-function priceLabel(p: number) {
-  if (p === 0) return c.free;
-  return `${Number(p)} ${c.currencySuffix}`;
-}
-
-function spotsLeft(s: Session): number {
-  const n = Number(s.spots ?? 0);
-  return Number.isFinite(n) ? Math.max(0, Math.floor(n)) : 0;
 }
 
 type PublicSessionsCardsProps = {
@@ -69,6 +84,10 @@ export function PublicSessionsCards({
   demo,
   initialLoading = false,
 }: PublicSessionsCardsProps) {
+  const { locale, dir, t } = useLanguage();
+  const ev = t.events;
+  const c = t.common;
+
   const router = useRouter();
   const pathname = usePathname();
   const [list, setList] = useState<Session[]>(sessions);
@@ -81,6 +100,30 @@ export function PublicSessionsCards({
   useEffect(() => {
     setList(sessions);
   }, [sessions]);
+
+  const sortedSessions = useMemo(
+    () => [...list].sort((a, b) => String(a.date).localeCompare(String(b.date))),
+    [list],
+  );
+
+  const displaySessions = useMemo(
+    () =>
+      sortedSessions.map((session, index) => {
+        const copy = resolveEventCopy(session, index, ev.eventsList ?? []);
+        return { ...session, title: copy.title, description: copy.description };
+      }),
+    [sortedSessions, ev.eventsList],
+  );
+
+  function priceLabel(p: number) {
+    if (p === 0) return c.free;
+    return `${Number(p)} ${c.currencySuffix}`;
+  }
+
+  function spotsLeft(session: Session): number {
+    const n = Number(session.spots ?? 0);
+    return Number.isFinite(n) ? Math.max(0, Math.floor(n)) : 0;
+  }
 
   function goToTripForm() {
     setOpenFor(null);
@@ -95,11 +138,11 @@ export function PublicSessionsCards({
   async function handleRegister(e: React.FormEvent) {
     e.preventDefault();
     if (!openFor?.id) {
-      setFormMsg({ type: 'err', text: s.clientMissingSession });
+      setFormMsg({ type: 'err', text: ev.clientMissingSession });
       return;
     }
     if (!name.trim() || !whatsapp.trim()) {
-      setFormMsg({ type: 'err', text: s.clientNameWaRequired });
+      setFormMsg({ type: 'err', text: ev.clientNameWaRequired });
       return;
     }
 
@@ -126,15 +169,18 @@ export function PublicSessionsCards({
         : Math.max(0, spotsLeft(openFor) - 1);
 
     setList((prev) =>
-      prev.map((row) => (String(row.id) === sid ? { ...row, spots: nextSpots } : row))
+      prev.map((row) => (String(row.id) === sid ? { ...row, spots: nextSpots } : row)),
     );
 
     const at = res.data.created_at
-      ? new Date(res.data.created_at).toLocaleString('ar-SA', { dateStyle: 'short', timeStyle: 'short' })
+      ? new Date(res.data.created_at).toLocaleString(locale === 'ar' ? 'ar-SA' : 'en-US', {
+          dateStyle: 'short',
+          timeStyle: 'short',
+        })
       : '';
     setFormMsg({
       type: 'ok',
-      text: formatRegistrationSuccess(at),
+      text: formatRegistrationSuccess(ev.success, ev.successWithTime, at),
     });
 
     router.refresh();
@@ -149,9 +195,9 @@ export function PublicSessionsCards({
 
   if (initialLoading) {
     return (
-      <div className="flex min-h-[200px] flex-col items-center justify-center gap-3 rounded-[2rem] border border-[#c9a84c]/20 bg-white/[0.04] py-16">
-        <Loader2 className="h-9 w-9 animate-spin text-[#d4b87a]" aria-hidden />
-        <p className="text-sm font-bold text-white/55">{s.loading}</p>
+      <div className="flex min-h-[200px] flex-col items-center justify-center gap-3 rounded-[2rem] border border-[#1e3f20]/10 bg-white py-16">
+        <Loader2 className="h-9 w-9 animate-spin text-[#cda04c]" aria-hidden />
+        <p className="text-sm font-bold text-gray-600">{ev.loading}</p>
       </div>
     );
   }
@@ -159,23 +205,21 @@ export function PublicSessionsCards({
   if (loadError) {
     return (
       <div className="rounded-2xl border border-red-400/30 bg-red-950/35 px-5 py-4 text-center text-sm font-bold text-red-100">
-        {s.loadErrorPrefix} {loadError}
+        {ev.loadErrorPrefix} {loadError}
       </div>
     );
   }
 
-  const sorted = [...list].sort((a, b) => String(a.date).localeCompare(String(b.date)));
-
-  if (sorted.length === 0) {
+  if (displaySessions.length === 0) {
     return (
-      <div className="mx-auto max-w-xl rounded-[2rem] border border-[#c9a84c]/15 bg-gradient-to-b from-white/[0.06] to-transparent px-8 py-20 text-center">
-        <p className="text-base font-black leading-relaxed text-[#e8d5a8] sm:text-lg">{s.emptyTitle}</p>
-        <p className="mt-4 text-sm font-bold text-white/45">
-          {s.emptyLeadPrefix}{' '}
-          <Link href="/#lead" className="font-black text-[#d4b87a] underline underline-offset-4">
-            {s.emptyLeadLink}
+      <div className="mx-auto max-w-xl rounded-[2rem] border border-[#1e3f20]/10 bg-white px-8 py-20 text-center shadow-sm">
+        <p className="text-base font-black leading-relaxed text-[#111111] sm:text-lg">{ev.emptyTitle}</p>
+        <p className="mt-4 text-sm font-bold text-gray-600">
+          {ev.emptyLeadPrefix}{' '}
+          <Link href="/#lead" className="font-black text-[#cda04c] underline underline-offset-4">
+            {ev.emptyLeadLink}
           </Link>{' '}
-          {s.emptyLeadSuffix}
+          {ev.emptyLeadSuffix}
         </p>
       </div>
     );
@@ -185,63 +229,65 @@ export function PublicSessionsCards({
     <>
       {demo ? (
         <div className="mx-auto mb-8 max-w-2xl rounded-2xl border border-amber-400/30 bg-amber-950/30 px-4 py-3 text-center text-xs font-black text-amber-100">
-          {s.demoBanner}
+          {ev.demoBanner}
         </div>
       ) : null}
 
-      <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
-        {sorted.map((s) => {
-          const left = spotsLeft(s);
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 sm:gap-8 lg:grid-cols-3">
+        {displaySessions.map((session) => {
+          const left = spotsLeft(session);
           const full = left < 1;
           return (
             <article
-              key={String(s.id ?? `${s.title}-${s.date}`)}
-              className="flex flex-col rounded-[2rem] border border-[#c9a84c]/22 bg-gradient-to-b from-white/[0.07] to-transparent p-7 shadow-[0_24px_70px_rgba(0,0,0,.4)]"
+              key={String(session.id ?? `${session.title}-${session.date}`)}
+              className="flex flex-col rounded-2xl border border-gray-100 bg-white p-5 shadow-sm sm:p-8 md:p-10"
             >
-              <h3 className="text-xl font-black leading-snug text-white">{s.title}</h3>
-              <div className="mt-5 flex flex-wrap items-center gap-2 text-xs font-bold text-white/55">
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-black/25 px-3 py-1.5">
-                  <CalendarClock className="h-3.5 w-3.5 text-[#d4b87a]" aria-hidden />
-                  {formatSessionDate(String(s.date))}
+              <h3 className="text-xl font-black leading-snug text-[#111111]">{session.title}</h3>
+              <div className="mt-5 flex flex-wrap items-center gap-2 text-xs font-bold text-gray-600">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-[#FDFBF7] px-3 py-1.5">
+                  <CalendarClock className="h-3.5 w-3.5 text-[#cda04c]" aria-hidden />
+                  {formatSessionDate(String(session.date), locale)}
                 </span>
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-[#c9a84c]/30 bg-[#c9a84c]/10 px-3 py-1.5 font-black text-[#f0e4c4]">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-[#cda04c]/30 bg-[#cda04c]/10 px-3 py-1.5 font-black text-[#9a7b45]">
                   <Ticket className="h-3.5 w-3.5" aria-hidden />
-                  {priceLabel(Number(s.price) || 0)}
+                  {priceLabel(Number(session.price) || 0)}
                 </span>
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-black/25 px-3 py-1.5">
-                  <Users className="h-3.5 w-3.5 text-[#d4b87a]" aria-hidden />
-                  {full ? (s.full ?? 'مكتمل') : formatSeatsRemaining(left)}
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-[#FDFBF7] px-3 py-1.5">
+                  <Users className="h-3.5 w-3.5 text-[#cda04c]" aria-hidden />
+                  {full ? ev.full : formatSeatsRemaining(ev.seatsLeft, left)}
                 </span>
               </div>
-              {s.description ? (
-                <p className="mt-4 line-clamp-3 flex-1 text-sm font-bold leading-relaxed text-white/55">{s.description}</p>
+              {session.description ? (
+                <p className="mt-4 line-clamp-3 flex-1 text-sm font-bold leading-relaxed text-gray-600">
+                  {session.description}
+                </p>
               ) : (
                 <div className="flex-1" />
               )}
               <div className="mt-8 flex flex-col gap-2">
                 <button
                   type="button"
-                  disabled={!s.id || full}
+                  disabled={!session.id || full}
                   onClick={() => {
                     if (full) return;
-                    setOpenFor(s);
+                    setOpenFor(session);
                     setName('');
                     setWhatsapp('');
                     setFormMsg(null);
                   }}
-                  className="flex w-full items-center justify-center rounded-2xl bg-gradient-to-l from-[#7a5f28] to-[#d4b87a] py-3.5 text-sm font-black text-[#0a1814] disabled:cursor-not-allowed disabled:opacity-50"
+                  className="flex w-full items-center justify-center rounded-2xl bg-[#cda04c] py-3.5 text-sm font-black text-white transition hover:bg-[#b3893d] disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  {full ? (s.full ?? 'مكتمل') : (s.register ?? 'سجّل الآن')}
+                  {full ? ev.full : ev.register}
                 </button>
-                {String(s.session_type).toLowerCase().includes('person') && s.location_url ? (
+                {String(session.session_type).toLowerCase().includes('person') && session.location_url ? (
                   <a
-                    href={s.location_url}
+                    href={session.location_url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-[#c9a84c]/35 py-2.5 text-xs font-black text-[#e8d5a8]"
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-[#cda04c]/35 py-2.5 text-xs font-black text-[#cda04c]"
                   >
                     <MapPin className="h-4 w-4" aria-hidden />
-                    {s.location}
+                    {ev.location}
                   </a>
                 ) : null}
               </div>
@@ -252,30 +298,30 @@ export function PublicSessionsCards({
 
       {openFor ? (
         <div
-          className="fixed inset-0 z-[300] flex items-end justify-center bg-black/65 p-4 backdrop-blur-sm sm:items-center"
+          className="fixed inset-0 z-[300] flex items-end justify-center bg-black/65 p-0 backdrop-blur-sm sm:items-center sm:p-4"
           role="dialog"
           aria-modal="true"
           aria-labelledby="session-register-title"
           onClick={() => !submitting && setOpenFor(null)}
         >
           <div
-            className="w-full max-w-md rounded-3xl border border-[#c9a84c]/25 bg-[#071612] p-6 shadow-2xl"
+            className="max-h-[92dvh] w-[95%] max-w-md overflow-y-auto rounded-t-3xl border border-[#cda04c]/25 bg-white p-4 shadow-2xl sm:max-h-[90vh] sm:w-full sm:rounded-3xl sm:p-6 md:w-3/4 md:max-w-lg lg:w-1/2 lg:max-w-xl"
             onClick={(e) => e.stopPropagation()}
-            dir="rtl"
+            dir={dir}
           >
             <div className="flex items-start justify-between gap-2">
               <div>
-                <h3 id="session-register-title" className="text-sm font-black text-[#d4b87a]">
-                  {s.modalTitle}
+                <h3 id="session-register-title" className="text-sm font-black text-[#cda04c]">
+                  {ev.modalTitle}
                 </h3>
-                <p className="mt-1 text-xs font-bold text-white/50">{openFor.title}</p>
+                <p className="mt-1 text-xs font-bold text-gray-500">{openFor.title}</p>
               </div>
               <button
                 type="button"
                 disabled={submitting}
                 onClick={() => setOpenFor(null)}
-                className="rounded-full bg-white/10 p-2 text-white hover:bg-white/15 disabled:opacity-50"
-                aria-label={s.modalClose}
+                className="rounded-full bg-gray-100 p-2 text-gray-700 hover:bg-gray-200 disabled:opacity-50"
+                aria-label={ev.modalClose}
               >
                 <X className="h-4 w-4" />
               </button>
@@ -283,23 +329,23 @@ export function PublicSessionsCards({
 
             <form onSubmit={handleRegister} className="mt-5 space-y-3">
               <div>
-                <label className="mb-1 block text-xs font-black text-white/80">{s.nameLabel}</label>
+                <label className="mb-1 block text-xs font-black text-gray-700">{ev.nameLabel}</label>
                 <input
-                  className="w-full rounded-xl border border-white/12 bg-black/30 px-3 py-2.5 text-sm font-bold text-white outline-none ring-[#c9a84c] placeholder:text-white/30 focus:ring-2"
+                  className="w-full rounded-xl border border-gray-200 bg-[#FDFBF7] px-3 py-2.5 text-sm font-bold text-[#111111] outline-none ring-[#cda04c] placeholder:text-gray-400 focus:ring-2"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder={s.namePlaceholder}
+                  placeholder={ev.namePlaceholder}
                 />
               </div>
               <div>
-                <label className="mb-1 block text-xs font-black text-white/80">{s.waLabel}</label>
+                <label className="mb-1 block text-xs font-black text-gray-700">{ev.waLabel}</label>
                 <input
                   type="tel"
                   dir="ltr"
-                  className="w-full rounded-xl border border-white/12 bg-black/30 px-3 py-2.5 text-sm font-bold text-white outline-none ring-[#c9a84c] placeholder:text-white/30 focus:ring-2"
+                  className="w-full rounded-xl border border-gray-200 bg-[#FDFBF7] px-3 py-2.5 text-sm font-bold text-[#111111] outline-none ring-[#cda04c] placeholder:text-gray-400 focus:ring-2"
                   value={whatsapp}
                   onChange={(e) => setWhatsapp(e.target.value)}
-                  placeholder={s.waPlaceholder}
+                  placeholder={ev.waPlaceholder}
                   autoComplete="tel"
                 />
               </div>
@@ -319,19 +365,19 @@ export function PublicSessionsCards({
               <button
                 type="submit"
                 disabled={submitting || spotsLeft(openFor) < 1}
-                className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-l from-[#7a5f28] to-[#d4b87a] py-3 text-sm font-black text-[#0a1814] disabled:opacity-60"
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#cda04c] py-3 text-sm font-black text-white transition hover:bg-[#b3893d] disabled:opacity-60"
               >
                 {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                {s.submit}
+                {ev.submit}
               </button>
-              <p className="text-center text-[10px] font-bold text-white/35">
-                {s.modalFooterPrefix}{' '}
+              <p className="text-center text-[10px] font-bold text-gray-500">
+                {ev.modalFooterPrefix}{' '}
                 <button
                   type="button"
                   onClick={goToTripForm}
-                  className="font-black text-[#d4b87a] underline underline-offset-2"
+                  className="font-black text-[#cda04c] underline underline-offset-2"
                 >
-                  {s.modalFooterLink}
+                  {ev.modalFooterLink}
                 </button>
               </p>
             </form>

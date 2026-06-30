@@ -1,0 +1,236 @@
+'use client';
+
+import { useCallback, useEffect, useState } from 'react';
+import { CreditCard, Loader2, Minus, Plus, Wallet } from 'lucide-react';
+
+import { supabase } from '@/lib/supabase';
+import {
+  addClientWalletTransaction,
+  fetchClientWalletLedger,
+  formatWalletAmount,
+  formatWalletSignedAmount,
+  formatWalletTransactionDate,
+  type WalletTransaction,
+} from '@/lib/vip-wallet-ledger';
+
+type Props = {
+  clientId: string;
+  initialBalance?: number;
+  onBalanceChange?: (balance: number) => void;
+};
+
+export default function ClientWalletLedgerCard({
+  clientId,
+  initialBalance = 0,
+  onBalanceChange,
+}: Props) {
+  const [balance, setBalance] = useState(initialBalance);
+  const [totalSpent, setTotalSpent] = useState(0);
+  const [transactions, setTransactions] = useState<WalletTransaction[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const [amountInput, setAmountInput] = useState('');
+  const [descriptionInput, setDescriptionInput] = useState('');
+
+  const loadLedger = useCallback(async () => {
+    if (!supabase) {
+      setError('قاعدة البيانات غير مهيأة.');
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      const ledger = await fetchClientWalletLedger(supabase, clientId, { limit: 30 });
+      setBalance(ledger.balance);
+      setTotalSpent(ledger.totalSpent);
+      setTransactions(ledger.transactions);
+      onBalanceChange?.(ledger.balance);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'تعذر تحميل محفظة العهدة.');
+    } finally {
+      setLoading(false);
+    }
+  }, [clientId, onBalanceChange]);
+
+  useEffect(() => {
+    void loadLedger();
+  }, [loadLedger]);
+
+  useEffect(() => {
+    setBalance(initialBalance);
+  }, [initialBalance]);
+
+  const submitTransaction = async (sign: 1 | -1) => {
+    if (!supabase) return;
+    const raw = Number(amountInput.replace(/,/g, '').trim());
+    if (!Number.isFinite(raw) || raw <= 0) {
+      setNotice('أدخل مبلغاً موجباً.');
+      return;
+    }
+    const amount = sign * raw;
+
+    setSaving(true);
+    setNotice(null);
+    setError(null);
+    try {
+      const result = await addClientWalletTransaction(
+        supabase,
+        clientId,
+        amount,
+        descriptionInput,
+      );
+      setBalance(result.balance);
+      setTotalSpent(result.totalSpent);
+      onBalanceChange?.(result.balance);
+      setAmountInput('');
+      setDescriptionInput('');
+      setNotice(sign > 0 ? 'تم تسجيل الإيداع بنجاح.' : 'تم تسجيل الخصم بنجاح.');
+      await loadLedger();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'تعذر حفظ العملية.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <section className="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm">
+      <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="inline-flex items-center gap-2 text-base font-black text-slate-900">
+            <CreditCard className="h-5 w-5 text-[#D4AF37]" aria-hidden />
+            محفظة العهدة المالية 💳
+          </h2>
+          <p className="mt-1 text-xs font-bold text-slate-500">
+            إيداع مبلغ العهدة أو خصم مصروفات الرحلة — يظهر للعميل بشفافية.
+          </p>
+        </div>
+        <div className="flex flex-col items-end gap-2">
+          <div className="rounded-xl border border-[#D4AF37]/35 bg-gradient-to-l from-[#FFFBF0] to-white px-4 py-3 text-end shadow-sm">
+            <p className="text-[10px] font-black uppercase tracking-wider text-slate-500">الرصيد الحالي</p>
+            <p className="mt-0.5 font-mono text-2xl font-black text-[#1E2720]" dir="ltr">
+              {formatWalletAmount(balance)}
+            </p>
+            <p className="mt-1 text-[10px] font-bold text-slate-500" dir="ltr">
+              إجمالي المصروف: {formatWalletAmount(totalSpent)}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {notice ? (
+        <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-bold text-emerald-800">
+          {notice}
+        </div>
+      ) : null}
+      {error ? (
+        <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-bold text-rose-800">
+          {error}
+        </div>
+      ) : null}
+
+      <div className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <label className="flex flex-col gap-1.5 sm:col-span-2">
+          <span className="text-xs font-black text-slate-600">المبلغ (ر.س)</span>
+          <input
+            type="number"
+            step="0.01"
+            min={0}
+            value={amountInput}
+            onChange={(e) => setAmountInput(e.target.value)}
+            placeholder="5000"
+            dir="ltr"
+            className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-bold text-slate-900 outline-none focus:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37]/25"
+          />
+        </label>
+        <label className="flex flex-col gap-1.5 sm:col-span-2">
+          <span className="text-xs font-black text-slate-600">الوصف / السبب</span>
+          <input
+            type="text"
+            value={descriptionInput}
+            onChange={(e) => setDescriptionInput(e.target.value)}
+            placeholder="مثال: إيداع عهدة الرحلة · حجز فندق · تذاكر دخول"
+            className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-bold text-slate-900 outline-none focus:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37]/25"
+          />
+        </label>
+      </div>
+
+      <div className="mb-6 flex flex-wrap gap-2">
+        <button
+          type="button"
+          disabled={saving}
+          onClick={() => void submitTransaction(1)}
+          className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-emerald-700 px-4 py-2.5 text-sm font-black text-white transition hover:bg-emerald-800 disabled:opacity-60 sm:flex-none"
+        >
+          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+          إيداع (+)
+        </button>
+        <button
+          type="button"
+          disabled={saving}
+          onClick={() => void submitTransaction(-1)}
+          className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-rose-700 px-4 py-2.5 text-sm font-black text-white transition hover:bg-rose-800 disabled:opacity-60 sm:flex-none"
+        >
+          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Minus className="h-4 w-4" />}
+          خصم (−)
+        </button>
+      </div>
+
+      <div>
+        <h3 className="mb-3 inline-flex items-center gap-2 text-sm font-black text-slate-800">
+          <Wallet className="h-4 w-4 text-slate-500" aria-hidden />
+          آخر العمليات
+        </h3>
+        {loading ? (
+          <div className="flex items-center justify-center gap-2 py-10 text-slate-500">
+            <Loader2 className="h-5 w-5 animate-spin" />
+            <span className="text-sm font-bold">جاري التحميل…</span>
+          </div>
+        ) : transactions.length === 0 ? (
+          <div className="rounded-xl bg-slate-50 px-4 py-8 text-center text-sm font-bold text-slate-400">
+            لا توجد عمليات بعد — ابدأ بإيداع عهدة VIP.
+          </div>
+        ) : (
+          <div className="overflow-x-auto rounded-xl border border-slate-200">
+            <table className="w-full min-w-[420px] border-collapse text-start text-sm">
+              <thead>
+                <tr className="bg-[#1E2720] text-[10px] font-black uppercase tracking-wider text-[#D4AF37]">
+                  <th className="px-3 py-2.5">التاريخ</th>
+                  <th className="px-3 py-2.5">الوصف</th>
+                  <th className="px-3 py-2.5 text-end">المبلغ</th>
+                </tr>
+              </thead>
+              <tbody>
+                {transactions.map((tx, i) => (
+                  <tr
+                    key={tx.id}
+                    className={i % 2 === 0 ? 'bg-white' : 'bg-slate-50/80'}
+                  >
+                    <td className="px-3 py-3 text-xs font-semibold text-slate-600 whitespace-nowrap">
+                      {formatWalletTransactionDate(tx.createdAt)}
+                    </td>
+                    <td className="px-3 py-3 font-bold text-slate-800">
+                      {tx.description || '—'}
+                    </td>
+                    <td
+                      className={`px-3 py-3 text-end font-mono text-sm font-black ${
+                        tx.amount >= 0 ? 'text-emerald-700' : 'text-rose-700'
+                      }`}
+                      dir="ltr"
+                    >
+                      {formatWalletSignedAmount(tx.amount)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}

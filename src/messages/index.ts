@@ -1,7 +1,18 @@
 /**
- * طبقة الترجمة الافتراضية — لاحقاً: import { en } from './en' و getMessages(locale).
+ * Translation layer — Arabic default + English.
+ * Usage (client): `const { t } = useLanguage()` from `@/context/LanguageContext`
+ * Usage (server): `getMessages('ar')` until server pages adopt locale cookies.
  */
-export { ar } from './ar';
-export type { AppMessages } from './ar';
+import type { AppMessages } from './ar';
+import { ar } from './ar';
+import { en } from './en';
 
-export const defaultLocale = 'ar' as const;
+export type { AppMessages } from './ar';
+export { ar, en };
+
+export type { Locale } from '@/lib/i18n/locale';
+export { defaultLocale, locales } from '@/lib/i18n/locale';
+
+export function getMessages(locale: 'ar' | 'en'): AppMessages {
+  return locale === 'en' ? en : ar;
+}

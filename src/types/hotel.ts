@@ -19,5 +19,7 @@ export type HotelRow = {
   category: HotelCategory | LegacyHotelCategory | string;
   booking_url: string | null;
   notes: string | null;
+  manager_name: string | null;
+  contact_number: string | null;
   created_at: string;
 };

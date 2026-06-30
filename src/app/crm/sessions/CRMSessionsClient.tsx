@@ -13,8 +13,9 @@ import type { Session, SessionRegistration } from '@/types/session-tables';
 import { SessionForm } from './_components/SessionForm';
 import { SessionsTable } from './_components/SessionsTable';
 
-const HAS_PUBLIC_SUPABASE_ENV =
-  Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL) && Boolean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+import { isSupabaseConfigured } from '@/lib/supabase-config';
+
+const HAS_PUBLIC_SUPABASE_ENV = isSupabaseConfigured();
 
 export default function CRMSessionsClient() {
   const [sessions, setSessions] = useState<Session[]>([]);

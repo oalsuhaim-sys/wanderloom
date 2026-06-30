@@ -1,0 +1,88 @@
+'use client';
+
+import { useState } from 'react';
+import { MessageCircle } from 'lucide-react';
+
+import {
+  launchWhatsAppTemplate,
+  WHATSAPP_TEMPLATE_OPTIONS,
+  type WhatsAppTemplateId,
+} from '@/lib/whatsapp-templates';
+
+type Props = {
+  phone?: string | null;
+  clientName: string;
+  tripTitle: string;
+  totalEstimatedCost: number;
+  quoteId: string;
+  disabled?: boolean;
+  className?: string;
+  onLaunched?: () => void;
+  onError?: (message: string) => void;
+};
+
+export default function WhatsAppTemplatePicker({
+  phone,
+  clientName,
+  tripTitle,
+  totalEstimatedCost,
+  quoteId,
+  disabled = false,
+  className = '',
+  onLaunched,
+  onError,
+}: Props) {
+  const [value, setValue] = useState('');
+
+  const handleChange = (next: string) => {
+    if (!next) return;
+
+    if (!quoteId) {
+      onError?.('معرّف العرض غير صالح.');
+      setValue('');
+      return;
+    }
+
+    launchWhatsAppTemplate({
+      templateId: next as WhatsAppTemplateId,
+      phone,
+      clientName,
+      tripTitle,
+      totalEstimatedCost,
+      quoteId,
+    });
+
+    onLaunched?.();
+    setValue('');
+  };
+
+  return (
+    <div className={`relative min-w-[9.5rem] ${className}`}>
+      <MessageCircle
+        className="pointer-events-none absolute start-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#C9A84C]"
+        aria-hidden
+      />
+      <select
+        value={value}
+        disabled={disabled || !quoteId}
+        onChange={(e) => handleChange(e.target.value)}
+        className="w-full appearance-none rounded-lg border-2 border-[#C9A84C]/55 bg-gradient-to-l from-[#FEFDF9] to-white py-2 pe-8 ps-8 text-[10px] font-black text-[#1C4532] shadow-sm outline-none transition hover:border-[#C9A84C] focus:border-[#C9A84C] focus:ring-2 focus:ring-[#C9A84C]/25 disabled:cursor-not-allowed disabled:opacity-50"
+        aria-label="قوالب واتساب"
+        title={phone ? 'إرسال قالب واتساب للعميل' : 'فتح واتساب بدون رقم — ألصق الرقم يدوياً'}
+      >
+        <option value="">قوالب واتساب</option>
+        {WHATSAPP_TEMPLATE_OPTIONS.map((option) => (
+          <option key={option.id} value={option.id}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+      <span
+        className="pointer-events-none absolute end-2.5 top-1/2 -translate-y-1/2 text-[10px] text-[#C9A84C]"
+        aria-hidden
+      >
+        ▾
+      </span>
+    </div>
+  );
+}

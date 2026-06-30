@@ -24,3 +24,385 @@ body {
   color: var(--foreground);
   font-family: var(--font-tajawal), var(--font-geist-sans), system-ui, sans-serif;
 }
+
+/* Hide scrollbar globally — scroll remains functional */
+* {
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+}
+
+*::-webkit-scrollbar {
+  display: none; /* Chrome, Safari and Opera */
+}
+
+/* ——— Wanderloom landing: woven “W” thread watermark ——— */
+.bg-wanderloom-pattern {
+  --wanderloom-pattern-base: #fbfbf9;
+  --wanderloom-pattern-tile: 200px;
+  background-color: var(--wanderloom-pattern-base);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'%3E%3Cg fill='none' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M22 52 L54 138 L100 58 L146 138 L178 52' stroke='%237A6E52' stroke-opacity='0.038' stroke-width='0.55'/%3E%3Cpath d='M22 52 L54 138 L100 58 L146 138 L178 52' stroke='%236B5C38' stroke-opacity='0.018' stroke-width='0.45' transform='translate(100 100)'/%3E%3Cpath d='M0 50 H200 M0 100 H200 M0 150 H200' stroke='%239C8B6E' stroke-opacity='0.022' stroke-width='0.35'/%3E%3Cpath d='M50 0 V200 M100 0 V200 M150 0 V200' stroke='%239C8B6E' stroke-opacity='0.022' stroke-width='0.35'/%3E%3Cpath d='M-30 0 L230 200 M230 0 L-30 200' stroke='%238B7355' stroke-opacity='0.012' stroke-width='0.3'/%3E%3C/g%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: var(--wanderloom-pattern-tile) var(--wanderloom-pattern-tile);
+  background-position: center top;
+}
+
+/* Responsive modal shells (RTL-safe) */
+.wanderloom-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0;
+  background: rgb(0 0 0 / 0.4);
+  backdrop-filter: blur(4px);
+}
+
+@media (min-width: 640px) {
+  .wanderloom-modal-backdrop {
+    align-items: center;
+    padding: 1rem;
+  }
+}
+
+.wanderloom-modal-panel {
+  display: flex;
+  max-height: 92dvh;
+  width: 95%;
+  max-width: 32rem;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 1rem 1rem 0 0;
+  background: #fff;
+  box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+}
+
+@media (min-width: 640px) {
+  .wanderloom-modal-panel {
+    max-height: 90vh;
+    width: 100%;
+    border-radius: 1rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .wanderloom-modal-panel {
+    width: 50%;
+    max-width: 48rem;
+  }
+}
+
+/* Mobile-first page rhythm (RTL-safe) */
+.wl-page-x {
+  padding-inline: 1rem;
+}
+
+@media (min-width: 640px) {
+  .wl-page-x {
+    padding-inline: 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .wl-page-x {
+    padding-inline: 2rem;
+  }
+}
+
+.wl-touch-btn {
+  min-height: 2.5rem;
+  padding: 0.625rem 0.75rem;
+}
+
+/* Force square radios in trip/quiz forms — kills native circular UI */
+input[type='radio'].wanderloom-raw-radio {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  border-radius: 2px !important;
+  accent-color: #1e3f20;
+}
+
+input[type='radio'].wanderloom-raw-radio::before,
+input[type='radio'].wanderloom-raw-radio::after {
+  box-sizing: border-box;
+}
+
+/* Admin itinerary builder — Leaflet pan/zoom */
+.leaflet-container {
+  z-index: 0;
+  touch-action: none;
+}
+
+.leaflet-pane,
+.leaflet-top,
+.leaflet-bottom {
+  z-index: auto;
+}
+
+/* Admin itinerary builder — numbered Leaflet markers */
+.itinerary-builder-map-marker {
+  background: transparent !important;
+  border: none !important;
+}
+
+.itinerary-builder-map-marker__badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 9999px;
+  border: 2px solid #d4af37;
+  background: #fafafa;
+  color: #1e2720;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1;
+  box-shadow: 0 2px 8px rgba(30, 39, 32, 0.2);
+}
+
+/* ——— VIP luxury booking voucher (A4 print / Save as PDF) ——— */
+#vip-luxury-booking-voucher-print {
+  display: none;
+}
+
+.vip-print-document {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 210mm;
+  min-height: calc(297mm - 30mm);
+  margin: 0 auto;
+  padding: 0;
+  background: #fff;
+  color: #111;
+  font-family: var(--font-tajawal), system-ui, sans-serif;
+  font-size: 11pt;
+  line-height: 1.45;
+  display: flex;
+  flex-direction: column;
+}
+
+.vip-print-body {
+  flex: 1 1 auto;
+}
+
+.vip-print-header {
+  width: 100%;
+  flex-shrink: 0;
+  margin: 0 0 7mm;
+  padding: 7mm 10mm;
+  background: #1e2720;
+  color: #d4af37;
+  text-align: center;
+}
+
+.vip-print-header-title {
+  margin: 0;
+  font-size: 14pt;
+  font-weight: 800;
+  line-height: 1.5;
+  color: #d4af37;
+}
+
+.vip-print-header-sep {
+  color: #d4af37;
+  opacity: 0.85;
+}
+
+.vip-print-client-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4mm 8mm;
+  margin-bottom: 8mm;
+  text-align: right;
+}
+
+.vip-print-client-cell {
+  break-inside: avoid;
+}
+
+.vip-print-label {
+  display: block;
+  font-size: 8pt;
+  font-weight: 700;
+  color: #666;
+  letter-spacing: 0.04em;
+}
+
+.vip-print-value {
+  margin: 1mm 0 0;
+  font-size: 11pt;
+  font-weight: 800;
+  color: #111;
+}
+
+.vip-print-section {
+  margin-bottom: 7mm;
+  break-inside: avoid-page;
+}
+
+.vip-print-section-title {
+  margin: 0 0 3mm;
+  padding-bottom: 2mm;
+  border-bottom: 2px solid #d4af37;
+  font-size: 12pt;
+  font-weight: 800;
+  color: #1e2720;
+}
+
+.vip-print-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 10pt;
+}
+
+.vip-print-table thead th {
+  padding: 3mm 2.5mm;
+  background: #1e2720;
+  color: #d4af37;
+  font-weight: 800;
+  text-align: right;
+  border: 1px solid #1e2720;
+}
+
+.vip-print-table tbody td {
+  padding: 3mm 2.5mm;
+  background: #fff;
+  color: #111;
+  font-weight: 600;
+  text-align: right;
+  vertical-align: middle;
+  border-bottom: 1px solid #e5e7eb;
+  word-wrap: break-word;
+  overflow-wrap: anywhere;
+}
+
+.vip-print-ltr {
+  display: inline-block;
+  direction: ltr;
+  unicode-bidi: isolate;
+  text-align: left;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.vip-print-ltr-wrap {
+  white-space: normal;
+  word-break: break-word;
+  max-width: 100%;
+}
+
+.vip-print-cell-label {
+  font-size: 8pt;
+  font-weight: 700;
+  color: #666;
+}
+
+.vip-print-muted {
+  margin: 0;
+  font-size: 10pt;
+  color: #555;
+}
+
+.vip-print-footer {
+  flex-shrink: 0;
+  margin-top: auto;
+  padding-top: 6mm;
+  text-align: center;
+  break-inside: avoid;
+}
+
+.vip-print-barcode {
+  margin: 0 auto 3mm;
+  max-width: 170mm;
+}
+
+.vip-print-barcode-bars {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  justify-content: center;
+  gap: 1px;
+  height: 16mm;
+  margin: 0 auto 2mm;
+}
+
+.vip-print-barcode-bar {
+  height: 100%;
+  min-width: 1px;
+  background: #111;
+}
+
+.vip-print-barcode-caption {
+  margin: 0;
+  font-family: ui-monospace, monospace;
+  font-size: 11pt;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: #111;
+}
+
+.vip-print-footer-note {
+  margin: 2mm 0 0;
+  font-size: 8pt;
+  color: #666;
+}
+
+@media print {
+  @page {
+    size: A4;
+    margin: 15mm;
+  }
+
+  body {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    background: #fff !important;
+  }
+
+  .print\:hidden {
+    display: none !important;
+  }
+
+  #vip-luxury-booking-voucher-print {
+    display: block !important;
+    position: relative;
+    width: 100% !important;
+    background: #fff !important;
+  }
+
+  #vip-luxury-booking-voucher-print * {
+    visibility: visible;
+  }
+
+  .vip-print-document {
+    width: 100%;
+    max-width: none;
+    min-height: calc(297mm - 30mm);
+    box-shadow: none;
+  }
+
+  .vip-print-header {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .vip-print-table thead th {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
+
+/* Hide scrollbar for Chrome, Safari and Opera */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Hide scrollbar for IE, Edge and Firefox */
+.no-scrollbar {
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+}

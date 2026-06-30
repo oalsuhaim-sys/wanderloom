@@ -1,6 +1,6 @@
-/** يُستخدم في الواجهة والخادم للتحقق السريع من ضبط المتغيرات العامة. */
+import { supabaseAnonKey, supabaseUrl } from '@/lib/supabase/credentials';
+
+/** يُستخدم في الواجهة والخادم — دائماً true أثناء تجاوز env */
 export function isSupabaseConfigured(): boolean {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() ?? '';
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() ?? '';
-  return Boolean(url && key);
+  return Boolean(supabaseUrl && supabaseAnonKey);
 }
