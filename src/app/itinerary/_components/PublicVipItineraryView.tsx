@@ -25,10 +25,12 @@ import VipItineraryBottomNav, { type ItineraryMainTab } from './VipItineraryBott
 import VipItineraryHotelsTab from './VipItineraryHotelsTab'
 import VipConfidentialWatermark from './VipConfidentialWatermark'
 import VipItineraryPinGate from './VipItineraryPinGate'
+import ClientPortalSignOutButton from './ClientPortalSignOutButton'
 import { useVipSessionIdleLock } from '@/lib/use-vip-session-idle-lock'
 import VipPackingListCard from './VipPackingListCard'
 import VipPortalTopNav, { type PortalSection } from './VipPortalTopNav'
 import VipTravelWardrobeStore from './VipTravelWardrobeStore'
+import PostTripDashboard from './PostTripDashboard'
 
 import {
   clearItineraryUnlock,
@@ -53,6 +55,7 @@ import {
   type PublicItinerary,
   type PublicWeatherForecast,
 } from '@/lib/public-itinerary'
+import { isTripFinished } from '@/lib/client-portal-trip-phase'
 
 const WA_CONCIERGE = '966544948640'
 const DEFAULT_HERO =
@@ -578,6 +581,7 @@ export default function PublicVipItineraryView({
   }
 
   const dateRange = formatTripDateRange(trip.startDate, trip.endDate)
+  const tripFinished = isTripFinished(trip.endDate)
   const fd = trip.flightDetails
   const conciergeText = `\u0645\u0631\u062d\u0628\u0627\u064b\u060c \u0623\u0646\u0627 ${trip.customerName}\u060c \u0623\u062d\u062a\u0627\u062c \u0645\u0633\u0627\u0639\u062f\u0629 \u0627\u0644\u0643\u0648\u0646\u0633\u064a\u0631\u062c \u0628\u062e\u0635\u0648\u0635 \u0631\u062d\u0644\u062a\u064a \u0625\u0644\u0649 ${trip.destination}.`
 
@@ -599,6 +603,11 @@ export default function PublicVipItineraryView({
         </p>
       ) : null}
       <header className="relative min-h-[42vh] overflow-hidden">
+        {trip.hasPin ? (
+          <div className="absolute left-4 top-4 z-20 sm:left-6 sm:top-5">
+            <ClientPortalSignOutButton slug={slug} variant="dark" />
+          </div>
+        ) : null}
         <img
           src={trip.coverImage || DEFAULT_HERO}
           alt=""
@@ -624,6 +633,17 @@ export default function PublicVipItineraryView({
       <main className="mx-auto max-w-lg px-4 sm:max-w-xl sm:px-6">
         {trip.isMedical ? <VipMedicalConciergeBanner services={trip.preTripServices ?? []} /> : null}
 
+        {tripFinished ? (
+          <div className="py-4">
+            <PostTripDashboard
+              trip={trip}
+              dateRange={dateRange}
+              variant="dark"
+              currentItinerarySlug={slug}
+            />
+          </div>
+        ) : (
+          <>
         <VipPortalTopNav
           active={portalSection}
           onChange={setPortalSection}
@@ -688,6 +708,8 @@ export default function PublicVipItineraryView({
               days={trip.days}
               destination={trip.destination}
               mapboxAccessToken={mapboxAccessToken}
+              itineraryId={trip.id}
+              clientId={trip.clientId}
             />
           </section>
         ) : null}
@@ -706,9 +728,11 @@ export default function PublicVipItineraryView({
         ) : null}
           </>
         )}
+          </>
+        )}
       </main>
 
-      {portalSection === 'itinerary' ? (
+      {!tripFinished && portalSection === 'itinerary' ? (
       <VipItineraryBottomNav activeTab={activeTab} onTabChange={setActiveTab} />
       ) : null}
 

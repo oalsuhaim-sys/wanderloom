@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react';
 import { useParams } from 'next/navigation';
-import { type SupabaseClient } from '@supabase/supabase-js';
-import { AlertCircle, Loader2, Map, RefreshCw } from 'lucide-react';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import { AlertCircle, Loader2, Map, RefreshCw, User } from 'lucide-react';
 
 import VipButlerFab from '../_components/VipButlerFab';
 import VipLuxuryBookingVoucherPrint from '../_components/VipLuxuryBookingVoucherPrint';
@@ -12,22 +12,26 @@ import VipClientBookingsTab from '../_components/VipClientBookingsTab';
 import VipClientFashionTab from '../_components/VipClientFashionTab';
 import VipClientPackingTab from '../_components/VipClientPackingTab';
 import VipClientTabNav, { type VipClientTab } from '../_components/VipClientTabNav';
+import ClientProfilePinModal from '../_components/ClientProfilePinModal';
+import ItineraryReferralShareCard from '../_components/ItineraryReferralShareCard';
+import TripFinishedNotice from '../_components/TripFinishedNotice';
 import VipMedicalConciergeBanner, {
   filterNonMedicalPreTripServices,
 } from '../_components/VipMedicalConciergeBanner';
 import VipDailyItineraryTimeline from '../_components/VipDailyItineraryTimeline';
+import PostTripDashboard from '../_components/PostTripDashboard';
 import VipPreTripServicesCard from '../_components/VipPreTripServicesCard';
 import VipVaultCountdown from '../_components/VipVaultCountdown';
 import VipLiveWeatherWidget from '../_components/VipLiveWeatherWidget';
 import VipPwaInstallButton from '../_components/VipPwaInstallButton';
 import VipItineraryPinGate from '../_components/VipItineraryPinGate';
+import ClientPortalSignOutButton from '../_components/ClientPortalSignOutButton';
 import { useVipSessionIdleLock } from '@/lib/use-vip-session-idle-lock';
 import {
   buildTripMatchContext,
   filterWardrobeForTrip,
   type WardrobeMatchRow,
 } from '@/lib/travel-wardrobe-trip';
-import { resolveAgencyWhatsAppDigits } from '@/lib/vip-agency-whatsapp';
 
 import {
   clearItineraryUnlock,
@@ -51,9 +55,13 @@ import {
   toPublicItinerary,
   type PublicItinerary,
 } from '@/lib/public-itinerary';
+import { isTripFinished } from '@/lib/client-portal-trip-phase';
+import {
+  hasClientProfileUnlock,
+  persistClientProfileUnlock,
+} from '@/lib/client-profile-unlock';
 import { isVipClientItineraryUnlocked } from '@/lib/vip-vault-reveal';
 import { supabase } from '@/lib/supabase/universal';
-import type { SupabaseClient } from '@supabase/supabase-js';
 
 /** جلب آمن — بدون أعمدة قد لا تكون في المخطط (مثل start_date) */
 const ITINERARY_FETCH_SELECT = '*';
@@ -64,6 +72,67 @@ const WATERMARK_TILES = 48;
 
 function getSupabase(): SupabaseClient {
   return supabase;
+}
+
+function resolveRouteSlug(raw: string | string[] | undefined): string {
+  const id = Array.isArray(raw) ? raw[0] : raw;
+  return String(id ?? '').trim();
+}
+
+function buildPublicTripFromRow(row: Record<string, unknown>): PublicItinerary {
+  const normalizedRow = normalizeFetchedItineraryRow(row);
+  const baseTrip = toPublicItinerary(normalizedRow);
+  const rowSummaries = parseVipSummaries(normalizedRow);
+
+  return normalizePublicItinerary({
+    ...baseTrip,
+    vipSummaries: rowSummaries,
+    weather_summary:
+      coerceAdminSummaryString(normalizedRow.weather_summary) ?? rowSummaries.weather,
+    packing_summary:
+      coerceAdminSummaryString(normalizedRow.packing_summary) ?? rowSummaries.packing,
+    budget_summary:
+      coerceAdminSummaryString(normalizedRow.budget_summary) ?? rowSummaries.budget,
+    flight_summary:
+      coerceAdminSummaryString(normalizedRow.flight_summary) ?? rowSummaries.flight,
+  });
+}
+
+async function enrichTripWithClientPublicFields(
+  supabase: SupabaseClient,
+  trip: PublicItinerary,
+): Promise<PublicItinerary> {
+  let resolvedClientId = trip.clientId;
+
+  if (
+    (resolvedClientId == null || String(resolvedClientId).trim() === '') &&
+    trip.id != null
+  ) {
+    const { data: row } = await supabase
+      .from('itineraries')
+      .select('client_id')
+      .eq('id', trip.id)
+      .maybeSingle();
+
+    if (row?.client_id != null) {
+      resolvedClientId = row.client_id as string | number;
+    }
+  }
+
+  if (resolvedClientId == null || String(resolvedClientId).trim() === '') {
+    return normalizePublicItinerary({ ...trip, referralCode: trip.referralCode ?? null });
+  }
+
+  const { data } = await supabase
+    .from('clients')
+    .select('referral_code, ref_code')
+    .eq('id', resolvedClientId)
+    .maybeSingle();
+
+  const referral =
+    String(data?.referral_code ?? data?.ref_code ?? trip.referralCode ?? '').trim() || null;
+
+  return normalizePublicItinerary({ ...trip, clientId: resolvedClientId, referralCode: referral });
 }
 
 const UUID_RE =
@@ -202,7 +271,8 @@ async function fetchItineraryBySlug(
   supabase: SupabaseClient,
   slug: string,
 ): Promise<{ row: Record<string, unknown> | null; error: string | null }> {
-  const trimmed = slug.trim();
+  // معرّفات اصطناعية قديمة (client-… / vip-…) تكسر مطابقة uuid — ننزع البادئة قبل الاستعلام
+  const trimmed = slug.trim().replace(/^(client-|vip-)/i, '');
   if (!trimmed) return { row: null, error: null };
 
   const query = () => supabase.from('itineraries').select(ITINERARY_FETCH_SELECT);
@@ -217,15 +287,20 @@ async function fetchItineraryBySlug(
     const res = await query().eq('magic_link_id', trimmed).maybeSingle();
     if (res.error) return { row: null, error: res.error.message };
     if (res.data) return { row: res.data as Record<string, unknown>, error: null };
+  } else {
+    // نص غير uuid — نجرب magic_link_id ثم id مع تجاهل أخطاء صيغة uuid/الأرقام
+    const byMagic = await query().eq('magic_link_id', trimmed).maybeSingle();
+    if (byMagic.data) return { row: byMagic.data as Record<string, unknown>, error: null };
+    if (byMagic.error && !/invalid input syntax/i.test(byMagic.error.message)) {
+      return { row: null, error: byMagic.error.message };
+    }
+
+    const byId = await query().eq('id', trimmed).maybeSingle();
+    if (byId.data) return { row: byId.data as Record<string, unknown>, error: null };
+    if (byId.error && !/invalid input syntax/i.test(byId.error.message)) {
+      return { row: null, error: byId.error.message };
+    }
   }
-
-  const byMagic = await query().eq('magic_link_id', trimmed).maybeSingle();
-  if (byMagic.error) return { row: null, error: byMagic.error.message };
-  if (byMagic.data) return { row: byMagic.data as Record<string, unknown>, error: null };
-
-  const byId = await query().eq('id', trimmed).maybeSingle();
-  if (byId.error) return { row: null, error: byId.error.message };
-  if (byId.data) return { row: byId.data as Record<string, unknown>, error: null };
 
   return { row: null, error: null };
 }
@@ -405,6 +480,12 @@ type ClientViewProps = {
   wardrobeItems: Record<string, unknown>[];
   clientSectionTab: VipClientTab;
   onClientSectionTabChange: (tab: VipClientTab) => void;
+  hasLinkedClient: boolean;
+  profilePortalActive: boolean;
+  profileUnlocked: boolean;
+  onRequestProfilePin: () => void;
+  onCloseProfilePortal: () => void;
+  currentItinerarySlug?: string;
 };
 
 /** واجهة العميل VIP — هيكل لوحة التحكم الثابت (بوردينق · طقس · تبويبات · محتوى) */
@@ -417,11 +498,72 @@ function ClientView({
   wardrobeItems,
   clientSectionTab,
   onClientSectionTabChange,
+  hasLinkedClient,
+  profilePortalActive,
+  profileUnlocked,
+  onRequestProfilePin,
+  onCloseProfilePortal,
+  currentItinerarySlug,
 }: ClientViewProps) {
-  const safeDays = itinerary.days ?? [];
-  const totalActivities = safeDays.reduce((n, d) => n + (d.activities?.length ?? 0), 0);
-  const whatsappPhone = resolveAgencyWhatsAppDigits();
-  const salonServices = filterNonMedicalPreTripServices(itinerary.preTripServices ?? []);
+  const safeDays = itinerary?.days ?? [];
+  const totalActivities = safeDays.reduce((n, d) => n + (d?.activities?.length ?? 0), 0);
+  const salonServices = filterNonMedicalPreTripServices(itinerary?.preTripServices ?? []);
+  const destination = itinerary?.destination ?? '';
+  const showFashion = itinerary?.showFashionServices === true;
+  const tripFinished = isTripFinished(itinerary?.endDate);
+
+  if (itinerary?.id == null || String(itinerary.id).trim() === '') {
+    return (
+      <div className="flex min-h-[50vh] items-center justify-center px-6 text-center text-sm font-semibold text-gray-600">
+        لم يتم العثور على المسار.
+      </div>
+    );
+  }
+
+  if (profilePortalActive && profileUnlocked) {
+    return (
+      <div className="min-h-screen bg-[#FDFBF7] text-gray-900">
+        <div className="mx-auto max-w-lg px-4 pt-4 sm:max-w-xl">
+          <button
+            type="button"
+            onClick={onCloseProfilePortal}
+            className="mb-4 inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-xs font-bold text-gray-700 shadow-sm transition hover:border-[#D4AF37]/40"
+          >
+            العودة للمسار
+          </button>
+        </div>
+        <main className="relative z-10 mx-auto max-w-lg p-4 pb-28 font-[family-name:var(--font-tajawal),system-ui,sans-serif] sm:max-w-xl sm:px-6 sm:pb-32">
+          <PostTripDashboard
+            trip={itinerary}
+            dateRange={dateRange}
+            currentItinerarySlug={currentItinerarySlug}
+            onReturnToItinerary={onCloseProfilePortal}
+          />
+        </main>
+      </div>
+    );
+  }
+
+  if (tripFinished) {
+    return (
+      <div className="min-h-screen bg-[#FDFBF7] text-gray-900">
+        <div className="mx-auto flex max-w-lg justify-center px-4 pt-3 sm:max-w-xl">
+          <VipPwaInstallButton />
+        </div>
+        <main className="relative z-10 mx-auto max-w-lg space-y-4 p-4 pb-28 font-[family-name:var(--font-tajawal),system-ui,sans-serif] sm:max-w-xl sm:px-6 sm:pb-32">
+          <TripFinishedNotice
+            destination={destination}
+            customerName={itinerary.customerName}
+            showProfileButton={hasLinkedClient}
+            onOpenProfile={onRequestProfilePin}
+          />
+          {itinerary.referralCode ? (
+            <ItineraryReferralShareCard referralCode={itinerary.referralCode} />
+          ) : null}
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#FDFBF7] text-gray-900">
@@ -432,8 +574,11 @@ function ClientView({
       </div>
 
       <div className="mx-auto max-w-lg px-4 pt-4 sm:max-w-xl">
-        {itinerary.isMedical ? (
-          <VipMedicalConciergeBanner services={itinerary.preTripServices ?? []} />
+        {itinerary?.isMedical ? (
+          <VipMedicalConciergeBanner services={itinerary?.preTripServices ?? []} />
+        ) : null}
+        {itinerary.referralCode ? (
+          <ItineraryReferralShareCard referralCode={itinerary.referralCode} />
         ) : null}
       </div>
 
@@ -455,7 +600,7 @@ function ClientView({
             />
             مسار الرحلة
           </button>
-          {itinerary.showFashionServices ? (
+          {showFashion ? (
           <button
             type="button"
             onClick={() => setActiveTab('wardrobe')}
@@ -479,8 +624,8 @@ function ClientView({
       {activeTab === 'itinerary' && clientSectionTab === 'itinerary' ? (
         <div className="relative z-10 mx-auto mb-4 max-w-lg px-4 sm:max-w-xl">
           <VipLiveWeatherWidget
-            destination={itinerary.destination ?? ''}
-            fallback={itinerary.weather}
+            destination={destination}
+            fallback={itinerary?.weather}
           />
         </div>
       ) : null}
@@ -518,14 +663,16 @@ function ClientView({
                   </p>
                 ) : null}
               </header>
-              {itinerary.showFashionServices ? (
+              {showFashion ? (
                 <VipPreTripServicesCard services={salonServices} />
               ) : null}
               {safeDays.length > 0 ? (
                 <VipDailyItineraryTimeline
                   days={safeDays}
-                  destination={itinerary.destination ?? ''}
-                  tripWeather={itinerary.weather}
+                  destination={destination}
+                  tripWeather={itinerary?.weather}
+                  itineraryId={itinerary.id}
+                  clientId={itinerary.clientId}
                 />
               ) : (
                 <p className="rounded-2xl border border-[#D4AF37]/30 bg-white py-12 text-center text-sm text-gray-600 shadow-sm">
@@ -545,7 +692,7 @@ function ClientView({
         ) : null}
 
         {activeTab === 'itinerary' && clientSectionTab === 'packing' ? (
-          <VipClientPackingTab trip={itinerary} />
+          <VipClientPackingTab trip={itinerary} profileUnlocked={profileUnlocked} />
         ) : null}
       </main>
     </div>
@@ -553,8 +700,8 @@ function ClientView({
 }
 
 export default function VipItineraryPage() {
-  const params = useParams<{ id: string }>();
-  const slug = String(params?.id ?? '').trim();
+  const params = useParams<{ id: string | string[] }>();
+  const slug = resolveRouteSlug(params?.id);
 
   const [trip, setTrip] = useState<PublicItinerary | null>(null);
   const [passcode, setPasscode] = useState<string | null>(null);
@@ -571,6 +718,9 @@ export default function VipItineraryPage() {
   const [wardrobeItems, setWardrobeItems] = useState<Record<string, unknown>[]>([]);
   const [clientSectionTab, setClientSectionTab] = useState<VipClientTab>('itinerary');
   const [sessionExpired, setSessionExpired] = useState(false);
+  const [profileModalOpen, setProfileModalOpen] = useState(false);
+  const [profileUnlocked, setProfileUnlocked] = useState(false);
+  const [profilePortalActive, setProfilePortalActive] = useState(false);
 
   const { sessionLocked, resetSessionLock } = useVipSessionIdleLock(
     authenticated && !!trip?.hasPin,
@@ -613,6 +763,15 @@ export default function VipItineraryPage() {
 
     void fetchWardrobe();
   }, [authenticated, trip]);
+
+  useEffect(() => {
+    if (trip?.clientId != null && String(trip.clientId).trim() !== '') {
+      setProfileUnlocked(hasClientProfileUnlock(trip.clientId));
+    } else {
+      setProfileUnlocked(false);
+      setProfilePortalActive(false);
+    }
+  }, [trip?.clientId]);
 
   useEffect(() => {
     if (trip && !trip.showFashionServices && activeTab === 'wardrobe') {
@@ -684,27 +843,26 @@ export default function VipItineraryPage() {
         }
         clearWanderloomAccessKey();
         clearItineraryUnlock(slug);
-        setFetchError('لم يُعثر على هذا المسار. تحقق من الرابط أو تواصل مع الكونسيرج.');
+        setFetchError('لم يتم العثور على المسار. تحقق من الرابط أو تواصل مع الكونسيرج.');
         setTrip(null);
         setPasscode(null);
         return;
       }
 
-      const normalizedRow = normalizeFetchedItineraryRow(row);
-      const baseTrip = toPublicItinerary(normalizedRow);
-      const rowSummaries = parseVipSummaries(normalizedRow);
+      const parsed = await enrichTripWithClientPublicFields(
+        supabase,
+        buildPublicTripFromRow(row),
+      );
+      const tripWithClient =
+        parsed.clientId == null && row.client_id != null
+          ? normalizePublicItinerary({
+              ...parsed,
+              clientId: row.client_id as string | number,
+            })
+          : parsed;
+      const code = passcodeFromRow(normalizeFetchedItineraryRow(row));
 
-      const parsed = normalizePublicItinerary({
-        ...baseTrip,
-        vipSummaries: rowSummaries,
-        weather_summary: coerceAdminSummaryString(normalizedRow.weather_summary) ?? rowSummaries.weather,
-        packing_summary: coerceAdminSummaryString(normalizedRow.packing_summary) ?? rowSummaries.packing,
-        budget_summary: coerceAdminSummaryString(normalizedRow.budget_summary) ?? rowSummaries.budget,
-        flight_summary: coerceAdminSummaryString(normalizedRow.flight_summary) ?? rowSummaries.flight,
-      });
-      const code = passcodeFromRow(normalizedRow);
-
-      setTrip(parsed);
+      setTrip(tripWithClient);
       setPasscode(code);
 
       const needsPin = parsed.hasPin && !!code;
@@ -722,7 +880,7 @@ export default function VipItineraryPage() {
 
       if (!needsPin || unlocked) {
         persistItineraryUnlock(slug);
-        persistItineraryCache(slug, parsed);
+        persistItineraryCache(slug, tripWithClient);
       }
     } catch (err) {
       console.error('[vip-itinerary] load failed', err);
@@ -814,7 +972,7 @@ export default function VipItineraryPage() {
     return (
       <Shell className="flex flex-col items-center justify-center px-6">
         <VipErrorPanel
-          message={fetchError || 'تعذر تحميل المسار.'}
+          message={fetchError || 'لم يتم العثور على المسار.'}
           onRetry={() => void loadTrip()}
         />
       </Shell>
@@ -841,18 +999,52 @@ export default function VipItineraryPage() {
     ? formatTripDateRange(trip.startDate, trip.endDate)
     : null;
 
+  const hasLinkedClient = trip.clientId != null && String(trip.clientId).trim() !== '';
+
+  const handleOpenProfile = () => {
+    if (profileUnlocked) {
+      setProfilePortalActive(true);
+      return;
+    }
+    setProfileModalOpen(true);
+  };
+
+  const handleProfilePinSuccess = () => {
+    if (trip.clientId != null) {
+      persistClientProfileUnlock(trip.clientId);
+    }
+    setProfileUnlocked(true);
+    setProfilePortalActive(true);
+    setProfileModalOpen(false);
+  };
+
   return (
     <Shell>
       <div className="print:hidden">
-        <a
-          href="/"
-          className="relative z-50 inline-flex w-full items-center gap-2 border-b border-[#1E2720]/8 bg-[#FAFAFA] px-4 py-3 text-sm font-bold text-[#1E2720] transition-colors hover:text-[#D4AF37]"
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
-            <path d="M15 18l-6-6 6-6" />
-          </svg>
-          العودة للموقع الأساسي
-        </a>
+        <div className="relative z-50 flex items-center justify-between gap-3 border-b border-[#1E2720]/8 bg-[#FAFAFA] px-4 py-3">
+          <a
+            href="/"
+            className="inline-flex items-center gap-2 text-sm font-bold text-[#1E2720] transition-colors hover:text-[#D4AF37]"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+              <path d="M15 18l-6-6 6-6" />
+            </svg>
+            العودة للموقع الأساسي
+          </a>
+          <div className="flex items-center gap-2">
+            {hasLinkedClient ? (
+              <button
+                type="button"
+                onClick={handleOpenProfile}
+                className="inline-flex items-center gap-2 rounded-full border border-[#D4AF37]/40 bg-[#1E2720] px-4 py-2 text-xs font-black text-[#D4AF37] shadow-sm transition hover:bg-black"
+              >
+                <User className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                الملف الشخصي
+              </button>
+            ) : null}
+            {trip.hasPin ? <ClientPortalSignOutButton slug={slug} /> : null}
+          </div>
+        </div>
 
         <ClientView
           itinerary={trip}
@@ -863,7 +1055,23 @@ export default function VipItineraryPage() {
           wardrobeItems={wardrobeItems}
           clientSectionTab={clientSectionTab}
           onClientSectionTabChange={setClientSectionTab}
+          hasLinkedClient={hasLinkedClient}
+          profilePortalActive={profilePortalActive}
+          profileUnlocked={profileUnlocked}
+          onRequestProfilePin={handleOpenProfile}
+          onCloseProfilePortal={() => setProfilePortalActive(false)}
+          currentItinerarySlug={slug}
         />
+
+        {hasLinkedClient && trip.clientId != null ? (
+          <ClientProfilePinModal
+            open={profileModalOpen}
+            clientId={trip.clientId}
+            itineraryId={trip.id}
+            onClose={() => setProfileModalOpen(false)}
+            onSuccess={handleProfilePinSuccess}
+          />
+        ) : null}
 
         <VipButlerFab />
       </div>

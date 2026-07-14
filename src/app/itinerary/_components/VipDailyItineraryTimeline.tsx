@@ -1,7 +1,10 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ChangeEvent } from 'react'
 import { MapPin } from 'lucide-react'
+
+import { extractItineraryCodeFromPath, probeItineraryLinkFromUrlCode } from '@/lib/client-memories'
+import { supabase } from '@/lib/supabase'
 
 import {
   buildGoogleMapsDirectionsUrl,
@@ -19,7 +22,6 @@ import { getVipPlaceCategoryMeta } from '@/lib/vip-place-category'
 
 const VIP_OLIVE = '#1E2720'
 
-const TXT_DIRECTIONS = '📍 الاتجاهات'
 const TXT_EMPTY_DAYS = 'جاري تنسيق تفاصيل أيام رحلتك'
 const TXT_DAY_PREFIX = 'اليوم'
 const TXT_TABLIST = 'أيام الرحلة'
@@ -68,7 +70,15 @@ function CategoryTag({ activity }: { activity: PublicItineraryActivity }) {
   )
 }
 
-function ActivityActionPills({ activity }: { activity: PublicItineraryActivity }) {
+function ActivityActionPills({
+  activity,
+  onMemoryFileSelect,
+  memoryUploadingId,
+}: {
+  activity: PublicItineraryActivity
+  onMemoryFileSelect?: (file: File, activity: PublicItineraryActivity) => void
+  memoryUploadingId?: string | null
+}) {
   const placeName = activity.place_name?.trim() || activity.title?.trim() || ''
   const mapsHref =
     activity.googleMapsUrl?.trim() ||
@@ -76,22 +86,56 @@ function ActivityActionPills({ activity }: { activity: PublicItineraryActivity }
 
   const bookingRaw = (activity.booking_url ?? activity.bookingUrl ?? '').trim()
   const bookingHref = bookingRaw !== '' ? resolveStopBookingHref(bookingRaw) ?? bookingRaw : null
+  const uploadInputId = `upload-memory-${activity.id}`
+  const isUploading = memoryUploadingId === activity.id
 
-  const actionBtnClass =
-    'flex flex-1 items-center justify-center gap-2 rounded-xl border border-[#D4AF37]/50 bg-[#FAFAFA] py-2.5 px-3 text-xs font-bold text-gray-900 transition-colors hover:bg-[#D4AF37]/10 sm:text-sm'
+  const actionPillClass =
+    'flex flex-1 flex-col items-center justify-center gap-1 rounded-xl border px-2 py-3 transition-all'
 
   return (
-    <div className="mt-4 flex flex-col gap-2 border-t border-[#1E2720]/8 pt-3 sm:flex-row">
-      <a href={mapsHref} target="_blank" rel="noopener noreferrer" className={actionBtnClass}>
-        <MapPin className="h-4 w-4 shrink-0 text-[#D4AF37]" aria-hidden />
-        <span>{TXT_DIRECTIONS}</span>
-      </a>
+    <div className="mt-4 w-full border-t border-[#1E2720]/8 pt-3">
+      <div className="flex w-full items-stretch justify-between gap-2">
+        <a
+          href={mapsHref}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={`${actionPillClass} border-[#D4AF37]/50 bg-[#FAFAFA] text-gray-900 hover:bg-[#D4AF37]/10`}
+        >
+          <span className="mb-1 text-xl leading-none">📍</span>
+          <span className="text-xs font-bold leading-none md:text-sm">الاتجاهات</span>
+        </a>
+        <button
+          type="button"
+          onClick={() => document.getElementById(uploadInputId)?.click()}
+          disabled={isUploading}
+          className={`${actionPillClass} border-[#B5914F] text-[#B5914F] hover:bg-[#B5914F]/10 disabled:cursor-not-allowed disabled:opacity-60`}
+        >
+          <span className="mb-1 text-xl leading-none">📸</span>
+          <span className="text-xs font-bold leading-none md:text-sm">
+            {isUploading ? 'جاري الرفع…' : 'وثّق اللحظة'}
+          </span>
+        </button>
+        <input
+          type="file"
+          id={uploadInputId}
+          className="hidden"
+          accept="image/*"
+          capture="environment"
+          onChange={(e: ChangeEvent<HTMLInputElement>) => {
+            const file = e.target.files?.[0]
+            if (file && onMemoryFileSelect) {
+              onMemoryFileSelect(file, activity)
+            }
+            e.target.value = ''
+          }}
+        />
+      </div>
       {bookingRaw !== '' && bookingHref ? (
         <a
           href={bookingHref}
           target="_blank"
           rel="noopener noreferrer"
-          className={actionBtnClass}
+          className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg border border-[#D4AF37]/50 bg-[#FAFAFA] px-4 py-2.5 text-xs font-bold text-gray-900 transition-colors hover:bg-[#D4AF37]/10 sm:text-sm"
         >
           <span>🎟️ حجز التذاكر</span>
         </a>
@@ -278,7 +322,15 @@ function ActivityCarTransitConnector({
   )
 }
 
-function ActivityTimelineCard({ activity }: { activity: PublicItineraryActivity }) {
+function ActivityTimelineCard({
+  activity,
+  onMemoryFileSelect,
+  memoryUploadingId,
+}: {
+  activity: PublicItineraryActivity
+  onMemoryFileSelect?: (file: File, activity: PublicItineraryActivity) => void
+  memoryUploadingId?: string | null
+}) {
   const timeText = activity.timeLabel?.trim() || null
   const displayName = activity.place_name?.trim() || activity.title?.trim() || 'محطة مميزة'
 
@@ -320,14 +372,26 @@ function ActivityTimelineCard({ activity }: { activity: PublicItineraryActivity 
           ) : null}
 
           <ActivityNotes activity={activity} />
-          <ActivityActionPills activity={activity} />
+          <ActivityActionPills
+            activity={activity}
+            onMemoryFileSelect={onMemoryFileSelect}
+            memoryUploadingId={memoryUploadingId}
+          />
         </div>
       </div>
     </article>
   )
 }
 
-function DayTimeline({ day }: { day: PublicItineraryDay }) {
+function DayTimeline({
+  day,
+  onMemoryFileSelect,
+  memoryUploadingId,
+}: {
+  day: PublicItineraryDay
+  onMemoryFileSelect?: (file: File, activity: PublicItineraryActivity) => void
+  memoryUploadingId?: string | null
+}) {
   const hotelName = day.hotelName?.trim() || ''
   const firstActivity = day.activities[0]
   const lastActivity = day.activities[day.activities.length - 1]
@@ -390,7 +454,11 @@ function DayTimeline({ day }: { day: PublicItineraryDay }) {
                 >
                   {activityIndex + 1}
                 </div>
-                <ActivityTimelineCard activity={activity} />
+                <ActivityTimelineCard
+                  activity={activity}
+                  onMemoryFileSelect={onMemoryFileSelect}
+                  memoryUploadingId={memoryUploadingId}
+                />
               </div>
             </li>
           )
@@ -416,15 +484,126 @@ type VipDailyItineraryTimelineProps = {
   destination?: string
   tripWeather?: PublicWeatherForecast | null
   mapboxAccessToken?: string
+  itineraryId?: string | number
+  clientId?: string | number | null
 }
 
 export default function VipDailyItineraryTimeline({
   days,
   destination = '',
   tripWeather = null,
+  itineraryId,
+  clientId,
 }: VipDailyItineraryTimelineProps) {
   const [activeTab, setActiveTab] = useState(0)
   const tabsRef = useRef<HTMLDivElement>(null)
+  const [memoryUploadingId, setMemoryUploadingId] = useState<string | null>(null)
+
+  const handleMemoryFileSelect = async (
+    file: File,
+    activity: PublicItineraryActivity,
+  ) => {
+    const locationName =
+      activity.title?.trim() ||
+      activity.place_name?.trim() ||
+      activity.locationLabel?.trim() ||
+      'محطة مختارة'
+
+    setMemoryUploadingId(activity.id)
+
+    try {
+      console.log('🟢 1. Upload started. Extracting URL...')
+      const pathSegments = window.location.pathname.split('/').filter(Boolean)
+      const urlCode =
+        extractItineraryCodeFromPath(window.location.pathname) ||
+        pathSegments[pathSegments.length - 1] ||
+        ''
+      console.log('🟢 2. Extracted URL Code:', urlCode)
+      console.log('🟢 2b. Props from page:', { itineraryId, clientId })
+
+      if (supabase && urlCode) {
+        const browserProbe = await probeItineraryLinkFromUrlCode(supabase, urlCode)
+        console.log('🟢 3. Browser Supabase probe (may be blocked by RLS):', browserProbe)
+        if (
+          browserProbe.browserRouteData &&
+          browserProbe.browserRouteData.client_id == null &&
+          clientId != null
+        ) {
+          console.warn(
+            '⚠️ RLS may be hiding client_id in browser — page props have clientId:',
+            clientId,
+          )
+        }
+      } else {
+        console.warn('🟡 3. Skipped browser probe — supabase or urlCode missing')
+      }
+
+      if (!urlCode && itineraryId == null) {
+        throw new Error('لم نتمكن من قراءة كود المسار من الرابط')
+      }
+
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('locationName', locationName)
+      if (urlCode) formData.append('itinerarySlug', urlCode)
+      if (itineraryId != null) formData.append('itineraryId', String(itineraryId))
+      if (clientId != null && String(clientId).trim() !== '') {
+        formData.append('clientId', String(clientId))
+      }
+
+      const uploadPath = '/api/itinerary/upload-memory'
+      const resolvedUploadUrl =
+        typeof window !== 'undefined'
+          ? new URL(uploadPath, window.location.origin).href
+          : uploadPath
+
+      console.log('🟢 4. POST upload-memory (relative path → current origin)', {
+        relativePath: uploadPath,
+        resolvedUrl: resolvedUploadUrl,
+        origin: typeof window !== 'undefined' ? window.location.origin : null,
+        urlCode,
+        itineraryId,
+        clientId,
+        locationName,
+      })
+
+      const response = await fetch(uploadPath, {
+        method: 'POST',
+        body: formData,
+      })
+
+      const payload = (await response.json()) as {
+        ok?: boolean
+        error?: string
+        inserted?: unknown[]
+        diagnostic?: unknown
+      }
+
+      console.log('🟢 5. API Response:', { status: response.status, payload })
+
+      if (!response.ok || !payload.ok) {
+        const errMsg = payload.error || 'upload_failed'
+        if (payload.diagnostic) {
+          console.error('❌ Server diagnostic:', payload.diagnostic)
+        }
+        throw new Error(errMsg)
+      }
+
+      console.log('✅ UPLOAD COMPLETE!', payload.inserted)
+      window.alert('تم توثيق اللحظة بنجاح! 📸')
+    } catch (error) {
+      console.error('❌ UPLOAD FAILED:', error)
+      const message =
+        error instanceof Error
+          ? error.message
+          : typeof error === 'object' && error != null
+            ? JSON.stringify(error)
+            : String(error)
+      window.alert(`فشل الرفع: ${message || 'unknown_error'}`)
+    } finally {
+      setMemoryUploadingId(null)
+    }
+  }
 
   useEffect(() => {
     if (activeTab >= days.length && days.length > 0) {
@@ -499,7 +678,11 @@ export default function VipDailyItineraryTimeline({
           </p>
         </div>
 
-        <DayTimeline day={activeDay} />
+        <DayTimeline
+          day={activeDay}
+          onMemoryFileSelect={handleMemoryFileSelect}
+          memoryUploadingId={memoryUploadingId}
+        />
       </div>
     </div>
   )

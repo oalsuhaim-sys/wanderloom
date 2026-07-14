@@ -2,15 +2,21 @@
 
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useParams } from 'next/navigation';
-import { Loader2, MessageCircle, Plus, Trash2, Copy, FileStack, FileText, Upload } from 'lucide-react';
+import { Loader2, MessageCircle, Plus, Trash2, Copy, FileStack } from 'lucide-react';
 import { DragDropContext } from '@hello-pangea/dnd';
 
+import {
+  fetchItineraryClientIdAction,
+  saveItineraryClientLinkAction,
+} from '@/app/actions/itineraryClientActions';
 import SimpleItineraryDayPlanner from '@/app/crm/itineraries/_components/SimpleItineraryDayPlanner';
 import SupplierRequestsEditor from '@/app/crm/itineraries/_components/SupplierRequestsEditor';
 import SimpleItineraryPlacesBank from '@/app/crm/itineraries/_components/SimpleItineraryPlacesBank';
 import TripGeographySelectors from '@/app/crm/itineraries/_components/TripGeographySelectors';
 import ItineraryHotelsEditor from '@/app/crm/itineraries/_components/ItineraryHotelsEditor';
+import { VipTimeSlotSelect } from '@/app/crm/itineraries/_components/VipBookingFields';
 import ActivityTicketsEditor from '@/app/crm/itineraries/_components/ActivityTicketsEditor';
+import ItineraryDocumentWallet from '@/app/crm/itineraries/_components/ItineraryDocumentWallet';
 import VipSpendingTierBadge from '@/components/VipSpendingTierBadge';
 import { normalizeSingleArrivalCity } from '@/lib/vip-flight-voucher';
 import { QuickAddPlaceModal, useQuickAddPlace } from '@/app/crm/itineraries/_components/useQuickAddPlace';
@@ -24,7 +30,7 @@ import {
   withTransportDefaults,
 } from '@/app/crm/itineraries/_components/simple-itinerary-day-utils';
 import { useSimpleItineraryDays } from '@/app/crm/itineraries/_components/useSimpleItineraryDays';
-import { buildStrictSimpleItinerarySavePayload, normalizeItinerarySaveStatus, parseDatesField } from '@/lib/itinerary-builder-model';
+import { buildStrictSimpleItinerarySavePayload, normalizeItinerarySaveStatus, parseDatesField, stripItineraryPayloadForSchemaError } from '@/lib/itinerary-builder-model';
 import {
   applyTemplateToBuilder,
   buildTemplateFlightDetails,
@@ -34,7 +40,6 @@ import {
 } from '@/lib/itinerary-templates';
 import {
   parseItineraryDocuments,
-  uploadItineraryPdf,
   type ItineraryDocument,
 } from '@/lib/itinerary-documents';
 import { parseDaysDataFromRow, emptyPreTripService, parsePreTripServices, itineraryHasMedicalPreTrip, type PreTripService } from '@/lib/public-itinerary';
@@ -50,7 +55,6 @@ import {
 } from '@/lib/crm-suppliers';
 import {
   buildDestinationSummary,
-  filterPlacesByCities,
   filterSuppliersByCountries,
   parseItineraryGeography,
   type GeoTripType,
@@ -59,14 +63,18 @@ import {
   clientDisplayName,
   CRM_CLIENTS_LIST_SELECT,
   ITINERARY_CLIENT_JOIN_SELECT,
+  coerceClientIdForItinerarySave,
+  fetchCrmClientMiniById,
   mergeClientIntoList,
   openItineraryWhatsAppShare,
   parseJoinedCrmClient,
-  resolveItineraryClientId,
+  resolveItineraryClientIdFromDb,
   resolveItineraryPublicSlug,
   type CrmClientMini,
 } from '@/lib/itinerary-client-crm';
 import { supabase } from '@/lib/supabase';
+import { fetchAllPlacesBank, filterPlacesBankInventory } from '@/lib/places-bank';
+import type { PlaceBankRow } from '@/types/place';
 
 const CLIENT_BRIEF_SELECT =
   'id, name, travel_dna, hotel_preferences, dietary, secret_notes';
@@ -261,7 +269,8 @@ export default function EditItineraryPage() {
 
   const [places, setPlaces] = useState<any[]>([]);
   const [clientsList, setClientsList] = useState<CrmClientMini[]>([]);
-  const [selectedClientId, setSelectedClientId] = useState('');
+  const [clientId, setClientId] = useState('');
+  const [clientLinkSaving, setClientLinkSaving] = useState(false);
   const [itineraryShareSlug, setItineraryShareSlug] = useState('');
   const [supplierBrief, setSupplierBrief] = useState<SupplierBriefClientContext | null>(null);
   const [accessCode, setAccessCode] = useState('');
@@ -302,7 +311,6 @@ export default function EditItineraryPage() {
   const [supplierRequests, setSupplierRequests] = useState<SupplierRequest[]>([]);
   const [activityTickets, setActivityTickets] = useState<ActivityTicket[]>([]);
   const [allSuppliers, setAllSuppliers] = useState<CrmSupplier[]>([]);
-  const [docUploading, setDocUploading] = useState(false);
   const [tripStatus, setTripStatus] = useState('active');
 
   const {
@@ -322,8 +330,12 @@ export default function EditItineraryPage() {
   } = useSimpleItineraryDays([createEmptyDay(0)]);
 
   const [isLoading, setIsLoading] = useState(true);
+  const [tripLoaded, setTripLoaded] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [reloadNonce, setReloadNonce] = useState(0);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const [clientLinkWarning, setClientLinkWarning] = useState<string | null>(null);
   const daysStorageKeyRef = useRef<DaysStorageKey>('days_data');
   const pinnedClientRef = useRef<CrmClientMini | null>(null);
 
@@ -332,24 +344,6 @@ export default function EditItineraryPage() {
       if (!supabase) return;
 
       try {
-        const allPlaces: any[] = [];
-        for (let offset = 0; offset < 10_000; offset += 1000) {
-          const { data: placesData, error } = await supabase
-            .from('places')
-            .select('*')
-            .order('name', { ascending: true })
-            .range(offset, offset + 999);
-
-          if (error) {
-            console.error('Failed to load places', error);
-            break;
-          }
-          if (!placesData?.length) break;
-          allPlaces.push(...placesData);
-          if (placesData.length < 1000) break;
-        }
-        setPlaces(allPlaces as any[]);
-
         const { data: clientsData, error: clientsError } = await supabase
           .from('clients')
           .select(CRM_CLIENTS_LIST_SELECT)
@@ -390,27 +384,41 @@ export default function EditItineraryPage() {
   }, []);
 
   useEffect(() => {
+    async function loadPlacesInventory() {
+      if (!supabase) return;
+      try {
+        const loaded = await fetchAllPlacesBank(supabase);
+        setPlaces(loaded as Record<string, unknown>[]);
+      } catch (error) {
+        console.error('Failed to load places inventory', error);
+        setPlaces([]);
+      }
+    }
+    void loadPlacesInventory();
+  }, []);
+
+  useEffect(() => {
     async function loadClientBrief() {
-      if (!supabase || !selectedClientId) {
+      if (!supabase || !clientId) {
         setSupplierBrief(null);
         return;
       }
 
-      const selectedClient = clientsList.find((c) => String(c.id) === String(selectedClientId));
+      const selectedClient = clientsList.find((c) => String(c.id) === String(clientId));
       const fallbackName = String(selectedClient?.name ?? '').trim();
 
       let clientRow: Record<string, unknown> | null = null;
       let result = await supabase
         .from('clients')
         .select(CLIENT_BRIEF_SELECT)
-        .eq('id', selectedClientId)
+        .eq('id', clientId)
         .maybeSingle();
 
       if (result.error && /column|schema cache|does not exist/i.test(result.error.message ?? '')) {
         result = await supabase
           .from('clients')
           .select(CLIENT_BRIEF_SELECT_MIN)
-          .eq('id', selectedClientId)
+          .eq('id', clientId)
           .maybeSingle();
       }
 
@@ -422,7 +430,7 @@ export default function EditItineraryPage() {
       const prefsResult = await supabase
         .from('client_preferences')
         .select('interests')
-        .eq('client_id', selectedClientId)
+        .eq('client_id', clientId)
         .maybeSingle();
       if (!prefsResult.error && prefsResult.data) {
         interests = (prefsResult.data as { interests?: unknown }).interests;
@@ -441,18 +449,25 @@ export default function EditItineraryPage() {
     }
 
     void loadClientBrief();
-  }, [selectedClientId, tripDateFrom, tripDateTo, tripCities, tripCountries, tripTitle, clientsList]);
+  }, [clientId, tripDateFrom, tripDateTo, tripCities, tripCountries, tripTitle, clientsList]);
 
   useEffect(() => {
     async function fetchItinerary() {
+      setLoadError(null);
+      setTripLoaded(false);
+
       if (!id) {
+        setLoadError('معرّف المسار غير صالح.');
         setIsLoading(false);
         return;
       }
       if (!supabase) {
+        setLoadError('Supabase غير مهيأ — تحقق من الإعدادات وأعد تحميل الصفحة.');
         setIsLoading(false);
         return;
       }
+
+      setIsLoading(true);
 
       try {
         const queryId = /^\d+$/.test(id) ? Number(id) : id;
@@ -471,20 +486,51 @@ export default function EditItineraryPage() {
             .single();
           if (fallback.error || !fallback.data) {
             console.error('Fetch error:', error ?? fallback.error);
-            setNotice(fallback.error?.message || error?.message || 'تعذر تحميل المسار.');
+            setLoadError(
+              fallback.error?.message || error?.message || 'لم يتم العثور على المسار.',
+            );
             return;
           }
           safeData = fallback.data as Record<string, unknown>;
         }
 
-        const joinedClient = parseJoinedCrmClient(safeData.client);
-        const resolvedClientId = resolveItineraryClientId(safeData);
+        const joinedClient = parseJoinedCrmClient(safeData?.client);
+        let resolvedClientId = await resolveItineraryClientIdFromDb(
+          supabase,
+          safeData ?? {},
+          queryId,
+        );
+
+        const adminClientLink = await fetchItineraryClientIdAction(queryId);
+        if (adminClientLink.ok) {
+          console.log('[edit-itinerary] loaded client_id (admin):', {
+            client_id: adminClientLink.client_id,
+            source: adminClientLink.source,
+            browserResolved: resolvedClientId,
+            rowClientId: safeData?.client_id,
+          });
+          if (adminClientLink.client_id) {
+            resolvedClientId = adminClientLink.client_id;
+          }
+          setClientLinkWarning(null);
+        } else {
+          console.error('[edit-itinerary] admin client_id fetch failed:', adminClientLink.error);
+          setClientLinkWarning(adminClientLink.error);
+          if (adminClientLink.columnMissing) {
+            window.alert(adminClientLink.error);
+          }
+        }
 
         setItineraryShareSlug(resolveItineraryPublicSlug(safeData, id));
-        setSelectedClientId(resolvedClientId);
-        if (joinedClient) {
-          pinnedClientRef.current = joinedClient;
-          setClientsList((prev) => mergeClientIntoList(prev, joinedClient));
+        setClientId(resolvedClientId);
+
+        let clientForList = joinedClient;
+        if (!clientForList && resolvedClientId) {
+          clientForList = await fetchCrmClientMiniById(supabase, resolvedClientId);
+        }
+        if (clientForList) {
+          pinnedClientRef.current = clientForList;
+          setClientsList((prev) => mergeClientIntoList(prev, clientForList));
         }
 
         const fd = parseJsonObject(safeData.flight_details) ?? {};
@@ -612,27 +658,30 @@ export default function EditItineraryPage() {
             }
           }
         }
+
+        setTripLoaded(true);
       } catch (err) {
         console.error('Critical fetch error:', err);
-        setNotice(err instanceof Error ? err.message : 'تعذر تحميل المسار.');
+        setLoadError(
+          err instanceof Error ? err.message : 'تعذر تحميل المسار — حاول مرة أخرى.',
+        );
       } finally {
         setIsLoading(false);
       }
     }
 
     void fetchItinerary();
-  }, [id]);
+  }, [id, reloadNonce]);
 
-  const uniqueCities = useMemo(
-    () =>
-      Array.from(
-        new Set(
-          (tripCities.length ? tripCities : places.map((p) => p.city)).filter(Boolean),
-        ),
-      ),
-    [tripCities, places],
+  const uniqueCities = useMemo(() => {
+    const pool = filterPlacesBankInventory((places ?? []) as PlaceBankRow[], {
+      countries: tripCountries,
+    });
+    return Array.from(new Set(pool.map((p) => p?.city).filter(Boolean)));
+  }, [places, tripCountries]);
+  const uniqueCategories = Array.from(
+    new Set((places ?? []).map((p) => p?.category).filter(Boolean)),
   );
-  const uniqueCategories = Array.from(new Set(places.map((p) => p.category).filter(Boolean)));
 
   const geographyDestinationLabel =
     buildDestinationSummary(tripCities, tripCountries) || tripTitle;
@@ -649,24 +698,14 @@ export default function EditItineraryPage() {
     [allSuppliers, tripCountries, tripCities, geographyDestinationLabel],
   );
 
-  useEffect(() => {
-    if (tripCities.length === 1) {
-      setFilterCity(tripCities[0]!);
-    } else if (tripCities.length === 0) {
-      setFilterCity('');
-    }
-  }, [tripCities]);
-
   const displayedPlaces = useMemo(() => {
-    const geoFiltered = filterPlacesByCities(places, tripCities);
-    return geoFiltered.filter((place) => {
-      const matchSearch =
-        place.name?.includes(searchQuery) || place.city?.includes(searchQuery);
-      const matchCity = filterCity ? place.city === filterCity : true;
-      const matchCategory = filterCategory ? place.category === filterCategory : true;
-      return matchSearch && matchCity && matchCategory;
+    return filterPlacesBankInventory((places ?? []) as PlaceBankRow[], {
+      countries: tripCountries,
+      cityFilter: filterCity || undefined,
+      search: searchQuery,
+      category: filterCategory || undefined,
     });
-  }, [places, tripCities, searchQuery, filterCity, filterCategory]);
+  }, [places, tripCountries, filterCity, searchQuery, filterCategory]);
 
   const handleDragEnd = useCallback(
     (result: import('@hello-pangea/dnd').DropResult) => {
@@ -762,46 +801,9 @@ export default function EditItineraryPage() {
     setNotice(`✅ تم استدعاء القالب: ${template.title}`);
   }, [selectedTemplateId, templates, tripDateFrom]);
 
-  const handleDocumentUpload = useCallback(
-    async (file: File) => {
-      if (!supabase || !id) return;
-      const isPdf =
-        file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
-      if (!isPdf) {
-        setNotice('يرجى رفع ملف PDF فقط (تذكرة أو قسيمة).');
-        return;
-      }
-
-      setDocUploading(true);
-      setNotice(null);
-      try {
-        const { publicUrl } = await uploadItineraryPdf(supabase, file, id);
-
-        const doc: ItineraryDocument = {
-          id: `doc-${Date.now()}`,
-          name: file.name,
-          url: publicUrl,
-          uploadedAt: new Date().toISOString(),
-          mimeType: 'application/pdf',
-        };
-        setDocuments((prev) => [...prev, doc]);
-        setNotice('✅ تم رفع المستند — يظهر في المحفظة أدناه. احفظ المسار لتثبيته.');
-      } catch (e) {
-        setNotice(e instanceof Error ? e.message : 'تعذر رفع المستند.');
-      } finally {
-        setDocUploading(false);
-      }
-    },
-    [id],
-  );
-
-  const handleRemoveDocument = useCallback((docId: string) => {
-    setDocuments((prev) => prev.filter((d) => d.id !== docId));
-  }, []);
-
   const handleShareWhatsApp = useCallback(() => {
-    const currentClient = selectedClientId
-      ? clientsList.find((c) => String(c.id) === String(selectedClientId))
+    const currentClient = clientId
+      ? clientsList.find((c) => String(c.id) === String(clientId))
       : null;
 
     const result = openItineraryWhatsAppShare({
@@ -814,7 +816,57 @@ export default function EditItineraryPage() {
       return;
     }
     setNotice('تم فتح واتساب للعميل ✨');
-  }, [clientsList, selectedClientId, itineraryShareSlug, id]);
+  }, [clientsList, clientId, itineraryShareSlug, id]);
+
+  const persistClientLink = useCallback(
+    async (rawClientId: string, { silent = false }: { silent?: boolean } = {}) => {
+      if (!id) return { ok: false as const, error: 'معرّف المسار غير صالح.' };
+
+      const queryId = /^\d+$/.test(id) ? Number(id) : id;
+      const parsed = coerceClientIdForItinerarySave(rawClientId);
+
+      console.log('🔥 FORCE-SAVING client_id:', {
+        itineraryId: queryId,
+        clientId: rawClientId,
+        parsedClientId: parsed,
+      });
+
+      const linkResult = await saveItineraryClientLinkAction(queryId, rawClientId || null);
+      if (!linkResult.ok) {
+        console.error('🔥 SUPABASE client_id SAVE ERROR:', linkResult.error);
+        setClientLinkWarning(linkResult.error);
+        if (!silent) {
+          window.alert(
+            linkResult.columnMissing
+              ? linkResult.error
+              : `فشل ربط العميل: ${linkResult.error}`,
+          );
+        }
+        return linkResult;
+      }
+
+      console.log('✅ client_id SAVED:', linkResult.client_id);
+      setClientId(linkResult.client_id != null ? String(linkResult.client_id) : '');
+      setClientLinkWarning(null);
+      return linkResult;
+    },
+    [id],
+  );
+
+  const handleClientIdChange = useCallback(
+    async (next: string) => {
+      setClientId(next);
+      if (!id) return;
+
+      setClientLinkSaving(true);
+      try {
+        await persistClientLink(next);
+      } finally {
+        setClientLinkSaving(false);
+      }
+    },
+    [id, persistClientLink],
+  );
 
   const handleSave = useCallback(async () => {
     if (!supabase || !id) return;
@@ -825,8 +877,9 @@ export default function EditItineraryPage() {
     const queryId = /^\d+$/.test(id) ? Number(id) : id;
     const serializedDays = itineraryDaysToDaysData(itineraryDays);
 
-    const selectedClient = selectedClientId
-      ? clientsList.find((c) => String(c.id) === String(selectedClientId))
+    const parsedClientId = coerceClientIdForItinerarySave(clientId);
+    const selectedClient = parsedClientId
+      ? clientsList.find((c) => String(c.id) === String(parsedClientId))
       : null;
 
     const destinationSummary = buildDestinationSummary(tripCities, tripCountries) || tripTitle;
@@ -856,10 +909,7 @@ export default function EditItineraryPage() {
         checkIn: h.checkIn,
         checkOut: h.checkOut,
       })),
-      clientId:
-        selectedClientId && Number.isFinite(Number(selectedClientId))
-          ? Number(selectedClientId)
-          : null,
+      clientId: parsedClientId,
       customerName: selectedClient ? clientDisplayName(selectedClient) : '',
       preTripServices,
       includeWardrobe: includeFashionServices,
@@ -876,19 +926,66 @@ export default function EditItineraryPage() {
     const fullPayload = {
       ...payload,
       expected_profit: expectedProfitNum,
+      client_id: parsedClientId,
     };
 
     try {
-      const { error } = await supabase.from('itineraries').update(fullPayload).eq('id', queryId);
-
-      if (error) {
-        console.error('Supabase Save Error:', error);
-        throw new Error(formatSupabaseSaveError(error));
+      const linkResult = await persistClientLink(clientId, { silent: false });
+      if (!linkResult.ok) {
+        throw new Error(linkResult.error);
       }
+
+      console.log('🔥 SENDING TO SUPABASE:', fullPayload);
+      console.log('[edit-itinerary] client dropdown state:', {
+        clientId,
+        parsedClientId,
+      });
+
+      let res = await supabase
+        .from('itineraries')
+        .update(fullPayload)
+        .eq('id', queryId)
+        .select('id, client_id');
+      if (res.error && /column|schema cache|does not exist/i.test(res.error.message ?? '')) {
+        const stripped = stripItineraryPayloadForSchemaError(res.error.message ?? '', fullPayload);
+        stripped.client_id = parsedClientId;
+        console.warn('[edit-itinerary] retrying without optional columns:', res.error.message);
+        res = await supabase
+          .from('itineraries')
+          .update(stripped)
+          .eq('id', queryId)
+          .select('id, client_id');
+      }
+
+      if (res.error) {
+        console.error('🔥 SUPABASE SAVE ERROR:', res.error);
+        const msg = formatSupabaseSaveError(res.error);
+        window.alert(`فشل الحفظ في قاعدة البيانات: ${msg}`);
+        throw new Error(msg);
+      }
+
+      if (!res.data?.length) {
+        const msg =
+          'لم يُحدَّث أي صف في itineraries — تحقق من معرّف المسار أو صلاحيات Supabase RLS.';
+        console.error('[edit-itinerary]', msg, { queryId });
+        window.alert(`فشل الحفظ في قاعدة البيانات: ${msg}`);
+        throw new Error(msg);
+      }
+
+      console.log('✅ SAVED SUCCESSFULLY:', res.data);
+      setClientId(
+        res.data[0]?.client_id != null ? String(res.data[0].client_id) : clientId,
+      );
+      setClientLinkWarning(null);
       setNotice('✅ تم حفظ المسار والتعديلات بنجاح!');
+      window.alert('تم حفظ المسار وربط العميل بنجاح!');
     } catch (e) {
       console.error('Unexpected save error:', e);
-      setNotice(e instanceof Error ? e.message : 'فشل حفظ التعديلات.');
+      const msg = e instanceof Error ? e.message : 'فشل حفظ التعديلات.';
+      setNotice(msg);
+      if (!msg.includes('فشل الحفظ في قاعدة البيانات') && !msg.includes('فشل ربط العميل')) {
+        window.alert(`فشل الحفظ: ${msg}`);
+      }
     } finally {
       setSaving(false);
     }
@@ -912,7 +1009,7 @@ export default function EditItineraryPage() {
     pnr,
     hotels,
     itineraryDays,
-    selectedClientId,
+    clientId,
     clientsList,
     preTripServices,
     includeFashionServices,
@@ -921,22 +1018,47 @@ export default function EditItineraryPage() {
     supplierRequests,
     activityTickets,
     tripStatus,
+    persistClientLink,
   ]);
+
+  const retryLoad = useCallback(() => {
+    setReloadNonce((n) => n + 1);
+  }, []);
 
   if (isLoading) {
     return (
       <div
-        className="min-h-screen bg-[#FAFAFA] flex items-center justify-center"
+        className="flex min-h-screen flex-col items-center justify-center gap-3 bg-[#FAFAFA] text-[#1E2720]"
         dir="rtl"
       >
         <Loader2 className="h-10 w-10 animate-spin text-[#D4AF37]" aria-hidden />
-        <span className="sr-only">جاري التحميل...</span>
+        <p className="text-sm font-bold text-gray-600">جاري تحميل المسار...</p>
       </div>
     );
   }
 
-  const selectedClientProfile = selectedClientId
-    ? clientsList.find((c) => String(c.id) === String(selectedClientId))
+  if (!id || loadError || !tripLoaded) {
+    return (
+      <div
+        className="flex min-h-screen flex-col items-center justify-center gap-4 bg-[#FAFAFA] px-6 text-center text-[#1E2720]"
+        dir="rtl"
+      >
+        <p className="max-w-md text-base font-bold text-gray-800">
+          {loadError || 'لم يتم العثور على المسار.'}
+        </p>
+        <button
+          type="button"
+          onClick={retryLoad}
+          className="rounded-lg bg-[#1A2520] px-6 py-2.5 text-sm font-bold text-[#D4AF37]"
+        >
+          إعادة المحاولة
+        </button>
+      </div>
+    );
+  }
+
+  const selectedClientProfile = clientId
+    ? clientsList.find((c) => String(c?.id) === String(clientId))
     : null;
 
   return (
@@ -974,15 +1096,17 @@ export default function EditItineraryPage() {
 
           <div className="flex flex-col gap-4">
             <div className="min-w-0">
-              <label className="mb-2 block text-sm font-bold text-gray-700">اسم العميل</label>
+              <label className="mb-2 block text-sm font-bold text-gray-700">ربط العميل بالمسار</label>
               <select
-                value={selectedClientId || ''}
-                onChange={(e) => setSelectedClientId(e.target.value)}
+                name="client_id"
+                value={clientId || ''}
+                disabled={clientLinkSaving || saving}
+                onChange={(e) => void handleClientIdChange(e.target.value)}
                 className={EDIT_HEADER_FIELD}
               >
-                <option value="">-- اختر العميل --</option>
+                <option value="">-- بدون ربط عميل --</option>
                 {clientsList.map((client) => (
-                  <option key={String(client.id)} value={String(client.id)}>
+                  <option key={String(client?.id ?? '')} value={String(client?.id ?? '')}>
                     {clientDisplayName(client)}
                   </option>
                 ))}
@@ -990,10 +1114,23 @@ export default function EditItineraryPage() {
               {selectedClientProfile ? (
                 <div className="mt-2">
                   <VipSpendingTierBadge
-                    tier={selectedClientProfile.vip_tier}
-                    totalSpent={selectedClientProfile.total_spent}
+                    tier={selectedClientProfile?.vip_tier}
+                    totalSpent={selectedClientProfile?.total_spent}
                   />
                 </div>
+              ) : null}
+              {clientId ? (
+                <p className="mt-1 text-[11px] font-semibold text-gray-500" dir="ltr">
+                  client_id: {clientId}
+                </p>
+              ) : null}
+              {clientLinkSaving ? (
+                <p className="mt-1 text-[11px] font-bold text-[#D4AF37]">جاري ربط العميل…</p>
+              ) : null}
+              {clientLinkWarning ? (
+                <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-2 py-1.5 text-[11px] font-bold text-amber-900">
+                  {clientLinkWarning}
+                </p>
               ) : null}
             </div>
 
@@ -1021,7 +1158,12 @@ export default function EditItineraryPage() {
       </div>
 
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#D4AF37]/25 bg-[#FEFDF9] px-5 py-3 shadow-sm">
-        <span className="text-sm font-bold text-gray-700">كود العميل (PIN)</span>
+        <div>
+          <span className="block text-sm font-bold text-gray-700">رمز فتح المسار</span>
+          <span className="mt-0.5 block text-[11px] font-semibold text-gray-500">
+            قابل للمشاركة مع الرابط — منفصل عن رمز الملف الشخصي الخاص في صفحة العميل.
+          </span>
+        </div>
         <div className="flex flex-wrap items-center gap-3">
           <div className="inline-flex w-fit max-w-full items-center gap-2 rounded-full border border-[#D4AF37]/60 bg-white px-4 py-1.5">
             <input
@@ -1037,7 +1179,7 @@ export default function EditItineraryPage() {
           <button
             type="button"
             onClick={handleShareWhatsApp}
-            disabled={!selectedClientId}
+            disabled={!clientId}
             className="inline-flex items-center gap-2 rounded-full border-2 border-[#25D366]/40 bg-[#25D366] px-4 py-2 text-xs font-black text-white shadow-sm transition hover:bg-[#1ebe5d] disabled:cursor-not-allowed disabled:opacity-45"
           >
             <MessageCircle className="h-4 w-4 shrink-0" aria-hidden />
@@ -1081,9 +1223,9 @@ export default function EditItineraryPage() {
             >
               <option value="">— اختر قالباً —</option>
               {templates.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.title}
-                  {t.destination ? ` · ${t.destination}` : ''}
+                <option key={t?.id ?? ''} value={t?.id ?? ''}>
+                  {t?.title ?? 'قالب'}
+                  {t?.destination ? ` · ${t.destination}` : ''}
                 </option>
               ))}
             </select>
@@ -1227,12 +1369,12 @@ export default function EditItineraryPage() {
               onBlur={(e) =>
                 setFlightArrivalCity(normalizeSingleArrivalCity(e.target.value))
               }
-              placeholder={tripCities[0] ? `مثال: ${tripCities[0]}` : 'مثال: سيول'}
+              placeholder={tripCities?.[0] ? `مثال: ${tripCities[0]}` : 'مثال: سيول'}
               className="bg-gray-50 border border-gray-300 rounded-lg p-2.5 text-sm text-gray-900 focus:border-[#D4AF37] outline-none"
             />
-            {tripCities.length > 0 ? (
+            {(tripCities ?? []).length > 0 ? (
               <datalist id="flight-arrival-city-suggestions">
-                {tripCities.map((city) => (
+                {(tripCities ?? []).map((city) => (
                   <option key={city} value={city} />
                 ))}
               </datalist>
@@ -1243,20 +1385,16 @@ export default function EditItineraryPage() {
           </label>
           <label className="flex flex-col gap-1.5">
             <span className="text-sm font-bold text-gray-600">وقت المغادرة</span>
-            <input
-              type="time"
+            <VipTimeSlotSelect
               value={departureTime}
-              onChange={(e) => setDepartureTime(e.target.value)}
-              className="bg-gray-50 border border-gray-300 rounded-lg p-2.5 text-sm text-gray-900 focus:border-[#D4AF37] outline-none"
+              onChange={setDepartureTime}
             />
           </label>
           <label className="flex flex-col gap-1.5">
             <span className="text-sm font-bold text-gray-600">وقت الوصول</span>
-            <input
-              type="time"
+            <VipTimeSlotSelect
               value={arrivalTime}
-              onChange={(e) => setArrivalTime(e.target.value)}
-              className="bg-gray-50 border border-gray-300 rounded-lg p-2.5 text-sm text-gray-900 focus:border-[#D4AF37] outline-none"
+              onChange={setArrivalTime}
             />
           </label>
           <label className="flex flex-col gap-1.5">
@@ -1314,75 +1452,12 @@ export default function EditItineraryPage() {
         <ActivityTicketsEditor tickets={activityTickets} onChange={setActivityTickets} />
       </section>
 
-      <section className="mb-6 rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-        <h3 className="mb-2 flex items-center gap-2 text-lg font-bold text-[#1E2720]">
-          <FileText className="h-5 w-5 text-[#D4AF37]" aria-hidden />
-          محفظة المستندات (PDF)
-        </h3>
-        <p className="mb-4 text-sm text-gray-500">
-          ارفع تذاكر الطيران والقسائم الفندقية — تُحفظ روابط الملفات في المسار للفريق الداخلي.
-        </p>
-
-        <label className="mb-4 flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-[#D4AF37]/40 bg-[#FEFDF9] px-6 py-8 transition hover:border-[#D4AF37]/70 hover:bg-[#FFFBF0]">
-          <Upload className="h-8 w-8 text-[#D4AF37]" aria-hidden />
-          <span className="text-sm font-bold text-gray-800">
-            {docUploading ? 'جاري الرفع…' : 'اضغط لرفع PDF'}
-          </span>
-          <span className="text-xs text-gray-500">تذكرة · قسيمة فندق · تأكيد حجز</span>
-          <input
-            type="file"
-            accept="application/pdf,.pdf"
-            className="sr-only"
-            disabled={docUploading}
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) void handleDocumentUpload(file);
-              e.target.value = '';
-            }}
-          />
-        </label>
-
-        {documents.length === 0 ? (
-          <p className="rounded-lg border border-dashed border-gray-200 bg-gray-50 px-4 py-5 text-center text-sm text-gray-500">
-            لا توجد مستندات بعد.
-          </p>
-        ) : (
-          <ul className="space-y-2">
-            {documents.map((doc) => (
-              <li
-                key={doc.id}
-                className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3"
-              >
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-bold text-gray-900">{doc.name}</p>
-                  {doc.uploadedAt ? (
-                    <p className="text-xs text-gray-500">
-                      {new Date(doc.uploadedAt).toLocaleString('ar-SA')}
-                    </p>
-                  ) : null}
-                </div>
-                <div className="flex shrink-0 items-center gap-2">
-                  <a
-                    href={doc.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="rounded-lg border border-[#D4AF37]/40 bg-white px-3 py-1.5 text-xs font-bold text-[#1E2720] hover:bg-[#FEFDF9]"
-                  >
-                    عرض PDF
-                  </a>
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveDocument(doc.id)}
-                    className="rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-bold text-red-700 hover:bg-red-100"
-                  >
-                    حذف
-                  </button>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+      <ItineraryDocumentWallet
+        documents={documents ?? []}
+        onChange={setDocuments}
+        onNotice={setNotice}
+        description="ارفع تذاكر الطيران والقسائم الفندقية — تُحفظ روابط الملفات في المسار للفريق الداخلي."
+      />
 
       <section className="mb-6 rounded-xl border border-[#D4AF37]/30 bg-gradient-to-br from-[#FFFBF0] to-white p-5 shadow-sm">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -1401,13 +1476,13 @@ export default function EditItineraryPage() {
         <p className="mb-4 text-sm text-gray-500">
           مثل حجز صالون تجميل VIP قبل السفر — تظهر للعميل كقسائم فاخرة مع الموعد والموقع ورقم التواصل.
         </p>
-        {preTripServices.length === 0 ? (
+        {(preTripServices ?? []).length === 0 ? (
           <p className="rounded-lg border border-dashed border-gray-300 bg-gray-50 px-4 py-6 text-center text-sm text-gray-500">
             لا توجد خدمات ما قبل السفر بعد. اضغط «إضافة خدمة».
           </p>
         ) : (
           <div className="space-y-4">
-            {preTripServices.map((service, index) => (
+            {(preTripServices ?? []).map((service, index) => (
               <div
                 key={`pre-trip-${index}`}
                 className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
@@ -1433,7 +1508,7 @@ export default function EditItineraryPage() {
                     <span className="text-xs font-bold text-gray-600">عنوان الخدمة *</span>
                     <input
                       type="text"
-                      value={service.title}
+                      value={service?.title ?? ''}
                       onChange={(e) =>
                         setPreTripServices((prev) =>
                           prev.map((item, i) =>
@@ -1449,7 +1524,7 @@ export default function EditItineraryPage() {
                     <span className="text-xs font-bold text-gray-600">موعد الحجز</span>
                     <input
                       type="datetime-local"
-                      value={service.datetime}
+                      value={service?.datetime ?? ''}
                       onChange={(e) =>
                         setPreTripServices((prev) =>
                           prev.map((item, i) =>
@@ -1464,7 +1539,7 @@ export default function EditItineraryPage() {
                     <span className="text-xs font-bold text-gray-600">رقم التواصل</span>
                     <input
                       type="tel"
-                      value={service.phone}
+                      value={service?.phone ?? ''}
                       onChange={(e) =>
                         setPreTripServices((prev) =>
                           prev.map((item, i) =>
@@ -1481,7 +1556,7 @@ export default function EditItineraryPage() {
                     <span className="text-xs font-bold text-gray-600">رابط الموقع (Google Maps)</span>
                     <input
                       type="url"
-                      value={service.location_url}
+                      value={service?.location_url ?? ''}
                       onChange={(e) =>
                         setPreTripServices((prev) =>
                           prev.map((item, i) =>
@@ -1497,7 +1572,7 @@ export default function EditItineraryPage() {
                   <label className="flex flex-col gap-1.5 md:col-span-2">
                     <span className="text-xs font-bold text-gray-600">ملاحظة / تفاصيل</span>
                     <textarea
-                      value={service.note}
+                      value={service?.note ?? ''}
                       onChange={(e) =>
                         setPreTripServices((prev) =>
                           prev.map((item, i) =>
@@ -1586,6 +1661,23 @@ export default function EditItineraryPage() {
           onUpdateTransport={updateTransport}
           dayDroppableId={dayDroppableId}
           supplierBrief={supplierBrief}
+          predictiveWishContext={
+            supplierBrief
+              ? {
+                  clientRow: {
+                    travel_dna: supplierBrief?.dna,
+                    favorite_drink: supplierBrief?.dna?.drink_coffee ?? '',
+                    dna_interests: (supplierBrief?.interests ?? []).join('، '),
+                    dietary: supplierBrief?.dietary ?? '',
+                  },
+                  interests: supplierBrief?.interests ?? [],
+                  destination: supplierBrief?.destination ?? '',
+                  tripDateFrom: supplierBrief?.tripDateFrom ?? '',
+                  tripDateTo: supplierBrief?.tripDateTo ?? '',
+                }
+              : null
+          }
+          onApplyPredictiveWish={(place) => handleAddPlace(place, activeDayId)}
         />
       </div>
       </DragDropContext>
@@ -1604,8 +1696,8 @@ export default function EditItineraryPage() {
           destination={supplierDestinationLabel}
           briefContext={{
             clientName: (() => {
-              if (!selectedClientId) return undefined;
-              const match = clientsList.find((c) => String(c.id) === String(selectedClientId));
+              if (!clientId) return undefined;
+              const match = clientsList.find((c) => String(c?.id) === String(clientId));
               return match ? clientDisplayName(match) : undefined;
             })(),
             destination: geographyDestinationLabel,

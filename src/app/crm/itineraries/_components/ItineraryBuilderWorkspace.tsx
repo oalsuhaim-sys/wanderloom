@@ -4,6 +4,7 @@ import { useMemo, useState, useEffect, useRef } from 'react';
 import { ArrowRight, Award, CalendarDays, CloudSun, Crown, Globe, Key, Loader2, MapPin, MessageCircle, Plus, Save, Sparkles, UserRound, Users } from 'lucide-react';
 import Link from 'next/link';
 
+import { saveItineraryClientLinkAction } from '@/app/actions/itineraryClientActions';
 import { useCrmEmployee } from '@/app/crm/_components/CrmEmployeeProvider';
 import { resolveVipDestinationStoredValue } from '@/lib/vip-destination-countries';
 import { FeaturesAchievementsModal } from '@/app/crm/itineraries/_components/FeaturesAchievementsModal';
@@ -16,10 +17,12 @@ import {
 import {
   CRM_CLIENTS_LIST_SELECT,
   ITINERARY_CLIENT_JOIN_SELECT,
+  fetchCrmClientMiniById,
   mergeClientIntoList,
+  parseCrmClientIdForSave,
   parseJoinedCrmClient,
   resolveClientPhone,
-  resolveItineraryClientId,
+  resolveItineraryClientIdFromDb,
   type CrmClientMini,
 } from '@/lib/itinerary-client-crm';
 import ItineraryBuilderDaysPanel from '@/app/crm/itineraries/_components/ItineraryBuilderDaysPanel';
@@ -69,6 +72,10 @@ export default function ItineraryBuilderWorkspace({ itineraryId }: ItineraryBuil
   const patchDraft = (patch: Partial<ItineraryDraft>) => setDraft((d) => ({ ...d, ...patch }));
 
   const [clients, setClients] = useState<ClientMini[]>([]);
+  const [readyGroups, setReadyGroups] = useState<
+    Array<{ id: string; title_ar: string; title_en: string; dates_ar: string | null }>
+  >([]);
+  const [selectedReadyGroupId, setSelectedReadyGroupId] = useState('');
   const [loadingLibrary, setLoadingLibrary] = useState(true);
   const [loadingItinerary, setLoadingItinerary] = useState(isEditMode);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -92,8 +99,11 @@ export default function ItineraryBuilderWorkspace({ itineraryId }: ItineraryBuil
       setLoadingLibrary(true);
       setNotice(null);
       try {
-        const [{ data: templatesData, error: templatesError }, { data: clientsData, error: clientsError }] =
-          await Promise.all([
+        const [
+          { data: templatesData, error: templatesError },
+          { data: clientsData, error: clientsError },
+          { data: groupsData, error: groupsError },
+        ] = await Promise.all([
           supabase
             .from('itineraries')
             .select(
@@ -102,10 +112,17 @@ export default function ItineraryBuilderWorkspace({ itineraryId }: ItineraryBuil
             .eq('is_template', true)
             .order('created_at', { ascending: false }),
           supabase.from('clients').select(CRM_CLIENTS_LIST_SELECT).order('name', { ascending: true }),
-        });
+          supabase
+            .from('group_trips')
+            .select('id, title_ar, title_en, dates_ar, is_active')
+            .order('sort_order', { ascending: true }),
+        ]);
 
         if (clientsError) {
           console.warn('[builder] clients:', clientsError);
+        }
+        if (groupsError) {
+          console.warn('[builder] group_trips:', groupsError);
         }
         if (templatesError) {
           console.error(templatesError);
@@ -118,6 +135,17 @@ export default function ItineraryBuilderWorkspace({ itineraryId }: ItineraryBuil
             : loadedClients,
         );
         setTemplates((templatesData ?? []) as TemplateRow[]);
+        setReadyGroups(
+          ((groupsData ?? []) as Record<string, unknown>[])
+            .filter((g) => g.is_active !== false)
+            .map((g) => ({
+              id: String(g.id ?? ''),
+              title_ar: String(g.title_ar ?? '').trim(),
+              title_en: String(g.title_en ?? '').trim(),
+              dates_ar: g.dates_ar != null ? String(g.dates_ar) : null,
+            }))
+            .filter((g) => g.id),
+        );
       } catch (error) {
         console.error(error);
         setNotice('تعذر تحميل مكتبة البيانات. راجع إعدادات Supabase أو صلاحيات الجداول.');
@@ -170,12 +198,16 @@ export default function ItineraryBuilderWorkspace({ itineraryId }: ItineraryBuil
         }
 
         const joinedClient = parseJoinedCrmClient(row.client);
-        if (joinedClient) {
-          pinnedClientRef.current = joinedClient;
-          setClients((prev) => mergeClientIntoList(prev, joinedClient));
-        }
+        let clientForList = joinedClient;
+        const linkedClientId = await resolveItineraryClientIdFromDb(supabase!, row, queryId);
 
-        const linkedClientId = resolveItineraryClientId(row);
+        if (!clientForList && linkedClientId) {
+          clientForList = await fetchCrmClientMiniById(supabase!, linkedClientId);
+        }
+        if (clientForList) {
+          pinnedClientRef.current = clientForList;
+          setClients((prev) => mergeClientIntoList(prev, clientForList));
+        }
         let legacyDays: Array<Record<string, unknown>> | null = null;
         const { days: parsed } = parseDaysDataFromRow(row.days_data ?? row.days);
         if (parsed.length === 0) {
@@ -241,6 +273,16 @@ export default function ItineraryBuilderWorkspace({ itineraryId }: ItineraryBuil
       }
       if (res.error) throw res.error;
       await supabase.from('itineraries').update(buildVipClientSummaryPatch(draft)).eq('id', queryId);
+      if (draft.tripMode === 'Individual') {
+        const linkResult = await saveItineraryClientLinkAction(
+          queryId,
+          draft.linkedClientId || null,
+        );
+        if (!linkResult.ok) {
+          window.alert(linkResult.error);
+          throw new Error(linkResult.error);
+        }
+      }
       setNotice('تم حفظ التعديلات.');
     } catch (e) {
       setNotice(e instanceof Error ? e.message : 'فشل الحفظ.');
@@ -267,12 +309,13 @@ export default function ItineraryBuilderWorkspace({ itineraryId }: ItineraryBuil
       return;
     }
     if (draft.tripMode === 'Group') {
-      if (!draft.groupName.trim()) {
-        setNotice('يرجى إدخال اسم القروب عند اختيار نوع الرحلة «قروب».');
+      if (!selectedReadyGroupId && !draft.groupName.trim()) {
+        setNotice('للرحلة الجماعية يجب اختيار قروب جاهز من القائمة.');
         return;
       }
-      if (draft.groupMemberIds.length === 0) {
-        setNotice('اختر عميلاً واحداً على الأقل من قائمة CRM لربطهم بالقروب.');
+    } else {
+      if (!draft.linkedClientId.trim()) {
+        setNotice('للرحلة الخاصة يجب اختيار اسم العميل المرتبط.');
         return;
       }
     }
@@ -320,12 +363,25 @@ export default function ItineraryBuilderWorkspace({ itineraryId }: ItineraryBuil
           console.warn('[builder] VIP summary columns update:', summaryErr.message);
         }
       }
+
+      if (itineraryId != null && draft.tripMode === 'Individual') {
+        const linkResult = await saveItineraryClientLinkAction(
+          itineraryId,
+          draft.linkedClientId || null,
+        );
+        if (!linkResult.ok) {
+          window.alert(linkResult.error);
+          throw new Error(linkResult.error);
+        }
+      }
+
       const memberIds =
         draft.tripMode === 'Group'
           ? [...new Set(draft.groupMemberIds)]
-          : draft.linkedClientId && Number.isFinite(Number(draft.linkedClientId))
-            ? [Number(draft.linkedClientId)]
-            : [];
+          : (() => {
+              const parsed = parseCrmClientIdForSave(draft.linkedClientId);
+              return parsed != null ? [parsed] : [];
+            })();
       if (itineraryId != null && memberIds.length > 0) {
         const rows = memberIds.map((client_id) => ({ itinerary_id: itineraryId, client_id }));
         const { error: memErr } = await supabase.from('itinerary_client_members').insert(rows);
@@ -568,10 +624,11 @@ export default function ItineraryBuilderWorkspace({ itineraryId }: ItineraryBuil
             </div>
           </div>
 
-          <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
+          <div className="mt-5 rounded-2xl border border-amber-500/30 bg-slate-50/80 p-4">
             <div className="mb-3 flex flex-wrap items-center gap-2">
               <Users className="h-4 w-4 text-slate-600" />
-              <span className="text-sm font-black text-slate-900">نوع الرحلة</span>
+              <span className="text-sm font-black text-slate-900">نوع المسار</span>
+              <span className="text-[10px] font-bold text-amber-800">إلزامي</span>
             </div>
             <div className="flex flex-wrap gap-3">
               <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-gray-900 shadow-sm">
@@ -584,7 +641,7 @@ export default function ItineraryBuilderWorkspace({ itineraryId }: ItineraryBuil
                   }}
                   className="accent-slate-900"
                 />
-                فردية
+                رحلة خاصة — Private
               </label>
               <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-gray-900 shadow-sm">
                 <input
@@ -596,57 +653,60 @@ export default function ItineraryBuilderWorkspace({ itineraryId }: ItineraryBuil
                   }}
                   className="accent-slate-900"
                 />
-                قروب
+                رحلة جماعية — Group Tour
               </label>
             </div>
             {draft.tripMode === 'Group' ? (
-              <div className="mt-4 space-y-3">
+              <div className="mt-4">
                 <label className="block">
-                  <span className="mb-1 block text-xs font-bold text-slate-700">اسم القروب</span>
-                  <input
-                    value={draft.groupName}
-                    onChange={(e) => patchDraft({ groupName: e.target.value })}
-                    placeholder="مثال: قروب عائلة السعيد — اليابان 2026"
-                    className="w-full rounded-xl border border-gray-400 bg-white px-3 py-2.5 text-sm font-bold text-gray-900 placeholder:text-gray-500 outline-none focus:ring-2 focus:ring-indigo-500"
-                  />
+                  <span className="mb-1 block text-xs font-bold text-slate-700">
+                    اختيار من القروبات الظاهرة والجاهزة فقط <span className="text-red-500">*</span>
+                  </span>
+                  <select
+                    value={selectedReadyGroupId}
+                    onChange={(e) => {
+                      const id = e.target.value;
+                      setSelectedReadyGroupId(id);
+                      const g = readyGroups.find((x) => x.id === id);
+                      const title = g ? g.title_ar || g.title_en : '';
+                      patchDraft({
+                        groupName: title,
+                        linkedClientId: '',
+                        groupMemberIds: [],
+                        customerName: title || draft.customerName,
+                        title: title || draft.title,
+                      });
+                    }}
+                    className={contrastInputClass}
+                    required
+                  >
+                    <option value="">— اختر قروباً جاهزاً —</option>
+                    {readyGroups.map((g) => (
+                      <option key={g.id} value={g.id}>
+                        {g.title_ar || g.title_en}
+                        {g.dates_ar ? ` · ${g.dates_ar}` : ''}
+                      </option>
+                    ))}
+                  </select>
                 </label>
-                <div>
-                  <span className="mb-2 block text-xs font-black text-slate-600">أعضاء القروب من CRM (اختيار متعدد)</span>
-                  <div className="max-h-48 overflow-y-auto rounded-xl border border-slate-200 bg-white p-2">
-                    {clients.length === 0 ? (
-                      <p className="p-2 text-xs font-semibold text-slate-500">لا يوجد عملاء في الجدول أو تعذر التحميل.</p>
-                    ) : (
-                      <ul className="space-y-1">
-                        {clients.map((c) => (
-                          <li key={c.id}>
-                            <label className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-slate-50">
-                              <input
-                                type="checkbox"
-                                checked={draft.groupMemberIds.includes(c.id)}
-                                onChange={() => toggleGroupMember(c.id)}
-                                className="accent-slate-900"
-                              />
-                              <span className="text-gray-900 font-medium">
-                                {c.name || `عميل #${c.id}`}
-                              </span>
-                            </label>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                </div>
+                <p className="mt-2 text-[11px] font-semibold text-slate-500">
+                  المسار الجماعي مستقل عن عميل فردي — الملخص المالي الفردي مخفي. القوالب والأيام
+                  والموردين والفعاليات والكونسيرج تبقى متاحة بالكامل.
+                </p>
               </div>
             ) : (
               <div className="mt-4">
                 <label className="block">
-                  <span className="mb-1 block text-xs font-black text-slate-600">ربط بعميل CRM (اختياري — للظهور في صفحة العميل والقروبات)</span>
+                  <span className="mb-1 block text-xs font-black text-slate-600">
+                    اسم العميل <span className="text-red-500">*</span>
+                  </span>
                   <select
                     value={draft.linkedClientId || ''}
                     onChange={(e) => patchDraft({ linkedClientId: e.target.value })}
                     className={contrastInputClass}
+                    required
                   >
-                    <option value="">— بدون ربط —</option>
+                    <option value="">— اختر العميل المرتبط —</option>
                     {clients.map((c) => (
                       <option key={c.id} value={String(c.id)}>
                         {c.name || `عميل #${c.id}`}
@@ -777,62 +837,64 @@ export default function ItineraryBuilderWorkspace({ itineraryId }: ItineraryBuil
               </div>
             </div>
 
-            <div className={commandPanelClass}>
-              <h3 className="mb-1 text-sm font-black text-white">الميزانية للعميل + CRM</h3>
-              <p className="mb-4 text-[11px] font-semibold text-white/50">
-                الإجمالي والمدفوع والعملة يظهران للعميل في تبويب حقيبة السفر والمالية.
-              </p>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                <label className="block">
-                  <span className={goldLabelClass}>الميزانية الإجمالية (total_budget)</span>
-                  <input
-                    type="number"
-                    min={0}
-                    step="any"
-                    value={draft.budgetTracking.totalBudget}
-                    onChange={(e) =>
-                      patchDraft({
-                        budgetTracking: { ...draft.budgetTracking, totalBudget: e.target.value },
-                      })
-                    }
-                    placeholder="150000"
-                    className={contrastInputClass}
-                    dir="ltr"
-                  />
-                </label>
-                <label className="block">
-                  <span className={goldLabelClass}>المبلغ المدفوع (spent_amount)</span>
-                  <input
-                    type="number"
-                    min={0}
-                    step="any"
-                    value={draft.budgetTracking.spentAmount}
-                    onChange={(e) =>
-                      patchDraft({
-                        budgetTracking: { ...draft.budgetTracking, spentAmount: e.target.value },
-                      })
-                    }
-                    placeholder="75000"
-                    className={contrastInputClass}
-                    dir="ltr"
-                  />
-                </label>
-                <label className="block">
-                  <span className={goldLabelClass}>العملة</span>
-                  <input
-                    value={draft.budgetOptions.currency}
-                    onChange={(e) =>
-                      patchDraft({
-                        budgetOptions: { ...draft.budgetOptions, currency: e.target.value },
-                      })
-                    }
-                    placeholder="SAR"
-                    className={contrastInputClass}
-                    dir="ltr"
-                  />
-                </label>
+            {draft.tripMode === 'Individual' ? (
+              <div className={commandPanelClass}>
+                <h3 className="mb-1 text-sm font-black text-white">الملخص المالي للحجز</h3>
+                <p className="mb-4 text-[11px] font-semibold text-white/50">
+                  الميزانية والمدفوع والمتبقي — للرحلة الخاصة فقط.
+                </p>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                  <label className="block">
+                    <span className={goldLabelClass}>الميزانية الإجمالية</span>
+                    <input
+                      type="number"
+                      min={0}
+                      step="any"
+                      value={draft.budgetTracking.totalBudget}
+                      onChange={(e) =>
+                        patchDraft({
+                          budgetTracking: { ...draft.budgetTracking, totalBudget: e.target.value },
+                        })
+                      }
+                      placeholder="150000"
+                      className={contrastInputClass}
+                      dir="ltr"
+                    />
+                  </label>
+                  <label className="block">
+                    <span className={goldLabelClass}>المدفوع</span>
+                    <input
+                      type="number"
+                      min={0}
+                      step="any"
+                      value={draft.budgetTracking.spentAmount}
+                      onChange={(e) =>
+                        patchDraft({
+                          budgetTracking: { ...draft.budgetTracking, spentAmount: e.target.value },
+                        })
+                      }
+                      placeholder="75000"
+                      className={contrastInputClass}
+                      dir="ltr"
+                    />
+                  </label>
+                  <label className="block">
+                    <span className={goldLabelClass}>العملة</span>
+                    <input
+                      value={draft.budgetOptions.currency}
+                      onChange={(e) =>
+                        patchDraft({
+                          budgetOptions: { ...draft.budgetOptions, currency: e.target.value },
+                        })
+                      }
+                      placeholder="SAR"
+                      className={contrastInputClass}
+                      dir="ltr"
+                    />
+                  </label>
+                </div>
               </div>
-            </div>
+            ) : null}
 
             <p className="rounded-xl border border-amber-500/15 bg-amber-500/5 px-4 py-3 text-[11px] font-semibold text-white/55">
               فنادق وتجارب العرض (hotel_details / experiences_details) تُشتق تلقائياً من أيام المسار عند الحفظ.
@@ -840,18 +902,36 @@ export default function ItineraryBuilderWorkspace({ itineraryId }: ItineraryBuil
           </div>
 
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-4">
-            <label className="block">
-              <span className={`${labelOnDarkClass} inline-flex items-center gap-1`}>
-                <UserRound className="h-3.5 w-3.5" />
-                اسم العميل
-              </span>
-              <input
-                value={draft.customerName}
-                onChange={(e) => patchDraft({ customerName: e.target.value })}
-                placeholder="مثال: أحمد خالد"
-                className={contrastInputClass}
-              />
-            </label>
+            {draft.tripMode === 'Individual' ? (
+              <label className="block">
+                <span className={`${labelOnDarkClass} inline-flex items-center gap-1`}>
+                  <UserRound className="h-3.5 w-3.5" />
+                  اسم العميل
+                </span>
+                <input
+                  value={draft.customerName}
+                  onChange={(e) => patchDraft({ customerName: e.target.value })}
+                  placeholder="مثال: أحمد خالد"
+                  className={contrastInputClass}
+                />
+              </label>
+            ) : (
+              <label className="block">
+                <span className={`${labelOnDarkClass} inline-flex items-center gap-1`}>
+                  <Users className="h-3.5 w-3.5" />
+                  اسم القروب
+                </span>
+                <input
+                  value={draft.groupName || draft.customerName}
+                  onChange={(e) =>
+                    patchDraft({ groupName: e.target.value, customerName: e.target.value })
+                  }
+                  placeholder="من القروبات الجاهزة"
+                  className={contrastInputClass}
+                  readOnly={Boolean(selectedReadyGroupId)}
+                />
+              </label>
+            )}
 
             <label className="block">
               <span className={`${labelOnDarkClass} inline-flex items-center gap-1`}>
@@ -869,7 +949,7 @@ export default function ItineraryBuilderWorkspace({ itineraryId }: ItineraryBuil
             <label className="block">
               <span className={`${labelOnDarkClass} inline-flex items-center gap-1`}>
                 <Key className="h-3.5 w-3.5" />
-                passcode
+                {draft.tripMode === 'Group' ? 'كود القروب' : 'كود العميل'}
               </span>
               <input
                 value={draft.passcode}
@@ -935,7 +1015,9 @@ export default function ItineraryBuilderWorkspace({ itineraryId }: ItineraryBuil
                 </code>
               </div>
               <div className="mt-3 rounded-lg border border-emerald-100 bg-white px-3 py-2">
-                <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">الرمز السري للعميل (PIN)</p>
+                <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                  {draft.tripMode === 'Group' ? 'كود القروب' : 'كود العميل'}
+                </p>
                 <p className="mt-1 font-mono text-lg font-black text-slate-900">{savedTripPin.trim() !== '' ? savedTripPin : '—'}</p>
               </div>
               <button

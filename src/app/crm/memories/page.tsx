@@ -4,29 +4,41 @@ import { useCallback, useEffect, useState } from "react";
 
 import { supabase } from "@/lib/supabase";
 
-type MemoryVaultRow = {
-  id: string;
-  magic_link_id?: string | null;
-  itinerary_id?: string | null;
-  image_urls?: string[] | null;
-  comment?: string | null;
-  rating?: number | null;
-  created_at: string;
-  client_name?: string | null;
-  destination?: string | null;
-  client_review?: string | null;
+type ClientOption = {
+  id: number;
+  name: string;
+};
+
+type ItineraryOption = {
+  id: number;
+  title: string | null;
+  destination: string | null;
+};
+
+/** Flat row from client_memories — no FK joins */
+type ClientMemoryRow = {
+  id: number | string;
+  client_id?: number | string | null;
+  itinerary_id?: number | string | null;
+  image_url: string;
+  caption?: string | null;
+  location_name?: string | null;
+  location?: string | null;
+  created_at?: string | null;
 };
 
 type MemoryFormState = {
-  client_name: string;
-  destination: string;
+  client_id: string;
+  itinerary_id: string;
+  location_name: string;
   rating: number;
   client_review: string;
 };
 
 const emptyForm = (): MemoryFormState => ({
-  client_name: "",
-  destination: "",
+  client_id: "",
+  itinerary_id: "",
+  location_name: "",
   rating: 5,
   client_review: "",
 });
@@ -34,47 +46,23 @@ const emptyForm = (): MemoryFormState => ({
 const FIELD_CLASS =
   "w-full p-3 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-[#D4AF37]/50 focus:border-[#D4AF37] text-gray-800 bg-white";
 
-/** عند الإدراج اليدوي نخزن الاسم والوجهة داخل comment لأن الجدول الأساسي لا يضمها دائماً */
-function formatManualComment(f: MemoryFormState): string {
-  const lines = [`👤 ${f.client_name.trim()}`, `📍 ${f.destination.trim()}`, "", f.client_review.trim()];
-  return lines.join("\n");
-}
-
-function parseMemoryComment(comment: string | null | undefined): {
-  client_name: string;
-  destination: string;
-  body: string;
-} {
-  if (!comment?.trim()) {
-    return { client_name: "", destination: "", body: "" };
-  }
-  const raw = comment.split("\n");
-  let client_name = "";
-  let destination = "";
-  const bodyLines: string[] = [];
-  for (const line of raw) {
-    const t = line.trim();
-    if (t.startsWith("👤")) client_name = t.replace(/^👤\s*/, "").trim();
-    else if (t.startsWith("📍")) destination = t.replace(/^📍\s*/, "").trim();
-    else bodyLines.push(line);
-  }
-  const body = bodyLines.join("\n").trim();
-  return { client_name, destination, body };
-}
-
 export default function MemoriesPage() {
-  const [memories, setMemories] = useState<MemoryVaultRow[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [memories, setMemories] = useState<ClientMemoryRow[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+
+  const [clients, setClients] = useState<ClientOption[]>([]);
+  const [clientItineraries, setClientItineraries] = useState<ItineraryOption[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [formData, setFormData] = useState<MemoryFormState>(emptyForm());
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [loadError, setLoadError] = useState<string | null>(null);
 
   const resetForm = useCallback(() => {
     setFormData(emptyForm());
+    setClientItineraries([]);
     setSelectedFile(null);
     setFormError(null);
     setImagePreview((prev) => {
@@ -89,38 +77,170 @@ export default function MemoriesPage() {
   }, [resetForm]);
 
   const fetchMemories = useCallback(async () => {
-    if (!supabase) {
-      setLoadError("قاعدة البيانات غير مهيأة.");
-      setMemories([]);
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    setLoadError(null);
-    const { data, error } = await supabase
-      .from("memory_vault")
-      .select("*")
-      .order("created_at", { ascending: false });
+    try {
+      setIsLoading(true);
+      setFetchError(null);
 
-    if (error) {
-      setLoadError(error.message);
+      if (!supabase) {
+        throw new Error(
+          "Supabase client is null — check NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY",
+        );
+      }
+
+      // 1) Strict direct select — no joins
+      const { data, error } = await supabase
+        .from("client_memories")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+
+      console.log("Fetched memories from DB (anon):", data);
+      console.log("Memories count (anon):", data?.length ?? 0);
+
+      if (Array.isArray(data) && data.length > 0) {
+        setMemories(data as ClientMemoryRow[]);
+        return;
+      }
+
+      // 2) Anon returned 0 rows (common when RLS blocks SELECT) — try admin API
+      console.warn(
+        "[crm/memories] anon returned 0 rows — trying /api/crm/client-memories (admin)",
+      );
+      const apiRes = await fetch("/api/crm/client-memories");
+      const apiPayload = (await apiRes.json()) as {
+        ok?: boolean;
+        memories?: ClientMemoryRow[];
+        error?: string;
+      };
+
+      console.log("Fetched memories from admin API:", apiPayload);
+
+      if (!apiRes.ok || !apiPayload.ok) {
+        setFetchError(
+          apiPayload.error ||
+            `anon_returned_0_rows; admin_api_failed:status_${apiRes.status}`,
+        );
+        setMemories([]);
+        return;
+      }
+
+      const adminRows = Array.isArray(apiPayload.memories) ? apiPayload.memories : [];
+      setMemories(adminRows);
+
+      if (adminRows.length === 0) {
+        setFetchError(
+          "anon و admin أعادا 0 صفوف — تحقق من وجود بيانات في جدول client_memories",
+        );
+      } else {
+        // Flag that anon RLS likely blocked reads
+        setFetchError(
+          `تنبيه: anon رأى 0 صفوف (RLS؟) — عُرضت ${adminRows.length} ذكرى عبر Admin API`,
+        );
+      }
+    } catch (err) {
+      console.error("Fetch error details:", err);
+      const message =
+        err instanceof Error
+          ? err.message
+          : typeof err === "object" && err != null
+            ? JSON.stringify(err)
+            : String(err);
+      setFetchError(message || "unknown_error");
       setMemories([]);
-    } else {
-      setMemories((data as MemoryVaultRow[]) ?? []);
+    } finally {
+      setIsLoading(false);
     }
-    setLoading(false);
   }, []);
 
   useEffect(() => {
     void fetchMemories();
   }, [fetchMemories]);
 
+  useEffect(() => {
+    if (!supabase) return;
+    void (async () => {
+      const { data, error } = await supabase
+        .from("clients")
+        .select("id, name")
+        .order("name", { ascending: true });
+      if (!error && data) {
+        setClients(
+          (data as ClientOption[]).filter(
+            (client) => client.id != null && String(client.name ?? "").trim().length > 0,
+          ),
+        );
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
+    if (!supabase || !formData.client_id.trim()) {
+      setClientItineraries([]);
+      return;
+    }
+
+    void (async () => {
+      const clientId = Number(formData.client_id);
+      if (!Number.isFinite(clientId)) {
+        setClientItineraries([]);
+        return;
+      }
+
+      const [directRes, memberRes] = await Promise.all([
+        supabase
+          .from("itineraries")
+          .select("id, title, destination")
+          .eq("client_id", clientId)
+          .or("is_template.is.null,is_template.eq.false")
+          .order("id", { ascending: false }),
+        supabase
+          .from("itinerary_client_members")
+          .select("itinerary_id, itineraries (id, title, destination, is_template)")
+          .eq("client_id", clientId),
+      ]);
+
+      const byId = new Map<number, ItineraryOption>();
+
+      for (const row of (directRes.data ?? []) as ItineraryOption[]) {
+        if (row?.id != null) byId.set(Number(row.id), row);
+      }
+
+      for (const link of (memberRes.data ?? []) as Array<{
+        itineraries?: ItineraryOption | ItineraryOption[] | null;
+      }>) {
+        const nested = link.itineraries;
+        const itinerary = Array.isArray(nested) ? nested[0] : nested;
+        if (!itinerary?.id) continue;
+        if ((itinerary as { is_template?: boolean }).is_template === true) continue;
+        byId.set(Number(itinerary.id), {
+          id: Number(itinerary.id),
+          title: itinerary.title ?? null,
+          destination: itinerary.destination ?? null,
+        });
+      }
+
+      setClientItineraries(
+        [...byId.values()].sort((a, b) => Number(b.id) - Number(a.id)),
+      );
+    })();
+  }, [formData.client_id]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!supabase) return;
 
+    const selectedClient = clients.find(
+      (client) => String(client.id) === formData.client_id.trim(),
+    );
+
+    if (!selectedClient?.id) {
+      setFormError("الرجاء اختيار العميل قبل رفع الذكرى.");
+      return;
+    }
+
     if (!selectedFile) {
-      setFormError("الرجاء إرفاق صورة التقييم أو المحادثة قبل الحفظ");
+      setFormError("الرجاء إرفاق صورة قبل الحفظ");
       return;
     }
 
@@ -128,7 +248,7 @@ export default function MemoriesPage() {
     setFormError(null);
 
     const ext = selectedFile.name.split(".").pop()?.toLowerCase() || "jpg";
-    const filePath = `crm/${Date.now()}-${Math.random().toString(36).slice(2, 9)}.${ext}`;
+    const filePath = `crm/client-${selectedClient.id}/${Date.now()}-${Math.random().toString(36).slice(2, 9)}.${ext}`;
     const { error: uploadError } = await supabase.storage
       .from("memories")
       .upload(filePath, selectedFile, {
@@ -143,15 +263,18 @@ export default function MemoriesPage() {
     }
 
     const { data: publicData } = supabase.storage.from("memories").getPublicUrl(filePath);
-    const image_urls = [publicData.publicUrl];
-    const { error } = await supabase.from("memory_vault").insert([
-      {
-        magic_link_id: `manual-crm-${Date.now()}`,
-        image_urls,
-        comment: formatManualComment(formData),
-        rating: formData.rating,
-      },
-    ]);
+    const uploadedFileUrl = publicData.publicUrl;
+    const memoryCaption = formData.client_review.trim() || null;
+
+    const { error } = await supabase.from("client_memories").insert({
+      client_id: selectedClient.id,
+      image_url: uploadedFileUrl,
+      caption: memoryCaption,
+      itinerary_id: formData.itinerary_id.trim() ? Number(formData.itinerary_id) : null,
+      location_name: formData.location_name.trim() || null,
+      location: formData.location_name.trim() || null,
+    });
+
     if (error) {
       setFormError(error.message);
       setSaving(false);
@@ -173,28 +296,12 @@ export default function MemoriesPage() {
     });
   };
 
-  const renderStars = (rating: number) => {
-    return Array.from({ length: 5 }, (_, i) => (
-      <span key={i} className={`text-xl ${i < (rating || 5) ? "text-yellow-400" : "text-gray-300"}`}>
-        ★
-      </span>
-    ));
-  };
-
-  if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center p-8 text-center text-gray-500">
-        جاري تحميل الذكريات...
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-gray-50 p-8 font-sans" dir="rtl">
       <div className="mb-10 flex items-center justify-between">
         <div>
           <h1 className="mb-2 text-3xl font-extrabold text-gray-900">ذكريات العملاء 📸</h1>
-          <p className="text-gray-500">مكتبة التقييمات والصور المخصصة لفريق التسويق</p>
+          <p className="text-gray-500">مكتبة التقييمات والصور المخصصة لفريق التسويق وبوابة العميل</p>
         </div>
         <button
           type="button"
@@ -208,84 +315,90 @@ export default function MemoriesPage() {
         </button>
       </div>
 
-      {loadError ? (
-        <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-950">
-          {loadError}
+      {fetchError ? (
+        <div
+          className={`mb-6 rounded-xl border px-4 py-4 text-sm font-bold ${
+            memories.length > 0
+              ? "border-amber-300 bg-amber-50 text-amber-950"
+              : "border-rose-300 bg-rose-50 text-rose-900"
+          }`}
+        >
+          <p className="mb-1 text-xs uppercase tracking-wide opacity-70">Fetch diagnostics</p>
+          <p className="break-all font-mono text-xs sm:text-sm">{fetchError}</p>
+          <button
+            type="button"
+            onClick={() => void fetchMemories()}
+            className={`mt-3 rounded-lg px-4 py-2 text-xs font-bold text-white ${
+              memories.length > 0 ? "bg-amber-900" : "bg-rose-900"
+            }`}
+          >
+            إعادة المحاولة
+          </button>
         </div>
       ) : null}
 
-      {memories.length === 0 ? (
-        <div className="rounded-3xl border border-dashed border-gray-300 bg-white p-20 text-center">
-          <div className="mb-4 text-6xl">📭</div>
-          <h3 className="mb-2 text-xl font-bold text-gray-700">لا توجد ذكريات مسجلة بعد</h3>
-          <p className="text-gray-500">
-            عندما يقوم العملاء برفع صورهم وتقييماتهم من الرابط السحري ستظهر هنا.
-          </p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 gap-8 md:grid-cols-2 xl:grid-cols-3">
-          {memories.map((memory) => {
-            const parsed = parseMemoryComment(memory.comment);
-            const displayName = memory.client_name || parsed.client_name || "عميل مميز";
-            const displayDest = memory.destination || parsed.destination || "وجهة غير محددة";
-            const displayReview =
-              memory.client_review || parsed.body || memory.comment || "لم يترك العميل تعليقاً نصياً، اكتفى بالتقييم أو الصور.";
+      <p className="mb-4 text-xs font-bold text-gray-500">
+        حالة التحميل: {isLoading ? "جاري…" : "انتهى"} · عدد الصفوف: {memories.length}
+      </p>
 
-            return (
+      {isLoading ? (
+        <div className="flex justify-center p-10">
+          <p className="font-bold text-[#B5914F]">جاري جلب الذكريات...</p>
+        </div>
+      ) : memories.length > 0 ? (
+        <div className="mt-8 grid grid-cols-2 gap-6 md:grid-cols-4 lg:grid-cols-5">
+          {memories.map((m) => (
             <div
-              key={memory.id}
-              className="flex flex-col overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-sm transition-all hover:shadow-xl"
+              key={String(m.id)}
+              className="group relative aspect-square overflow-hidden rounded-2xl bg-gray-100 shadow-lg"
             >
-              <div className="group relative h-56 bg-gray-100">
-                {memory.image_urls && memory.image_urls.length > 0 ? (
-                  <img
-                    src={memory.image_urls[0]}
-                    alt="Trip Memory"
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  <div className="flex h-full w-full items-center justify-center text-4xl text-gray-400">🗺️</div>
-                )}
-                {memory.image_urls && memory.image_urls.length > 0 ? (
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition-opacity group-hover:opacity-100">
-                    <a
-                      href={memory.image_urls[0]}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      download
-                      className="rounded-lg bg-white px-4 py-2 text-sm font-bold text-black"
-                    >
-                      فتح الصورة بجودة عالية
-                    </a>
-                  </div>
+              {m.image_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={m.image_url}
+                  alt={m.location_name || m.caption || "Memory"}
+                  className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
+                />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center text-sm font-bold text-gray-400">
+                  لا توجد صورة
+                </div>
+              )}
+              <div className="absolute inset-x-0 bottom-0 translate-y-2 bg-gradient-to-t from-black/80 to-transparent p-4 transition-transform group-hover:translate-y-0">
+                <p className="text-center text-sm font-bold text-white drop-shadow-md">
+                  📍 {m.location_name || m.location || "بدون موقع"}
+                </p>
+                {m.created_at ? (
+                  <p className="mt-1 text-center text-[11px] text-white/80">
+                    {new Date(m.created_at).toLocaleDateString("ar-SA")}
+                  </p>
                 ) : null}
               </div>
-
-              <div className="flex flex-grow flex-col p-6">
-                <div className="mb-4 flex items-start justify-between">
-                  <div>
-                    <h3 className="text-xl font-bold text-gray-900">{displayName}</h3>
-                    <p className="mt-1 text-sm font-medium text-indigo-600">📍 {displayDest}</p>
-                  </div>
-                  <div className="flex rounded-full bg-gray-50 px-3 py-1">
-                    {renderStars(Number(memory.rating) || 0)}
-                  </div>
-                </div>
-
-                <div className="mb-4 flex-grow rounded-2xl border border-blue-100 bg-blue-50 p-4 text-sm italic leading-relaxed text-blue-900">
-                  &quot;{displayReview}&quot;
-                </div>
-
-                <div className="mt-auto flex items-center justify-between border-t border-gray-50 pt-4 text-xs text-gray-400">
-                  <span>تاريخ النشر: {new Date(memory.created_at).toLocaleDateString("ar-SA")}</span>
-                  <button type="button" className="font-bold text-indigo-600 hover:text-indigo-800">
-                    نسخ النص للتسويق
-                  </button>
-                </div>
-              </div>
             </div>
-            );
-          })}
+          ))}
+        </div>
+      ) : (
+        <div className="flex flex-col items-center justify-center rounded-3xl border border-gray-100 bg-white p-12 shadow-sm">
+          <div className="mb-4 text-6xl">📭</div>
+          <h3 className="mt-6 text-xl font-bold text-[#1A2521]">
+            لا توجد ذكريات تسويقية مسجلة بعد
+          </h3>
+          <p className="mt-2 max-w-md text-center text-sm text-gray-500">
+            الاستعلام نجح لكن الجدول فارغ من جهة العميل (anon)، أو لا توجد صفوف مرئية بسبب RLS.
+          </p>
+          {!fetchError ? (
+            <p className="mt-3 max-w-lg rounded-lg bg-amber-50 px-3 py-2 text-center text-xs font-bold text-amber-900">
+              إذا كانت الصفوف موجودة في Supabase Table Editor ولم تظهر هنا، نفّذ سياسات RLS من
+              supabase/sql/client_memories.sql أو استخدم service role في الـ API.
+            </p>
+          ) : null}
+          <button
+            type="button"
+            onClick={() => void fetchMemories()}
+            className="mt-6 rounded-xl border border-[#B5914F]/40 bg-[#FFFBF0] px-5 py-2.5 text-sm font-bold text-[#B5914F]"
+          >
+            إعادة التحميل
+          </button>
         </div>
       )}
 
@@ -302,53 +415,82 @@ export default function MemoriesPage() {
             <div className="mb-6 border-b border-gray-100 pb-5">
               <h2 className="text-2xl font-bold text-gray-900">توثيق ذكرى عميل ✍️</h2>
               <p className="mt-2 text-sm leading-relaxed text-gray-500">
-                استخدم هذا النموذج لإضافة تقييمات العملاء التي تصلك عبر الواتساب.
+                اختر العميل أولاً — تُربط الصورة مباشرةً بملفه الشخصي في بوابة VIP.
               </p>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-5" dir="rtl">
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div>
-                  <label className="mb-1 block text-right text-sm font-medium text-gray-700">
-                    اسم العميل
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="مثال: أحمد العتيبي"
-                    className={FIELD_CLASS}
-                    value={formData.client_name}
-                    onChange={(e) => setFormData({ ...formData, client_name: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <label className="mb-1 block text-right text-sm font-medium text-gray-700">
-                    المدينة / الوجهة
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="مثال: ميونخ"
-                    className={FIELD_CLASS}
-                    value={formData.destination}
-                    onChange={(e) => setFormData({ ...formData, destination: e.target.value })}
-                  />
-                </div>
+              <div>
+                <label className="mb-1 block text-right text-sm font-medium text-gray-700">
+                  العميل <span className="text-red-500">*</span>
+                </label>
+                <select
+                  required
+                  className={FIELD_CLASS}
+                  value={formData.client_id}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      client_id: e.target.value,
+                      itinerary_id: "",
+                    })
+                  }
+                >
+                  <option value="">اختر العميل…</option>
+                  {clients.map((client) => (
+                    <option key={client.id} value={String(client.id)}>
+                      {client.name}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div>
                 <label className="mb-1 block text-right text-sm font-medium text-gray-700">
-                  التقييم (من 5)
+                  المسار / الرحلة (اختياري)
                 </label>
                 <select
                   className={FIELD_CLASS}
-                  value={formData.rating}
-                  onChange={(e) => setFormData({ ...formData, rating: Number(e.target.value) })}
+                  value={formData.itinerary_id}
+                  onChange={(e) => {
+                    const itineraryId = e.target.value;
+                    const selectedItinerary = clientItineraries.find(
+                      (itinerary) => String(itinerary.id) === itineraryId,
+                    );
+                    const suggestedLocation =
+                      selectedItinerary?.destination?.trim() ||
+                      selectedItinerary?.title?.trim() ||
+                      "";
+
+                    setFormData((prev) => ({
+                      ...prev,
+                      itinerary_id: itineraryId,
+                      location_name:
+                        prev.location_name.trim() || suggestedLocation || prev.location_name,
+                    }));
+                  }}
+                  disabled={!formData.client_id || clientItineraries.length === 0}
                 >
-                  <option value={5}>⭐⭐⭐⭐⭐ (ممتاز)</option>
-                  <option value={4}>⭐⭐⭐⭐ (جيد جداً)</option>
-                  <option value={3}>⭐⭐⭐ (جيد)</option>
+                  <option value="">بدون ربط بمسار محدد</option>
+                  {clientItineraries.map((itinerary) => (
+                    <option key={itinerary.id} value={String(itinerary.id)}>
+                      {(itinerary.destination || itinerary.title || `مسار #${itinerary.id}`).trim()}
+                    </option>
+                  ))}
                 </select>
+              </div>
+
+              <div>
+                <label className="mb-1 block text-right text-sm font-medium text-gray-700">
+                  اسم الموقع / المحطة
+                </label>
+                <input
+                  type="text"
+                  placeholder="مثال: برج طوكيو"
+                  className={FIELD_CLASS}
+                  value={formData.location_name}
+                  onChange={(e) => setFormData({ ...formData, location_name: e.target.value })}
+                />
               </div>
 
               <div>
@@ -356,7 +498,6 @@ export default function MemoriesPage() {
                   رأي العميل (التعليق)
                 </label>
                 <textarea
-                  required
                   rows={4}
                   placeholder="اكتب نص التقييم أو المحادثة هنا…"
                   className={`${FIELD_CLASS} resize-y`}
@@ -367,7 +508,7 @@ export default function MemoriesPage() {
 
               <div>
                 <label className="mb-1 block text-right text-sm font-medium text-gray-700">
-                  إرفاق صورة الواتساب / ذكرى <span className="text-red-500">*</span>
+                  إرفاق صورة <span className="text-red-500">*</span>
                 </label>
                 <label
                   className={`flex w-full cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed transition ${
@@ -378,6 +519,7 @@ export default function MemoriesPage() {
                 >
                   {imagePreview ? (
                     <div className="flex w-full flex-col items-center gap-3">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={imagePreview}
                         alt="معاينة الصورة"
@@ -386,25 +528,9 @@ export default function MemoriesPage() {
                       <p className="text-center text-sm font-semibold text-gray-700">
                         {selectedFile?.name}
                       </p>
-                      <p className="text-xs text-gray-500">اضغط لتغيير الصورة</p>
                     </div>
                   ) : (
                     <div className="flex flex-col items-center justify-center px-4 py-5">
-                      <svg
-                        className="mb-3 h-8 w-8 text-gray-400"
-                        aria-hidden="true"
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 20 16"
-                      >
-                        <path
-                          stroke="currentColor"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="2"
-                          d="M13 13h3a3 3 0 0 0 0-6h-.025A5.56 5.56 0 0 0 16 6.5 5.5 5.5 0 0 0 5.207 5.021C5.137 5.017 5.071 5 5 5a4 4 0 0 0 0 8h2.167M10 15V6m0 0L8 8m2-2 2 2"
-                        />
-                      </svg>
                       <p className="mb-1 text-sm font-semibold text-gray-600">اضغط هنا لرفع الصورة</p>
                       <p className="text-xs text-gray-400">JPG · PNG · WebP · GIF</p>
                     </div>
