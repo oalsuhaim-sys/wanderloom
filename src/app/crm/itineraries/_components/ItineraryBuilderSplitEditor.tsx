@@ -81,7 +81,7 @@ export default function ItineraryBuilderSplitEditor({ itineraryId }: Props) {
               `id, itinerary_days (
                 id, day_num, title, city, notes, sort_order,
                 itinerary_stops (
-                  id, place_name, category, time_slot, note, transport_type, taxi,
+                  id, place_name, category, visit_time, time_slot, note, transport_type, taxi,
                   transit_mode, transit_duration, sort_order
                 )
               )`,

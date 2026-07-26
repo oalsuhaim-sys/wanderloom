@@ -9,6 +9,7 @@ import {
   Loader2,
   Plane,
   Plus,
+  Receipt,
   Save,
   Ticket,
   Trash2,
@@ -16,6 +17,7 @@ import {
 } from 'lucide-react';
 
 import { supabase } from '@/lib/supabase';
+import { setLeadPipelineStatus } from '@/lib/lead-pipeline-automation';
 import { LEAD_SOURCE_OPTIONS, LEAD_SOURCE_SELECT_CLASS } from '@/lib/lead-source';
 import {
   calculateProfitFromMargin,
@@ -29,7 +31,11 @@ import {
   fetchQuotationHotelPlaces,
   filterQuotationHotelsByCity,
   hotelExistsInQuotationPlaces,
+  isQuotationPersisted,
+  isQuotationStatusApproved,
+  isQuoteSavedId,
   normalizeQuotationId,
+  quotationEditId,
   resolveQuotationClientId,
   serializeActivityProposalsForSave,
   serializeFlightProposalsForSave,
@@ -41,27 +47,53 @@ import {
   type QuotationFlightProposal,
   type QuotationHotelPlace,
   type QuotationHotelProposal,
+  type QuotationRow,
+  type QuotationStatus,
   type QuotationTransportProposal,
 } from '@/lib/crm-quotations';
+import { GenerateInvoiceModal } from '@/app/crm/quotations/_components/GenerateInvoiceModal';
+import { QuoteFinancialSummaryCard } from '@/app/crm/quotations/_components/QuoteFinancialSummaryCard';
+import { QuoteInvoiceHistoryTable } from '@/app/crm/quotations/_components/QuoteInvoiceHistoryTable';
 
 type ClientOption = {
   id: string;
   name: string;
+  phone_wa?: string | null;
 };
 
 type QuoteBuilderFormProps = {
   editQuoteId: string;
   isEditMode: boolean;
+  /** من /crm/quotations/new?from=lead — يُعبّأ الحقول من طلب DNA */
+  prefillFromLead?: boolean;
+  initialLeadId?: string;
+  /** من /crm/quotations/new?clientId= — يُعبّأ العميل تلقائياً */
+  initialClientId?: string;
+  lockClientFromDna?: boolean;
+  initialClientName?: string;
+  initialTripTitle?: string;
+  initialDestination?: string;
+  initialStartDate?: string;
+  initialEndDate?: string;
 };
 
+function parseDestinationPrefill(raw: string): string[] {
+  const trimmed = String(raw ?? '').trim();
+  if (!trimmed || trimmed === '—') return [];
+  return trimmed
+    .split(/\s·\s|,|،/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+}
+
 const fieldClass =
-  'w-full rounded-lg border border-gray-300 bg-white px-2 py-2 text-sm font-bold text-gray-900 outline-none focus:border-[#C9A84C] focus:ring-1 focus:ring-[#C9A84C]/30';
-const labelClass = 'mb-1.5 block text-xs font-black text-slate-700';
-const cardClass = 'rounded-2xl border border-gray-200 bg-white p-4 shadow-sm sm:p-5';
+  'w-full rounded-lg border border-gray-200 bg-white p-3 text-sm font-semibold text-[#1A3B2A] outline-none transition-all focus:border-[#C5A059] focus:ring-2 focus:ring-[#C5A059]/50';
+const labelClass = 'mb-1.5 block text-xs font-black text-[#1A3B2A]/80';
+const cardClass = 'rounded-2xl border border-gray-100 bg-white p-4 shadow-sm transition-all duration-300 hover:shadow-[0_10px_20px_rgba(0,0,0,0.05)] sm:p-5';
 const cellInputClass =
-  'w-full min-w-[4rem] border-0 bg-transparent px-2 py-2 text-xs font-bold text-gray-900 outline-none focus:bg-amber-50/80 focus:ring-1 focus:ring-inset focus:ring-[#C9A84C]/40';
+  'w-full min-w-[4rem] border-0 bg-transparent px-2 py-2 text-xs font-bold text-[#1A3B2A] outline-none focus:bg-[#C5A059]/10 focus:ring-1 focus:ring-inset focus:ring-[#C5A059]/40';
 const thClass =
-  'bg-[#1C4532] px-2 py-2 text-start text-[10px] font-black uppercase tracking-wide text-[#C9A84C]';
+  'bg-[#1A3B2A]/5 px-2 py-4 text-start text-xs font-semibold text-[#1A3B2A] border-b border-gray-200';
 
 function normalizeClientId(raw: unknown): string {
   if (raw == null || raw === '') return '';
@@ -78,6 +110,7 @@ function mapClientRow(row: Record<string, unknown>): ClientOption | null {
   return {
     id,
     name: String(row.name ?? '').trim(),
+    phone_wa: row.phone_wa != null ? String(row.phone_wa).trim() || null : null,
   };
 }
 
@@ -104,16 +137,29 @@ function PriceInput({
   );
 }
 
-export function QuoteBuilderForm({ editQuoteId, isEditMode }: QuoteBuilderFormProps) {
+export function QuoteBuilderForm({
+  editQuoteId,
+  isEditMode,
+  prefillFromLead = false,
+  initialLeadId = '',
+  initialClientId = '',
+  lockClientFromDna = false,
+  initialClientName = '',
+  initialTripTitle = '',
+  initialDestination = '',
+  initialStartDate = '',
+  initialEndDate = '',
+}: QuoteBuilderFormProps) {
   const router = useRouter();
 
   const [clients, setClients] = useState<ClientOption[]>([]);
   const [loadingClients, setLoadingClients] = useState(true);
   const [loadingQuote, setLoadingQuote] = useState(false);
   const [editingId, setEditingId] = useState('');
-  const [editingStatus, setEditingStatus] = useState<'draft' | 'pending_client' | 'approved'>(
-    'pending_client',
-  );
+  const [editingStatus, setEditingStatus] = useState<QuotationStatus>('pending_client');
+  const [invoiceModalOpen, setInvoiceModalOpen] = useState(false);
+  const [ledgerRefreshKey, setLedgerRefreshKey] = useState(0);
+  const [quoteSavedToDb, setQuoteSavedToDb] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -139,6 +185,7 @@ export function QuoteBuilderForm({ editQuoteId, isEditMode }: QuoteBuilderFormPr
 
   const [hotelPlaces, setHotelPlaces] = useState<QuotationHotelPlace[]>([]);
   const pendingClientId = useRef('');
+  const lockedClientIdRef = useRef('');
 
   const baseCost = useMemo(
     () => sumProposalPrices(flights, hotels, activities, transports),
@@ -154,6 +201,82 @@ export function QuoteBuilderForm({ editQuoteId, isEditMode }: QuoteBuilderFormPr
     () => calculateQuotationGrandTotal(baseCost, Number(marginPercent) || 0, Number(serviceFee) || 0),
     [baseCost, marginPercent, serviceFee],
   );
+
+  const persistedQuoteId = useMemo(
+    () => quotationEditId({ id: editingId, lead_id: null }),
+    [editingId],
+  );
+
+  const isQuoteSaved = useMemo(
+    () => isQuoteSavedId(persistedQuoteId || editingId),
+    [editingId, persistedQuoteId],
+  );
+
+  const selectedClient = useMemo(
+    () => clients.find((c) => c.id === clientId),
+    [clientId, clients],
+  );
+
+  const canIssueInvoice = useMemo(
+    () =>
+      isEditMode &&
+      !loadingQuote &&
+      isQuoteSaved &&
+      isQuotationStatusApproved(editingStatus),
+    [editingStatus, isEditMode, isQuoteSaved, loadingQuote],
+  );
+
+  const invoiceQuotationRow = useMemo((): QuotationRow | null => {
+    if (!isQuoteSaved || !isQuotationStatusApproved(editingStatus) || !persistedQuoteId) return null;
+    const client = clients.find((c) => c.id === clientId);
+    return {
+      id: persistedQuoteId,
+      lead_id: null,
+      client_id: clientId || null,
+      title,
+      destinations,
+      start_date: startDate || null,
+      end_date: endDate || null,
+      total_estimated_cost: baseCost,
+      expected_profit: marginProfit + (Number(serviceFee) || 0),
+      status: editingStatus,
+      paid_amount: 0,
+      remaining_amount: grandTotal,
+      trip_category: 'private',
+      flight_proposals: flights,
+      hotel_proposals: hotels,
+      activities_proposals: activities,
+      transport_proposals: transports,
+      profit_margin: Number(marginPercent) || 0,
+      service_fee: Number(serviceFee) || 0,
+      grand_total: grandTotal,
+      lead_source: leadSource.trim() || null,
+      referral_code: null,
+      is_referral_paid: false,
+      created_at: '',
+      clients: client ? { name: client.name, phone_wa: null } : null,
+    };
+  }, [
+    activities,
+    baseCost,
+    canIssueInvoice,
+    clientId,
+    clients,
+    destinations,
+    editingStatus,
+    endDate,
+    flights,
+    grandTotal,
+    hotels,
+    leadSource,
+    marginPercent,
+    marginProfit,
+    persistedQuoteId,
+    serviceFee,
+    startDate,
+    title,
+    transports,
+  ]);
 
   const loadClients = useCallback(async () => {
     if (!supabase) {
@@ -200,6 +323,52 @@ export function QuoteBuilderForm({ editQuoteId, isEditMode }: QuoteBuilderFormPr
   }, [loadClients]);
 
   useEffect(() => {
+    if (isEditMode || !prefillFromLead) return;
+
+    if (initialClientId) {
+      const cid = normalizeClientId(initialClientId);
+      if (cid) {
+        lockedClientIdRef.current = cid;
+        pendingClientId.current = cid;
+        setClientId(cid);
+      }
+    }
+    if (initialTripTitle) setTitle(initialTripTitle);
+    const destParts = parseDestinationPrefill(initialDestination);
+    if (destParts.length) setDestinations(destParts);
+    if (initialStartDate) setStartDate(initialStartDate);
+    if (initialEndDate) setEndDate(initialEndDate);
+    setLeadSource((prev) => prev || 'trip_log');
+  }, [
+    initialClientId,
+    initialDestination,
+    initialEndDate,
+    initialStartDate,
+    initialTripTitle,
+    isEditMode,
+    prefillFromLead,
+  ]);
+
+  useEffect(() => {
+    if (!lockClientFromDna || !initialClientId || loadingClients) return;
+    const cid = normalizeClientId(initialClientId);
+    if (!cid) return;
+    if (clients.some((c) => c.id === cid)) return;
+    setClients((prev) => [
+      ...prev,
+      { id: cid, name: initialClientName.trim() || `عميل #${cid}` },
+    ]);
+  }, [clients, initialClientId, initialClientName, loadingClients, lockClientFromDna]);
+
+  useEffect(() => {
+    if (isEditMode || lockClientFromDna || !initialClientId) return;
+    const cid = normalizeClientId(initialClientId);
+    if (!cid) return;
+    pendingClientId.current = cid;
+    setClientId(cid);
+  }, [initialClientId, isEditMode, lockClientFromDna]);
+
+  useEffect(() => {
     if (!editQuoteId) return;
     let cancelled = false;
 
@@ -211,11 +380,13 @@ export function QuoteBuilderForm({ editQuoteId, isEditMode }: QuoteBuilderFormPr
         if (cancelled) return;
         if (!row) {
           setError('تعذر العثور على عرض السعر للتعديل.');
+          setQuoteSavedToDb(false);
           return;
         }
 
         setEditingId(normalizeQuotationId(row.id));
         setEditingStatus(row.status);
+        setQuoteSavedToDb(isQuotationPersisted({ id: row.id, lead_id: row.lead_id ?? null }));
         const cid = row.client_id != null ? String(row.client_id) : '';
         pendingClientId.current = cid;
         setClientId(cid);
@@ -293,19 +464,30 @@ export function QuoteBuilderForm({ editQuoteId, isEditMode }: QuoteBuilderFormPr
     setError('');
     setSuccess('');
 
-    const rawClientId = normalizeClientId(clientId);
-    const matchedClient = clients.find((c) => c.id === rawClientId);
-    if (!rawClientId || !matchedClient) {
-      setError('اختر عميلاً صالحاً.');
-      return;
-    }
+    const rawClientId = lockClientFromDna
+      ? normalizeClientId(lockedClientIdRef.current || clientId)
+      : normalizeClientId(clientId);
 
     let resolvedClientId: string | number;
-    try {
-      resolvedClientId = resolveQuotationClientId(matchedClient.id);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'اختر عميلاً صالحاً.');
-      return;
+    if (lockClientFromDna && rawClientId) {
+      try {
+        resolvedClientId = resolveQuotationClientId(rawClientId);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'اختر عميلاً صالحاً.');
+        return;
+      }
+    } else {
+      const matchedClient = clients.find((c) => c.id === rawClientId);
+      if (!rawClientId || !matchedClient) {
+        setError('اختر عميلاً صالحاً.');
+        return;
+      }
+      try {
+        resolvedClientId = resolveQuotationClientId(matchedClient.id);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'اختر عميلاً صالحاً.');
+        return;
+      }
     }
 
     if (!title.trim()) {
@@ -348,6 +530,8 @@ export function QuoteBuilderForm({ editQuoteId, isEditMode }: QuoteBuilderFormPr
       const fee = Number(serviceFee) || 0;
       const profitAmount = calculateProfitFromMargin(baseCost, margin);
       const total = calculateQuotationGrandTotal(baseCost, margin, fee);
+      const activitiesSaved = serializeActivityProposalsForSave(activities) || [];
+      const transportsSaved = serializeTransportProposalsForSave(transports) || [];
 
       const payload = {
         client_id: resolvedClientId,
@@ -355,10 +539,10 @@ export function QuoteBuilderForm({ editQuoteId, isEditMode }: QuoteBuilderFormPr
         destinations,
         start_date: startDate.trim(),
         end_date: endDate.trim(),
-        flight_proposals: serializeFlightProposalsForSave(flights),
-        hotel_proposals: serializeHotelProposalsForSave(hotels),
-        activities_proposals: serializeActivityProposalsForSave(activities),
-        transport_proposals: serializeTransportProposalsForSave(transports),
+        flight_proposals: serializeFlightProposalsForSave(flights) || [],
+        hotel_proposals: serializeHotelProposalsForSave(hotels) || [],
+        activities: activitiesSaved,
+        transportation: transportsSaved,
         total_estimated_cost: baseCost,
         expected_profit: profitAmount,
         profit_margin: margin,
@@ -390,6 +574,8 @@ export function QuoteBuilderForm({ editQuoteId, isEditMode }: QuoteBuilderFormPr
             end_date: endDate.trim(),
             flight_proposals: payload.flight_proposals,
             hotel_proposals: payload.hotel_proposals,
+            activities: activitiesSaved,
+            transportation: transportsSaved,
             total_estimated_cost: baseCost,
             expected_profit: profitAmount + fee,
             status: editingId ? editingStatus : ('pending_client' as const),
@@ -412,7 +598,15 @@ export function QuoteBuilderForm({ editQuoteId, isEditMode }: QuoteBuilderFormPr
         }
 
         if (data?.[0]?.id != null) {
+          setQuoteSavedToDb(true);
           setSuccess('تم تحديث عرض السعر بنجاح! ✨');
+          if (supabase && (initialLeadId || clientId)) {
+            await setLeadPipelineStatus(
+              supabase,
+              { leadId: initialLeadId || null, clientId: clientId || null },
+              'quote_stage',
+            ).catch(() => undefined);
+          }
           router.push('/crm/quotations');
         }
         return;
@@ -432,6 +626,8 @@ export function QuoteBuilderForm({ editQuoteId, isEditMode }: QuoteBuilderFormPr
           end_date: endDate.trim(),
           flight_proposals: payload.flight_proposals,
           hotel_proposals: payload.hotel_proposals,
+          activities: activitiesSaved,
+          transportation: transportsSaved,
           total_estimated_cost: baseCost,
           expected_profit: profitAmount + fee,
           status: 'pending_client' as const,
@@ -451,6 +647,13 @@ export function QuoteBuilderForm({ editQuoteId, isEditMode }: QuoteBuilderFormPr
 
       const newQuoteId = insertedData?.[0]?.id != null ? String(insertedData[0].id).trim() : '';
       if (newQuoteId) {
+        if (supabase && (initialLeadId || clientId)) {
+          await setLeadPipelineStatus(
+            supabase,
+            { leadId: initialLeadId || null, clientId: clientId || null },
+            'quote_stage',
+          ).catch(() => undefined);
+        }
         setSuccess('تم حفظ عرض السعر بنجاح! ✨');
         router.push(`/quote/${newQuoteId}`);
       } else {
@@ -506,11 +709,36 @@ export function QuoteBuilderForm({ editQuoteId, isEditMode }: QuoteBuilderFormPr
 
         <label className="block">
           <span className={labelClass}>العميل *</span>
+          {lockClientFromDna && clientId ? (
+            <input type="hidden" name="client_id" value={clientId} />
+          ) : null}
           {loadingClients ? (
             <div className="flex items-center gap-2 text-sm text-slate-500">
               <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
               جاري تحميل العملاء...
             </div>
+          ) : lockClientFromDna ? (
+            <>
+              <select
+                value={clientId}
+                disabled
+                aria-disabled="true"
+                className={`${fieldClass} cursor-not-allowed bg-slate-50 opacity-90`}
+              >
+                {clientId ? (
+                  <option value={clientId}>
+                    {clients.find((c) => c.id === clientId)?.name ||
+                      initialClientName ||
+                      `عميل #${clientId}`}
+                  </option>
+                ) : (
+                  <option value="">—</option>
+                )}
+              </select>
+              <p className="mt-1.5 text-[11px] font-bold leading-relaxed text-amber-900">
+                العميل مرتبط بطلب DNA — لا يمكن تغييره لتجنب التكرار.
+              </p>
+            </>
           ) : (
             <select
               value={clientId}
@@ -913,6 +1141,45 @@ export function QuoteBuilderForm({ editQuoteId, isEditMode }: QuoteBuilderFormPr
         </table>
       </ProposalSection>
 
+      {isQuoteSaved ? (
+        <>
+          <QuoteFinancialSummaryCard
+            quoteId={persistedQuoteId}
+            liveTotalCost={grandTotal}
+            refreshKey={ledgerRefreshKey}
+          />
+          {canIssueInvoice ? (
+            <section className={`${cardClass} mb-5`}>
+              <h2 className="mb-3 flex items-center gap-2 text-sm font-black text-[#1C4532]">
+                <Receipt size={18} className="text-[#C9A84C]" aria-hidden />
+                الفوترة
+              </h2>
+              <p className="mb-3 text-xs font-semibold text-slate-500">
+                بعد اعتماد العميل — أصدر فاتورة عربون أو مبلغ كامل مرتبطة بهذا العرض المحفوظ.
+              </p>
+              <button
+                type="button"
+                onClick={() => setInvoiceModalOpen(true)}
+                className="inline-flex items-center gap-2 rounded-xl border border-[#C9A84C]/50 bg-gradient-to-l from-[#FEFDF9] to-[#FFF8E7] px-4 py-2.5 text-xs font-black text-[#1C4532] shadow-sm transition hover:border-[#C9A84C] hover:bg-amber-50"
+              >
+                <Receipt size={14} aria-hidden />
+                إصدار فاتورة
+              </button>
+            </section>
+          ) : null}
+          <QuoteInvoiceHistoryTable
+            quoteId={persistedQuoteId}
+            tripTitle={title}
+            clientPhone={selectedClient?.phone_wa ?? null}
+            refreshKey={ledgerRefreshKey}
+          />
+        </>
+      ) : (
+        <div className="mb-5 rounded-lg border border-amber-500 p-4 text-center text-sm font-bold text-amber-600">
+          ⚠️ يجب حفظ عرض السعر بنجاح أولاً لتفعيل الفواتير.
+        </div>
+      )}
+
       <button
         type="button"
         disabled={saving}
@@ -931,6 +1198,25 @@ export function QuoteBuilderForm({ editQuoteId, isEditMode }: QuoteBuilderFormPr
           </>
         )}
       </button>
+
+      {invoiceModalOpen && invoiceQuotationRow ? (
+        <GenerateInvoiceModal
+          quotation={invoiceQuotationRow}
+          onClose={() => setInvoiceModalOpen(false)}
+          onCreated={() => {
+            setLedgerRefreshKey((k) => k + 1);
+            setEditingStatus('awaiting_payment');
+            setInvoiceModalOpen(false);
+            if (supabase && clientId) {
+              void setLeadPipelineStatus(
+                supabase,
+                { clientId },
+                'awaiting_payment',
+              ).catch((err) => console.warn('[quote-builder] lead awaiting_payment:', err));
+            }
+          }}
+        />
+      ) : null}
     </div>
   );
 }

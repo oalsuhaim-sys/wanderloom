@@ -1,29 +1,20 @@
 'use client';
 
-import { useState } from 'react';
-
-const LOGO_PRIMARY = '/wanderloom_logo_hq.jpg';
-const LOGO_FALLBACK = '/icon-512.png';
-
-/** طبقة شعار خافتة — تتحول تلقائياً إلى icon-512.png إذا لم يُرفع wanderloom_logo_hq.jpg */
+/**
+ * Global fixed watermark — sits behind all landing-page sections while scrolling.
+ */
 export function LogoWatermarkLayer() {
-  const [src, setSrc] = useState(LOGO_PRIMARY);
-
   return (
-    <>
+    <div
+      aria-hidden
+      className="pointer-events-none fixed inset-0 z-0 flex items-center justify-center overflow-hidden opacity-[0.04]"
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        aria-hidden
+        src="/wanderloom.png"
         alt=""
-        src={src}
-        onError={() => {
-          if (src !== LOGO_FALLBACK) setSrc(LOGO_FALLBACK);
-        }}
-        className="pointer-events-none absolute left-1/2 top-1/2 h-auto w-[min(88vw,640px)] max-w-[640px] -translate-x-1/2 -translate-y-1/2 opacity-[0.045] sm:opacity-[0.06]"
+        className="w-[min(90vw,800px)] max-w-none mix-blend-multiply"
       />
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_20%,rgba(30,63,32,0.06),transparent_55%)]"
-      />
-    </>
+    </div>
   );
 }

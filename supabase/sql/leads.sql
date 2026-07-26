@@ -21,7 +21,10 @@ create table if not exists public.leads (
   accommodation_type text[] not null default '{}',
   final_thoughts text not null,
   form_type text not null default 'trip_log' check (form_type in ('trip_log', 'contact')),
-  status text not null default 'new' check (status in ('new', 'in_progress', 'processing', 'processing_quote', 'converted', 'done', 'archived')),
+  status text not null default 'new' check (status in (
+    'new', 'planning', 'awaiting_payment', 'active', 'completed',
+    'in_progress', 'processing', 'processing_quote', 'approved', 'converted', 'done', 'archived'
+  )),
   created_at timestamptz not null default now()
 );
 
@@ -52,7 +55,10 @@ alter table public.leads add column if not exists status text not null default '
 alter table public.leads drop constraint if exists leads_status_check;
 alter table public.leads
   add constraint leads_status_check
-  check (status in ('new', 'in_progress', 'processing', 'processing_quote', 'converted', 'done', 'archived'));
+  check (status in (
+    'new', 'planning', 'awaiting_payment', 'active', 'completed',
+    'in_progress', 'processing', 'processing_quote', 'approved', 'converted', 'done', 'archived'
+  ));
 
 drop policy if exists "leads_crm_update" on public.leads;
 create policy "leads_crm_update"

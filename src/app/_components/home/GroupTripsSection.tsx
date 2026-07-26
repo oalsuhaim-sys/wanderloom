@@ -223,32 +223,38 @@ export function GroupTripsSection() {
           {displayTrips.map((trip) => (
             <article
               key={trip.id}
-              className={`flex flex-col rounded-2xl border border-gray-100 bg-white p-5 shadow-sm ring-1 sm:p-8 md:p-10 ${trip.ring}`}
+              className={`wl-lift-card group flex flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm ring-1 transition-all duration-500 hover:-translate-y-2 hover:shadow-[0_20px_40px_rgba(0,0,0,0.06)] ${trip.ring}`}
             >
-              <span className={`w-fit rounded-full px-3 py-1 text-[10px] font-black ${trip.chip}`}>
-                <Users className="mb-0.5 me-1 inline h-3.5 w-3.5 align-middle" aria-hidden />
-                {trip.badge}
-              </span>
-              <h3 className="mt-4 text-lg font-black leading-snug text-[#0f1e16]">{trip.title}</h3>
-              {trip.leader_name?.trim() ? (
-                <div className="mt-3">
-                  <GroupTripLeaderBadge name={trip.leader_name} compact />
+              <div className="wl-card-media overflow-hidden border-b border-gray-50 bg-gradient-to-br from-[#F9F9F6] via-white to-[#f4efe6] px-5 py-6 sm:px-8">
+                <div className="wl-card-media-icon flex h-14 w-14 items-center justify-center rounded-2xl bg-[#1A3B2A] text-[#C5A059] shadow-md transition-transform duration-700 group-hover:scale-105">
+                  <Users className="h-6 w-6" aria-hidden />
                 </div>
-              ) : null}
-              <p className="mt-3 flex-1 text-sm font-bold leading-relaxed text-[#4a5650]">
-                {trip.description}
-              </p>
-              <button
-                type="button"
-                onClick={() => {
-                  setOpen(trip);
-                  resetRegForm();
-                  setMsg(null);
-                }}
-                className="mt-6 w-full rounded-2xl bg-[#1e3f20] py-3.5 text-sm font-black text-white shadow-md transition hover:bg-[#163018]"
-              >
-                {g.registerCta}
-              </button>
+              </div>
+              <div className="flex flex-1 flex-col p-5 sm:p-8 md:p-10">
+                <span className={`w-fit rounded-full px-3 py-1 text-[10px] font-black ${trip.chip}`}>
+                  {trip.badge}
+                </span>
+                <h3 className="mt-4 text-lg font-black leading-snug text-[#0f1e16]">{trip.title}</h3>
+                {trip.leader_name?.trim() ? (
+                  <div className="mt-3">
+                    <GroupTripLeaderBadge name={trip.leader_name} compact />
+                  </div>
+                ) : null}
+                <p className="mt-3 flex-1 text-sm font-bold leading-relaxed text-[#4a5650]">
+                  {trip.description}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpen(trip);
+                    resetRegForm();
+                    setMsg(null);
+                  }}
+                  className="mt-6 w-full rounded-full bg-[#1A3B2A] py-3.5 text-sm font-black text-white shadow-md transition-all duration-300 hover:-translate-y-0.5 hover:bg-[#163018] hover:shadow-lg"
+                >
+                  {g.registerCta}
+                </button>
+              </div>
             </article>
           ))}
         </div>

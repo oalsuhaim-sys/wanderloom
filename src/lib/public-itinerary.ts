@@ -141,6 +141,7 @@ function pickTimeLabel(obj: Record<string, unknown> | null): string | null {
   if (!obj) return null
   return (
     pickStr(obj, [
+      'visit_time',
       'time',
       'time_slot',
       'start_time',
@@ -362,8 +363,9 @@ export type PublicItinerary = {
   bypass_24h_lock: boolean
   /** خدمات الكونسيرج ما قبل السفر (صالون، تجميل، …) */
   preTripServices: PreTripService[]
-  /** عند true يُعرض تبويب أزياء السفر / الصالون الذهبي للعميل */
+  /** @deprecated Fashion module removed — always false at runtime */
   includeWardrobe: boolean
+  /** @deprecated Fashion module removed — always false at runtime */
   showFashionServices: boolean
   isQuotation: boolean
   isMedical: boolean
@@ -376,6 +378,8 @@ export type PublicItinerary = {
   expectedProfit: number
   /** معرّف العميل في CRM — لجلب محفظة العهدة */
   clientId: string | number | null
+  /** كود الإحالة العام — آمن للمشاركة (ليس رمز الملف الشخصي) */
+  referralCode: string | null
   /** شريحة VIP التلقائية من إجمالي المصروف */
   clientVipTier: VipSpendingTier | null
 }
@@ -1555,7 +1559,8 @@ function buildDayMediaContext(row: Record<string, unknown>): PublicDayMediaConte
   return {
     hotelDetails: row.hotel_details,
     experiencesDetails: row.experiences_details,
-    coverImage: pickStr(row, ['cover_image']) || null,
+    coverImage:
+      pickStr(row, ['cover_image', 'image_url', 'hero_image', 'city_image']) || null,
   }
 }
 
@@ -1634,8 +1639,21 @@ export function normalizePublicItinerary(trip: PublicItinerary): PublicItinerary
     totalEstimatedCost: parseFinancialNumber(trip.totalEstimatedCost),
     expectedProfit: parseFinancialNumber(trip.expectedProfit),
     clientId: trip.clientId ?? null,
+    referralCode: trip.referralCode?.trim() || null,
     clientVipTier: trip.clientVipTier ?? null,
     bypass_24h_lock: parseBypass24hLock(trip.bypass_24h_lock),
+    title: trip.title?.trim() || 'رحلتك الاستثنائية',
+    customerName: trip.customerName?.trim() || 'عميلنا المميز',
+    budget: {
+      total: Math.max(0, trip.budget?.total ?? 0),
+      spent: Math.max(0, trip.budget?.spent ?? 0),
+      remaining: Math.max(
+        0,
+        trip.budget?.remaining ??
+          Math.max(0, (trip.budget?.total ?? 0) - (trip.budget?.spent ?? 0)),
+      ),
+      currency: trip.budget?.currency?.trim() || 'SAR',
+    },
     days: (trip.days ?? []).map((day, index) => {
       const hotelName = day?.hotelName?.trim() || undefined
       return {
@@ -1680,7 +1698,8 @@ export function toPublicItinerary(row: Record<string, unknown>): PublicItinerary
     customerName: pickStr(row, ['customer_name']) || 'عميلنا المميز',
     startDate,
     endDate,
-    coverImage: pickStr(row, ['cover_image']) || null,
+    coverImage:
+      pickStr(row, ['cover_image', 'image_url', 'hero_image', 'city_image']) || null,
     flightDetails: parseFlightDetails(row.flight_details),
     weather: parsePublicWeatherForecast(row, destination),
     budget: parsePublicBudgetSummary(row),
@@ -1695,9 +1714,9 @@ export function toPublicItinerary(row: Record<string, unknown>): PublicItinerary
     hotels: parsePublicHotels(row, destination),
     experiences: parsePublicExperiences(row, destination),
     preTripServices: parsePreTripServices(row.pre_trip_services),
-    includeWardrobe: row.include_wardrobe === true,
-    showFashionServices:
-      row.show_fashion_services === true || row.include_wardrobe === true,
+    // Fashion/wardrobe module removed — always disabled regardless of DB flags
+    includeWardrobe: false,
+    showFashionServices: false,
     isQuotation: row.is_quotation === true,
     isMedical: row.is_medical === true,
     documents: parseItineraryDocuments(row.documents),
@@ -1706,6 +1725,9 @@ export function toPublicItinerary(row: Record<string, unknown>): PublicItinerary
     totalEstimatedCost: parseFinancialNumber(row.total_estimated_cost),
     expectedProfit: parseFinancialNumber(row.expected_profit),
     clientId: row.client_id != null ? (row.client_id as string | number) : null,
+    referralCode:
+      // Never trust itinerary-row referral fields — always enrich from clients table
+      null,
     clientVipTier: row.client_id != null
       ? normalizeVipSpendingTier(row.client_vip_tier, row.client_total_spent)
       : null,
@@ -1733,6 +1755,26 @@ function formatIsoDateLabel(iso: string): string {
   const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]))
   if (Number.isNaN(d.getTime())) return iso.trim()
   return d.toLocaleDateString('ar-SA', { day: 'numeric', month: 'long', year: 'numeric' })
+}
+
+/** أشهر مختصرة — للبطاقات الضيقة (مثل بطاقة الصعود) */
+export function formatShortArabicDate(iso: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso.trim())
+  if (!m) return iso.trim()
+  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]))
+  if (Number.isNaN(d.getTime())) return iso.trim()
+  return new Intl.DateTimeFormat('ar-EG', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  }).format(d)
+}
+
+export function formatTripDateRangeShort(start: string | null, end: string | null): string {
+  if (!start) return 'التواريخ قريباً'
+  const s = formatShortArabicDate(start)
+  if (!end || end === start) return s
+  return `${s} — ${formatShortArabicDate(end)}`
 }
 
 export function formatTripDateRange(start: string | null, end: string | null): string {
@@ -1904,26 +1946,41 @@ async function enrichItineraryRow(row: Record<string, unknown>): Promise<Record<
   if (!pickStr(row, ['customer_name']) && row.client_id != null) {
     const { data: client, error } = await supabase
       .from('clients')
-      .select('name, vip_tier, total_spent')
+      .select('name, vip_tier, total_spent, referral_code, ref_code')
       .eq('id', row.client_id)
       .maybeSingle()
     if (!error && client && typeof client === 'object') {
-      const c = client as { name?: string | null; vip_tier?: string | null; total_spent?: unknown }
+      const c = client as {
+        name?: string | null
+        vip_tier?: string | null
+        total_spent?: unknown
+        referral_code?: string | null
+        ref_code?: string | null
+      }
       const name = c.name
       if (name != null && String(name).trim()) enriched.customer_name = String(name).trim()
       enriched.client_vip_tier = c.vip_tier
       enriched.client_total_spent = c.total_spent
+      const referral = (c.ref_code ?? c.referral_code ?? '').trim()
+      if (referral) enriched.referral_code = referral
     }
   } else if (row.client_id != null) {
     const { data: client, error } = await supabase
       .from('clients')
-      .select('vip_tier, total_spent')
+      .select('vip_tier, total_spent, referral_code, ref_code')
       .eq('id', row.client_id)
       .maybeSingle()
     if (!error && client && typeof client === 'object') {
-      const c = client as { vip_tier?: string | null; total_spent?: unknown }
+      const c = client as {
+        vip_tier?: string | null
+        total_spent?: unknown
+        referral_code?: string | null
+        ref_code?: string | null
+      }
       enriched.client_vip_tier = c.vip_tier
       enriched.client_total_spent = c.total_spent
+      const referral = (c.ref_code ?? c.referral_code ?? '').trim()
+      if (referral) enriched.referral_code = referral
     }
   }
 
@@ -1962,6 +2019,22 @@ async function enrichItineraryRow(row: Record<string, unknown>): Promise<Record<
         startDate,
         buildDayMediaContext(row),
       )
+    }
+  }
+
+  if (
+    (enriched.client_id == null || String(enriched.client_id).trim() === '') &&
+    enriched.id != null
+  ) {
+    const { data: members } = await supabase
+      .from('itinerary_client_members')
+      .select('client_id')
+      .eq('itinerary_id', enriched.id)
+      .limit(1);
+
+    const memberClientId = members?.[0]?.client_id;
+    if (memberClientId != null) {
+      enriched.client_id = memberClientId;
     }
   }
 

@@ -1,4 +1,4 @@
-import type { DayWeatherApiPayload } from '@/app/api/weather/route';
+import type { DayWeatherApiPayload } from '@/lib/weather';
 import { parseTravelDnaForm } from '@/lib/clientsTravelDna';
 
 /** تقدير مدة النشاط من نص transit_duration (عربي/إنجليزي) */
@@ -224,16 +224,18 @@ export function extraCompassBadgesFromClient(row: SupabaseClientCompassRow): str
   return badges;
 }
 
-/** طقس حي عبر مسار API الداخلي (OpenWeatherMap عند توفر المفتاح) */
+/** طقس حي عبر مسار API الداخلي (Open-Meteo / OpenWeatherMap) */
 export async function fetchDestinationWeather(
   city: string,
-  _date?: string,
+  date?: string,
 ): Promise<DayWeatherApiPayload | null> {
   const q = city.trim();
   if (!q) return null;
 
   try {
-    const res = await fetch(`/api/weather?city=${encodeURIComponent(q)}`);
+    const params = new URLSearchParams({ city: q });
+    if (date?.trim()) params.set('date', date.trim());
+    const res = await fetch(`/api/weather?${params.toString()}`);
     if (!res.ok) return null;
     return (await res.json()) as DayWeatherApiPayload;
   } catch {
@@ -243,7 +245,8 @@ export async function fetchDestinationWeather(
 
 export function formatWeatherBadgeLabel(payload: DayWeatherApiPayload): string {
   const emoji =
-    payload.icon === 'rain'
+    payload.emoji ||
+    (payload.icon === 'rain'
       ? '🌧️'
       : payload.icon === 'clear'
         ? '☀️'
@@ -251,7 +254,7 @@ export function formatWeatherBadgeLabel(payload: DayWeatherApiPayload): string {
           ? '❄️'
           : payload.icon === 'storm'
             ? '⛈️'
-            : '🌤️';
+            : '🌤️');
   return `${emoji} ${payload.city}: ${payload.temp}°م ${payload.condition}`;
 }
 

@@ -6,6 +6,12 @@ alter table if exists public.quotations
   add column if not exists transport_proposals jsonb not null default '[]'::jsonb;
 
 alter table if exists public.quotations
+  add column if not exists activities jsonb not null default '[]'::jsonb;
+
+alter table if exists public.quotations
+  add column if not exists transportation jsonb not null default '[]'::jsonb;
+
+alter table if exists public.quotations
   add column if not exists profit_margin numeric(5, 2) not null default 20;
 
 alter table if exists public.quotations

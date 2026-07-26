@@ -7,10 +7,17 @@ import { supabase } from '@/lib/supabase'
 export const RECEIPTS_BUCKET = 'receipts'
 
 export const WANDERLOOM_BANK_DETAILS = {
-  bankName: process.env.NEXT_PUBLIC_BANK_NAME?.trim() || 'البنك السعودي الفرنسي (تجريبي)',
-  accountName: process.env.NEXT_PUBLIC_BANK_ACCOUNT_NAME?.trim() || 'مؤسسة وندرلُوم للسفر الفاخر',
-  iban: process.env.NEXT_PUBLIC_BANK_IBAN?.trim() || 'SA03 8000 0000 6080 1016 7519',
+  bankName: process.env.NEXT_PUBLIC_BANK_NAME?.trim() || '[أدخل اسم البنك]',
+  accountName: process.env.NEXT_PUBLIC_BANK_ACCOUNT_NAME?.trim() || '[أدخل اسم المؤسسة]',
+  iban: process.env.NEXT_PUBLIC_BANK_IBAN?.trim() || 'SA0000000000000000000000',
 } as const
+
+/**
+ * QR code for bank / STC Pay — replace the file at this path in `public/`.
+ * Example: add `public/payment-qr.png` and set NEXT_PUBLIC_PAYMENT_QR_URL=/payment-qr.png
+ */
+export const WANDERLOOM_PAYMENT_QR_SRC =
+  process.env.NEXT_PUBLIC_PAYMENT_QR_URL?.trim() || '/payment-qr.png'
 
 export type CheckoutClientProfile = {
   id: string

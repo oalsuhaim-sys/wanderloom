@@ -4,6 +4,13 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import {
+  fetchPipelineLeadsByStatuses,
+  joinDestinations,
+  type CrmLeadWithIntake,
+} from '@/lib/crm-leads'
+import { ITINERARY_PIPELINE_STATUSES } from '@/lib/leads-kanban'
+import { setLeadPipelineStatus } from '@/lib/lead-pipeline-automation'
+import {
   Award,
   Copy,
   ExternalLink,
@@ -28,6 +35,7 @@ import {
 
 import { FeaturesAchievementsModal } from '@/app/crm/itineraries/_components/FeaturesAchievementsModal'
 import { parseBypass24hLock } from '@/lib/vip-vault-reveal'
+import { buildItineraryPortalPath, copyItineraryPortalUrl } from '@/lib/itinerary-client-crm'
 
 const STATUS_FILTER = [
   { value: 'all', label: 'كل الحالات' },
@@ -38,21 +46,27 @@ const STATUS_FILTER = [
 ] as const
 
 const BTN_BASE =
-  'flex min-h-10 items-center justify-center gap-1.5 rounded-md px-3 py-2 text-xs font-medium transition whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed sm:text-sm'
-const BTN_WHITE = `${BTN_BASE} bg-white border border-gray-200 text-gray-700 hover:bg-gray-50`
-const BTN_GOLD = `${BTN_BASE} font-bold bg-[#cda04c] text-white hover:bg-[#b3893d] border border-[#cda04c] transition-colors`
-const BTN_PORTAL = `${BTN_BASE} font-bold bg-[#1C4532] text-white hover:bg-[#163828] border border-[#1C4532]`
-const BTN_DELETE = `${BTN_BASE} bg-red-50 border border-red-200 text-red-700 hover:bg-red-100`
+  'inline-flex h-8 items-center justify-center gap-1.5 rounded-md px-2.5 text-[11px] font-semibold leading-none transition whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-50 sm:px-3 sm:text-xs'
+const BTN_WHITE = `${BTN_BASE} border border-gray-200 bg-white text-gray-700 hover:bg-gray-50`
+const BTN_GOLD = `${BTN_BASE} border border-[#cda04c] bg-[#cda04c] font-bold text-white hover:bg-[#b3893d]`
+const BTN_PORTAL = `${BTN_BASE} border border-[#1C4532] bg-[#1C4532] font-bold text-white hover:bg-[#163828]`
+const BTN_DELETE = `${BTN_BASE} border border-red-200 bg-red-50 text-red-700 hover:bg-red-100`
 
 function statusBadgeClass(st: string): string {
-  if (st === 'archived') return 'bg-red-100 text-red-700'
-  if (st === 'draft') return 'bg-amber-100 text-amber-800'
-  if (st.toLowerCase() === 'confirmed' || st === 'sent') return 'bg-amber-100 text-amber-800'
-  return 'bg-green-100 text-green-700'
+  const s = st.trim().toLowerCase()
+  if (s === 'archived' || s === 'cancelled') return 'bg-red-100 text-red-800 px-3 py-1 rounded-full text-xs font-bold'
+  if (s === 'draft' || s === 'pending' || s === 'sent') {
+    return 'bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-xs font-bold'
+  }
+  if (s === 'confirmed' || s === 'active' || s === 'completed' || s === 'approved') {
+    return 'bg-green-100 text-green-800 px-3 py-1 rounded-full text-xs font-bold'
+  }
+  return 'bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-xs font-bold'
 }
 
 type Row = {
   id: number
+  client_id?: number | null
   title: string | null
   dates: string | null
   passcode: string | null
@@ -67,6 +81,7 @@ export default function CRMItinerariesPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [rows, setRows] = useState<Row[]>([])
+  const [pipelineLeads, setPipelineLeads] = useState<CrmLeadWithIntake[]>([])
 
   const [q, setQ] = useState('')
   const [status, setStatus] = useState('all')
@@ -84,12 +99,19 @@ export default function CRMItinerariesPage() {
     }
 
     setLoading(true)
-    const { data, error: err } = await supabase
-      .from('itineraries')
-      .select(
-        'id, client_id, title, dates, passcode, magic_link_id, status, bypass_24h_lock, created_at, clients(name, phone_wa), itinerary_days(id)',
-      )
-      .order('created_at', { ascending: false })
+    const [itinerariesRes, pipeline] = await Promise.all([
+      supabase
+        .from('itineraries')
+        .select(
+          'id, client_id, title, dates, passcode, magic_link_id, status, bypass_24h_lock, created_at, clients(name, phone_wa), itinerary_days(id)',
+        )
+        .order('created_at', { ascending: false }),
+      fetchPipelineLeadsByStatuses(supabase, ITINERARY_PIPELINE_STATUSES),
+    ])
+
+    setPipelineLeads(pipeline)
+
+    const { data, error: err } = itinerariesRes
 
     if (err) {
       setError(err.message || 'تعذر تحميل المسارات.')
@@ -156,6 +178,13 @@ export default function CRMItinerariesPage() {
     setError('')
     const { error: err } = await supabase.from('itineraries').update({ status: next }).eq('id', row.id)
     if (err) setError(err.message || 'تعذر تغيير الحالة.')
+    if (!err && next === 'active' && row.client_id != null) {
+      await setLeadPipelineStatus(
+        supabase,
+        { clientId: row.client_id, force: true },
+        'delivered',
+      ).catch(() => undefined)
+    }
     await load()
     setBusyId(null)
   }
@@ -163,6 +192,31 @@ export default function CRMItinerariesPage() {
   const copyPasscode = async (pc: string) => {
     if (!pc) return
     await navigator.clipboard.writeText(pc)
+  }
+
+  const copyPortalLink = async (row: Row) => {
+    const tripId = row.id != null ? String(row.id).trim() : '';
+    if (!tripId) {
+      setError('لا يوجد معرّف للمسار — احفظ المسار أولاً.')
+      return
+    }
+
+    const result = await copyItineraryPortalUrl({
+      itinerarySlug: tripId,
+      clientId: row.client_id,
+      itineraryId: tripId,
+    })
+
+    if (!result.ok) {
+      setError(result.error)
+      return
+    }
+
+    setMagicToast(
+      result.url.includes('trip_id=')
+        ? 'تم نسخ رابط المسار مع trip_id ✨'
+        : 'تم نسخ رابط المسار ✨',
+    )
   }
 
   const shareWhatsApp = (row: Row) => {
@@ -220,16 +274,45 @@ export default function CRMItinerariesPage() {
   }
 
   return (
-    <div dir="rtl" style={{ maxWidth: 1100, margin: '0 auto' }}>
+    <div dir="rtl" className="mx-auto max-w-[1100px]">
       <FeaturesAchievementsModal open={showAchievementsModal} onClose={() => setShowAchievementsModal(false)} />
 
       {magicToast ? (
         <div
           role="status"
           aria-live="polite"
-          className="fixed bottom-6 left-1/2 z-[200] w-[min(100%,22rem)] -translate-x-1/2 rounded-2xl border border-[#d4af37]/45 bg-gradient-to-br from-[#001f3f] via-[#0a1830] to-[#001f3f] px-5 py-4 text-center shadow-[0_20px_60px_rgba(0,31,63,0.55)] ring-1 ring-[#d4af37]/25 backdrop-blur-md wl-magic-toast-in"
+          className="fixed bottom-6 left-1/2 z-[200] w-[min(100%,22rem)] -translate-x-1/2 rounded-2xl border border-[#C5A059]/45 bg-[#1A3B2A] px-5 py-4 text-center shadow-2xl wl-magic-toast-in"
         >
-          <p className="text-sm font-black leading-relaxed text-[#f5e6c8]">{magicToast}</p>
+          <p className="text-sm font-black leading-relaxed text-[#F9F9F6]">{magicToast}</p>
+        </div>
+      ) : null}
+
+      {pipelineLeads.length > 0 ? (
+        <div className="mb-4 rounded-2xl border border-violet-200 bg-violet-50/60 p-4">
+          <p className="text-xs font-black text-violet-900">
+            طابور المسار — تجهيز المسار / تم التسليم ({pipelineLeads.length})
+          </p>
+          <ul className="mt-3 grid gap-2 sm:grid-cols-2">
+            {pipelineLeads.map((lead) => (
+              <li
+                key={lead.id}
+                className="rounded-xl border border-white bg-white px-3 py-2.5 text-right shadow-sm"
+              >
+                <p className="truncate text-sm font-black text-[#1C4532]">{lead.full_name}</p>
+                <p className="text-[10px] font-bold text-slate-500">
+                  {joinDestinations(lead.destinations)} · {lead.status}
+                </p>
+                {lead.client_id != null ? (
+                  <Link
+                    href={`/crm/itineraries/builder?clientId=${lead.client_id}`}
+                    className="mt-2 inline-flex text-[10px] font-black text-violet-800 underline"
+                  >
+                    بناء مسار للعميل
+                  </Link>
+                ) : null}
+              </li>
+            ))}
+          </ul>
         </div>
       ) : null}
 
@@ -245,23 +328,24 @@ export default function CRMItinerariesPage() {
 
       <div className="mb-3 flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between md:mb-4">
         <div className="min-w-0">
-          <div className="text-lg font-black text-[#1C4532] sm:text-xl md:text-[22px]">مركز قيادة المسارات ✈️</div>
+          <p className="text-[10px] font-black uppercase tracking-[0.28em] text-[#C5A059]">Routes</p>
+          <div className="text-lg font-black text-[#1A3B2A] sm:text-xl md:text-[22px]">مركز قيادة المسارات</div>
           <div className="mt-1 text-xs font-extrabold text-gray-500 sm:text-sm">إدارة المسارات والرابط السحري VIP</div>
         </div>
         <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
           <button
             type="button"
             onClick={() => setShowAchievementsModal(true)}
-            className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-[14px] border border-[#C9A84C]/45 bg-gradient-to-br from-[#0f1c35] to-[#060b14] px-4 py-2.5 text-xs font-black text-[#F5E6C8] sm:w-auto sm:text-sm"
+            className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-xl border border-[#C5A059]/35 bg-white px-4 py-2.5 text-xs font-black text-[#1A3B2A] transition hover:bg-[#F9F9F6] sm:w-auto sm:text-sm"
           >
-            <Award size={16} color="#C9A84C" />
-            دليل ميزات النظام 🏆
+            <Award size={16} color="#C5A059" />
+            دليل ميزات النظام
           </button>
           <Link
             href="/crm/itineraries/builder"
-            className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-[14px] border border-[#C9A84C]/55 bg-gradient-to-br from-[#8A6B2A] to-[#C9A84C] px-4 py-2.5 text-xs font-black text-[#1C4532] no-underline sm:w-auto sm:text-sm"
+            className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-xl bg-[#1A3B2A] px-4 py-2.5 text-xs font-black text-white no-underline transition hover:bg-[#152e21] sm:w-auto sm:text-sm"
           >
-            <Plus size={16} /> مسار جديد +
+            <Plus size={16} className="text-[#C5A059]" /> مسار جديد +
           </Link>
         </div>
       </div>
@@ -280,7 +364,7 @@ export default function CRMItinerariesPage() {
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="بحث بالعنوان أو passcode أو اسم العميل..."
-              className="w-full rounded-xl border border-gray-400 bg-white p-3 text-[13px] font-black text-gray-900 outline-none [direction:rtl] placeholder:text-gray-500 focus:ring-2 focus:ring-indigo-500"
+              className="w-full rounded-lg border border-gray-200 bg-white p-3 text-[13px] font-semibold text-[#1A3B2A] outline-none transition-all [direction:rtl] placeholder:text-gray-400 focus:border-[#C5A059] focus:ring-2 focus:ring-[#C5A059]/50"
             />
           </div>
           <div>
@@ -290,7 +374,7 @@ export default function CRMItinerariesPage() {
             <select
               value={status}
               onChange={(e) => setStatus(e.target.value)}
-              className="w-full rounded-xl border border-gray-400 bg-white p-3 text-xs font-black text-gray-900 outline-none focus:ring-2 focus:ring-indigo-500 sm:text-sm"
+              className="w-full rounded-lg border border-gray-200 bg-white p-3 text-xs font-semibold text-[#1A3B2A] outline-none transition-all focus:border-[#C5A059] focus:ring-2 focus:ring-[#C5A059]/50 sm:text-sm"
             >
               {STATUS_FILTER.map((s) => (
                 <option key={s.value} value={s.value}>
@@ -313,7 +397,7 @@ export default function CRMItinerariesPage() {
             const clientName = r?.clients?.name || '—'
             const dayCount = Array.isArray(r.itinerary_days) ? r.itinerary_days.length : 0
             const pc = resolveItineraryPortalPin(r) || r.passcode || ''
-            const portalSlug = r.magic_link_id || String(r.id)
+            const portalSlug = r.id != null ? String(r.id) : ''
             const st = String(r.status || 'active')
             const busy = busyId === r.id
             const bypassBusy = bypassBusyId === r.id
@@ -322,11 +406,11 @@ export default function CRMItinerariesPage() {
             return (
               <div
                 key={r.id}
-                className="flex flex-col gap-4 rounded-xl border border-gray-100 bg-white p-4 shadow-sm transition hover:shadow-md sm:p-5 xl:flex-row xl:items-center xl:justify-between"
+                className="flex flex-col gap-4 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_10px_20px_rgba(0,0,0,0.05)] sm:p-5 xl:flex-row xl:items-center xl:justify-between"
               >
                 <div className="flex w-full min-w-0 flex-col gap-2 xl:w-auto">
-                  <div className="flex flex-wrap items-center gap-2 text-lg font-bold text-gray-800">
-                    <Route className="h-5 w-5 shrink-0 text-[#C9A84C]" aria-hidden />
+                  <div className="flex flex-wrap items-center gap-2 text-lg font-bold text-[#1A3B2A]">
+                    <Route className="h-5 w-5 shrink-0 text-[#C5A059]" aria-hidden />
                     <span className="truncate">{r.title || 'بدون عنوان'}</span>
                   </div>
 
@@ -338,7 +422,7 @@ export default function CRMItinerariesPage() {
 
                   <div className="mt-1 flex flex-wrap items-center gap-2">
                     <span
-                      className={`rounded px-2 py-1 text-[10px] font-bold ${statusBadgeClass(st)}`}
+                      className={statusBadgeClass(st)}
                     >
                       {st || 'active'}
                     </span>
@@ -354,7 +438,7 @@ export default function CRMItinerariesPage() {
                   </div>
                 </div>
 
-                <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:justify-end xl:w-auto">
+                <div className="flex w-full flex-wrap items-center gap-1.5 sm:justify-end xl:w-auto">
                   <button
                     type="button"
                     onClick={() => shareWhatsApp(r)}
@@ -362,7 +446,7 @@ export default function CRMItinerariesPage() {
                     title="مشاركة البوابة الآمنة عبر واتساب"
                     className={BTN_GOLD}
                   >
-                    <MessageCircle className="h-3.5 w-3.5" aria-hidden />
+                    <MessageCircle className="h-3 w-3 shrink-0" aria-hidden />
                     مشاركة واتساب
                   </button>
 
@@ -372,7 +456,7 @@ export default function CRMItinerariesPage() {
                     disabled={busy}
                     className={BTN_WHITE}
                   >
-                    <Power className="h-3.5 w-3.5" aria-hidden />
+                    <Power className="h-3 w-3 shrink-0" aria-hidden />
                     {st === 'archived' ? 'تفعيل' : 'إيقاف'}
                   </button>
 
@@ -388,17 +472,17 @@ export default function CRMItinerariesPage() {
                     className={`${BTN_WHITE}${bypassUnlocked ? ' border-[#1C4532] text-[#1C4532]' : ''}`}
                   >
                     {bypassBusy ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+                      <Loader2 className="h-3 w-3 shrink-0 animate-spin" aria-hidden />
                     ) : bypassUnlocked ? (
-                      <Lock className="h-3.5 w-3.5" aria-hidden />
+                      <Lock className="h-3 w-3 shrink-0" aria-hidden />
                     ) : (
-                      <Unlock className="h-3.5 w-3.5" aria-hidden />
+                      <Unlock className="h-3 w-3 shrink-0" aria-hidden />
                     )}
                     {bypassUnlocked ? 'قفل المسار' : 'فتح المسار'}
                   </button>
 
                   <Link href={`/crm/itineraries/${r.id}/edit`} className={BTN_WHITE}>
-                    <Pencil className="h-3.5 w-3.5" aria-hidden />
+                    <Pencil className="h-3 w-3 shrink-0" aria-hidden />
                     تعديل
                   </Link>
 
@@ -408,8 +492,19 @@ export default function CRMItinerariesPage() {
                     disabled={busy}
                     className={BTN_DELETE}
                   >
-                    <Trash2 className="h-3.5 w-3.5" aria-hidden />
+                    <Trash2 className="h-3 w-3 shrink-0" aria-hidden />
                     حذف
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => void copyPortalLink(r)}
+                    disabled={busy || !portalSlug}
+                    title="نسخ رابط المسار للعميل (مع trip_id)"
+                    className={BTN_GOLD}
+                  >
+                    <Copy className="h-3 w-3 shrink-0" aria-hidden />
+                    نسخ الرابط
                   </button>
 
                   <button
@@ -418,24 +513,28 @@ export default function CRMItinerariesPage() {
                     disabled={!pc}
                     className={BTN_WHITE}
                   >
-                    <Copy className="h-3.5 w-3.5" aria-hidden />
-                    نسخ
+                    <Copy className="h-3 w-3 shrink-0" aria-hidden />
+                    نسخ PIN
                   </button>
 
                   <a href="/portal" target="_blank" rel="noreferrer" className={BTN_PORTAL}>
-                    <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+                    <ExternalLink className="h-3 w-3 shrink-0" aria-hidden />
                     البوابة
                   </a>
 
                   {portalSlug ? (
                     <a
-                      href={`/itinerary/${encodeURIComponent(portalSlug)}`}
+                      href={buildItineraryPortalPath({
+                        itinerarySlug: portalSlug,
+                        clientId: r.client_id,
+                        itineraryId: r.id,
+                      })}
                       target="_blank"
                       rel="noreferrer"
                       title="معاينة داخلية للموظفين فقط"
                       className={BTN_WHITE}
                     >
-                      <Link2 className="h-3.5 w-3.5" aria-hidden />
+                      <Link2 className="h-3 w-3 shrink-0" aria-hidden />
                       معاينة
                     </a>
                   ) : null}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { CreditCard, Loader2, Minus, Plus, Wallet } from 'lucide-react';
 
 import { supabase } from '@/lib/supabase';
@@ -35,6 +35,18 @@ export default function ClientWalletLedgerCard({
   const [amountInput, setAmountInput] = useState('');
   const [descriptionInput, setDescriptionInput] = useState('');
 
+  // Never put onBalanceChange in effect/callback deps — parent often passes an inline fn
+  // which would re-trigger loadLedger forever (React error #185).
+  const onBalanceChangeRef = useRef(onBalanceChange);
+  onBalanceChangeRef.current = onBalanceChange;
+  const lastNotifiedBalanceRef = useRef<number | null>(null);
+
+  const notifyBalance = useCallback((next: number) => {
+    if (lastNotifiedBalanceRef.current === next) return;
+    lastNotifiedBalanceRef.current = next;
+    onBalanceChangeRef.current?.(next);
+  }, []);
+
   const loadLedger = useCallback(async () => {
     if (!supabase) {
       setError('قاعدة البيانات غير مهيأة.');
@@ -48,21 +60,18 @@ export default function ClientWalletLedgerCard({
       setBalance(ledger.balance);
       setTotalSpent(ledger.totalSpent);
       setTransactions(ledger.transactions);
-      onBalanceChange?.(ledger.balance);
+      notifyBalance(ledger.balance);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'تعذر تحميل محفظة العهدة.');
     } finally {
       setLoading(false);
     }
-  }, [clientId, onBalanceChange]);
+  }, [clientId, notifyBalance]);
 
   useEffect(() => {
+    lastNotifiedBalanceRef.current = null;
     void loadLedger();
   }, [loadLedger]);
-
-  useEffect(() => {
-    setBalance(initialBalance);
-  }, [initialBalance]);
 
   const submitTransaction = async (sign: 1 | -1) => {
     if (!supabase) return;
@@ -85,7 +94,7 @@ export default function ClientWalletLedgerCard({
       );
       setBalance(result.balance);
       setTotalSpent(result.totalSpent);
-      onBalanceChange?.(result.balance);
+      notifyBalance(result.balance);
       setAmountInput('');
       setDescriptionInput('');
       setNotice(sign > 0 ? 'تم تسجيل الإيداع بنجاح.' : 'تم تسجيل الخصم بنجاح.');

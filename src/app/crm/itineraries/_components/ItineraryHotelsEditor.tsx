@@ -6,6 +6,7 @@ import {
   createEmptyHotelEntry,
   type ItineraryHotelEntry,
 } from '@/app/crm/itineraries/_components/simple-itinerary-day-utils';
+import { VipDateField } from '@/app/crm/itineraries/_components/VipBookingFields';
 import SupplierContactActions, {
   resolveHotelManualSupplier,
 } from '@/app/crm/itineraries/_components/SupplierContactActions';
@@ -128,20 +129,16 @@ export default function ItineraryHotelsEditor({
               </label>
               <label className="flex flex-col gap-1.5">
                 <span className="text-sm font-bold text-gray-600">تسجيل الدخول</span>
-                <input
-                  type="date"
+                <VipDateField
                   value={hotel.checkIn}
-                  onChange={(e) => updateHotel(hotel.id, { checkIn: e.target.value })}
-                  className="rounded-lg border border-gray-300 bg-white p-2.5 text-sm text-gray-900 outline-none focus:border-[#cda04c]"
+                  onChange={(v) => updateHotel(hotel.id, { checkIn: v })}
                 />
               </label>
               <label className="flex flex-col gap-1.5">
                 <span className="text-sm font-bold text-gray-600">تسجيل الخروج</span>
-                <input
-                  type="date"
+                <VipDateField
                   value={hotel.checkOut}
-                  onChange={(e) => updateHotel(hotel.id, { checkOut: e.target.value })}
-                  className="rounded-lg border border-gray-300 bg-white p-2.5 text-sm text-gray-900 outline-none focus:border-[#cda04c]"
+                  onChange={(v) => updateHotel(hotel.id, { checkOut: v })}
                 />
               </label>
             </div>

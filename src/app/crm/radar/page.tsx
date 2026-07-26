@@ -15,15 +15,20 @@ import {
   type SalesPipelinePulse,
   type VipInTransit,
 } from '@/lib/live-radar-dashboard';
-import { fetchNewCrmLeads, type CrmLeadRow } from '@/lib/crm-leads';
+import { fetchNewCrmLeads, type CrmLeadWithIntake } from '@/lib/crm-leads';
 import {
   fetchGroupFulfillmentClients,
   type GroupFulfillmentClient,
 } from '@/lib/group-operations-radar';
+import {
+  fetchMarketingPublishingRadar,
+  type MarketingPublishRadarItem,
+} from '@/lib/marketing-publishing-radar';
 import { supabase } from '@/lib/supabase';
 
 import GroupOperationsFulfillment from './_components/GroupOperationsFulfillment';
 import { NewLeadsInbox } from './_components/NewLeadsInbox';
+import MarketingPublishingRadar from '@/app/crm/_components/MarketingPublishingRadar';
 
 function todayIsoLocal(): string {
   return new Date().toLocaleDateString('en-CA');
@@ -47,10 +52,12 @@ type DashboardData = {
   inTransit: VipInTransit[];
   passportAlerts: PassportAlert[];
   lazySuppliers: LazySupplierAlert[];
-  newLeads: CrmLeadRow[];
+  newLeads: CrmLeadWithIntake[];
   leadsWarning?: string;
   groupFulfillment: GroupFulfillmentClient[];
-  groupFulfillmentWarning?: string;
+  groupFulfillmentError?: string;
+  marketingPublish: MarketingPublishRadarItem[];
+  marketingPublishError?: string;
 };
 
 export default function RadarPage() {
@@ -138,7 +145,7 @@ export default function RadarPage() {
 
     const now = new Date();
 
-    let newLeads: CrmLeadRow[] = [];
+    let newLeads: CrmLeadWithIntake[] = [];
     let leadsWarning: string | undefined;
     try {
       const leadsResult = await fetchNewCrmLeads(supabase);
@@ -150,6 +157,7 @@ export default function RadarPage() {
     }
 
     const groupResult = await fetchGroupFulfillmentClients(supabase);
+    const marketingResult = await fetchMarketingPublishingRadar(supabase);
 
     setData({
       pulse: buildSalesPipelinePulse({ itineraries, quotations, clients }),
@@ -159,7 +167,9 @@ export default function RadarPage() {
       newLeads,
       leadsWarning,
       groupFulfillment: groupResult.clients,
-      groupFulfillmentWarning: groupResult.warning,
+      groupFulfillmentError: groupResult.error,
+      marketingPublish: marketingResult.items,
+      marketingPublishError: marketingResult.error,
     });
     setLoading(false);
   }, []);
@@ -184,7 +194,9 @@ export default function RadarPage() {
   const newLeads = data?.newLeads ?? [];
   const leadsWarning = data?.leadsWarning;
   const groupFulfillment = data?.groupFulfillment ?? [];
-  const groupFulfillmentWarning = data?.groupFulfillmentWarning;
+  const groupFulfillmentError = data?.groupFulfillmentError;
+  const marketingPublish = data?.marketingPublish ?? [];
+  const marketingPublishError = data?.marketingPublishError;
   const allQuiet =
     inTransit.length === 0 && passportAlerts.length === 0 && lazySuppliers.length === 0;
 
@@ -258,11 +270,33 @@ export default function RadarPage() {
         </div>
       </section>
 
-      <NewLeadsInbox leads={newLeads} loading={false} warning={leadsWarning} onRefresh={fetchRadar} />
+      <div className="mb-10 grid grid-cols-1 gap-6 xl:grid-cols-2 xl:items-start">
+        <NewLeadsInbox
+          leads={newLeads}
+          loading={false}
+          warning={leadsWarning}
+          onRefresh={fetchRadar}
+          onLeadApproved={(leadId) => {
+            setData((prev) =>
+              prev
+                ? {
+                    ...prev,
+                    newLeads: prev.newLeads.filter((l) => l.id !== leadId),
+                  }
+                : prev,
+            );
+          }}
+        />
+        <MarketingPublishingRadar
+          items={marketingPublish}
+          error={marketingPublishError}
+          compact
+        />
+      </div>
 
       <GroupOperationsFulfillment
         clients={groupFulfillment}
-        warning={groupFulfillmentWarning}
+        error={groupFulfillmentError}
         onRefresh={fetchRadar}
       />
 
@@ -276,14 +310,26 @@ export default function RadarPage() {
             {inTransit.map((vip) => (
               <article
                 key={vip.id}
-                className="relative overflow-hidden rounded-2xl border border-sky-300/60 bg-gradient-to-br from-sky-50 via-white to-sky-50/80 p-5 shadow-[0_0_24px_rgba(56,189,248,0.25)] ring-1 ring-sky-200"
+                className="relative flex h-full flex-col justify-between overflow-hidden rounded-2xl border border-sky-300/60 bg-gradient-to-br from-sky-50 via-white to-sky-50/80 p-5 shadow-[0_0_24px_rgba(56,189,248,0.25)] ring-1 ring-sky-200"
               >
                 <div className="pointer-events-none absolute -left-8 -top-8 h-24 w-24 rounded-full bg-sky-300/20 blur-2xl" />
-                <p className="relative text-base font-black leading-relaxed text-sky-950">
-                  ✈️ {vip.clientName} متواجد الآن في {vip.destination} (اليوم {vip.dayNumber} من
-                  الرحلة)
-                </p>
-                <p className="relative mt-2 text-xs font-semibold text-sky-700/80">{vip.tripTitle}</p>
+                <div className="relative">
+                  <p className="text-base font-black leading-relaxed text-sky-950">
+                    ✈️ {vip.clientName} متواجد الآن في {vip.destination} (اليوم {vip.dayNumber} من
+                    الرحلة)
+                  </p>
+                  <p className="mt-2 text-xs font-semibold text-sky-700/80">{vip.tripTitle}</p>
+                </div>
+                {vip.clientId ? (
+                  <div className="relative mt-4 border-t border-sky-200/60 pt-3">
+                    <Link
+                      href={`/crm/clients/${encodeURIComponent(vip.clientId)}`}
+                      className="inline-flex text-xs font-bold text-sky-900 underline underline-offset-2 transition-colors hover:text-sky-950"
+                    >
+                      فتح ملف العميل ←
+                    </Link>
+                  </div>
+                ) : null}
               </article>
             ))}
           </div>

@@ -2,6 +2,34 @@
 
 export const AFFILIATE_REF_STORAGE_KEY = 'wanderloom_affiliate_ref';
 
+/** يزيل المسافات والشرطات للمقارنة: WL-HALA-100 ≡ WL-HALA100 ≡ wl hala 100 */
+export function canonicalizeReferralCode(raw: string | null | undefined): string {
+  return String(raw ?? '')
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, '');
+}
+
+/** صيغ بحث محتملة لنفس الكود في قاعدة البيانات */
+export function referralCodeLookupVariants(raw: string | null | undefined): string[] {
+  const trimmed = String(raw ?? '').trim();
+  if (!trimmed) return [];
+
+  const noSpace = trimmed.replace(/\s+/g, '');
+  const noHyphen = noSpace.replace(/[-–—_]/g, '');
+  const variants = new Set<string>([trimmed, noSpace, noHyphen]);
+
+  const compact = canonicalizeReferralCode(trimmed);
+  const m = /^(WL)([A-Z]+)(\d+)$/.exec(compact);
+  if (m) {
+    variants.add(`${m[1]}-${m[2]}-${m[3]}`);
+    variants.add(`${m[1]}-${m[2]}${m[3]}`);
+    variants.add(`${m[1]}${m[2]}${m[3]}`);
+  }
+
+  return [...variants].filter(Boolean);
+}
+
 export function normalizeAffiliateRef(raw: string | null | undefined): string | null {
   const code = String(raw ?? '').trim();
   if (!code) return null;

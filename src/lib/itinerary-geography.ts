@@ -1,3 +1,4 @@
+import { expandCountryMatchTerms, placeRowMatchesCountryTerms } from '@/lib/places-bank';
 import { TRIP_DESTINATIONS } from '@/lib/trip-destination-data';
 import {
   filterSuppliersForItinerary,
@@ -167,6 +168,34 @@ export function filterPlacesByCities<T extends { city?: string | null; country?:
 ): T[] {
   if (!cities.length) return places;
   return places.filter((place) => placeMatchesCities(place, cities));
+}
+
+export function placeMatchesCountry(
+  place: { country?: string | null },
+  country: string,
+): boolean {
+  return placeRowMatchesCountryTerms(place, expandCountryMatchTerms([country]));
+}
+
+export function filterPlacesByCountries<T extends { country?: string | null }>(
+  places: T[],
+  countries: string[],
+): T[] {
+  if (!countries.length) return places;
+  const terms = expandCountryMatchTerms(countries);
+  return places.filter((place) => placeRowMatchesCountryTerms(place, terms));
+}
+
+/** فلترة بنك الأماكن حسب الدولة (و/أو المدينة) — للعرض بعد الجلب */
+export function filterPlacesByGeography<
+  T extends { city?: string | null; country?: string | null },
+>(places: T[], opts: { countries?: string[]; cities?: string[] }): T[] {
+  const countries = (opts.countries ?? []).map((c) => c.trim()).filter(Boolean);
+  const cities = (opts.cities ?? []).map((c) => c.trim()).filter(Boolean);
+  let result = places;
+  if (countries.length) result = filterPlacesByCountries(result, countries);
+  if (cities.length) result = filterPlacesByCities(result, cities);
+  return result;
 }
 
 export function formatAdminDayLabel(day: { title?: string; city?: string }, index: number): string {

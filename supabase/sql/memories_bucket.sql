@@ -27,4 +27,19 @@ create policy "memories_anon_insert"
   to anon
   with check (bucket_id = 'memories');
 
+-- CRM admin delete (authenticated) — service-role API also deletes via admin client
+drop policy if exists "memories_authenticated_delete" on storage.objects;
+create policy "memories_authenticated_delete"
+  on storage.objects
+  for delete
+  to authenticated
+  using (bucket_id = 'memories');
+
+drop policy if exists "memories_anon_delete" on storage.objects;
+create policy "memories_anon_delete"
+  on storage.objects
+  for delete
+  to anon
+  using (bucket_id = 'memories');
+
 comment on column public.memory_vault.image_urls is 'روابط عامة بعد الرفع إلى storage bucket memories';

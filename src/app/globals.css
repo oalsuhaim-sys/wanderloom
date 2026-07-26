@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Class-based dark mode (toggle via `.dark` on an ancestor — CRM shell) */
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
@@ -10,13 +13,15 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-}
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  /* Wanderloom luxury brand palette */
+  --color-brand-primary: #1a3b2a;
+  --color-brand-dark: #0b1912;
+  --color-brand-surface: #12261b;
+  --color-brand-gold: #c5a059;
+  --color-brand-charcoal: #0a0f0c;
+  --color-brand-offwhite: #f9f9f6;
+  --color-brand-muted: #8fa396;
 }
 
 body {
@@ -25,14 +30,255 @@ body {
   font-family: var(--font-tajawal), var(--font-geist-sans), system-ui, sans-serif;
 }
 
-/* Hide scrollbar globally — scroll remains functional */
+/* ——— Phase 4: Luxury custom scrollbar (Off-White · Forest Green · Royal Gold) ——— */
 * {
-  -ms-overflow-style: none; /* IE and Edge */
-  scrollbar-width: none; /* Firefox */
+  scrollbar-width: thin; /* Firefox */
+  scrollbar-color: #1a3b2a #f9f9f6;
 }
 
-*::-webkit-scrollbar {
-  display: none; /* Chrome, Safari and Opera */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f9f9f6; /* Off-White */
+}
+
+::-webkit-scrollbar-thumb {
+  background: #1a3b2a; /* Forest Green */
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #c5a059; /* Royal Gold */
+}
+
+::-webkit-scrollbar-corner {
+  background: #f9f9f6;
+}
+
+/* CRM marketing — gold accent scrollbar for long prompts/captions */
+.crm-marketing-textarea {
+  -ms-overflow-style: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgb(205 160 76 / 0.55) transparent;
+}
+
+.crm-marketing-textarea::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.crm-marketing-textarea::-webkit-scrollbar-thumb {
+  border-radius: 9999px;
+  background: rgb(205 160 76 / 0.55);
+}
+
+/* ——— CRM Command Center (Off-White · Forest · Gold) ——— */
+.crm-command-center {
+  --crm-forest: #1a3b2a;
+  --crm-gold: #c5a059;
+  --crm-offwhite: #f9f9f6;
+  --crm-bg: #f9f9f6;
+  --crm-surface: #ffffff;
+  --crm-text: #1a3b2a;
+  --crm-text-muted: #64748b;
+  --crm-border: rgb(197 160 89 / 0.2);
+  color-scheme: light;
+}
+
+/* Luxury Dark Mode — Midnight Green · Charcoal · Gold */
+.crm-command-center.dark {
+  --crm-forest: #1a3b2a;
+  --crm-gold: #c5a059;
+  --crm-offwhite: #0b1912;
+  --crm-bg: #0b1912;
+  --crm-surface: #12261b;
+  --crm-text: #e8ede9;
+  --crm-text-muted: #8fa396;
+  --crm-border: rgb(197 160 89 / 0.28);
+  color-scheme: dark;
+  background-color: var(--crm-bg);
+  color: var(--crm-text);
+  scrollbar-color: #c5a059 #0b1912;
+}
+
+.crm-command-center.dark ::-webkit-scrollbar-track {
+  background: #0b1912;
+}
+
+.crm-command-center.dark ::-webkit-scrollbar-thumb {
+  background: #1a3b2a;
+}
+
+.crm-command-center.dark ::-webkit-scrollbar-thumb:hover {
+  background: #c5a059;
+}
+
+.crm-command-center.dark ::-webkit-scrollbar-corner {
+  background: #0b1912;
+}
+
+/* Remap common light surfaces inside CRM dark mode without rewriting every page */
+.crm-command-center.dark main {
+  background-color: var(--crm-bg) !important;
+  color: var(--crm-text);
+}
+
+.crm-command-center.dark .bg-white,
+.crm-command-center.dark .bg-white\/70,
+.crm-command-center.dark .bg-white\/60,
+.crm-command-center.dark .bg-\[\#F9F9F6\],
+.crm-command-center.dark .bg-\[\#FEFDF9\],
+.crm-command-center.dark .bg-slate-50,
+.crm-command-center.dark .bg-slate-50\/80,
+.crm-command-center.dark .bg-gray-50 {
+  background-color: var(--crm-surface) !important;
+}
+
+.crm-command-center.dark .bg-slate-100,
+.crm-command-center.dark .bg-gray-100 {
+  background-color: rgb(26 59 42 / 0.65) !important;
+}
+
+.crm-command-center.dark .text-slate-900,
+.crm-command-center.dark .text-gray-900,
+.crm-command-center.dark .text-\[\#1A3B2A\],
+.crm-command-center.dark .text-\[\#1C4532\],
+.crm-command-center.dark .text-\[\#1c3d27\],
+.crm-command-center.dark .text-slate-800,
+.crm-command-center.dark .text-gray-800 {
+  color: #e8ede9 !important;
+}
+
+.crm-command-center.dark .text-slate-700,
+.crm-command-center.dark .text-gray-700,
+.crm-command-center.dark .text-slate-600,
+.crm-command-center.dark .text-gray-600,
+.crm-command-center.dark .text-slate-500,
+.crm-command-center.dark .text-gray-500,
+.crm-command-center.dark .text-slate-400,
+.crm-command-center.dark .text-gray-400 {
+  color: #8fa396 !important;
+}
+
+.crm-command-center.dark .border-slate-100,
+.crm-command-center.dark .border-slate-200,
+.crm-command-center.dark .border-gray-100,
+.crm-command-center.dark .border-gray-200 {
+  border-color: rgb(197 160 89 / 0.22) !important;
+}
+
+.crm-command-center.dark .shadow-sm,
+.crm-command-center.dark .shadow,
+.crm-command-center.dark .shadow-md,
+.crm-command-center.dark .shadow-lg,
+.crm-command-center.dark .shadow-xl {
+  box-shadow: 0 8px 28px rgb(0 0 0 / 0.35) !important;
+}
+
+.crm-command-center.dark .crm-kpi-card {
+  background: var(--crm-surface);
+  border-color: rgb(197 160 89 / 0.25);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.3);
+}
+
+.crm-command-center.dark .crm-kpi-card:hover {
+  box-shadow: 0 12px 32px rgb(197 160 89 / 0.12);
+}
+
+.crm-command-center.dark table.crm-data-table thead th {
+  background: rgb(26 59 42 / 0.8);
+  color: #c5a059;
+  border-color: rgb(197 160 89 / 0.2);
+}
+
+.crm-command-center.dark table.crm-data-table tbody td {
+  border-color: rgb(197 160 89 / 0.12);
+  color: #e8ede9;
+}
+
+.crm-command-center.dark input:not([type='checkbox']):not([type='radio']),
+.crm-command-center.dark textarea,
+.crm-command-center.dark select {
+  background-color: #0b1912;
+  border-color: rgb(197 160 89 / 0.28);
+  color: #e8ede9;
+}
+
+.crm-command-center.dark input::placeholder,
+.crm-command-center.dark textarea::placeholder {
+  color: #6b8576;
+}
+
+@keyframes wl-chat-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(1rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.crm-command-center .crm-kpi-card {
+  background: #fff;
+  border: 1px solid #f3f4f6;
+  border-radius: 1rem;
+  padding: 1.5rem;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.04);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.crm-command-center .crm-kpi-card:hover {
+  transform: translateY(-0.25rem);
+  box-shadow: 0 10px 20px rgb(0 0 0 / 0.05);
+}
+
+.crm-command-center .crm-kpi-value {
+  color: #c5a059;
+  font-weight: 700;
+  font-size: 1.875rem;
+  line-height: 2.25rem;
+}
+
+.crm-command-center table.crm-data-table thead th {
+  background: rgb(26 59 42 / 0.05);
+  color: #1a3b2a;
+  font-weight: 600;
+  text-align: right;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.crm-command-center table.crm-data-table tbody tr {
+  border-bottom: 1px solid #f3f4f6;
+  transition: background-color 0.2s ease;
+  cursor: default;
+}
+
+.crm-command-center table.crm-data-table tbody tr:hover {
+  background: #fff;
+}
+
+.crm-command-center :where(
+  input:not([type='checkbox']):not([type='radio']):not([type='file']):not([type='hidden']):not([type='range']):not([type='submit']):not([type='button']):not([type='color']),
+  textarea,
+  select
+):not([class*='border-0']):not(.crm-marketing-textarea) {
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.crm-command-center :where(
+  input:not([type='checkbox']):not([type='radio']):not([type='file']):not([type='hidden']):not([type='range']):not([type='submit']):not([type='button']):not([type='color']),
+  textarea,
+  select
+):not([class*='border-0']):not(.crm-marketing-textarea):focus {
+  outline: none;
+  border-color: #c5a059;
+  box-shadow: 0 0 0 2px rgb(197 160 89 / 0.5);
 }
 
 /* ——— Wanderloom landing: woven “W” thread watermark ——— */
@@ -44,6 +290,213 @@ body {
   background-repeat: repeat;
   background-size: var(--wanderloom-pattern-tile) var(--wanderloom-pattern-tile);
   background-position: center top;
+}
+
+/* ——— Landing Phase 1: glass navbar + hero CTAs (plain CSS — always ships) ——— */
+.wl-public-navbar {
+  background-color: rgb(249 249 246 / 0.82) !important;
+  border-bottom-color: rgb(197 160 89 / 0.28) !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 1px 0 rgb(197 160 89 / 0.12), 0 8px 24px rgb(26 59 42 / 0.04);
+}
+
+.wl-public-nav-logo {
+  color: #c5a059;
+}
+
+.wl-public-nav-logo:hover {
+  color: #a88849;
+}
+
+.wl-public-nav-link {
+  color: rgb(26 59 42 / 0.82);
+}
+
+.wl-public-nav-link:hover {
+  color: #c5a059;
+}
+
+.wl-public-nav-underline {
+  background-color: #c5a059;
+}
+
+.wl-public-nav-partner {
+  color: #c5a059;
+  border-color: rgb(197 160 89 / 0.55);
+}
+
+.wl-public-nav-partner:hover {
+  color: #a88849;
+  border-color: #c5a059;
+}
+
+.wl-hero-cta {
+  transition:
+    transform 0.3s ease,
+    box-shadow 0.3s ease,
+    background-color 0.3s ease;
+}
+
+.wl-hero-cta:hover {
+  transform: translateY(-4px);
+}
+
+.wl-hero-cta--gold {
+  background-color: #c5a059;
+  box-shadow: 0 8px 18px rgb(197 160 89 / 0.28);
+}
+
+.wl-hero-cta--gold:hover {
+  background-color: #b3893d;
+  box-shadow: 0 12px 28px rgb(197 160 89 / 0.38);
+}
+
+.wl-hero-cta--green {
+  background-color: #1a3b2a;
+  box-shadow: 0 8px 18px rgb(26 59 42 / 0.22);
+}
+
+.wl-hero-cta--green:hover {
+  background-color: #163018;
+  box-shadow: 0 12px 28px rgb(26 59 42 / 0.3);
+}
+
+/* ——— Landing Phase 2: cards, destination tags, quiz options ——— */
+.wl-lift-card {
+  transition:
+    transform 0.5s ease,
+    box-shadow 0.5s ease,
+    border-color 0.5s ease;
+}
+
+.wl-lift-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.06);
+}
+
+.wl-lift-card .wl-card-media img,
+.wl-lift-card .wl-card-media-icon {
+  transition: transform 0.7s ease;
+}
+
+.wl-lift-card:hover .wl-card-media img,
+.wl-lift-card:hover .wl-card-media-icon {
+  transform: scale(1.05);
+}
+
+.wl-dest-tag {
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  color: #374151;
+  transition:
+    transform 0.3s ease,
+    box-shadow 0.3s ease,
+    border-color 0.3s ease,
+    background-color 0.3s ease,
+    color 0.3s ease;
+}
+
+.wl-dest-tag:hover {
+  border-color: #1a3b2a;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.08);
+}
+
+.wl-dest-tag.is-active {
+  background: #1a3b2a;
+  color: #c5a059;
+  border-color: transparent;
+  box-shadow: 0 4px 14px rgb(26 59 42 / 0.25);
+  transform: scale(1.05);
+}
+
+.wl-quiz-option {
+  display: flex;
+  width: 100%;
+  cursor: pointer;
+  align-items: center;
+  gap: 1rem;
+  border-radius: 0.75rem;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  padding: 1rem;
+  text-align: start;
+  transition:
+    transform 0.3s ease,
+    box-shadow 0.3s ease,
+    border-color 0.3s ease,
+    background-color 0.3s ease;
+}
+
+.wl-quiz-option:hover {
+  background: #ffffff;
+  box-shadow: 0 8px 20px rgb(0 0 0 / 0.06);
+}
+
+.wl-quiz-option.is-selected {
+  border-color: #c5a059;
+  background: #fffbf0;
+  box-shadow: 0 8px 22px rgb(197 160 89 / 0.18);
+}
+
+.wl-quiz-option-mark {
+  display: flex;
+  height: 1.5rem;
+  width: 1.5rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  border: 2px solid #d1d5db;
+  color: transparent;
+  transition:
+    background-color 0.3s ease,
+    border-color 0.3s ease,
+    color 0.3s ease;
+}
+
+.wl-quiz-option.is-selected .wl-quiz-option-mark {
+  border-color: #c5a059;
+  background: #c5a059;
+  color: #ffffff;
+}
+
+/* ——— Landing Phase 3: editorial About Us scroll reveal ——— */
+.wl-reveal .wl-reveal-item {
+  opacity: 0;
+  transform: translateY(30px);
+  transition:
+    opacity 0.9s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.9s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.wl-reveal .wl-reveal-item:nth-child(1) {
+  transition-delay: 0ms;
+}
+
+.wl-reveal .wl-reveal-item:nth-child(2) {
+  transition-delay: 120ms;
+}
+
+.wl-reveal .wl-reveal-item:nth-child(3) {
+  transition-delay: 240ms;
+}
+
+.wl-reveal .wl-reveal-item:nth-child(4) {
+  transition-delay: 360ms;
+}
+
+.wl-reveal.is-visible .wl-reveal-item {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.wl-about-manifesto {
+  border-right-width: 4px;
+  border-right-color: #c5a059;
+  border-right-style: solid;
+  border-top-right-radius: 9999px;
+  border-bottom-right-radius: 9999px;
 }
 
 /* Responsive modal shells (RTL-safe) */
@@ -405,4 +858,32 @@ input[type='radio'].wanderloom-raw-radio::after {
 .no-scrollbar {
   -ms-overflow-style: none; /* IE and Edge */
   scrollbar-width: none; /* Firefox */
+}
+
+/* Dark luxury modal / textarea scrollbars */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(197, 160, 89, 0.5);
+}
+
+.custom-scrollbar::-webkit-scrollbar-corner {
+  background: transparent;
 }

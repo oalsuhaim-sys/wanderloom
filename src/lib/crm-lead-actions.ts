@@ -1,6 +1,15 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { buildClientInsertPayload } from '@/lib/clientsTravelDna';
+import { assertUsableLeadClientFields, buildPhoneLookupCandidates, canonicalizePhoneWa, isUsableClientPhone } from '@/lib/client-intake-pipeline';
+import {
+  createEmptyActivityProposal,
+  createEmptyFlightProposal,
+  createEmptyHotelProposal,
+  createEmptyTransportProposal,
+  normalizeQuotationId,
+  type QuotationRow,
+} from '@/lib/crm-quotations';
 import type { CrmLeadRow } from '@/lib/crm-leads';
 
 export function formatWhatsAppPhone(phone: string): string {
@@ -20,7 +29,7 @@ export function quoteErrorMessage(error: unknown): string {
   return 'خطأ غير معروف';
 }
 
-function addDaysIso(isoDate: string, days: number): string {
+export function addDaysIso(isoDate: string, days: number): string {
   const d = new Date(`${isoDate}T12:00:00`);
   if (Number.isNaN(d.getTime())) {
     return new Date().toLocaleDateString('en-CA');
@@ -38,18 +47,41 @@ async function findClientByPhone(
   supabase: SupabaseClient,
   phoneRaw: string,
 ): Promise<number | null> {
+  if (!isUsableClientPhone(phoneRaw)) return null;
   const phone = phoneRaw.trim();
   if (!phone) return null;
 
-  const normalized = formatWhatsAppPhone(phone);
-  const candidates = [phone, normalized].filter((v, i, arr) => v && arr.indexOf(v) === i);
+  const candidates = Array.from(
+    new Set(
+      [
+        ...buildPhoneLookupCandidates(phone),
+        ...buildPhoneLookupCandidates(canonicalizePhoneWa(phone) || phone),
+        formatWhatsAppPhone(phone),
+      ].filter(Boolean),
+    ),
+  );
 
   for (const value of candidates) {
     const byWa = await supabase.from('clients').select('id').eq('phone_wa', value).maybeSingle();
-    if (byWa.data?.id != null) return Number(byWa.data.id);
+    if (!byWa.error && byWa.data?.id != null) return Number(byWa.data.id);
+  }
 
-    const byPhone = await supabase.from('clients').select('id').eq('phone', value).maybeSingle();
-    if (!byPhone.error && byPhone.data?.id != null) return Number(byPhone.data.id);
+  const last9 = canonicalizePhoneWa(phone).slice(-9);
+  if (last9.length === 9) {
+    const fuzzy = await supabase
+      .from('clients')
+      .select('id, phone_wa')
+      .ilike('phone_wa', `%${last9}`)
+      .limit(8);
+    if (!fuzzy.error && fuzzy.data?.length) {
+      for (const row of fuzzy.data) {
+        const a = canonicalizePhoneWa(String((row as { phone_wa?: unknown }).phone_wa ?? ''));
+        if (a.slice(-9) === last9) {
+          const id = Number((row as { id?: unknown }).id);
+          if (Number.isFinite(id) && id > 0) return id;
+        }
+      }
+    }
   }
 
   return null;
@@ -59,9 +91,12 @@ async function createClientFromLead(
   supabase: SupabaseClient,
   lead: CrmLeadRow,
 ): Promise<number> {
-  const phone = lead.phone_wa.trim();
+  const { name, phone } = assertUsableLeadClientFields({
+    name: lead.full_name,
+    phone: lead.phone_wa,
+  });
   const payload = buildClientInsertPayload({
-    name: lead.full_name.trim(),
+    name,
     phone_wa: phone,
     email: lead.email?.trim() || '',
     birth_date: '',
@@ -78,6 +113,7 @@ async function createClientFromLead(
   });
 
   delete (payload as Record<string, unknown>).lead_source;
+  // clients schema uses phone_wa only — never write `phone`
 
   const { data: newClient, error: clientError } = await supabase
     .from('clients')
@@ -87,7 +123,19 @@ async function createClientFromLead(
 
   if (clientError || !newClient?.id) {
     console.error('Quote Creation Error:', clientError);
-    throw clientError ?? new Error('تعذر إنشاء ملف العميل في CRM.');
+    const e = clientError as { message?: string; details?: string; hint?: string; code?: string } | null;
+    const detail = [e?.message, e?.details, e?.hint, e?.code ? `code=${e.code}` : '']
+      .map((x) => String(x ?? '').trim())
+      .filter(Boolean)
+      .join(' | ');
+
+    // unique_phone_wa → reclaim existing client (smart recognition)
+    if (/duplicate|unique|23505|unique_phone_wa/i.test(detail)) {
+      const raced = await findClientByPhone(supabase, phone);
+      if (raced != null) return raced;
+    }
+
+    throw new Error(detail || 'تعذر إنشاء ملف العميل في CRM.');
   }
 
   const refCode = lead.referral_code?.trim();
@@ -111,7 +159,7 @@ async function createClientFromLead(
   return Number(newClient.id);
 }
 
-async function resolveClientIdForLead(
+export async function resolveClientIdForLead(
   supabase: SupabaseClient,
   lead: CrmLeadRow,
 ): Promise<number> {
@@ -136,6 +184,8 @@ function buildQuotationInsertPayload(lead: CrmLeadRow, clientId: number) {
     status: 'draft' as const,
     flight_proposals: [] as const,
     hotel_proposals: [] as const,
+    activities: [] as const,
+    transportation: [] as const,
     lead_source: 'trip_log',
     lead_id: lead.id,
     ...(lead.referral_code?.trim() ? { referral_code: lead.referral_code.trim() } : {}),
@@ -152,7 +202,7 @@ async function insertQuotationForLead(
   const { data, error } = await supabase
     .from('quotations')
     .insert([fullPayload as never])
-    .select('id')
+    .select('id, lead_id')
     .single();
 
   if (error?.message?.includes('lead_id') && error.message.includes('column')) {
@@ -160,13 +210,13 @@ async function insertQuotationForLead(
     const retry = await supabase
       .from('quotations')
       .insert([withoutLeadId as never])
-      .select('id')
+      .select('id, lead_id')
       .single();
     if (retry.error) {
       console.error('Quote Creation Error:', retry.error);
       throw retry.error;
     }
-    return String(retry.data.id);
+    return assertInsertedQuotationId(retry.data, lead.id);
   }
 
   if (error) {
@@ -174,10 +224,29 @@ async function insertQuotationForLead(
     throw error;
   }
 
-  return String(data.id);
+  return assertInsertedQuotationId(data, lead.id);
 }
 
-async function markLeadConverted(supabase: SupabaseClient, leadId: string): Promise<void> {
+function assertInsertedQuotationId(
+  row: { id?: unknown; lead_id?: unknown } | null,
+  leadId: string,
+): string {
+  const quotationId = normalizeQuotationId(row?.id);
+  if (!quotationId) {
+    throw new Error('تعذر استخراج معرّف عرض السعر بعد الإنشاء.');
+  }
+  const linkedLeadId = normalizeQuotationId(row?.lead_id);
+  const needleLeadId = normalizeQuotationId(leadId);
+  if (linkedLeadId && quotationId === linkedLeadId) {
+    throw new Error('تعارض معرّفات: quotations.id يطابق lead_id.');
+  }
+  if (needleLeadId && quotationId === needleLeadId) {
+    throw new Error('تعارض معرّفات: تم إرجاع lead.id بدلاً من quotations.id.');
+  }
+  return quotationId;
+}
+
+export async function markCrmLeadConverted(supabase: SupabaseClient, leadId: string): Promise<void> {
   const { error: convertedError } = await supabase
     .from('leads')
     .update({ status: 'converted' })
@@ -203,6 +272,66 @@ export async function deleteCrmLead(supabase: SupabaseClient, leadId: string): P
   if (error) throw error;
 }
 
+/** يحوّل صف leads إلى مسودة عرض سعر (قبل الإدراج في quotations) */
+export function mapLeadRowToQuotationDraft(
+  lead: CrmLeadRow | Record<string, unknown>,
+  client?: { id?: number; name?: string | null; phone_wa?: string | null } | null,
+): QuotationRow {
+  const fullName = String(lead.full_name ?? '').trim();
+  const startDate = defaultStartDate(lead as CrmLeadRow);
+  const travelDays = Math.max(1, Number(lead.travel_days) || 1);
+  const endDate = addDaysIso(startDate, travelDays - 1);
+  const destinations = Array.isArray(lead.destinations)
+    ? (lead.destinations as string[]).filter(Boolean)
+    : [];
+  const clientId =
+    client?.id != null
+      ? String(client.id)
+      : lead.client_id != null && lead.client_id !== ''
+        ? normalizeQuotationId(lead.client_id)
+        : null;
+
+  return {
+    id: '',
+    client_id: clientId,
+    lead_id: normalizeQuotationId(lead.id) || null,
+    title: fullName ? `عرض سعر - ${fullName}` : 'عرض سعر جديد',
+    destinations,
+    start_date: startDate,
+    end_date: endDate,
+    total_estimated_cost: 0,
+    expected_profit: 0,
+    status: 'draft',
+    paid_amount: 0,
+    remaining_amount: 0,
+    trip_category: 'private',
+    flight_proposals: [createEmptyFlightProposal()],
+    hotel_proposals: [createEmptyHotelProposal()],
+    activities_proposals: [createEmptyActivityProposal()],
+    transport_proposals: [createEmptyTransportProposal()],
+    profit_margin: 20,
+    service_fee: 0,
+    grand_total: 0,
+    lead_source: 'trip_log',
+    referral_code:
+      lead.referral_code != null ? String(lead.referral_code).trim() || null : null,
+    is_referral_paid: false,
+    created_at: String(lead.created_at ?? ''),
+    clients: client
+      ? {
+          id: client.id,
+          name: client.name ?? fullName,
+          phone_wa: (client.phone_wa ?? String(lead.phone_wa ?? '').trim()) || null,
+        }
+      : fullName
+        ? {
+            name: fullName,
+            phone_wa: String(lead.phone_wa ?? '').trim() || null,
+          }
+        : null,
+  };
+}
+
 export async function convertLeadToQuotation(
   supabase: SupabaseClient,
   lead: CrmLeadRow,
@@ -210,7 +339,7 @@ export async function convertLeadToQuotation(
   try {
     const clientId = await resolveClientIdForLead(supabase, lead);
     const quoteId = await insertQuotationForLead(supabase, lead, clientId);
-    await markLeadConverted(supabase, lead.id);
+    await markCrmLeadConverted(supabase, lead.id);
     return quoteId;
   } catch (error) {
     console.error('Quote Creation Error:', error);

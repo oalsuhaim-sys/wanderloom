@@ -137,6 +137,7 @@ export function PublicSessionsCards({
 
   async function handleRegister(e: React.FormEvent) {
     e.preventDefault();
+    if (submitting) return;
     if (!openFor?.id) {
       setFormMsg({ type: 'err', text: ev.clientMissingSession });
       return;
@@ -149,48 +150,56 @@ export function PublicSessionsCards({
     setSubmitting(true);
     setFormMsg(null);
 
-    const res = await registerSessionAction({
-      session_id: String(openFor.id),
-      name: name.trim(),
-      whatsapp: whatsapp.trim(),
-    });
+    try {
+      const res = await registerSessionAction({
+        session_id: String(openFor.id),
+        name: name.trim(),
+        whatsapp: whatsapp.trim(),
+      });
 
-    setSubmitting(false);
+      if (!res.ok) {
+        setFormMsg({ type: 'err', text: res.error });
+        return;
+      }
 
-    if (!res.ok) {
-      setFormMsg({ type: 'err', text: res.error });
-      return;
+      const sid = String(openFor.id);
+      const nextSpots =
+        typeof res.spotsRemaining === 'number'
+          ? res.spotsRemaining
+          : Math.max(0, spotsLeft(openFor) - 1);
+
+      setList((prev) =>
+        prev.map((row) => (String(row.id) === sid ? { ...row, spots: nextSpots } : row)),
+      );
+
+      const at = res.data.created_at
+        ? new Date(res.data.created_at).toLocaleString(locale === 'ar' ? 'ar-SA' : 'en-US', {
+            dateStyle: 'short',
+            timeStyle: 'short',
+          })
+        : '';
+      setFormMsg({
+        type: 'ok',
+        text: formatRegistrationSuccess(ev.success, ev.successWithTime, at),
+      });
+
+      router.refresh();
+
+      setTimeout(() => {
+        setOpenFor(null);
+        setName('');
+        setWhatsapp('');
+        setFormMsg(null);
+      }, 1800);
+    } catch (err) {
+      console.error('[PublicSessionsCards] register failed', err);
+      setFormMsg({
+        type: 'err',
+        text: err instanceof Error ? err.message : ev.clientNameWaRequired,
+      });
+    } finally {
+      setSubmitting(false);
     }
-
-    const sid = String(openFor.id);
-    const nextSpots =
-      typeof res.spotsRemaining === 'number'
-        ? res.spotsRemaining
-        : Math.max(0, spotsLeft(openFor) - 1);
-
-    setList((prev) =>
-      prev.map((row) => (String(row.id) === sid ? { ...row, spots: nextSpots } : row)),
-    );
-
-    const at = res.data.created_at
-      ? new Date(res.data.created_at).toLocaleString(locale === 'ar' ? 'ar-SA' : 'en-US', {
-          dateStyle: 'short',
-          timeStyle: 'short',
-        })
-      : '';
-    setFormMsg({
-      type: 'ok',
-      text: formatRegistrationSuccess(ev.success, ev.successWithTime, at),
-    });
-
-    router.refresh();
-
-    setTimeout(() => {
-      setOpenFor(null);
-      setName('');
-      setWhatsapp('');
-      setFormMsg(null);
-    }, 1800);
   }
 
   if (initialLoading) {
@@ -240,56 +249,63 @@ export function PublicSessionsCards({
           return (
             <article
               key={String(session.id ?? `${session.title}-${session.date}`)}
-              className="flex flex-col rounded-2xl border border-gray-100 bg-white p-5 shadow-sm sm:p-8 md:p-10"
+              className="wl-lift-card group flex flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition-all duration-500 hover:-translate-y-2 hover:shadow-[0_20px_40px_rgba(0,0,0,0.06)]"
             >
-              <h3 className="text-xl font-black leading-snug text-[#111111]">{session.title}</h3>
-              <div className="mt-5 flex flex-wrap items-center gap-2 text-xs font-bold text-gray-600">
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-[#FDFBF7] px-3 py-1.5">
-                  <CalendarClock className="h-3.5 w-3.5 text-[#cda04c]" aria-hidden />
-                  {formatSessionDate(String(session.date), locale)}
-                </span>
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-[#cda04c]/30 bg-[#cda04c]/10 px-3 py-1.5 font-black text-[#9a7b45]">
-                  <Ticket className="h-3.5 w-3.5" aria-hidden />
-                  {priceLabel(Number(session.price) || 0)}
-                </span>
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-[#FDFBF7] px-3 py-1.5">
-                  <Users className="h-3.5 w-3.5 text-[#cda04c]" aria-hidden />
-                  {full ? ev.full : formatSeatsRemaining(ev.seatsLeft, left)}
-                </span>
+              <div className="wl-card-media overflow-hidden border-b border-gray-50 bg-gradient-to-br from-[#F9F9F6] via-white to-[#f4efe6] px-5 py-6 sm:px-8">
+                <div className="wl-card-media-icon flex h-14 w-14 items-center justify-center rounded-2xl bg-[#1A3B2A] text-[#C5A059] shadow-md transition-transform duration-700 group-hover:scale-105">
+                  <Ticket className="h-6 w-6" aria-hidden />
+                </div>
               </div>
-              {session.description ? (
-                <p className="mt-4 line-clamp-3 flex-1 text-sm font-bold leading-relaxed text-gray-600">
-                  {session.description}
-                </p>
-              ) : (
-                <div className="flex-1" />
-              )}
-              <div className="mt-8 flex flex-col gap-2">
-                <button
-                  type="button"
-                  disabled={!session.id || full}
-                  onClick={() => {
-                    if (full) return;
-                    setOpenFor(session);
-                    setName('');
-                    setWhatsapp('');
-                    setFormMsg(null);
-                  }}
-                  className="flex w-full items-center justify-center rounded-2xl bg-[#cda04c] py-3.5 text-sm font-black text-white transition hover:bg-[#b3893d] disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {full ? ev.full : ev.register}
-                </button>
-                {String(session.session_type).toLowerCase().includes('person') && session.location_url ? (
-                  <a
-                    href={session.location_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-[#cda04c]/35 py-2.5 text-xs font-black text-[#cda04c]"
+              <div className="flex flex-1 flex-col p-5 sm:p-8 md:p-10">
+                <h3 className="text-xl font-black leading-snug text-[#111111]">{session.title}</h3>
+                <div className="mt-5 flex flex-wrap items-center gap-2 text-xs font-bold text-gray-600">
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-[#FDFBF7] px-3 py-1.5">
+                    <CalendarClock className="h-3.5 w-3.5 text-[#cda04c]" aria-hidden />
+                    {formatSessionDate(String(session.date), locale)}
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-[#cda04c]/30 bg-[#cda04c]/10 px-3 py-1.5 font-black text-[#9a7b45]">
+                    <Ticket className="h-3.5 w-3.5" aria-hidden />
+                    {priceLabel(Number(session.price) || 0)}
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-[#FDFBF7] px-3 py-1.5">
+                    <Users className="h-3.5 w-3.5 text-[#cda04c]" aria-hidden />
+                    {full ? ev.full : formatSeatsRemaining(ev.seatsLeft, left)}
+                  </span>
+                </div>
+                {session.description ? (
+                  <p className="mt-4 line-clamp-3 flex-1 text-sm font-bold leading-relaxed text-gray-600">
+                    {session.description}
+                  </p>
+                ) : (
+                  <div className="flex-1" />
+                )}
+                <div className="mt-8 flex flex-col gap-2">
+                  <button
+                    type="button"
+                    disabled={!session.id || full}
+                    onClick={() => {
+                      if (full) return;
+                      setOpenFor(session);
+                      setName('');
+                      setWhatsapp('');
+                      setFormMsg(null);
+                    }}
+                    className="flex w-full items-center justify-center rounded-full bg-[#cda04c] py-3.5 text-sm font-black text-white transition-all duration-300 hover:-translate-y-0.5 hover:bg-[#b3893d] hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    <MapPin className="h-4 w-4" aria-hidden />
-                    {ev.location}
-                  </a>
-                ) : null}
+                    {full ? ev.full : ev.register}
+                  </button>
+                  {String(session.session_type).toLowerCase().includes('person') && session.location_url ? (
+                    <a
+                      href={session.location_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-[#cda04c]/35 py-2.5 text-xs font-black text-[#cda04c] transition-colors duration-300 hover:border-[#cda04c] hover:bg-[#cda04c]/5"
+                    >
+                      <MapPin className="h-4 w-4" aria-hidden />
+                      {ev.location}
+                    </a>
+                  ) : null}
+                </div>
               </div>
             </article>
           );

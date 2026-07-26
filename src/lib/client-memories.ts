@@ -13,6 +13,8 @@ export type ClientMemoryUploadInput = {
   file: File;
   locationName?: string | null;
   caption?: string | null;
+  /** Explicit Google Maps URL for the station/activity */
+  mapUrl?: string | null;
 };
 
 export type MemoryUploadDiagnosticStep = {
@@ -46,23 +48,65 @@ export type ClientMemoryJourneyGroup = {
 };
 
 const MISC_LOCATION_KEY = 'misc-location';
-const MISC_LOCATION_TITLE = 'ذكريات عامة';
+const MISC_LOCATION_TITLE = 'مدينة غير محددة';
 
+function hasUsableMemoryImageUrl(url: string | null | undefined): boolean {
+  const trimmed = String(url ?? '').trim();
+  if (!trimmed) return false;
+  if (/^(null|undefined|none|n\/a)$/i.test(trimmed)) return false;
+  return true;
+}
+
+function resolveMemoryTripName(
+  memory: ClientMemory,
+  trip: ClientItineraryBridge | null | undefined,
+): string {
+  return (
+    trip?.title?.trim() ||
+    memory.tripName?.trim() ||
+    trip?.destination?.trim() ||
+    memory.destination?.trim() ||
+    ''
+  );
+}
+
+/** Drop ghost images and orphaned rows that cannot form a real trip album. */
+export function filterAlbumEligibleMemories(
+  memories: ClientMemory[],
+  trips: ClientItineraryBridge[],
+): ClientMemory[] {
+  const tripById = new Map(trips.map((trip) => [String(trip.id), trip]));
+
+  return memories.filter((memory) => {
+    if (!hasUsableMemoryImageUrl(memory.imageUrl)) return false;
+
+    const itineraryId = memory.itineraryId ? String(memory.itineraryId).trim() : '';
+    const trip = itineraryId ? tripById.get(itineraryId) : null;
+    const tripName = resolveMemoryTripName(memory, trip);
+
+    // Must resolve to a real trip title — never feed "رحلات أخرى"
+    if (!tripName) return false;
+
+    return true;
+  });
+}
+
+/** Level 2: group photos by city (destination), never by place/station. */
 function buildLocationGroups(memories: ClientMemory[]): ClientMemoryLocationGroup[] {
-  const byLocation = new Map<string, ClientMemoryLocationGroup>();
+  const byCity = new Map<string, ClientMemoryLocationGroup>();
 
   for (const memory of memories) {
-    const locationName = memory.locationName?.trim() || memory.location?.trim() || '';
-    const key = locationName ? `location-${locationName}` : MISC_LOCATION_KEY;
-    const title = locationName ? `📍 ${locationName}` : MISC_LOCATION_TITLE;
+    const city = memory.city?.trim() || memory.destination?.trim() || '';
+    const key = city ? `city-${city}` : MISC_LOCATION_KEY;
+    const title = city || MISC_LOCATION_TITLE;
 
-    if (!byLocation.has(key)) {
-      byLocation.set(key, { key, title, memories: [] });
+    if (!byCity.has(key)) {
+      byCity.set(key, { key, title, memories: [] });
     }
-    byLocation.get(key)!.memories.push(memory);
+    byCity.get(key)!.memories.push(memory);
   }
 
-  const groups = [...byLocation.values()];
+  const groups = [...byCity.values()];
   groups.sort((a, b) => {
     if (a.key === MISC_LOCATION_KEY) return 1;
     if (b.key === MISC_LOCATION_KEY) return -1;
@@ -126,19 +170,23 @@ function formatDbInsertError(error: {
   );
 }
 
-/** يستخرج كود المسار من مسار الصفحة (/itinerary/VIP-0006 أو UUID). */
+/** يستخرج كود المسار من مسار الصفحة — UUID أولاً، ثم القطعة بعد /itinerary/. */
 export function extractItineraryCodeFromPath(pathname?: string | null): string {
   const path = String(
     pathname ?? (typeof window !== 'undefined' ? window.location.pathname : ''),
   ).trim();
+
+  const uuidMatch = path.match(
+    /[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/,
+  );
+  if (uuidMatch) return uuidMatch[0];
+
   const parts = path.split('/').filter(Boolean);
   const itineraryIdx = parts.findIndex((p) => p === 'itinerary');
   if (itineraryIdx >= 0 && parts[itineraryIdx + 1]) {
     return normalizeItineraryUrlCode(parts[itineraryIdx + 1]);
   }
-  if (parts.length > 0) {
-    return normalizeItineraryUrlCode(parts[parts.length - 1]);
-  }
+
   return '';
 }
 
@@ -414,6 +462,7 @@ export async function uploadClientMemory(
   const uploadedFileUrl = publicData.publicUrl;
   const memoryCaption = input.caption?.trim() || null;
   const locationName = input.locationName?.trim() || null;
+  const mapUrl = input.mapUrl?.trim() || null;
 
   const itineraryIdForDb = coerceItineraryIdForInsert(resolvedItineraryId);
 
@@ -430,6 +479,10 @@ export async function uploadClientMemory(
 
   if (locationName) {
     payload.location = locationName;
+  }
+
+  if (mapUrl && /^https?:\/\//i.test(mapUrl)) {
+    payload.map_url = mapUrl;
   }
 
   console.log('Attempting DB Insert with payload:', payload);
@@ -456,9 +509,10 @@ export function groupClientMemoriesByJourney(
   trips: ClientItineraryBridge[],
 ): ClientMemoryJourneyGroup[] {
   const tripById = new Map(trips.map((trip) => [String(trip.id), trip]));
+  const validMemories = filterAlbumEligibleMemories(memories, trips);
   const groups = new Map<string, ClientMemoryJourneyGroup>();
 
-  for (const memory of memories) {
+  for (const memory of validMemories) {
     const itineraryId = memory.itineraryId ? String(memory.itineraryId) : null;
     const trip = itineraryId ? tripById.get(itineraryId) : null;
     const year =
@@ -467,31 +521,27 @@ export function groupClientMemoriesByJourney(
       trip?.endDate?.slice(0, 4) ??
       null;
 
+    const tripName = resolveMemoryTripName(memory, trip);
+    // Pre-filter guarantees tripName — skip any residual orphans
+    if (!tripName) continue;
+
+    // Level 1 = TRIP ONLY — never group by place / station / locationName
     let key: string;
     let title: string;
     let subtitle: string | null = null;
 
-    if (trip) {
+    if (itineraryId) {
       key = `itinerary-${itineraryId}`;
-      title = `📍 ${trip.destination}${year ? ` · ${year}` : ''}`;
-      const range = formatTripDateRange(trip.startDate, trip.endDate ?? trip.startDate);
-      subtitle = range !== 'التواريخ قريباً' ? range : null;
-    } else if (itineraryId) {
-      key = `itinerary-${itineraryId}`;
-      const label =
-        memory.destination?.trim() ||
-        memory.locationName?.trim() ||
-        `مسار #${itineraryId}`;
-      title = `📍 ${label}${year ? ` · ${year}` : ''}`;
-    } else if (memory.destination?.trim()) {
-      key = `destination-${memory.destination.trim()}`;
-      title = `📍 ${memory.destination.trim()}`;
-    } else if (memory.locationName) {
-      key = `location-${memory.locationName}`;
-      title = `📍 ${memory.locationName}`;
+      title = tripName;
+      if (trip) {
+        const range = formatTripDateRange(trip.startDate, trip.endDate ?? trip.startDate);
+        subtitle = range !== 'التواريخ قريباً' ? range : null;
+      } else if (year) {
+        subtitle = year;
+      }
     } else {
-      key = 'misc';
-      title = 'ذكريات متفرقة';
+      key = `trip-${tripName}`;
+      title = year ? `${tripName} · ${year}` : tripName;
     }
 
     if (!groups.has(key)) {
@@ -500,8 +550,10 @@ export function groupClientMemoriesByJourney(
     groups.get(key)!.memories.push(memory);
   }
 
-  return [...groups.values()].map((group) => ({
-    ...group,
-    locationGroups: buildLocationGroups(group.memories),
-  }));
+  return [...groups.values()]
+    .filter((group) => group.memories.length > 0)
+    .map((group) => ({
+      ...group,
+      locationGroups: buildLocationGroups(group.memories),
+    }));
 }

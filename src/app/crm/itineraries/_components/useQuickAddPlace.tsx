@@ -4,17 +4,12 @@ import { useCallback, useState } from 'react';
 import { Loader2, X } from 'lucide-react';
 
 import { supabase } from '@/lib/supabase';
+import { PLACE_CATEGORY_OPTIONS as BANK_CATEGORY_OPTIONS } from '@/lib/places-bank';
 
-export const PLACE_CATEGORY_OPTIONS = [
-  { value: 'l', label: '🏛️ معلم' },
-  { value: 'r', label: '🍽️ مطعم' },
-  { value: 'c', label: '☕ كافيه' },
-  { value: 's', label: '🛍️ تسوق' },
-  { value: 'd', label: '🎭 تجربة' },
-  { value: 'h', label: '🏨 فندق' },
-  { value: 'f', label: '🍜 طعام' },
-  { value: 'o', label: '🧭 أخرى' },
-] as const;
+export const PLACE_CATEGORY_OPTIONS = BANK_CATEGORY_OPTIONS.map((opt) => ({
+  value: opt.id,
+  label: opt.label,
+}));
 
 export type QuickAddPlaceDraft = {
   name: string;

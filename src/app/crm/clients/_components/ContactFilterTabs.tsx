@@ -21,7 +21,7 @@ export default function ContactFilterTabs({
       dir="rtl"
       className={`flex flex-wrap items-center gap-2.5 ${className}`}
       role="tablist"
-      aria-label="تصفية جهات الاتصال"
+      aria-label="تصفية العملاء"
     >
       {CONTACT_TABS.map((tab) => {
         const active = activeTab === tab.id

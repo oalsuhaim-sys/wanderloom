@@ -22,7 +22,7 @@ import { supabase } from '@/lib/supabase';
 
 type GroupOperationsFulfillmentProps = {
   clients: GroupFulfillmentClient[];
-  warning?: string;
+  error?: string;
   onRefresh: () => void | Promise<void>;
 };
 
@@ -212,7 +212,7 @@ function GroupTripCard({
 
 export default function GroupOperationsFulfillment({
   clients,
-  warning,
+  error,
   onRefresh,
 }: GroupOperationsFulfillmentProps) {
   const buckets = useMemo(() => groupFulfillmentClients(clients), [clients]);
@@ -232,9 +232,9 @@ export default function GroupOperationsFulfillment({
         </button>
       </div>
 
-      {warning ? (
-        <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-right text-xs font-bold text-amber-900">
-          {warning}
+      {error ? (
+        <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-right text-xs font-bold text-rose-900">
+          {error}
         </div>
       ) : null}
 

@@ -1,6 +1,11 @@
 'use client';
 
 import type { FlightDetailsDraft, PrimaryHotelBookingDraft } from '@/lib/itinerary-builder-model';
+import { FLIGHT_CLASS_OPTIONS } from '@/lib/itinerary-builder-model';
+import {
+  VipDateField,
+  VipTimeSlotSelect,
+} from '@/app/crm/itineraries/_components/VipBookingFields';
 import {
   VIP_CARD,
   VIP_INPUT,
@@ -57,23 +62,45 @@ export default function FlightAndBookingDetailsBar({
         </label>
         <label>
           <span className={VIP_LABEL}>مغادرة</span>
-          <input
+          <VipTimeSlotSelect
             className={VIP_INPUT}
-            dir="ltr"
-            placeholder="14:30"
             value={flight.departure_time || flight.flight_time}
-            onChange={(e) => onFlightChange(pf(flight, 'departure_time', e.target.value))}
+            onChange={(v) => onFlightChange(pf(flight, 'departure_time', v))}
           />
         </label>
         <label>
           <span className={VIP_LABEL}>وصول</span>
+          <VipTimeSlotSelect
+            className={VIP_INPUT}
+            value={flight.arrival_time}
+            onChange={(v) => onFlightChange(pf(flight, 'arrival_time', v))}
+          />
+        </label>
+        <label>
+          <span className={VIP_LABEL}>المبنى</span>
           <input
             className={VIP_INPUT}
             dir="ltr"
-            placeholder="18:45"
-            value={flight.arrival_time}
-            onChange={(e) => onFlightChange(pf(flight, 'arrival_time', e.target.value))}
+            placeholder="T1"
+            value={flight.terminal}
+            onChange={(e) => onFlightChange(pf(flight, 'terminal', e.target.value))}
           />
+        </label>
+        <label>
+          <span className={VIP_LABEL}>درجة الإركاب</span>
+          <select
+            className={VIP_INPUT}
+            dir="ltr"
+            value={flight.flight_class}
+            onChange={(e) => onFlightChange(pf(flight, 'flight_class', e.target.value))}
+          >
+            <option value="">—</option>
+            {FLIGHT_CLASS_OPTIONS.map((opt) => (
+              <option key={opt} value={opt}>
+                {opt}
+              </option>
+            ))}
+          </select>
         </label>
         <label>
           <span className={VIP_LABEL}>البوابة</span>
@@ -123,6 +150,24 @@ export default function FlightAndBookingDetailsBar({
             />
           </div>
         </label>
+        <label>
+          <span className={VIP_LABEL}>دولة المغادرة</span>
+          <input
+            className={VIP_INPUT}
+            placeholder="السعودية"
+            value={flight.departure_country}
+            onChange={(e) => onFlightChange(pf(flight, 'departure_country', e.target.value))}
+          />
+        </label>
+        <label>
+          <span className={VIP_LABEL}>دولة الوصول</span>
+          <input
+            className={VIP_INPUT}
+            placeholder="هنغاريا"
+            value={flight.arrival_country}
+            onChange={(e) => onFlightChange(pf(flight, 'arrival_country', e.target.value))}
+          />
+        </label>
       </div>
 
       <div className="grid grid-cols-1 gap-3 border-t border-[#D4AF37]/40 pt-4 sm:grid-cols-2 lg:grid-cols-5">
@@ -156,20 +201,18 @@ export default function FlightAndBookingDetailsBar({
         </label>
         <label>
           <span className={VIP_LABEL}>دخول</span>
-          <input
+          <VipDateField
             className={VIP_INPUT}
-            dir="ltr"
             value={hotel.check_in}
-            onChange={(e) => onHotelChange(ph(hotel, 'check_in', e.target.value))}
+            onChange={(v) => onHotelChange(ph(hotel, 'check_in', v))}
           />
         </label>
         <label>
           <span className={VIP_LABEL}>خروج</span>
-          <input
+          <VipDateField
             className={VIP_INPUT}
-            dir="ltr"
             value={hotel.check_out}
-            onChange={(e) => onHotelChange(ph(hotel, 'check_out', e.target.value))}
+            onChange={(v) => onHotelChange(ph(hotel, 'check_out', v))}
           />
         </label>
       </div>

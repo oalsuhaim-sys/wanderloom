@@ -23,23 +23,23 @@ function QuizOptionCard({
       type="button"
       onClick={onSelect}
       aria-pressed={checked}
-      className={`flex w-full cursor-pointer items-center justify-between gap-4 rounded-xl border p-5 text-lg text-start transition-all duration-200 ${
+      className={`wl-quiz-option flex w-full cursor-pointer items-center gap-4 rounded-xl border border-gray-200 bg-white p-4 text-start transition-all duration-300 hover:bg-white hover:shadow-md ${
         checked
-          ? 'border-[#1e3f20] bg-[#F2F7F4] font-black text-[#111111] shadow-sm'
-          : 'border-gray-200 bg-white font-bold text-[#111111] hover:border-gray-400 hover:shadow-sm'
+          ? 'is-selected border-[#C5A059] bg-[#FFFBF0] font-black text-[#111111] shadow-md'
+          : 'font-bold text-[#111111]'
       }`}
     >
-      <span className="flex-1 leading-snug">{label}</span>
       <span
-        className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 transition-all ${
+        className={`wl-quiz-option-mark flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 transition-all duration-300 ${
           checked
-            ? 'border-[#1e3f20] bg-[#1e3f20] text-white'
+            ? 'border-[#C5A059] bg-[#C5A059] text-white'
             : 'border-gray-300 bg-transparent text-transparent'
         }`}
         aria-hidden
       >
         <Check className="h-3.5 w-3.5" strokeWidth={3} />
       </span>
+      <span className="flex-1 leading-snug">{label}</span>
     </button>
   );
 }

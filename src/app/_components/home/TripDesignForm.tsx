@@ -1,7 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { Suspense, useEffect, useState, useTransition } from 'react';
+import { Suspense, useEffect, useRef, useState, useTransition } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Loader2, Send } from 'lucide-react';
 
@@ -254,8 +254,14 @@ function TripDesignFormInner() {
 
   const [state, setState] = useState<CustomerLeadState | null>(null);
   const [pending, startTransition] = useTransition();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const submitLockRef = useRef(false);
   const [selectedCountries, setSelectedCountries] = useState<string[]>([]);
   const [selectedCities, setSelectedCities] = useState<string[]>([]);
+  const [isOtherCountry, setIsOtherCountry] = useState(false);
+  const [customCountry, setCustomCountry] = useState('');
+  const [activeCustomCityFor, setActiveCustomCityFor] = useState<string | null>(null);
+  const [customCities, setCustomCities] = useState<Record<string, string>>({});
   const [interestOther, setInterestOther] = useState(false);
   const [interestOtherText, setInterestOtherText] = useState('');
   const [foodOther, setFoodOther] = useState(false);
@@ -279,6 +285,13 @@ function TripDesignFormInner() {
     setSelectedCountries((prev) => toggleListItem(prev, id, on));
     if (!on) {
       setSelectedCities((prev) => prev.filter((k) => !k.startsWith(`${id}:`)));
+      setCustomCities((prev) => {
+        if (!(id in prev)) return prev;
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+      setActiveCustomCityFor((cur) => (cur === id ? null : cur));
     }
   }
 
@@ -286,10 +299,112 @@ function TripDesignFormInner() {
     setSelectedCities((prev) => toggleListItem(prev, composite, on));
   }
 
+  function toggleOtherCountry(on: boolean) {
+    setIsOtherCountry(on);
+    if (on) {
+      // Other country has no catalog cities — open custom city input immediately
+      setCity('other:other', true);
+      setActiveCustomCityFor('other');
+    } else {
+      setCustomCountry('');
+      setSelectedCities((prev) => prev.filter((k) => !k.startsWith('other:')));
+      setCustomCities((prev) => {
+        if (!('other' in prev)) return prev;
+        const next = { ...prev };
+        delete next.other;
+        return next;
+      });
+      setActiveCustomCityFor((cur) => (cur === 'other' ? null : cur));
+    }
+  }
+
+  function toggleOtherCity(countryId: string, on: boolean) {
+    const composite = `${countryId}:other`;
+    setCity(composite, on);
+    if (on) {
+      setActiveCustomCityFor(countryId);
+    } else {
+      setActiveCustomCityFor((cur) => (cur === countryId ? null : cur));
+      setCustomCities((prev) => {
+        if (!(countryId in prev)) return prev;
+        const next = { ...prev };
+        delete next[countryId];
+        return next;
+      });
+    }
+  }
+
+  function displayCountryLabel(id: string): string {
+    if (id === 'other') return customCountry.trim() || f.otherCountry;
+    return countryLabel(id);
+  }
+
   function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (isSubmitting || pending || submitLockRef.current) return;
+
+    if (isOtherCountry && !customCountry.trim()) {
+      setState({ ok: false, error: f.otherCountryRequired });
+      return;
+    }
+
+    for (const composite of selectedCities) {
+      if (!composite.endsWith(':other')) continue;
+      const countryId = composite.slice(0, composite.lastIndexOf(':'));
+      if (!String(customCities[countryId] ?? '').trim()) {
+        setState({ ok: false, error: f.otherCityRequired });
+        return;
+      }
+    }
+
+    // Other country selected but no city yet — require a custom city
+    if (isOtherCountry && !selectedCities.some((k) => k.startsWith('other:'))) {
+      setState({ ok: false, error: f.otherCityRequired });
+      return;
+    }
+
+    submitLockRef.current = true;
+    setIsSubmitting(true);
+
     const form = e.currentTarget;
     const fd = new FormData(form);
+
+    // Sanitize "Other" placeholders → typed values (server also re-sanitizes before insert)
+    if (isOtherCountry) {
+      const countryName = customCountry.trim();
+      fd.append('dest_countries', 'other');
+      fd.set('dest_countries_other', countryName);
+    }
+
+    // Drop any stale city_other_* then write only active custom cities
+    for (const key of [...fd.keys()]) {
+      if (key.startsWith('city_other_')) fd.delete(key);
+    }
+    for (const [countryId, cityName] of Object.entries(customCities)) {
+      const trimmed = cityName.trim();
+      if (!trimmed) continue;
+      if (!selectedCities.includes(`${countryId}:other`)) continue;
+      // Never send the literal label "أخرى" / "Other" as the city name
+      if (trimmed === 'أخرى' || trimmed === 'Other' || trimmed.toLowerCase() === 'other') {
+        setState({ ok: false, error: f.otherCityRequired });
+        submitLockRef.current = false;
+        setIsSubmitting(false);
+        return;
+      }
+      fd.set(`city_other_${countryId}`, trimmed);
+    }
+
+    if (
+      isOtherCountry &&
+      (customCountry.trim() === 'أخرى' ||
+        customCountry.trim() === 'Other' ||
+        customCountry.trim().toLowerCase() === 'other')
+    ) {
+      setState({ ok: false, error: f.otherCountryRequired });
+      submitLockRef.current = false;
+      setIsSubmitting(false);
+      return;
+    }
     if (interestOther) {
       fd.append('interests', 'other');
       if (interestOtherText.trim()) fd.set('interests_other', interestOtherText.trim());
@@ -314,6 +429,10 @@ function TripDesignFormInner() {
             form.reset();
             setSelectedCountries([]);
             setSelectedCities([]);
+            setIsOtherCountry(false);
+            setCustomCountry('');
+            setActiveCustomCityFor(null);
+            setCustomCities({});
             setInterestOther(false);
             setInterestOtherText('');
             setFoodOther(false);
@@ -330,12 +449,19 @@ function TripDesignFormInner() {
                 ? err
                 : 'Unknown client error';
           setState({ ok: false, error: `عذراً، تعذر الحفظ: ${detail}` });
+        } finally {
+          submitLockRef.current = false;
+          setIsSubmitting(false);
         }
       })();
     });
   }
 
-  const showCityPicker = selectedCountries.length > 0;
+  const effectiveCountries = [
+    ...selectedCountries,
+    ...(isOtherCountry ? (['other'] as const) : []),
+  ];
+  const showCityPicker = effectiveCountries.length > 0;
 
   return (
     <form onSubmit={onSubmit} className="mx-auto max-w-3xl space-y-6 bg-[#FDFBF7]" dir={dir}>
@@ -409,20 +535,40 @@ function TripDesignFormInner() {
                 />
               );
             })}
+            <DestinationTag
+              label={f.otherCountry}
+              selected={isOtherCountry}
+              onToggle={() => toggleOtherCountry(!isOtherCountry)}
+            />
           </div>
+          {isOtherCountry ? (
+            <div className="mt-4">
+              <input
+                type="text"
+                value={customCountry}
+                onChange={(e) => setCustomCountry(e.target.value)}
+                placeholder={f.otherCountryPlaceholder}
+                className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm font-bold text-[#111111] outline-none transition-all placeholder:text-gray-400 focus:border-[#1A3B2A] focus:ring-1 focus:ring-[#1A3B2A] md:w-1/2"
+              />
+            </div>
+          ) : null}
         </div>
 
         {showCityPicker ? (
           <div className="space-y-4 border-t border-gray-100 pt-4">
             <p className="text-right text-xs font-black text-[#111111]">{f.citiesHeading}</p>
-            {selectedCountries.map((cid) => {
-              const country = getTripCountryById(cid);
-              if (!country) return null;
+            {effectiveCountries.map((cid) => {
+              const country = cid === 'other' ? null : getTripCountryById(cid);
+              if (cid !== 'other' && !country) return null;
+              const otherCityOn =
+                selectedCities.includes(`${cid}:other`) || activeCustomCityFor === cid;
               return (
                 <div key={cid} className={QUESTION_BLOCK}>
-                  <p className="text-right text-[11px] font-black text-gray-500">{countryLabel(cid)}</p>
+                  <p className="text-right text-[11px] font-black text-gray-500">
+                    {displayCountryLabel(cid)}
+                  </p>
                   <div className={PILL_ROW}>
-                    {country.cities.map((city) => {
+                    {country?.cities.map((city) => {
                       const composite = `${cid}:${city.id}`;
                       const isSelected = selectedCities.includes(composite);
                       return (
@@ -436,7 +582,26 @@ function TripDesignFormInner() {
                         />
                       );
                     })}
+                    <DestinationTag
+                      label={f.otherCity}
+                      selected={otherCityOn}
+                      onToggle={() => toggleOtherCity(cid, !otherCityOn)}
+                    />
                   </div>
+                  {otherCityOn ? (
+                    <input
+                      type="text"
+                      value={customCities[cid] || ''}
+                      onChange={(e) =>
+                        setCustomCities((prev) => ({ ...prev, [cid]: e.target.value }))
+                      }
+                      placeholder={f.otherCityPlaceholder.replace(
+                        '{country}',
+                        displayCountryLabel(cid),
+                      )}
+                      className="mt-2 inline-block w-full max-w-md rounded-full border border-gray-200 px-4 py-2 text-sm font-bold text-[#111111] outline-none transition placeholder:text-gray-400 focus:border-[#1A3B2A] focus:ring-1 focus:ring-[#1A3B2A]"
+                    />
+                  ) : null}
                 </div>
               );
             })}
@@ -508,16 +673,16 @@ function TripDesignFormInner() {
           <CheckboxPill name="interests" value="photo_tours" label={f.interestPhoto} />
         </PreferenceWithOther>
 
-        {selectedCountries.length > 0 ? (
+        {effectiveCountries.length > 0 ? (
           <div className="space-y-4 border-t border-gray-100 pt-4">
             <p className="text-right text-xs font-black text-[#111111]">{f.visitSectionTitle}</p>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              {selectedCountries.map((cid) => {
-                if (!getTripCountryById(cid)) return null;
+              {effectiveCountries.map((cid) => {
+                if (cid !== "other" && !getTripCountryById(cid)) return null;
                 return (
                   <div key={cid} className={QUESTION_BLOCK}>
                     <p className="text-right text-[11px] font-bold text-gray-600">
-                      {f.visitBeforeCountry.replace('{country}', countryLabel(cid))}
+                      {f.visitBeforeCountry.replace("{country}", displayCountryLabel(cid))}
                     </p>
                     <div className={PILL_ROW}>
                       <RadioPill name={`visited_before_${cid}`} value="yes" label={f.yes} />
@@ -610,10 +775,16 @@ function TripDesignFormInner() {
       <div className="flex justify-center pb-2 pt-1">
         <button
           type="submit"
-          disabled={pending}
-          className="inline-flex h-11 min-w-[220px] items-center justify-center gap-2 rounded-full bg-[#cda04c] px-8 text-sm font-black text-white shadow-sm transition hover:bg-[#b3893d] disabled:opacity-55"
+          disabled={pending || isSubmitting}
+          className={`inline-flex h-11 min-w-[220px] items-center justify-center gap-2 rounded-full bg-[#cda04c] px-8 text-sm font-black text-white shadow-sm transition hover:bg-[#b3893d] disabled:cursor-not-allowed disabled:opacity-50 ${
+            pending || isSubmitting ? 'opacity-50 cursor-not-allowed' : ''
+          }`}
         >
-          {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+          {pending || isSubmitting ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Send className="h-4 w-4" />
+          )}
           {f.submit}
         </button>
       </div>

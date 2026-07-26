@@ -4,12 +4,14 @@ export const SALES_STAGE_NEW = 'طلب انضمام جديد' as const
 export const SALES_STAGE_INTERVIEW = 'تم تحديد مقابلة' as const
 export const SALES_STAGE_PENDING_PAYMENT = 'بانتظار الدفع (ساعتين)' as const
 export const SALES_STAGE_CONFIRMED = 'عميل مؤكد' as const
+export const SALES_STAGE_ACTIVE_TRAVELER = 'مسافر نشط' as const
 
 export type ClientSalesStage =
   | typeof SALES_STAGE_NEW
   | typeof SALES_STAGE_INTERVIEW
   | typeof SALES_STAGE_PENDING_PAYMENT
   | typeof SALES_STAGE_CONFIRMED
+  | typeof SALES_STAGE_ACTIVE_TRAVELER
 
 export const CLIENT_SALES_STAGES: {
   value: ClientSalesStage
@@ -26,6 +28,12 @@ export const CLIENT_SALES_STAGES: {
     emoji: '⏳',
   },
   { value: SALES_STAGE_CONFIRMED, label: SALES_STAGE_CONFIRMED, shortLabel: 'مؤكد', emoji: '✅' },
+  {
+    value: SALES_STAGE_ACTIVE_TRAVELER,
+    label: SALES_STAGE_ACTIVE_TRAVELER,
+    shortLabel: 'مسافر نشط',
+    emoji: '✈️',
+  },
 ]
 
 export const DEFAULT_SALES_STAGE: ClientSalesStage = SALES_STAGE_NEW
@@ -47,6 +55,8 @@ export function salesStageBadgeClass(stage: string): string {
       return 'border-orange-400/70 bg-orange-50 text-orange-950 ring-1 ring-orange-300/80'
     case SALES_STAGE_CONFIRMED:
       return 'border-emerald-300/70 bg-emerald-50 text-emerald-950 ring-1 ring-emerald-200/80'
+    case SALES_STAGE_ACTIVE_TRAVELER:
+      return 'border-violet-300/70 bg-violet-50 text-violet-950 ring-1 ring-violet-200/80'
     default:
       return 'border-slate-200 bg-slate-50 text-slate-600 ring-1 ring-slate-100'
   }
@@ -73,6 +83,8 @@ export function salesStageLuxuryBadgeClass(stage: string): string {
       return 'border-orange-500/45 bg-orange-950/40 text-orange-200/95'
     case SALES_STAGE_CONFIRMED:
       return 'border-emerald-500/40 bg-emerald-950/40 text-emerald-200/95'
+    case SALES_STAGE_ACTIVE_TRAVELER:
+      return 'border-violet-500/40 bg-violet-950/40 text-violet-200/95'
     default:
       return 'border-gray-600/80 bg-gray-800 text-[#d4af37]/75'
   }

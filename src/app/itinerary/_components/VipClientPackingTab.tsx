@@ -16,9 +16,10 @@ import type { PublicItinerary } from '@/lib/public-itinerary';
 
 type Props = {
   trip: PublicItinerary;
+  profileUnlocked?: boolean;
 };
 
-export default function VipClientPackingTab({ trip }: Props) {
+export default function VipClientPackingTab({ trip, profileUnlocked = false }: Props) {
   const storageKey = packingStorageKey(
     trip.magicLinkId ?? String(trip.id),
   );
@@ -51,7 +52,13 @@ export default function VipClientPackingTab({ trip }: Props) {
     <div className="packing-tab space-y-5">
       <VipClientFinancialSummary budget={trip.budget} budgetSummary={budgetSummary} />
 
-      <VipClientWalletLedger clientId={trip.clientId} />
+      {profileUnlocked ? (
+        <VipClientWalletLedger clientId={trip.clientId} />
+      ) : (
+        <div className="rounded-2xl border border-[#D4AF37]/20 bg-[#FAFAFA] px-4 py-5 text-center text-sm font-semibold text-gray-600">
+          المحفظة والعهدة محمية — افتح «الملف الشخصي» وأدخل رمزك الخاص للوصول.
+        </div>
+      )}
 
       <div className="rounded-2xl border border-[#D4AF37]/30 bg-white p-5 shadow-md">
         <div className="mb-4 flex items-start justify-between gap-3">

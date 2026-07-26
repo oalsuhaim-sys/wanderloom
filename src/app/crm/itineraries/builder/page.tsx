@@ -32,6 +32,7 @@ import {
 } from '@/lib/supplier-whatsapp-brief';
 import {
   buildStrictSimpleItineraryInsertPayload,
+  FLIGHT_CLASS_OPTIONS,
   stripItineraryPayloadForSchemaError,
 } from '@/lib/itinerary-builder-model';
 import {
@@ -64,6 +65,7 @@ import {
 import { fetchAllPlacesBank, filterPlacesBankInventory } from '@/lib/places-bank';
 import type { PlaceBankRow } from '@/types/place';
 import { coerceClientIdForItinerarySave } from '@/lib/itinerary-client-crm';
+import { getClientAccessToken } from '@/lib/crm-session-token';
 import { supabase } from '@/lib/supabase';
 
 const ACTIVE_TRIP_KIND =
@@ -74,6 +76,14 @@ const LOCKED_FIELD =
   'cursor-not-allowed border-slate-200 bg-slate-100 text-slate-700';
 const BUILDER_FIELD =
   'w-full rounded-lg border border-gray-300 bg-white p-3 text-sm font-bold text-gray-900 outline-none focus:border-[#D4AF37]';
+
+type ExpertMini = {
+  id: string;
+  name: string;
+  status?: string | null;
+  specialty_regions?: string | null;
+  dna_profile?: unknown;
+};
 
 function extractGroupDestinationCities(titleAr: string, titleEn: string): string[] {
   const cities: string[] = [];
@@ -114,6 +124,9 @@ function itineraryDaysToDaysData(days: SimpleItineraryDay[]): unknown[] {
       place_name: p.name,
       category: p.category,
       places_bank_id: p.id != null ? String(p.id) : undefined,
+      ...(p.visit_time?.trim()
+        ? { visit_time: p.visit_time.trim(), time_slot: p.visit_time.trim() }
+        : {}),
       ...(placeIndex > 0
         ? {
             transit_mode: arabicTransportToMode(p.transportToNext ?? 'سيارة'),
@@ -181,6 +194,9 @@ function ItineraryBuilderPageContent() {
   // --- 1. States (الحالات) ---
   const [places, setPlaces] = useState<any[]>([]);
   const [clients, setClients] = useState<any[]>([]);
+  const [expertsList, setExpertsList] = useState<ExpertMini[]>([]);
+  const [expertsLoadError, setExpertsLoadError] = useState<string | null>(null);
+  const [expertId, setExpertId] = useState('');
   const [quotes, setQuotes] = useState<QuoteOption[]>([]);
   const [readyGroups, setReadyGroups] = useState<ReadyGroupOption[]>([]);
   /** null حتى يختار الأدمن — إلزامي قبل الحفظ */
@@ -215,12 +231,16 @@ function ItineraryBuilderPageContent() {
   const remaining = (Number(budget) || 0) - (Number(paid) || 0);
   const isPrivate = tripKind === 'private';
   const isGroup = tripKind === 'group';
-
   // البوردينق والفندق
   const [departureTime, setDepartureTime] = useState('');
   const [arrivalTime, setArrivalTime] = useState('');
   const [gate, setGate] = useState('');
   const [seat, setSeat] = useState('');
+  const [flightNumber, setFlightNumber] = useState('');
+  const [terminal, setTerminal] = useState('');
+  const [flightClass, setFlightClass] = useState('');
+  const [departureCountry, setDepartureCountry] = useState('');
+  const [arrivalCountry, setArrivalCountry] = useState('');
   const [pnr, setPnr] = useState('');
   const [hotels, setHotels] = useState<ItineraryHotelEntry[]>([createEmptyHotelEntry()]);
 
@@ -229,7 +249,6 @@ function ItineraryBuilderPageContent() {
   const [templateSaveTitle, setTemplateSaveTitle] = useState('');
   const [templateBusy, setTemplateBusy] = useState(false);
   const [templatesNotice, setTemplatesNotice] = useState('');
-  const [includeFashionServices, setIncludeFashionServices] = useState(false);
   const [documents, setDocuments] = useState<ItineraryDocument[]>([]);
   const [activityTickets, setActivityTickets] = useState<ActivityTicket[]>([]);
   const [preTripServices, setPreTripServices] = useState<PreTripService[]>([]);
@@ -243,11 +262,14 @@ function ItineraryBuilderPageContent() {
     setActiveDayId,
     activeDayLabel,
     handleAddDay,
+    moveDay,
     handleAddPlace,
     handleRemovePlace,
     updateTransport,
+    updateVisitTime,
     updateDayHotel,
     updateDayCity,
+    updateDayTitle,
     onDragEnd,
     dayDroppableId,
   } = useSimpleItineraryDays([createEmptyDay(0)]);
@@ -329,6 +351,41 @@ function ItineraryBuilderPageContent() {
                 is_active: g.is_active !== false,
               }))
               .filter((g) => g.id && g.is_active),
+          );
+        }
+
+        const expertAccessToken = await getClientAccessToken();
+        const expertsResponse = await fetch('/api/crm/experts', {
+          cache: 'no-store',
+          headers: {
+            Authorization: `Bearer ${expertAccessToken}`,
+          },
+        });
+        const expertsPayload = (await expertsResponse.json()) as {
+          ok?: boolean;
+          rows?: ExpertMini[];
+          error?: string;
+        };
+        const expertsData = Array.isArray(expertsPayload.rows)
+          ? expertsPayload.rows
+          : [];
+        const expertsError =
+          !expertsResponse.ok || !expertsPayload.ok
+            ? expertsPayload.error || `status_${expertsResponse.status}`
+            : null;
+        console.log('FETCHED EXPERTS:', expertsData);
+        console.log('FETCH ERROR:', expertsError);
+
+        if (expertsError) {
+          console.warn('[builder] experts:', expertsError);
+          setExpertsLoadError(expertsError);
+          setExpertsList([]);
+        } else {
+          setExpertsLoadError(null);
+          setExpertsList(
+            expertsData
+              .filter((row) => row?.id && row?.name)
+              .sort((a, b) => a.name.localeCompare(b.name, 'ar')),
           );
         }
       } catch (error) {
@@ -656,6 +713,11 @@ function ItineraryBuilderPageContent() {
           gate,
           seat,
           bookingRef: pnr,
+          flightNumber,
+          terminal,
+          flightClass,
+          departureCountry,
+          arrivalCountry,
         }),
       });
       const { templates: refreshed } = await fetchItineraryTemplates(supabase);
@@ -678,6 +740,11 @@ function ItineraryBuilderPageContent() {
     gate,
     seat,
     pnr,
+    flightNumber,
+    terminal,
+    flightClass,
+    departureCountry,
+    arrivalCountry,
   ]);
 
   const handleSave = useCallback(async () => {
@@ -745,6 +812,11 @@ function ItineraryBuilderPageContent() {
       arrivalCity: normalizeSingleArrivalCity(flightArrivalCity),
       gate,
       seat,
+      flightNumber,
+      terminal,
+      flightClass,
+      departureCountry,
+      arrivalCountry,
       hotels: hotels.map((h) => ({
         name: h.name,
         pnr: h.pnr,
@@ -757,15 +829,16 @@ function ItineraryBuilderPageContent() {
           ? String(activeClient.name)
           : selectedQuote?.client_name || 'عميل VIP',
       clientId: privateClientId,
+      expertId: expertId.trim() || null,
       tripType: isGroupSave ? 'Group' : 'Individual',
       quoteId: isGroupSave ? null : selectedQuoteId || null,
       groupName: isGroupSave ? groupLabel : null,
       preTripServices,
-      includeWardrobe: includeFashionServices,
+      includeWardrobe: false,
       documents,
       supplierRequests,
       ticketDetails: activityTickets,
-      showFashionServices: includeFashionServices,
+      showFashionServices: false,
       isMedical: itineraryHasMedicalPreTrip(preTripServices),
     });
 
@@ -839,6 +912,11 @@ function ItineraryBuilderPageContent() {
     arrivalTime,
     gate,
     seat,
+    flightNumber,
+    terminal,
+    flightClass,
+    departureCountry,
+    arrivalCountry,
     pnr,
     hotels,
     itineraryDays,
@@ -846,10 +924,10 @@ function ItineraryBuilderPageContent() {
     selectedClientId,
     router,
     preTripServices,
-    includeFashionServices,
     documents,
     supplierRequests,
     activityTickets,
+    expertId,
   ]);
 
   const handleDragEnd = useCallback(
@@ -1067,6 +1145,36 @@ function ItineraryBuilderPageContent() {
 
           <div className="flex flex-col gap-4">
             <div className="min-w-0">
+              <label className="mb-2 block text-sm font-bold text-gray-700">
+                خبير الوجهة (مصمم المسار)
+              </label>
+              <select
+                name="expert_id"
+                value={expertId || ''}
+                disabled={saving}
+                onChange={(e) => setExpertId(e.target.value)}
+                className={BUILDER_FIELD}
+              >
+                <option value="">-- اختر الخبير الذي صمم المسار --</option>
+                {expertsList.map((expert) => (
+                  <option key={expert.id} value={expert.id}>
+                    {expert.name}
+                    {expert.specialty_regions ? ` · ${expert.specialty_regions}` : ''}
+                  </option>
+                ))}
+              </select>
+              <p
+                className={`mt-1.5 text-[11px] font-bold ${
+                  expertsLoadError ? 'text-rose-600' : 'text-slate-500'
+                }`}
+              >
+                {expertsLoadError
+                  ? `تعذر تحميل الخبراء: ${expertsLoadError}`
+                  : `تم تحميل ${expertsList.length} خبير من قاعدة البيانات`}
+              </p>
+            </div>
+
+            <div className="min-w-0">
               <label className="mb-2 block text-sm font-bold text-gray-700">تاريخ البداية</label>
               <input
                 type="date"
@@ -1233,31 +1341,6 @@ function ItineraryBuilderPageContent() {
           </div>
         </div>
 
-        <div className="border-t border-gray-100 pt-5">
-          <div className="flex items-center justify-between gap-3 rounded-xl border border-[#D4AF37]/25 bg-[#FEFDF9] p-4">
-            <div>
-              <p className="text-sm font-bold text-gray-800">تفعيل خدمات الأزياء والكونسيرج</p>
-              <p className="text-xs text-gray-500">
-                عند الإيقاف يُخفى تبويب الصالون الذهبي / أزياء السفر من واجهة العميل
-              </p>
-            </div>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={includeFashionServices}
-              onClick={() => setIncludeFashionServices((v) => !v)}
-              className={`relative h-9 w-[3.25rem] shrink-0 rounded-full transition-colors ${
-                includeFashionServices ? 'bg-[#1A2520]' : 'bg-gray-300'
-              }`}
-            >
-              <span
-                className={`pointer-events-none absolute top-1 h-7 w-7 rounded-full bg-white shadow-md transition-[inset-inline-start] ${
-                  includeFashionServices ? 'start-[calc(100%-1.875rem)]' : 'start-1'
-                }`}
-              />
-            </button>
-          </div>
-        </div>
       </section>
 
       {/* الأقسام المشتركة دائماً: بوردينق، أيام، أماكن، موردين، فعاليات، كونسيرج… */}
@@ -1277,6 +1360,16 @@ function ItineraryBuilderPageContent() {
               className="bg-gray-50 border border-gray-300 rounded-lg p-2.5 text-sm text-gray-900 focus:border-[#D4AF37] outline-none"
             />
                 </label>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-sm font-bold text-gray-600">دولة المغادرة</span>
+            <input
+              type="text"
+              value={departureCountry}
+              onChange={(e) => setDepartureCountry(e.target.value)}
+              placeholder="السعودية"
+              className="bg-gray-50 border border-gray-300 rounded-lg p-2.5 text-sm text-gray-900 focus:border-[#D4AF37] outline-none"
+            />
+          </label>
           <label className="flex flex-col gap-1.5 md:col-span-2">
             <span className="text-sm font-bold text-gray-600">
               إلى مدينة (رحلة الطيران — مدينة واحدة)
@@ -1303,6 +1396,54 @@ function ItineraryBuilderPageContent() {
               مدينة هبوط الطيران فقط — لا تُربط تلقائياً بكل مدن المسار.
             </span>
                         </label>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-sm font-bold text-gray-600">دولة الوصول</span>
+            <input
+              type="text"
+              value={arrivalCountry}
+              onChange={(e) => setArrivalCountry(e.target.value)}
+              placeholder="هنغاريا"
+              className="bg-gray-50 border border-gray-300 rounded-lg p-2.5 text-sm text-gray-900 focus:border-[#D4AF37] outline-none"
+            />
+          </label>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-sm font-bold text-gray-600">رقم الرحلة</span>
+            <input
+              type="text"
+              value={flightNumber}
+              onChange={(e) => setFlightNumber(e.target.value)}
+              placeholder="SV130"
+              dir="ltr"
+              className="bg-gray-50 border border-gray-300 rounded-lg p-2.5 text-sm text-gray-900 focus:border-[#D4AF37] outline-none"
+            />
+          </label>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-sm font-bold text-gray-600">المبنى</span>
+            <input
+              type="text"
+              value={terminal}
+              onChange={(e) => setTerminal(e.target.value)}
+              placeholder="T1"
+              dir="ltr"
+              className="bg-gray-50 border border-gray-300 rounded-lg p-2.5 text-sm text-gray-900 focus:border-[#D4AF37] outline-none"
+            />
+          </label>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-sm font-bold text-gray-600">الدرجة</span>
+            <select
+              value={flightClass}
+              onChange={(e) => setFlightClass(e.target.value)}
+              dir="ltr"
+              className="bg-gray-50 border border-gray-300 rounded-lg p-2.5 text-sm text-gray-900 focus:border-[#D4AF37] outline-none"
+            >
+              <option value="">— اختر —</option>
+              {FLIGHT_CLASS_OPTIONS.map((opt) => (
+                <option key={opt} value={opt}>
+                  {opt}
+                </option>
+              ))}
+            </select>
+          </label>
           <label className="flex flex-col gap-1.5">
             <span className="text-sm font-bold text-gray-600">وقت المغادرة</span>
             <VipTimeSlotSelect
@@ -1564,10 +1705,13 @@ function ItineraryBuilderPageContent() {
           activeDayId={activeDayId}
           onActiveDayIdChange={setActiveDayId}
           onAddDay={handleAddDay}
+          onMoveDay={moveDay}
           onRemovePlace={handleRemovePlace}
           onUpdateDayHotel={updateDayHotel}
           onUpdateDayCity={updateDayCity}
+          onUpdateDayTitle={updateDayTitle}
           onUpdateTransport={updateTransport}
+          onUpdateVisitTime={updateVisitTime}
           dayDroppableId={dayDroppableId}
           supplierBrief={supplierBrief}
           predictiveWishContext={predictiveWishContext}

@@ -52,8 +52,19 @@ export type VipFlightVoucherFields = {
   seat: string
   gate: string
   terminal: string
+  flightClass: string
+  departureCountry: string
+  arrivalCountry: string
   airport: string
   barcodeSeed: string
+}
+
+export function vipFlightDepartureCountry(fd: VipFlightDetails): string {
+  return vipFlightLineAny(fd, ['departure_country', 'departureCountry'])
+}
+
+export function vipFlightArrivalCountry(fd: VipFlightDetails): string {
+  return vipFlightLineAny(fd, ['arrival_country', 'arrivalCountry'])
 }
 
 export function buildVipFlightVoucherFields(fd: VipFlightDetails): VipFlightVoucherFields {
@@ -70,6 +81,9 @@ export function buildVipFlightVoucherFields(fd: VipFlightDetails): VipFlightVouc
     seat: vipFlightLineAny(fd, ['seat', 'flight_seat']) || '—',
     gate: vipFlightLineAny(fd, ['gate']) || '—',
     terminal: vipFlightLineAny(fd, ['terminal']) || '—',
+    flightClass: vipFlightLineAny(fd, ['flight_class', 'flightClass']) || '—',
+    departureCountry: vipFlightDepartureCountry(fd) || '—',
+    arrivalCountry: vipFlightArrivalCountry(fd) || '—',
     airport: vipFlightLineAny(fd, ['airport']) || '—',
     barcodeSeed:
       vipFlightLineAny(fd, [

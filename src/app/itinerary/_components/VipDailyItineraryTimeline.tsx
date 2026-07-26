@@ -1,16 +1,21 @@
 'use client'
 
-import { useEffect, useRef, useState, type ChangeEvent } from 'react'
-import { MapPin } from 'lucide-react'
+import { useMemo, useState, type ChangeEvent, type ReactNode } from 'react'
+import {
+  Camera,
+  BedDouble,
+  MapPin,
+  Plane,
+  Ticket,
+} from 'lucide-react'
 
-import { extractItineraryCodeFromPath, probeItineraryLinkFromUrlCode } from '@/lib/client-memories'
-import { supabase } from '@/lib/supabase'
-
+import { calculateTripCountdown } from '@/lib/client-teaser-portal'
 import {
   buildGoogleMapsDirectionsUrl,
   buildGoogleMapsPlaceSearchUrl,
   buildUberDeepLink,
   buildUberRouteDeepLink,
+  formatTripDateRange,
   isCarTransitActivity,
   resolveStopBookingHref,
   type PublicItineraryActivity,
@@ -19,17 +24,52 @@ import {
   type VipTransitIconKind,
 } from '@/lib/public-itinerary'
 import { getVipPlaceCategoryMeta } from '@/lib/vip-place-category'
-
-const VIP_OLIVE = '#1E2720'
+import DayWeatherPill from './DayWeatherPill'
 
 const TXT_EMPTY_DAYS = 'جاري تنسيق تفاصيل أيام رحلتك'
 const TXT_DAY_PREFIX = 'اليوم'
-const TXT_TABLIST = 'أيام الرحلة'
 
 function transitModeEmoji(mode: VipTransitIconKind | null | undefined): string {
   if (mode === 'metro') return '🚇'
   if (mode === 'walk') return '🚶'
   return '🚗'
+}
+
+function activityPlaceName(activity: PublicItineraryActivity): string {
+  return activity.place_name?.trim() || activity.title?.trim() || ''
+}
+
+function activityContextIcon(activity: PublicItineraryActivity) {
+  const code = String(activity.category ?? '').toLowerCase()
+  const title = `${activity.title} ${activity.place_name ?? ''}`.toLowerCase()
+  if (code === 'h' || /فندق|hotel|resort/.test(title)) return BedDouble
+  if (/طيران|flight|airport|مطار|boarding/.test(title)) return Plane
+  return getVipPlaceCategoryMeta(activity.category ?? 'o').Icon
+}
+
+function formatTimeDisplay(raw: string | null | undefined): string {
+  const text = String(raw ?? '').trim()
+  if (!text) return ''
+  const m = /^(\d{1,2}):(\d{2})/.exec(text)
+  if (!m) return text
+  const hour = Number(m[1])
+  const minute = m[2]
+  if (!Number.isFinite(hour)) return text
+  const period = hour >= 12 ? 'م' : 'ص'
+  const h12 = hour % 12 || 12
+  return `${h12}:${minute} ${period}`
+}
+
+function countdownPillLabel(startDate: string | null | undefined): string | null {
+  if (!startDate) return null
+  const parts = calculateTripCountdown(startDate)
+  if (parts.started) return 'الرحلة جارية الآن'
+  if (parts.days <= 0) {
+    if (parts.hours > 0) return `تبدأ بعد ${parts.hours} ساعة`
+    return 'تبدأ قريباً'
+  }
+  if (parts.days === 1) return 'تبدأ غداً'
+  return `تبدأ بعد ${parts.days} أيام`
 }
 
 function ActivityNotes({ activity }: { activity: PublicItineraryActivity }) {
@@ -38,15 +78,14 @@ function ActivityNotes({ activity }: { activity: PublicItineraryActivity }) {
   const lines: string[] = []
   if (note) lines.push(note)
   if (story && story !== note) lines.push(story)
-
   if (lines.length === 0) return null
 
   return (
-    <div className="mt-2 space-y-1.5">
+    <div className="mt-1 space-y-1">
       {lines.map((line, i) => (
         <p
           key={i}
-          className="text-xs font-medium leading-relaxed text-gray-600 sm:text-[13px]"
+          className="line-clamp-2 text-sm font-medium leading-relaxed text-gray-500 transition-all group-hover:line-clamp-none"
         >
           {line}
         </p>
@@ -56,28 +95,52 @@ function ActivityNotes({ activity }: { activity: PublicItineraryActivity }) {
 }
 
 function CategoryTag({ activity }: { activity: PublicItineraryActivity }) {
-  const code = activity.category ?? 'o'
-  const meta = getVipPlaceCategoryMeta(code)
+  const meta = getVipPlaceCategoryMeta(activity.category ?? 'o')
   const Icon = meta.Icon
 
   return (
     <span
       className={`inline-flex max-w-full items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-bold sm:text-[11px] ${meta.accentClass}`}
     >
-      <Icon className="h-3.5 w-3.5 shrink-0 text-[#D4AF37]" aria-hidden />
+      <Icon className="h-3.5 w-3.5 shrink-0 text-[#C5A059]" aria-hidden />
       <span className="truncate">{activity.categoryLabel ?? meta.label}</span>
     </span>
   )
 }
 
+function MapsPinLink({ href }: { href: string }) {
+  if (!href) return null
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      onClick={(e) => e.stopPropagation()}
+      className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#C5A059]/25 bg-[#F9F9F6] text-[#C5A059] transition-all duration-200 hover:scale-110 hover:border-[#C5A059]/50 hover:bg-[#1A3B2A] hover:text-[#C5A059]"
+      title="عرض المكان على الخريطة"
+      aria-label="عرض المكان على الخريطة"
+    >
+      <MapPin className="h-4 w-4" aria-hidden />
+    </a>
+  )
+}
+
 function ActivityActionPills({
   activity,
-  onMemoryFileSelect,
+  tripId,
+  magicLinkId,
+  clientId,
   memoryUploadingId,
+  onUploadStart,
+  onUploadEnd,
 }: {
   activity: PublicItineraryActivity
-  onMemoryFileSelect?: (file: File, activity: PublicItineraryActivity) => void
+  tripId: string
+  magicLinkId?: string | null
+  clientId?: string | number | null
   memoryUploadingId?: string | null
+  onUploadStart?: (activityId: string) => void
+  onUploadEnd?: () => void
 }) {
   const placeName = activity.place_name?.trim() || activity.title?.trim() || ''
   const mapsHref =
@@ -89,92 +152,118 @@ function ActivityActionPills({
   const uploadInputId = `upload-memory-${activity.id}`
   const isUploading = memoryUploadingId === activity.id
 
-  const actionPillClass =
-    'flex flex-1 flex-col items-center justify-center gap-1 rounded-xl border px-2 py-3 transition-all'
+  const resolvedTripId = String(tripId ?? '').trim().replace(/^(client-|vip-)/i, '')
+  const resolvedMagicLinkId = String(magicLinkId ?? '').trim()
+  const resolvedClientId =
+    clientId != null && String(clientId).trim() !== ''
+      ? String(clientId).trim().replace(/^(client-|vip-)/i, '')
+      : ''
+  const canUpload = Boolean(resolvedTripId)
+
+  const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file || !resolvedTripId) return
+
+    const locationName =
+      activity.title?.trim() ||
+      activity.place_name?.trim() ||
+      activity.locationLabel?.trim() ||
+      'محطة مختارة'
+
+    onUploadStart?.(activity.id)
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('locationName', locationName)
+      if (mapsHref) {
+        formData.append('mapUrl', mapsHref)
+        formData.append('map_url', mapsHref)
+        formData.append('google_maps_url', mapsHref)
+      }
+      formData.append('trip_id', resolvedTripId)
+      formData.append('itinerary_id', resolvedTripId)
+      formData.append('itineraryId', resolvedTripId)
+      formData.append('tripId', resolvedTripId)
+      if (resolvedClientId) {
+        formData.append('client_id', resolvedClientId)
+        formData.append('clientId', resolvedClientId)
+      }
+      if (resolvedMagicLinkId) {
+        formData.append('magic_link_id', resolvedMagicLinkId)
+        formData.append('magicLinkId', resolvedMagicLinkId)
+      }
+
+      const response = await fetch('/api/client-upload', {
+        method: 'POST',
+        body: formData,
+      })
+
+      const result = (await response.json()) as { error?: unknown }
+      if (!response.ok) {
+        let errorDetail = result.error
+        if (typeof errorDetail === 'object' && errorDetail != null) {
+          errorDetail = JSON.stringify(errorDetail)
+        }
+        throw new Error(String(errorDetail || '').trim() || 'حدث خطأ غير معروف في الخادم')
+      }
+
+      window.alert('تم رفع الصورة بنجاح! ستظهر في مكتبة الذكريات لدى الإدارة للاعتماد. 📸')
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : typeof error === 'object' && error != null
+            ? JSON.stringify(error)
+            : String(error)
+      window.alert(`فشل الرفع:\n${message}`)
+    } finally {
+      onUploadEnd?.()
+    }
+  }
 
   return (
-    <div className="mt-4 w-full border-t border-[#1E2720]/8 pt-3">
-      <div className="flex w-full items-stretch justify-between gap-2">
+    <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-gray-100 pt-4">
+      <MapsPinLink href={mapsHref} />
+
+      {bookingRaw !== '' && bookingHref ? (
         <a
-          href={mapsHref}
+          href={bookingHref}
           target="_blank"
           rel="noopener noreferrer"
-          className={`${actionPillClass} border-[#D4AF37]/50 bg-[#FAFAFA] text-gray-900 hover:bg-[#D4AF37]/10`}
+          className="inline-flex items-center gap-1.5 rounded-full border border-[#C5A059]/30 bg-[#F9F9F6] px-3 py-2 text-xs font-bold text-[#1A3B2A] transition hover:border-[#C5A059]/50 hover:bg-[#1A3B2A] hover:text-white"
         >
-          <span className="mb-1 text-xl leading-none">📍</span>
-          <span className="text-xs font-bold leading-none md:text-sm">الاتجاهات</span>
+          <Ticket className="h-3.5 w-3.5 text-[#C5A059]" aria-hidden />
+          التذاكر
         </a>
-        <button
-          type="button"
-          onClick={() => document.getElementById(uploadInputId)?.click()}
-          disabled={isUploading}
-          className={`${actionPillClass} border-[#B5914F] text-[#B5914F] hover:bg-[#B5914F]/10 disabled:cursor-not-allowed disabled:opacity-60`}
-        >
-          <span className="mb-1 text-xl leading-none">📸</span>
-          <span className="text-xs font-bold leading-none md:text-sm">
-            {isUploading ? 'جاري الرفع…' : 'وثّق اللحظة'}
-          </span>
-        </button>
+      ) : null}
+
+      <button
+        type="button"
+        onClick={() => {
+          if (!canUpload) return
+          document.getElementById(uploadInputId)?.click()
+        }}
+        disabled={isUploading || !canUpload}
+        className="inline-flex items-center gap-1.5 rounded-full border border-gray-100 bg-white px-3 py-2 text-xs font-bold text-gray-600 transition hover:border-[#C5A059]/30 hover:text-[#1A3B2A] disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        <Camera className="h-3.5 w-3.5" aria-hidden />
+        {isUploading ? 'جاري الرفع…' : !canUpload ? 'بانتظار التأكيد' : 'وثّق اللحظة'}
+      </button>
+
+      {canUpload ? (
         <input
           type="file"
           id={uploadInputId}
           className="hidden"
           accept="image/*"
           capture="environment"
-          onChange={(e: ChangeEvent<HTMLInputElement>) => {
-            const file = e.target.files?.[0]
-            if (file && onMemoryFileSelect) {
-              onMemoryFileSelect(file, activity)
-            }
-            e.target.value = ''
-          }}
+          onChange={(e) => void handleFileChange(e)}
         />
-      </div>
-      {bookingRaw !== '' && bookingHref ? (
-        <a
-          href={bookingHref}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg border border-[#D4AF37]/50 bg-[#FAFAFA] px-4 py-2.5 text-xs font-bold text-gray-900 transition-colors hover:bg-[#D4AF37]/10 sm:text-sm"
-        >
-          <span>🎟️ حجز التذاكر</span>
-        </a>
       ) : null}
     </div>
   )
 }
-
-function ActivityThumbnail({ activity }: { activity: PublicItineraryActivity }) {
-  const url = activity.imageUrl?.trim()
-
-  return (
-    <div className="relative h-[160px] w-full shrink-0 overflow-hidden rounded-t-2xl sm:h-full sm:min-h-[200px] sm:rounded-none sm:rounded-s-2xl">
-      {url ? (
-        <>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={url}
-            alt=""
-            className="h-full w-full object-cover shadow-inner"
-            loading="lazy"
-          />
-          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#1E2720]/50 via-[#1E2720]/5 to-transparent" />
-        </>
-      ) : (
-        <div className="flex h-full w-full flex-col items-center justify-center gap-2 bg-gradient-to-br from-[#1E2720] via-[#2A362C] to-[#1E2720] shadow-inner">
-          <div className="flex h-14 w-14 items-center justify-center rounded-full border-2 border-[#D4AF37]/50 bg-[#D4AF37]/15 shadow-[0_4px_20px_rgba(212,175,55,0.25)]">
-            <MapPin className="h-7 w-7 text-[#D4AF37]" aria-hidden />
-          </div>
-          <span className="text-[10px] font-black uppercase tracking-wider text-[#D4AF37]/80">
-            Wanderloom
-          </span>
-        </div>
-      )}
-    </div>
-  )
-}
-
-const TIMELINE_DOT_END = '-end-[1.55rem] sm:-end-[1.85rem]'
 
 function DayHotelStartAnchor({
   hotelName,
@@ -186,52 +275,38 @@ function DayHotelStartAnchor({
   const mapsHref = buildGoogleMapsPlaceSearchUrl(hotelName, mapsQuery)
 
   return (
-    <div className="relative mb-6">
-      <div
-        className={`absolute ${TIMELINE_DOT_END} top-4 z-10 h-3 w-3 rounded-full bg-[#D4AF37] shadow-[0_0_8px_#D4AF37]`}
-        aria-hidden
-      />
-      <div className="rounded-xl border border-[#D4AF37]/30 bg-white p-4 shadow-md">
-        <span className="text-xs font-bold text-[#D4AF37]">📍 نقطة الانطلاق</span>
-        <h3 className="mt-1 text-lg font-bold text-gray-900">{hotelName}</h3>
-        <a
-          href={mapsHref}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="mt-3 inline-block text-sm text-gray-600 underline decoration-gray-300 underline-offset-4 transition-colors hover:text-gray-900"
-        >
-          🗺️ عرض على الخريطة
-        </a>
-      </div>
+    <div className="mb-4 rounded-2xl border border-[#C5A059]/20 bg-white p-4 shadow-sm">
+      <span className="text-xs font-bold text-[#C5A059]">نقطة الانطلاق</span>
+      <h3 className="mt-1 text-base font-bold text-[#1A3B2A]">{hotelName}</h3>
+      <a
+        href={mapsHref}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-gray-500 underline decoration-gray-200 underline-offset-4 transition hover:text-[#C5A059]"
+      >
+        <MapPin className="h-3.5 w-3.5" aria-hidden />
+        عرض على الخريطة
+      </a>
     </div>
   )
-}
-
-function activityPlaceName(activity: PublicItineraryActivity): string {
-  return activity.place_name?.trim() || activity.title?.trim() || ''
 }
 
 function DayHotelEndAnchor({ hotelName }: { hotelName: string }) {
   const mapsHref = buildGoogleMapsPlaceSearchUrl(hotelName)
 
   return (
-    <div className="relative mt-6">
-      <div
-        className={`absolute ${TIMELINE_DOT_END} top-4 z-10 h-2.5 w-2.5 rounded-full bg-gray-500`}
-        aria-hidden
-      />
-      <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-        <span className="text-xs font-bold text-gray-600">🏁 نهاية المسار (العودة للراحة)</span>
-        <h3 className="mt-1 text-lg font-bold text-gray-900">{hotelName}</h3>
-        <a
-          href={mapsHref}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="mt-3 inline-block text-sm text-gray-600 underline decoration-gray-300 underline-offset-4 transition-colors hover:text-gray-900"
-        >
-          🗺️ عرض على الخريطة
-        </a>
-      </div>
+    <div className="mt-4 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+      <span className="text-xs font-bold text-gray-500">نهاية المسار · العودة للراحة</span>
+      <h3 className="mt-1 text-base font-bold text-[#1A3B2A]">{hotelName}</h3>
+      <a
+        href={mapsHref}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-gray-500 underline decoration-gray-200 underline-offset-4 transition hover:text-[#C5A059]"
+      >
+        <MapPin className="h-3.5 w-3.5" aria-hidden />
+        عرض على الخريطة
+      </a>
     </div>
   )
 }
@@ -251,30 +326,26 @@ function HotelTransitConnector({
   const uberHref = buildUberDeepLink(destination, { useMyLocationPickup: true })
 
   return (
-    <div className="relative my-2 me-4 border-e-2 border-dashed border-gray-300 py-3">
-      <div className="flex w-max max-w-full flex-wrap items-center gap-3 rounded-lg border border-gray-200 bg-white p-2.5 text-sm shadow-sm sm:gap-4">
-        <a
-          href={directionsHref}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center text-gray-600 transition-colors hover:text-gray-900"
-        >
-          <span className="ms-1.5">🗺️</span>
-          {directionsLabel}
-        </a>
-        <span className="text-gray-700" aria-hidden>
-          |
-        </span>
-        <a
-          href={uberHref}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center font-bold text-[#D4AF37] transition-colors hover:text-[#1E2720]"
-        >
-          <span className="ms-1.5">🚕</span>
-          {uberLabel}
-        </a>
-      </div>
+    <div className="my-3 flex flex-wrap items-center gap-3 rounded-xl border border-gray-100 bg-white/80 px-3 py-2.5 text-sm shadow-sm">
+      <a
+        href={directionsHref}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="font-semibold text-gray-600 transition hover:text-[#1A3B2A]"
+      >
+        {directionsLabel}
+      </a>
+      <span className="text-gray-300" aria-hidden>
+        |
+      </span>
+      <a
+        href={uberHref}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="font-bold text-[#C5A059] transition hover:text-[#1A3B2A]"
+      >
+        {uberLabel}
+      </a>
     </div>
   )
 }
@@ -292,114 +363,167 @@ function ActivityCarTransitConnector({
   const directionsHref = buildGoogleMapsDirectionsUrl(fromName, toName)
 
   return (
-    <div className="relative my-2 me-4 border-e-2 border-dashed border-gray-300 py-3">
-      <div className="flex w-max max-w-full flex-wrap items-center gap-3 rounded-lg border border-gray-200 bg-white p-2 shadow-sm sm:gap-4">
-        {duration ? (
-          <span className="text-xs font-bold text-gray-600">{duration}</span>
-        ) : null}
-        <a
-          href={directionsHref}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center text-sm text-gray-600 transition-colors hover:text-gray-900"
-        >
-          <span className="ms-1.5">🗺️</span>
-          الاتجاهات
-        </a>
-        <span className="text-gray-700" aria-hidden>
-          |
-        </span>
-        <a
-          href={uberHref}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center rounded-lg border border-gray-200 bg-white p-2 text-sm font-bold text-[#D4AF37] transition-colors hover:text-[#1E2720]"
-        >
-          🚕 احجز أوبر للمحطة التالية
-        </a>
-      </div>
+    <div className="my-3 flex flex-wrap items-center gap-3 rounded-xl border border-dashed border-[#C5A059]/30 bg-[#F9F9F6] px-3 py-2.5 text-sm">
+      {duration ? (
+        <span className="text-xs font-bold text-gray-500">{duration}</span>
+      ) : null}
+      <a
+        href={directionsHref}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="font-semibold text-gray-600 transition hover:text-[#1A3B2A]"
+      >
+        الاتجاهات
+      </a>
+      <a
+        href={uberHref}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="font-bold text-[#C5A059] transition hover:text-[#1A3B2A]"
+      >
+        احجز أوبر للمحطة التالية
+      </a>
     </div>
   )
 }
 
 function ActivityTimelineCard({
   activity,
-  onMemoryFileSelect,
+  tripId,
+  magicLinkId,
+  clientId,
   memoryUploadingId,
+  onUploadStart,
+  onUploadEnd,
 }: {
   activity: PublicItineraryActivity
-  onMemoryFileSelect?: (file: File, activity: PublicItineraryActivity) => void
+  tripId: string
+  magicLinkId?: string | null
+  clientId?: string | number | null
   memoryUploadingId?: string | null
+  onUploadStart?: (activityId: string) => void
+  onUploadEnd?: () => void
 }) {
-  const timeText = activity.timeLabel?.trim() || null
+  const timeText = formatTimeDisplay(activity.timeLabel)
   const displayName = activity.place_name?.trim() || activity.title?.trim() || 'محطة مميزة'
+  const ContextIcon = activityContextIcon(activity)
+  const thumb = activity.imageUrl?.trim()
 
   return (
-    <article className="group overflow-hidden rounded-2xl border border-[#D4AF37]/30 bg-white shadow-md ring-1 ring-gray-100 transition hover:shadow-lg">
-      <div className="border-b border-[#D4AF37]/20 bg-gradient-to-l from-[#FAFAFA] to-white px-4 py-2 sm:px-5">
-        <div className="flex flex-wrap items-center justify-between gap-2">
+    <article className="group relative mb-4 flex flex-col gap-5 rounded-2xl border border-gray-100 bg-white p-5 shadow-sm transition-all duration-300 hover:border-[#C5A059]/30 hover:shadow-md sm:flex-row">
+      {/* Time / icon column */}
+      <div className="flex min-w-[80px] flex-row items-center justify-center gap-3 border-b border-gray-100 pb-4 sm:flex-col sm:border-b-0 sm:border-l sm:pb-0 sm:pl-4">
+        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#1A3B2A]/5 text-[#C5A059]">
+          <ContextIcon className="h-5 w-5" aria-hidden />
+        </div>
+        {timeText ? (
+          <span className="text-sm font-black tabular-nums text-[#1A3B2A]" dir="ltr">
+            {timeText}
+          </span>
+        ) : (
+          <span className="text-[10px] font-bold text-gray-400">وقت مرن</span>
+        )}
+      </div>
+
+      {/* Optional thumbnail */}
+      {thumb ? (
+        <div className="relative h-28 w-full shrink-0 overflow-hidden rounded-xl sm:h-auto sm:w-36">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={thumb}
+            alt=""
+            className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+            loading="lazy"
+          />
+        </div>
+      ) : null}
+
+      {/* Content */}
+      <div className="min-w-0 flex-1">
+        <div className="mb-2 flex flex-wrap items-center gap-2">
           <CategoryTag activity={activity} />
-          {timeText ? (
-            <span
-              className="shrink-0 rounded-full bg-[#1E2720] px-3 py-1 text-[10px] font-bold tabular-nums text-[#D4AF37]"
-              dir="ltr"
-            >
-              {timeText}
+          {activity.locationLabel ? (
+            <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-gray-400">
+              <MapPin className="h-3 w-3 text-[#C5A059]" aria-hidden />
+              {activity.locationLabel}
             </span>
           ) : null}
         </div>
-      </div>
 
-      <div className="flex flex-col sm:flex-row">
-        <div className="relative w-full shrink-0 sm:w-[38%]">
-          <ActivityThumbnail activity={activity} />
-          <div className="pointer-events-none absolute inset-0 hidden bg-gradient-to-t from-[#1E2720]/40 via-transparent to-transparent sm:block" />
-        </div>
+        <h4 className="text-lg font-bold text-gray-800">{displayName}</h4>
+        <ActivityNotes activity={activity} />
 
-        <div className="min-w-0 flex-1 p-4 sm:p-5">
-          <p className="text-[9px] font-black uppercase tracking-[0.24em] text-[#D4AF37]">
-            محطة مختارة
-          </p>
-          <h4 className="mt-1 font-serif text-xl font-black leading-snug tracking-tight text-gray-900 sm:text-2xl">
-            {displayName}
-          </h4>
-
-          {activity.locationLabel ? (
-            <p className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-gray-600">
-              <MapPin className="h-3.5 w-3.5 shrink-0 text-[#D4AF37]" aria-hidden />
-              <span>{activity.locationLabel}</span>
-            </p>
-          ) : null}
-
-          <ActivityNotes activity={activity} />
-          <ActivityActionPills
-            activity={activity}
-            onMemoryFileSelect={onMemoryFileSelect}
-            memoryUploadingId={memoryUploadingId}
-          />
-        </div>
+        <ActivityActionPills
+          activity={activity}
+          tripId={tripId}
+          magicLinkId={magicLinkId}
+          clientId={clientId}
+          memoryUploadingId={memoryUploadingId}
+          onUploadStart={onUploadStart}
+          onUploadEnd={onUploadEnd}
+        />
       </div>
     </article>
   )
 }
 
-function DayTimeline({
+function DayBlock({
   day,
-  onMemoryFileSelect,
+  dayIndex,
+  destination,
+  startDate,
+  tripId,
+  magicLinkId,
+  clientId,
   memoryUploadingId,
+  onUploadStart,
+  onUploadEnd,
 }: {
   day: PublicItineraryDay
-  onMemoryFileSelect?: (file: File, activity: PublicItineraryActivity) => void
+  dayIndex: number
+  destination: string
+  startDate: string | null
+  tripId: string
+  magicLinkId?: string | null
+  clientId?: string | number | null
   memoryUploadingId?: string | null
+  onUploadStart?: (activityId: string) => void
+  onUploadEnd?: () => void
 }) {
   const hotelName = day.hotelName?.trim() || ''
   const firstActivity = day.activities[0]
   const lastActivity = day.activities[day.activities.length - 1]
   const firstPlaceName = firstActivity ? activityPlaceName(firstActivity) : ''
   const lastPlaceName = lastActivity ? activityPlaceName(lastActivity) : ''
+  const dayTitle = day.cityLabel?.trim()
+    ? day.tabLabel || day.title
+    : day.title || `${TXT_DAY_PREFIX} ${day.index + 1}`
 
   return (
-    <div className="relative border-e-2 border-[#D4AF37]/50 pe-4 sm:pe-6" dir="rtl">
+    <section id={`day-${dayIndex}`} className="relative scroll-mt-28">
+      <div
+        className="absolute -right-[41px] top-1.5 z-10 h-5 w-5 rounded-full border-[3px] border-[#C5A059] bg-[#1A3B2A] shadow-[0_0_10px_rgba(197,160,89,0.5)] md:-right-[49px]"
+        aria-hidden
+      />
+
+      <header className="mb-6 flex flex-wrap items-center gap-3 pr-2">
+        <h3 className="text-2xl font-bold text-[#1A3B2A]">{dayTitle}</h3>
+        {day.dateLabel ? (
+          <span className="rounded-full border border-[#C5A059]/20 bg-white px-3 py-1 text-xs font-bold text-[#C5A059]">
+            {day.dateLabel}
+          </span>
+        ) : null}
+        <DayWeatherPill
+          city={day.cityLabel}
+          destination={destination}
+          startDate={startDate}
+          dayIndex={dayIndex}
+        />
+        <span className="text-xs font-semibold text-gray-400">
+          {day.activities.length} محطة
+        </span>
+      </header>
+
       {hotelName ? (
         <DayHotelStartAnchor hotelName={hotelName} mapsQuery={day.mapsQuery} />
       ) : null}
@@ -422,7 +546,7 @@ function DayTimeline({
           const carTransit = showTransit && isCarTransitActivity(activity)
 
           return (
-            <li key={activity.id} className="relative">
+            <li key={activity.id}>
               {carTransit ? (
                 <ActivityCarTransitConnector
                   fromName={activityPlaceName(previousActivity!)}
@@ -430,15 +554,8 @@ function DayTimeline({
                   duration={transitDuration || undefined}
                 />
               ) : showTransit && transitDuration !== '' ? (
-                <div className="relative flex justify-center py-3">
-                  <div
-                    className={`absolute ${TIMELINE_DOT_END} top-1/2 z-0 h-2.5 w-2.5 -translate-y-1/2 rounded-full bg-[#D4AF37]`}
-                    aria-hidden
-                  />
-                  <div
-                    className="relative z-10 flex items-center gap-1.5 whitespace-nowrap rounded-full border border-[#D4AF37]/60 bg-white px-3 py-1.5 text-xs font-bold text-gray-900 shadow-sm"
-                    aria-label={`انتقال: ${transitDuration}`}
-                  >
+                <div className="flex justify-center py-3">
+                  <div className="inline-flex items-center gap-1.5 rounded-full border border-[#C5A059]/30 bg-white px-3 py-1.5 text-xs font-bold text-[#1A3B2A] shadow-sm">
                     <span aria-hidden>{transitModeEmoji(transitMode)}</span>
                     <span>{transitDuration}</span>
                   </div>
@@ -447,19 +564,15 @@ function DayTimeline({
                 <div className="py-2" aria-hidden />
               ) : null}
 
-              <div className="relative pb-6 last:pb-0">
-                <div
-                  className={`absolute ${TIMELINE_DOT_END} top-7 z-10 flex h-4 w-4 items-center justify-center rounded-full border-[3px] border-[#D4AF37] bg-[#FAFAFA] text-[9px] font-black text-[#1E2720]`}
-                  aria-hidden
-                >
-                  {activityIndex + 1}
-                </div>
-                <ActivityTimelineCard
-                  activity={activity}
-                  onMemoryFileSelect={onMemoryFileSelect}
-                  memoryUploadingId={memoryUploadingId}
-                />
-              </div>
+              <ActivityTimelineCard
+                activity={activity}
+                tripId={tripId}
+                magicLinkId={magicLinkId}
+                clientId={clientId}
+                memoryUploadingId={memoryUploadingId}
+                onUploadStart={onUploadStart}
+                onUploadEnd={onUploadEnd}
+              />
             </li>
           )
         })}
@@ -475,214 +588,208 @@ function DayTimeline({
       ) : null}
 
       {hotelName ? <DayHotelEndAnchor hotelName={hotelName} /> : null}
-    </div>
+    </section>
+  )
+}
+
+const LUXURY_HERO_FALLBACK =
+  'https://images.unsplash.com/photo-1499856871958-5b9627545d1a?auto=format&fit=crop&q=80&w=2000'
+
+function resolveHeroCoverUrl(
+  coverImage: string | null | undefined,
+  days: PublicItineraryDay[] = [],
+): string {
+  const primary = String(coverImage ?? '').trim()
+  if (primary) return primary
+
+  for (const day of days) {
+    for (const activity of day.activities) {
+      const img = activity.imageUrl?.trim()
+      if (img) return img
+    }
+  }
+
+  return LUXURY_HERO_FALLBACK
+}
+
+function LuxuryItineraryHero({
+  title,
+  destination,
+  coverImage,
+  days,
+  dateRangeLabel,
+  startDate,
+}: {
+  title: string
+  destination: string
+  coverImage: string | null
+  days: PublicItineraryDay[]
+  dateRangeLabel: string
+  startDate: string | null
+}) {
+  const pill = useMemo(() => countdownPillLabel(startDate), [startDate])
+  const headline = title.trim() || destination.trim() || 'مسار رحلتك'
+  const resolvedCover = useMemo(
+    () => resolveHeroCoverUrl(coverImage, days),
+    [coverImage, days],
+  )
+
+  return (
+    <section
+      className="relative mb-10 h-40 overflow-hidden rounded-3xl shadow-lg md:h-56"
+      style={{
+        backgroundImage: `url(${resolvedCover})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+      }}
+    >
+      <div className="absolute inset-0 bg-gradient-to-t from-[#1A3B2A] via-[#1A3B2A]/60 to-black/20" />
+
+      <div className="absolute inset-0 z-10 flex flex-col justify-end p-6 md:p-8">
+        {destination && destination !== headline ? (
+          <p className="text-[11px] font-bold uppercase tracking-[0.28em] text-[#C5A059]">
+            {destination}
+          </p>
+        ) : null}
+        <h2 className="mt-1 text-3xl font-bold text-white drop-shadow-md md:text-4xl">
+          {headline}
+        </h2>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          {dateRangeLabel ? (
+            <span className="rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-bold text-white/90 backdrop-blur-md">
+              {dateRangeLabel}
+            </span>
+          ) : null}
+          {pill ? (
+            <span className="rounded-full border border-[#C5A059]/40 bg-[#C5A059]/15 px-3 py-1 text-xs font-bold text-[#C5A059] shadow-[0_0_12px_rgba(197,160,89,0.25)] backdrop-blur-md">
+              {pill}
+            </span>
+          ) : null}
+        </div>
+      </div>
+    </section>
   )
 }
 
 type VipDailyItineraryTimelineProps = {
   days: PublicItineraryDay[]
   destination?: string
+  tripTitle?: string
+  coverImage?: string | null
+  startDate?: string | null
+  endDate?: string | null
+  dateRangeLabel?: string
   tripWeather?: PublicWeatherForecast | null
   mapboxAccessToken?: string
+  tripId: string | number
   itineraryId?: string | number
+  magicLinkId?: string | null
   clientId?: string | number | null
+  /** Optional slot under the hero (e.g. pre-trip services) */
+  heroFooter?: ReactNode
 }
 
 export default function VipDailyItineraryTimeline({
   days,
   destination = '',
-  tripWeather = null,
+  tripTitle = '',
+  coverImage = null,
+  startDate = null,
+  endDate = null,
+  dateRangeLabel,
+  tripId,
   itineraryId,
+  magicLinkId = null,
   clientId,
+  heroFooter,
 }: VipDailyItineraryTimelineProps) {
-  const [activeTab, setActiveTab] = useState(0)
-  const tabsRef = useRef<HTMLDivElement>(null)
   const [memoryUploadingId, setMemoryUploadingId] = useState<string | null>(null)
+  const [activeDayNav, setActiveDayNav] = useState(0)
+  const resolvedTripId = String(tripId ?? itineraryId ?? '').trim()
 
-  const handleMemoryFileSelect = async (
-    file: File,
-    activity: PublicItineraryActivity,
-  ) => {
-    const locationName =
-      activity.title?.trim() ||
-      activity.place_name?.trim() ||
-      activity.locationLabel?.trim() ||
-      'محطة مختارة'
+  const rangeLabel =
+    dateRangeLabel?.trim() ||
+    (startDate ? formatTripDateRange(startDate, endDate) : '')
 
-    setMemoryUploadingId(activity.id)
-
-    try {
-      console.log('🟢 1. Upload started. Extracting URL...')
-      const pathSegments = window.location.pathname.split('/').filter(Boolean)
-      const urlCode =
-        extractItineraryCodeFromPath(window.location.pathname) ||
-        pathSegments[pathSegments.length - 1] ||
-        ''
-      console.log('🟢 2. Extracted URL Code:', urlCode)
-      console.log('🟢 2b. Props from page:', { itineraryId, clientId })
-
-      if (supabase && urlCode) {
-        const browserProbe = await probeItineraryLinkFromUrlCode(supabase, urlCode)
-        console.log('🟢 3. Browser Supabase probe (may be blocked by RLS):', browserProbe)
-        if (
-          browserProbe.browserRouteData &&
-          browserProbe.browserRouteData.client_id == null &&
-          clientId != null
-        ) {
-          console.warn(
-            '⚠️ RLS may be hiding client_id in browser — page props have clientId:',
-            clientId,
-          )
-        }
-      } else {
-        console.warn('🟡 3. Skipped browser probe — supabase or urlCode missing')
-      }
-
-      if (!urlCode && itineraryId == null) {
-        throw new Error('لم نتمكن من قراءة كود المسار من الرابط')
-      }
-
-      const formData = new FormData()
-      formData.append('file', file)
-      formData.append('locationName', locationName)
-      if (urlCode) formData.append('itinerarySlug', urlCode)
-      if (itineraryId != null) formData.append('itineraryId', String(itineraryId))
-      if (clientId != null && String(clientId).trim() !== '') {
-        formData.append('clientId', String(clientId))
-      }
-
-      const uploadPath = '/api/itinerary/upload-memory'
-      const resolvedUploadUrl =
-        typeof window !== 'undefined'
-          ? new URL(uploadPath, window.location.origin).href
-          : uploadPath
-
-      console.log('🟢 4. POST upload-memory (relative path → current origin)', {
-        relativePath: uploadPath,
-        resolvedUrl: resolvedUploadUrl,
-        origin: typeof window !== 'undefined' ? window.location.origin : null,
-        urlCode,
-        itineraryId,
-        clientId,
-        locationName,
-      })
-
-      const response = await fetch(uploadPath, {
-        method: 'POST',
-        body: formData,
-      })
-
-      const payload = (await response.json()) as {
-        ok?: boolean
-        error?: string
-        inserted?: unknown[]
-        diagnostic?: unknown
-      }
-
-      console.log('🟢 5. API Response:', { status: response.status, payload })
-
-      if (!response.ok || !payload.ok) {
-        const errMsg = payload.error || 'upload_failed'
-        if (payload.diagnostic) {
-          console.error('❌ Server diagnostic:', payload.diagnostic)
-        }
-        throw new Error(errMsg)
-      }
-
-      console.log('✅ UPLOAD COMPLETE!', payload.inserted)
-      window.alert('تم توثيق اللحظة بنجاح! 📸')
-    } catch (error) {
-      console.error('❌ UPLOAD FAILED:', error)
-      const message =
-        error instanceof Error
-          ? error.message
-          : typeof error === 'object' && error != null
-            ? JSON.stringify(error)
-            : String(error)
-      window.alert(`فشل الرفع: ${message || 'unknown_error'}`)
-    } finally {
-      setMemoryUploadingId(null)
-    }
+  const scrollToDay = (index: number) => {
+    const element = document.getElementById(`day-${index}`)
+    if (!element) return
+    const y = element.getBoundingClientRect().top + window.scrollY - 100
+    window.scrollTo({ top: y, behavior: 'smooth' })
+    setActiveDayNav(index)
   }
-
-  useEffect(() => {
-    if (activeTab >= days.length && days.length > 0) {
-      setActiveTab(0)
-    }
-  }, [activeTab, days.length])
 
   if (days.length === 0) {
     return (
-      <p className="rounded-2xl border border-[#D4AF37]/30 bg-white py-12 text-center text-sm font-medium text-gray-600 shadow-sm">
+      <p className="rounded-2xl border border-[#C5A059]/20 bg-white py-12 text-center text-sm font-medium text-gray-500 shadow-sm">
         {TXT_EMPTY_DAYS}…
       </p>
     )
   }
 
-  const safeTab = Math.min(activeTab, days.length - 1)
-  const activeDay = days[safeTab]!
+  if (!resolvedTripId) {
+    return (
+      <p className="rounded-2xl border border-amber-200 bg-amber-50/80 py-12 text-center text-sm font-medium text-amber-900 shadow-sm">
+        تعذر تحديد رقم الرحلة لرفع الذكريات. أعد فتح الرابط من بوابة العميل.
+      </p>
+    )
+  }
 
   return (
     <div
       className="font-[family-name:var(--font-tajawal),system-ui,sans-serif]"
       dir="rtl"
-      style={{ color: VIP_OLIVE }}
     >
-      <div className="sticky top-0 z-30 -mx-1 mb-5 border-b border-gray-200 bg-[#FDFBF7]/95 px-1 py-3 backdrop-blur-md">
-        <div
-          ref={tabsRef}
-          className="flex gap-2 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-          role="tablist"
-          aria-label={TXT_TABLIST}
-        >
-          {days.map((day, tabIndex) => {
-            const isActive = tabIndex === safeTab
-            return (
-              <button
-                key={`day-tab-${day.index}`}
-                type="button"
-                role="tab"
-                aria-selected={isActive}
-                onClick={(e) => {
-                  setActiveTab(tabIndex)
-                  e.currentTarget.scrollIntoView({
-                    behavior: 'smooth',
-                    inline: 'center',
-                    block: 'nearest',
-                  })
-                }}
-                className={`shrink-0 rounded-full border px-4 py-2.5 text-xs font-bold transition duration-200 sm:text-sm ${
-                  isActive
-                    ? 'border-[#D4AF37] bg-[#D4AF37] text-[#1E2720] shadow-sm'
-                    : 'border-gray-200 bg-white text-gray-600 hover:border-[#D4AF37]/50'
-                }`}
-              >
-                {day.tabLabel}
-              </button>
-            )
-          })}
-        </div>
-      </div>
+      <LuxuryItineraryHero
+        title={tripTitle || destination}
+        destination={destination}
+        coverImage={coverImage}
+        days={days}
+        dateRangeLabel={rangeLabel === 'التواريخ قريباً' ? '' : rangeLabel}
+        startDate={startDate}
+      />
 
-      <div key={activeDay.index} role="tabpanel" className="animate-in fade-in duration-300">
-        <div className="mb-6 rounded-2xl border border-gray-200 bg-white px-4 py-4 text-center shadow-sm sm:px-5">
-          <p className="text-[10px] font-black uppercase tracking-[0.22em] text-[#D4AF37]">
-            {activeDay.dateLabel || `${TXT_DAY_PREFIX} ${activeDay.index + 1}`}
-          </p>
-          <h3 className="mt-1.5 text-xl font-black text-gray-900 sm:text-2xl">
-            {activeDay.cityLabel?.trim() ? activeDay.tabLabel : activeDay.title}
-          </h3>
-          <p className="mt-2 text-[11px] font-bold text-gray-500">
-            {activeDay.activities.length} محطة مختارة لك
-            {activeDay.hotelName?.trim() ? ` · انطلاق وعودة من ${activeDay.hotelName.trim()}` : ''}
-          </p>
-        </div>
+      {heroFooter}
 
-        <DayTimeline
-          day={activeDay}
-          onMemoryFileSelect={handleMemoryFileSelect}
-          memoryUploadingId={memoryUploadingId}
-        />
+      <nav
+        className="sticky top-4 z-40 mb-10 flex gap-2 overflow-x-auto rounded-2xl border border-gray-100 bg-white/80 p-2 shadow-sm backdrop-blur-md [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        aria-label="التنقل بين أيام الرحلة"
+      >
+        {days.map((day, index) => {
+          const isActive = activeDayNav === index
+          return (
+            <button
+              key={`day-nav-${day.index}`}
+              type="button"
+              onClick={() => scrollToDay(index)}
+              className={`whitespace-nowrap rounded-xl border px-5 py-2 text-sm font-bold transition-colors ${
+                isActive
+                  ? 'border-[#1A3B2A] bg-[#1A3B2A] text-white'
+                  : 'border-gray-200 bg-[#F9F9F6] text-gray-700 hover:bg-[#1A3B2A] hover:text-white'
+              }`}
+            >
+              {day.tabLabel?.trim() || `${TXT_DAY_PREFIX} ${index + 1}`}
+            </button>
+          )
+        })}
+      </nav>
+
+      <div className="relative mr-4 space-y-12 border-r-2 border-[#C5A059]/20 pr-10 md:mr-8 md:pr-12">
+        {days.map((day, index) => (
+          <DayBlock
+            key={`day-${day.index}`}
+            day={day}
+            dayIndex={index}
+            destination={destination}
+            startDate={startDate}
+            tripId={resolvedTripId}
+            magicLinkId={magicLinkId}
+            clientId={clientId}
+            memoryUploadingId={memoryUploadingId}
+            onUploadStart={setMemoryUploadingId}
+            onUploadEnd={() => setMemoryUploadingId(null)}
+          />
+        ))}
       </div>
     </div>
   )

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { ClipboardCopy, Copy, ExternalLink, FileText, Loader2, Pencil, Plus, RefreshCcw, Search, Trash2 } from 'lucide-react';
+import { ClipboardCopy, Copy, ExternalLink, FileText, Loader2, Pencil, Plus, Receipt, RefreshCcw, Route, Search, Trash2 } from 'lucide-react';
 
 import {
   cloneQuotation,
@@ -19,7 +19,9 @@ import {
   type QuotationStatus,
 } from '@/lib/crm-quotations';
 import { revertApprovedQuotation } from '@/lib/quotation-to-itinerary';
+import { buildItineraryBuilderPathFromQuotation } from '@/lib/itinerary-builder-prefill';
 import WhatsAppTemplatePicker from '@/app/crm/_components/WhatsAppTemplatePicker';
+import { GenerateInvoiceModal } from '@/app/crm/quotations/_components/GenerateInvoiceModal';
 import { supabase } from '@/lib/supabase';
 
 const STATUS_FILTER: { value: 'all' | QuotationStatus; label: string }[] = [
@@ -39,6 +41,7 @@ export default function CRMQuotationsPage() {
   const [cloneBusyId, setCloneBusyId] = useState<string | null>(null);
   const [deleteBusyId, setDeleteBusyId] = useState<string | null>(null);
   const [revertBusyId, setRevertBusyId] = useState<string | null>(null);
+  const [invoiceQuotation, setInvoiceQuotation] = useState<QuotationRow | null>(null);
   const [toast, setToast] = useState<string | null>(null);
 
   const refreshQuotations = useCallback(async () => {
@@ -339,6 +342,21 @@ export default function CRMQuotationsPage() {
                           >
                             {QUOTATION_STATUS_LABEL[row.status]}
                           </span>
+                          {row.status !== 'draft' && quoteId ? (
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                event.preventDefault();
+                                event.stopPropagation();
+                                setInvoiceQuotation(row);
+                              }}
+                              title="إصدار فاتورة عربون أو مبلغ كامل"
+                              className="mt-1 flex w-full min-w-[9rem] items-center justify-center gap-2 rounded-lg bg-[#D4AF37] px-4 py-2 text-[10px] font-bold text-black transition-colors hover:bg-yellow-500"
+                            >
+                              <Receipt size={10} aria-hidden />
+                              🧾 إدارة الفواتير
+                            </button>
+                          ) : null}
                           {isApproved ? (
                             <button
                               type="button"
@@ -428,6 +446,16 @@ export default function CRMQuotationsPage() {
                         <div className="inline-flex items-center justify-center gap-1.5">
                           {quoteId ? (
                             <Link
+                              href={buildItineraryBuilderPathFromQuotation(row)}
+                              title="بناء مسار من العرض"
+                              className="inline-flex items-center justify-center rounded-lg border border-[#1C4532]/20 bg-[#F0F7F2] p-2 text-[#1C4532] transition hover:bg-emerald-50"
+                            >
+                              <Route size={16} aria-hidden />
+                              <span className="sr-only">بناء مسار</span>
+                            </Link>
+                          ) : null}
+                          {quoteId ? (
+                            <Link
                               href={`/crm/quotations/edit/${quoteId}`}
                               title="تعديل العرض"
                               className="inline-flex items-center justify-center rounded-lg border border-blue-200 bg-blue-50 p-2 text-blue-600 transition hover:bg-blue-100"
@@ -483,6 +511,18 @@ export default function CRMQuotationsPage() {
             عروض الأسعار منفصلة عن المسارات المؤكدة — للمبيعات والاعتماد قبل التنفيذ.
           </p>
         </div>
+      ) : null}
+
+      {invoiceQuotation ? (
+        <GenerateInvoiceModal
+          quotation={invoiceQuotation}
+          onClose={() => setInvoiceQuotation(null)}
+          onCreated={() => {
+            setToast('تم إصدار الفاتورة بنجاح ✨');
+            setInvoiceQuotation(null);
+            void refreshQuotations();
+          }}
+        />
       ) : null}
     </div>
   );

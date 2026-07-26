@@ -1,6 +1,5 @@
 /** تصنيفات VIP المعتمدة — تُخزَّن كما هي في عمود experiences.category */
 export const VIP_EXPERIENCE_CATEGORIES = [
-  'أزياء / VIP',
   'طعام / VIP',
   'أدرينالين / شتوي',
   'طعام / طبيعة',

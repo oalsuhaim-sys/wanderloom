@@ -2,12 +2,14 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Tajawal } from "next/font/google";
 
 import { LocaleHtmlSync } from "./_components/i18n/LocaleHtmlSync";
+import { PwaServiceWorkerRegister } from "@/components/PwaServiceWorkerRegister";
 import { LanguageProvider, LANGUAGE_STORAGE_KEY } from "@/context/LanguageContext";
 
 import "./globals.css";
 
-const VIP_APP_NAME = "Wanderloom VIP";
-const VIP_APP_DESCRIPTION = "Your Luxury Travel Itinerary Ecosystem";
+const VIP_APP_NAME = "Wanderloom — هندسة الرحلات";
+const VIP_APP_DESCRIPTION =
+  "لوحة تحكم Wanderloom لإدارة الرحلات الفاخرة، وعروض الأسعار، ومسارات العملاء.";
 
 const localeBootstrapScript = `(function(){try{var l=localStorage.getItem("${LANGUAGE_STORAGE_KEY}");if(l==="en"){document.documentElement.lang="en";document.documentElement.dir="ltr";}else{document.documentElement.lang="ar";document.documentElement.dir="rtl";}}catch(e){}})();`;
 
@@ -40,13 +42,16 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: VIP_APP_NAME,
+    title: "Wanderloom",
   },
   formatDetection: {
     telephone: false,
   },
   icons: {
-    icon: [{ url: "/icon-192.png", sizes: "192x192", type: "image/png" }],
+    icon: [
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
     apple: [{ url: "/icon-192.png", sizes: "192x192", type: "image/png" }],
   },
   other: {
@@ -55,7 +60,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#cda04c",
+  themeColor: "#1A3B2A",
   colorScheme: "dark",
 };
 
@@ -76,11 +81,15 @@ export default function RootLayout({
         <link rel="manifest" href="/manifest.json" />
         <meta name="application-name" content={VIP_APP_NAME} />
         <meta name="apple-mobile-web-app-title" content="Wanderloom" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="theme-color" content="#1A3B2A" />
         <meta name="description" content={VIP_APP_DESCRIPTION} />
+        <link rel="apple-touch-icon" href="/icon-192.png" />
       </head>
       <body className="no-scrollbar flex min-h-full flex-col font-[family-name:var(--font-tajawal),system-ui,sans-serif]">
         <LanguageProvider>
           <LocaleHtmlSync />
+          <PwaServiceWorkerRegister />
           {children}
         </LanguageProvider>
       </body>

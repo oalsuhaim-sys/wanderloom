@@ -30,6 +30,9 @@ export async function POST(request: Request) {
   }
 
   const locationName = String(formData.get('locationName') ?? '').trim() || 'محطة مختارة';
+  const mapUrl =
+    String(formData.get('mapUrl') ?? formData.get('map_url') ?? formData.get('google_maps_url') ?? '')
+      .trim() || null;
   const itineraryIdRaw = formData.get('itineraryId');
   const clientIdRaw = formData.get('clientId');
   const itinerarySlugRaw = formData.get('itinerarySlug');
@@ -66,6 +69,7 @@ export async function POST(request: Request) {
     locationName,
     file,
     caption: locationName,
+    mapUrl,
   });
 
   if (!result.ok) {

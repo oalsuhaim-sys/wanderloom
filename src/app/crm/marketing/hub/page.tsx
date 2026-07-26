@@ -1,7 +1,6 @@
-import MarketingHubClient from '../_components/MarketingHubClient';
+import { redirect } from 'next/navigation';
 
-export const dynamic = 'force-dynamic';
-
-export default function MarketingHubPage() {
-  return <MarketingHubClient />;
+/** @deprecated — استخدم /crm/marketing */
+export default function MarketingHubRedirectPage() {
+  redirect('/crm/marketing');
 }

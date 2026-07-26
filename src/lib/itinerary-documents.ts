@@ -53,6 +53,57 @@ export function serializeItineraryDocuments(docs: ItineraryDocument[]): Record<s
 export const ITINERARY_DOCUMENTS_BUCKET = 'documents';
 export const ITINERARY_DOCUMENTS_BUCKET_LEGACY = 'itinerary-documents';
 
+/** محفظة المستندات في منشئ المسار — bucket «attachments» */
+export const ITINERARY_WALLET_BUCKET = 'attachments';
+
+const WALLET_MAX_BYTES = 10 * 1024 * 1024;
+
+export function isItineraryWalletFileAllowed(file: File): boolean {
+  if (file.size > WALLET_MAX_BYTES) return false;
+  return file.type === 'application/pdf' || /^image\//i.test(file.type);
+}
+
+export async function uploadItineraryWalletDocument(
+  supabase: {
+    storage: {
+      from: (bucket: string) => {
+        upload: (
+          path: string,
+          file: File,
+          opts?: { contentType?: string; upsert?: boolean },
+        ) => Promise<{ error: { message?: string } | null }>;
+        getPublicUrl: (path: string) => { data: { publicUrl: string } };
+      };
+    };
+  },
+  file: File,
+): Promise<{ publicUrl: string; storagePath: string }> {
+  if (!isItineraryWalletFileAllowed(file)) {
+    throw new Error('يُقبل فقط PDF أو صور — بحد أقصى 10 ميجابايت');
+  }
+
+  const rawExt = file.name.split('.').pop()?.toLowerCase().replace(/[^a-z0-9]/g, '') || 'bin';
+  const fileName = `doc_${Date.now()}.${rawExt}`;
+
+  const { error } = await supabase.storage.from(ITINERARY_WALLET_BUCKET).upload(fileName, file, {
+    contentType: file.type || undefined,
+    upsert: false,
+  });
+
+  if (error) {
+    if (/bucket|not found|does not exist/i.test(error.message ?? '')) {
+      throw new Error(
+        'تعذّر الرفع — نفّذ supabase/sql/attachments_bucket.sql في Supabase Storage.',
+      );
+    }
+    throw new Error(error.message || 'تعذر رفع الملف.');
+  }
+
+  const { data: urlData } = supabase.storage.from(ITINERARY_WALLET_BUCKET).getPublicUrl(fileName);
+
+  return { publicUrl: urlData.publicUrl, storagePath: fileName };
+}
+
 export async function uploadItineraryPdf(
   supabase: {
     storage: {

@@ -11,22 +11,16 @@ export type ClientTravelDna = {
 
 export type ClientTier = 'regular' | 'vip' | 'vvip'
 
-/** نوع جهة الاتصال في جدول clients الموحّد */
-export type ClientType = 'عميل' | 'مؤثر' | 'ليدر'
+/** نوع جهة الاتصال — العملاء فقط (الشركاء في جداول leaders / experts / celebrities) */
+export type ClientType = 'عميل'
 
 export const DEFAULT_CLIENT_TYPE: ClientType = 'عميل'
 
 export const CLIENT_TYPE_OPTIONS: { value: ClientType; label: string; emoji: string }[] = [
   { value: 'عميل', label: 'عميل', emoji: '💼' },
-  { value: 'ليدر', label: 'ليدر', emoji: '🚀' },
-  { value: 'مؤثر', label: 'مؤثر', emoji: '🌟' },
 ]
 
-export function normalizeClientType(raw: unknown): ClientType {
-  const s = String(raw ?? '').trim()
-  if (s === 'مؤثر' || s.toLowerCase() === 'influencer') return 'مؤثر'
-  if (s === 'ليدر' || s.toLowerCase() === 'leader') return 'ليدر'
-  if (s === 'عميل' || s.toLowerCase() === 'client') return 'عميل'
+export function normalizeClientType(_raw: unknown): ClientType {
   return DEFAULT_CLIENT_TYPE
 }
 
@@ -218,6 +212,14 @@ function pick(raw: Record<string, unknown>, keys: string[]): string {
 export const CLIENT_INFLUENCER_COLUMNS =
   'is_influencer, platforms, influencer_followers, content_focus, influencer_commission, profile_url' as const
 
+/** الأعمدة الأساسية التي يقرأها normalizeVipClient — صراحةً بدل select('*') */
+const CLIENT_SELECT_CORE =
+  'id, name, phone_wa, email, birth_date, flight_seat, food_allergies, favorite_drink, hotel_preference, passport_expiry, flight_preferences, hotel_preferences, dietary, secret_notes, dna_interests, dna_special_requests, dna_activity_level, travel_dna, created_at, client_type, client_tier, total_trips, referrals_count, referral_code, ref_code, lead_source, is_leader, sales_stage, used_code, target_trip, tags'
+
+/** عمود Select الموحّد لقائمة العملاء — يغطي كل ما يحتاجه normalizeVipClient فقط */
+export const CLIENT_LIST_SELECT =
+  `${CLIENT_SELECT_CORE}, ${CLIENT_INFLUENCER_COLUMNS}, total_spent, total_profit, vip_tier, wallet_balance, onboarding_completed`
+
 function parseBool(raw: unknown): boolean {
   if (raw === true || raw === 1 || raw === '1' || raw === 'true') return true
   return false
@@ -269,9 +271,9 @@ export function hasInfluencerProfileData(
 }
 
 export function shouldShowInfluencerCardSection(
-  client: Pick<VipClientProfile, 'is_influencer' | 'client_type'>,
+  _client: Pick<VipClientProfile, 'is_influencer' | 'client_type'>,
 ): boolean {
-  return client.is_influencer === true || client.client_type === 'مؤثر'
+  return false
 }
 
 export function parseClientTags(raw: unknown): string[] {
@@ -418,13 +420,8 @@ export function buildClientInsertPayload(fields: {
     }),
   }
 
-  const isInfluencer = fields.is_influencer === true || fields.client_type === 'مؤثر'
-  const isLeader = fields.is_leader === true || (fields.client_type === 'ليدر' && !isInfluencer)
-  const client_type: ClientType = isInfluencer
-    ? 'مؤثر'
-    : isLeader
-      ? 'ليدر'
-      : 'عميل'
+  const isInfluencer = false
+  const client_type: ClientType = DEFAULT_CLIENT_TYPE
 
   const payload: Record<string, unknown> = {
     name,
@@ -440,12 +437,11 @@ export function buildClientInsertPayload(fields: {
     }),
     client_type,
     is_influencer: isInfluencer,
-    is_leader: isLeader,
+    is_leader: false,
     client_tier: fields.client_tier,
     total_trips: fields.total_trips,
     referrals_count: fields.referrals_count,
     birth_date: fields.birth_date?.trim() || null,
-    status: 'new' as const,
   }
 
   const lead_source = fields.lead_source?.trim() || null
@@ -463,28 +459,23 @@ export function buildClientInsertPayload(fields: {
     payload.ref_code = referral_code
   }
 
-  payload.platforms = fields.platforms?.trim() || null
-  const followers =
-    fields.influencer_followers != null && Number.isFinite(fields.influencer_followers)
-      ? Math.max(0, Math.floor(fields.influencer_followers))
-      : null
-  payload.influencer_followers = followers
-  payload.influencer_commission =
-    fields.influencer_commission != null && Number.isFinite(fields.influencer_commission)
-      ? parseCommission(fields.influencer_commission)
-      : null
-  payload.content_focus = fields.content_focus?.trim() || null
-  payload.profile_url = fields.profile_url?.trim() || null
-
   return sanitizeClientWritePayload(payload)
 }
 
-/** يضمن إرسال أعمدة clients الموحّدة فقط (بدون full_name / phone_number القديمة) */
+/** يضمن إرسال أعمدة clients الموحّدة فقط — بدون أعمدة قديمة/محذوفة تسبب فشل الإدراج */
 export function sanitizeClientWritePayload(payload: Record<string, unknown>): Record<string, unknown> {
   const clean = { ...payload }
   delete clean.full_name
   delete clean.phone_number
   delete clean.phone
+  // Often missing or constrained differently across environments
+  delete clean.status
+  // Partner/influencer sparse columns — may be dropped (clients_drop_partner_sparse_columns.sql)
+  delete clean.platforms
+  delete clean.influencer_followers
+  delete clean.influencer_commission
+  delete clean.content_focus
+  delete clean.profile_url
   return clean
 }
 

@@ -1,3 +1,4 @@
+import { setLeadPipelineStatus } from '@/lib/lead-pipeline-automation';
 import { supabase } from '@/lib/supabase';
 
 export type WelcomeTravelStyle = {
@@ -5,12 +6,6 @@ export type WelcomeTravelStyle = {
   nature_vs_city: number;
   culinary_preferences: string;
   dietary_restrictions: string;
-};
-
-export type WelcomeWardrobePrefs = {
-  shirt_size: string;
-  shoe_size: string;
-  favorite_brands: string;
 };
 
 export type WelcomeCompanion = {
@@ -30,7 +25,6 @@ export type WelcomePassportDoc = {
 
 export type WelcomePreferences = {
   travel_style: WelcomeTravelStyle;
-  wardrobe: WelcomeWardrobePrefs;
 };
 
 export type WelcomeOnboardingPayload = {
@@ -53,7 +47,7 @@ export function buildWelcomePublicUrl(token: string, origin?: string): string {
     /\/$/,
     '',
   );
-  return `${base}/welcome/${encodeURIComponent(String(token).trim())}`;
+  return `${base}/welcome/vip/${encodeURIComponent(String(token).trim())}`;
 }
 
 export function createEmptyWelcomePayload(): WelcomeOnboardingPayload {
@@ -64,11 +58,6 @@ export function createEmptyWelcomePayload(): WelcomeOnboardingPayload {
         nature_vs_city: 50,
         culinary_preferences: '',
         dietary_restrictions: '',
-      },
-      wardrobe: {
-        shirt_size: '',
-        shoe_size: '',
-        favorite_brands: '',
       },
     },
     family_members: [],
@@ -99,20 +88,10 @@ function parseTravelStyle(raw: unknown): WelcomeTravelStyle {
   };
 }
 
-function parseWardrobe(raw: unknown): WelcomeWardrobePrefs {
-  const row = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
-  return {
-    shirt_size: String(row.shirt_size ?? '').trim(),
-    shoe_size: String(row.shoe_size ?? '').trim(),
-    favorite_brands: String(row.favorite_brands ?? '').trim(),
-  };
-}
-
 function parsePreferences(raw: unknown): WelcomePreferences {
   const root = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
   return {
     travel_style: parseTravelStyle(root.travel_style),
-    wardrobe: parseWardrobe(root.wardrobe),
   };
 }
 
@@ -244,7 +223,6 @@ export async function submitWelcomeOnboardingByToken(
 
   const preferences = {
     travel_style: payload.preferences.travel_style,
-    wardrobe: payload.preferences.wardrobe,
   };
 
   const family_members = payload.family_members
@@ -263,7 +241,21 @@ export async function submitWelcomeOnboardingByToken(
     p_passport_docs: [],
   });
 
-  if (!rpc.error && rpc.data === true) return true;
+  if (!rpc.error && rpc.data === true) {
+    if (supabase) {
+      const { data: row } = await supabase
+        .from('clients')
+        .select('id')
+        .eq('onboarding_token', trimmed)
+        .maybeSingle();
+      if (row?.id != null) {
+        await setLeadPipelineStatus(supabase, { clientId: row.id }, 'meeting').catch((err) => {
+          console.warn('[welcome-onboarding] advance lead to meeting:', err);
+        });
+      }
+    }
+    return true;
+  }
 
   if (rpc.error && !/function|schema cache|does not exist|column/i.test(rpc.error.message ?? '')) {
     throw rpc.error;
@@ -287,6 +279,11 @@ export async function submitWelcomeOnboardingByToken(
     .eq('id', row.id);
 
   if (error) throw error;
+  if (supabase) {
+    await setLeadPipelineStatus(supabase, { clientId: row.id }, 'meeting').catch((err) => {
+      console.warn('[welcome-onboarding] advance lead to meeting:', err);
+    });
+  }
   return true;
 }
 
@@ -301,6 +298,5 @@ export function welcomePayloadFromProfile(row: WelcomeProfileRow | null): Welcom
 
 export const WELCOME_STEP_LABELS = [
   'أسلوب السفر',
-  'أزياء السفر',
   'المرافقون',
 ] as const;

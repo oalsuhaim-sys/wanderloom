@@ -25,6 +25,8 @@ export type SimpleItineraryPlace = {
   category?: string;
   city?: string;
   rating?: string | number;
+  /** وقت الزيارة (HH:MM) — يظهر في بوابة العميل */
+  visit_time?: string;
   transportToNext?: string;
   transportDuration?: string;
   /** حالة سداد المورد — للموظف فقط */
@@ -101,9 +103,14 @@ export function withTransportDefaults(place: Record<string, unknown>): SimpleIti
       ? place._dragId
       : `place-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 
+  const visit_time = String(
+    place.visit_time ?? place.time_slot ?? place.time ?? '',
+  ).trim();
+
   return {
     ...place,
     _dragId: dragId,
+    visit_time,
     transportToNext: (place.transportToNext as string | undefined) ?? 'سيارة',
     transportDuration: (place.transportDuration as string | undefined) ?? '',
     supplierPaid:

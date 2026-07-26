@@ -8,13 +8,16 @@ import {
   WHATSAPP_TEMPLATE_OPTIONS,
   type WhatsAppTemplateId,
 } from '@/lib/whatsapp-templates';
+import { setLeadPipelineStatus } from '@/lib/lead-pipeline-automation';
+import { supabase } from '@/lib/supabase';
 
 type Props = {
   phone?: string | null;
   clientName: string;
   tripTitle: string;
-  totalEstimatedCost: number;
   quoteId: string;
+  leadId?: string | null;
+  clientId?: string | number | null;
   disabled?: boolean;
   className?: string;
   onLaunched?: () => void;
@@ -25,8 +28,9 @@ export default function WhatsAppTemplatePicker({
   phone,
   clientName,
   tripTitle,
-  totalEstimatedCost,
   quoteId,
+  leadId = null,
+  clientId = null,
   disabled = false,
   className = '',
   onLaunched,
@@ -48,9 +52,23 @@ export default function WhatsAppTemplatePicker({
       phone,
       clientName,
       tripTitle,
-      totalEstimatedCost,
       quoteId,
     });
+
+    // أتمتة كانبان: إرسال العرض → بانتظار الدفع
+    if (supabase && (leadId || clientId != null)) {
+      void setLeadPipelineStatus(supabase, { leadId, clientId }, 'awaiting_payment').catch((err) =>
+        console.warn('[quote-whatsapp] lead pipeline:', err),
+      );
+
+      void supabase
+        .from('quotations')
+        .update({ status: 'awaiting_payment', updated_at: new Date().toISOString() })
+        .eq('id', quoteId)
+        .then(({ error }) => {
+          if (error) console.warn('[quote-whatsapp] quotation status:', error.message);
+        });
+    }
 
     onLaunched?.();
     setValue('');

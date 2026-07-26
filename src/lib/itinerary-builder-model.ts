@@ -22,6 +22,7 @@ import { serializeQuotationDetails, type QuotationDetails } from '@/lib/quotatio
 import { serializeItineraryDocuments, type ItineraryDocument } from '@/lib/itinerary-documents';
 import { serializeSupplierRequests, type SupplierRequest } from '@/lib/supplier-requests';
 import { serializeActivityTickets } from '@/lib/itinerary-tickets';
+import { coerceClientIdForItinerarySave } from '@/lib/itinerary-client-crm';
 import { normalizeSingleArrivalCity } from '@/lib/vip-flight-voucher';
 import type { ExperienceRow } from '@/types/experience';
 import type { HotelRow } from '@/types/hotel';
@@ -40,6 +41,9 @@ export type TransitMode = 'car' | 'walk' | 'metro' | '';
 export type ItineraryStopDraft = {
   id: string;
   place_name: string;
+  /** وقت الزيارة (HH:MM) — الحقل المعتمد في CRM والبوابة */
+  visit_time: string;
+  /** @deprecated — يُزامن مع visit_time للتوافق مع البيانات القديمة */
   time_slot: string;
   note: string;
   story: string;
@@ -61,6 +65,9 @@ export type DayActivityKind = 'place' | 'transport' | 'hotel' | 'experience';
 export type DayActivityDraft = {
   id: string;
   kind: DayActivityKind;
+  /** وقت الزيارة (HH:MM) */
+  visit_time: string;
+  /** @deprecated — مزامن مع visit_time */
   time_slot: string;
   transit_mode: TransitMode;
   transit_duration: string;
@@ -92,6 +99,15 @@ export type ItineraryDayDraft = {
   experience: ExperienceRow | null;
 };
 
+export const FLIGHT_CLASS_OPTIONS = [
+  'Economy',
+  'Premium Economy',
+  'Business',
+  'First Class',
+] as const;
+
+export type FlightClassOption = (typeof FLIGHT_CLASS_OPTIONS)[number];
+
 export type FlightDetailsDraft = {
   flight_from: string;
   flight_to: string;
@@ -106,6 +122,12 @@ export type FlightDetailsDraft = {
   destination_flag: string;
   airport: string;
   terminal: string;
+  /** درجة الإركاب — Economy, Business, … */
+  flight_class: string;
+  /** دولة المغادرة — تُعرض بدل DEP في بطاقة الصعود */
+  departure_country: string;
+  /** دولة الوصول — تُعرض بدل ARR في بطاقة الصعود */
+  arrival_country: string;
 };
 
 export type BudgetOptionsDraft = {
@@ -196,10 +218,22 @@ export function normalizeTransitMode(raw: unknown): TransitMode {
   return '';
 }
 
+export function resolveVisitTime(raw: {
+  visit_time?: unknown;
+  time_slot?: unknown;
+  time?: unknown;
+  start_time?: unknown;
+}): string {
+  return String(
+    raw.visit_time ?? raw.time_slot ?? raw.time ?? raw.start_time ?? '',
+  ).trim();
+}
+
 export function createEmptyStop(): ItineraryStopDraft {
   return {
     id: newLocalId(),
     place_name: '',
+    visit_time: '',
     time_slot: '',
     note: '',
     story: '',
@@ -257,6 +291,9 @@ export function createInitialItineraryDraft(): ItineraryDraft {
       destination_flag: '',
       airport: '',
       terminal: '',
+      flight_class: '',
+      departure_country: '',
+      arrival_country: '',
     },
     primaryHotel: createEmptyPrimaryHotelBooking(),
     weatherTemp: '',
@@ -319,12 +356,19 @@ export type StrictSimpleItinerarySaveInput = {
   arrivalCity?: string;
   gate?: string;
   seat?: string;
+  flightNumber?: string;
+  terminal?: string;
+  flightClass?: string;
+  departureCountry?: string;
+  arrivalCountry?: string;
   /** قائمة الفنادق — تُحفظ في hotel_details */
   hotels?: Array<{ name: string; pnr?: string; checkIn?: string; checkOut?: string }>;
   hotelName?: string;
   checkInDate?: string;
   checkOutDate?: string;
-  clientId?: number | null;
+  clientId?: number | string | null;
+  /** خبير الوجهة — يُحفظ في expert_id */
+  expertId?: string | null;
   customerName?: string;
   preTripServices?: PreTripService[];
   includeWardrobe?: boolean;
@@ -395,7 +439,12 @@ export function buildStrictSimpleItinerarySavePayload(
   if (dates) payload.dates = dates;
 
   if (input.clientId !== undefined) {
+    // يسمح بـ null لمسح الربط (مسار جماعي مستقل)
     payload.client_id = input.clientId;
+  }
+  if (input.expertId !== undefined) {
+    const expertId = String(input.expertId ?? '').trim();
+    payload.expert_id = expertId || null;
   }
   if (input.customerName !== undefined) {
     payload.customer_name = input.customerName.trim() || null;
@@ -411,6 +460,11 @@ export function buildStrictSimpleItinerarySavePayload(
     gate: input.gate?.trim() ?? '',
     seat: input.seat?.trim() ?? '',
     flight_seat: input.seat?.trim() ?? '',
+    flight_number: input.flightNumber?.trim() ?? '',
+    terminal: input.terminal?.trim() ?? '',
+    flight_class: input.flightClass?.trim() ?? '',
+    departure_country: input.departureCountry?.trim() ?? '',
+    arrival_country: input.arrivalCountry?.trim() ?? '',
     geo_trip_type: geoTripType,
     destination_trip_type: geoTripType,
     countries,
@@ -481,19 +535,44 @@ export function buildStrictSimpleItinerarySavePayload(
   return payload;
 }
 
+export type ItineraryTripType = 'Individual' | 'Group';
+
 export function buildStrictSimpleItineraryInsertPayload(
   input: StrictSimpleItinerarySaveInput & {
     title?: string;
     customerName: string;
-    clientId?: number | null;
+    clientId?: number | string | null;
+    /** Individual = رحلة خاصة · Group = رحلة جماعية */
+    tripType?: ItineraryTripType;
+    /** مطلوب للرحلة الخاصة — null للجماعية */
+    quoteId?: string | null;
+    groupName?: string | null;
   },
 ): Record<string, unknown> {
   const tripTitle = input.title?.trim() || input.destination?.trim() || 'مسار VIP جديد';
+  const tripType: ItineraryTripType = input.tripType === 'Group' ? 'Group' : 'Individual';
+  const isGroup = tripType === 'Group';
+  const quoteId = !isGroup && input.quoteId ? String(input.quoteId).trim() : '';
+
   return {
-    ...buildStrictSimpleItinerarySavePayload({ ...input, title: tripTitle }),
+    ...buildStrictSimpleItinerarySavePayload({
+      ...input,
+      title: tripTitle,
+      // للجماعية لا نربط عميلاً؛ للخاصة نمرّر المعرّف أو null
+      clientId: isGroup ? null : (input.clientId ?? null),
+      customerName: isGroup
+        ? input.customerName.trim() || input.groupName?.trim() || 'رحلة جماعية'
+        : input.customerName,
+    }),
     title: tripTitle,
-    customer_name: input.customerName.trim() || 'عميل VIP',
-    ...(input.clientId != null ? { client_id: input.clientId } : {}),
+    customer_name: isGroup
+      ? input.customerName.trim() || input.groupName?.trim() || 'رحلة جماعية'
+      : input.customerName.trim() || 'عميل VIP',
+    trip_type: tripType,
+    group_name: isGroup ? input.groupName?.trim() || null : null,
+    // صريح: الجماعية بلا client_id / quote_id
+    client_id: isGroup ? null : (input.clientId ?? null),
+    quote_id: quoteId || null,
   };
 }
 
@@ -539,6 +618,7 @@ export function buildStopsForSave(stops: ItineraryStopDraft[]) {
       const legacyTransport = (s.transport_type || '').trim();
       if (!place_name && !note && !story && !transit_duration && index === 0) return null;
 
+      const visit_time = (s.visit_time || s.time_slot || '').trim();
       const lat = parseCoord(s.lat);
       const lng = parseCoord(s.lng);
       const maps_url = s.maps_url?.trim() || undefined;
@@ -547,7 +627,8 @@ export function buildStopsForSave(stops: ItineraryStopDraft[]) {
       return {
         sort_order: index + 1,
         place_name: place_name || 'محطة',
-        time_slot: s.time_slot.trim() || undefined,
+        visit_time: visit_time || undefined,
+        time_slot: visit_time || undefined,
         note: note || story || undefined,
         story: story || undefined,
         description: story || undefined,
@@ -616,6 +697,7 @@ export function buildDaysDataPayloadForSave(
 }
 
 const SCHEMA_OPTIONAL_ITINERARY_COLUMNS = [
+  'expert_id',
   'trip_type',
   'group_name',
   'total_price',
@@ -631,7 +713,7 @@ const SCHEMA_OPTIONAL_ITINERARY_COLUMNS = [
   'created_by_employee_id',
   'include_wardrobe',
   'unlock_secret_guide',
-  'client_id',
+  'quote_id',
   'magic_link_id',
   'supplier_requests',
   'ticket_details',
@@ -722,6 +804,9 @@ export function buildFlightDetailsPayload(f: FlightDetailsDraft): Record<string,
     destination_flag: f.destination_flag.trim(),
     airport: f.airport.trim(),
     terminal: f.terminal.trim(),
+    flight_class: f.flight_class.trim(),
+    departure_country: f.departure_country.trim(),
+    arrival_country: f.arrival_country.trim(),
   };
   if (pnr) {
     payload.booking_reference = pnr;
@@ -792,15 +877,16 @@ export function buildItinerarySupabasePayload(
       ? generatePasscode(draft.customerName, destination || draft.title)
       : '');
 
-  const organizerId =
-    draft.tripMode === 'Group'
-      ? draft.groupMemberIds[0]
-      : draft.linkedClientId && Number.isFinite(Number(draft.linkedClientId))
-        ? Number(draft.linkedClientId)
-        : null;
+  const isGroupTour = draft.tripMode === 'Group';
+  // رحلة خاصة: client_id إلزامي · رحلة جماعية: قالب مستقل بلا client_id
+  const organizerId = isGroupTour
+    ? null
+    : coerceClientIdForItinerarySave(draft.linkedClientId);
 
   const payload: Record<string, unknown> = {
-    customer_name: draft.customerName.trim() || (options.isTemplate ? 'قالب جاهز' : ''),
+    customer_name: isGroupTour
+      ? draft.groupName.trim() || draft.customerName.trim() || 'رحلة جماعية'
+      : draft.customerName.trim() || (options.isTemplate ? 'قالب جاهز' : ''),
     title: draft.title.trim(),
     days_data,
     budget_options,
@@ -821,7 +907,9 @@ export function buildItinerarySupabasePayload(
     include_wardrobe: draft.includeWardrobe,
     unlock_secret_guide: draft.unlockSecretGuide,
     trip_type: draft.tripMode,
-    group_name: draft.tripMode === 'Group' ? draft.groupName.trim() : null,
+    group_name: isGroupTour ? draft.groupName.trim() : null,
+    client_id: organizerId,
+    quote_id: null,
     ...(parsedTotalPrice != null ? { total_price: parsedTotalPrice } : {}),
     total_budget,
     spent_amount,
@@ -829,7 +917,6 @@ export function buildItinerarySupabasePayload(
     taxi_phrase: draft.discover.taxiPhrase.trim() || null,
     secret_gem: draft.discover.secretGem.trim() || null,
     ...vipSummaries,
-    ...(organizerId != null ? { client_id: organizerId } : {}),
     ...(options.employeeId ? { created_by_employee_id: options.employeeId } : {}),
   };
 
@@ -878,7 +965,8 @@ export function importDaysFromTemplate(templateDaysRaw: unknown): ItineraryDayDr
             return {
               id: newLocalId(),
               place_name: String(s.place_name ?? s.name ?? '').trim(),
-              time_slot: String(s.time_slot ?? s.time ?? '').trim(),
+              visit_time: resolveVisitTime(s),
+              time_slot: resolveVisitTime(s),
               note: String(s.note ?? '').trim(),
               story: String(s.story ?? s.description ?? '').trim(),
               transport_type: legacyTransport,
@@ -932,6 +1020,7 @@ export const ITINERARY_BUILDER_CORE_SELECT = [
   'passcode',
   'magic_link_id',
   'client_id',
+  'quote_id',
   'days_data',
   'destination',
   'flight_details',
@@ -955,7 +1044,7 @@ export const ITINERARY_BUILDER_CORE_SELECT = [
 /** جلب مع أيام legacy من itinerary_days */
 export const ITINERARY_BUILDER_LEGACY_DAYS_SELECT = [
   ITINERARY_BUILDER_CORE_SELECT,
-  'itinerary_days ( id, day_num, title, city, notes, sort_order, itinerary_stops ( id, place_name, category, time_slot, note, image_url, transport_type, taxi, transit_mode, transit_duration, transit_distance, sort_order ) )',
+  'itinerary_days ( id, day_num, title, city, notes, sort_order, itinerary_stops ( id, place_name, category, visit_time, time_slot, note, image_url, transport_type, taxi, transit_mode, transit_duration, transit_distance, sort_order ) )',
 ].join(', ');
 
 export const ITINERARY_BUILDER_ROW_SELECT = ITINERARY_BUILDER_LEGACY_DAYS_SELECT;
@@ -1068,7 +1157,7 @@ export async function fetchItineraryRowForBuilder(
       if (!rowHasHydratableDays(row)) {
         const legacyOnly = await qb
           .select(
-            `id, itinerary_days ( id, day_num, title, city, notes, sort_order, itinerary_stops ( id, place_name, category, time_slot, note, image_url, transport_type, taxi, transit_mode, transit_duration, sort_order ) )`,
+            `id, itinerary_days ( id, day_num, title, city, notes, sort_order, itinerary_stops ( id, place_name, category, visit_time, time_slot, note, image_url, transport_type, taxi, transit_mode, transit_duration, sort_order ) )`,
           )
           .eq('id', idValue)
           .maybeSingle();
@@ -1117,7 +1206,8 @@ export function importDaysFromLegacyRelational(
             return {
               id: newLocalId(),
               place_name: String(s.place_name ?? s.name ?? '').trim(),
-              time_slot: String(s.time_slot ?? s.time ?? '').trim(),
+              visit_time: resolveVisitTime(s),
+              time_slot: resolveVisitTime(s),
               note: String(s.note ?? '').trim(),
               story: String(s.story ?? s.description ?? '').trim(),
               transport_type: legacyTransport,
@@ -1203,6 +1293,11 @@ export function draftFromItineraryRow(
     destination_flag: String(fd.destination_flag ?? '').trim(),
     airport: String(fd.airport ?? '').trim(),
     terminal: String(fd.terminal ?? '').trim(),
+    flight_class: String(fd.flight_class ?? fd.flightClass ?? '').trim(),
+    departure_country: String(
+      fd.departure_country ?? fd.departureCountry ?? '',
+    ).trim(),
+    arrival_country: String(fd.arrival_country ?? fd.arrivalCountry ?? '').trim(),
   };
 
   const tripType = String(normalized.trip_type ?? 'Individual').trim();
@@ -1269,6 +1364,11 @@ export function draftFromTemplate(template: Record<string, unknown>): Partial<It
       destination_flag: String(fd?.destination_flag ?? '').trim(),
       airport: String(fd?.airport ?? '').trim(),
       terminal: String(fd?.terminal ?? '').trim(),
+      flight_class: String(fd?.flight_class ?? fd?.flightClass ?? '').trim(),
+      departure_country: String(
+        fd?.departure_country ?? fd?.departureCountry ?? '',
+      ).trim(),
+      arrival_country: String(fd?.arrival_country ?? fd?.arrivalCountry ?? '').trim(),
     },
     weatherTemp: template.weather_temp != null ? String(template.weather_temp) : '',
     highlights: parseJsonArrayField(template.highlights) as string[],
@@ -1286,7 +1386,8 @@ export function draftFromTemplate(template: Record<string, unknown>): Partial<It
         local_word: String(r.local_word ?? ''),
       })),
     days: importDaysFromTemplate(template.days_data ?? template.days),
-    includeWardrobe: template.include_wardrobe === true,
+    // Fashion/wardrobe module removed — never re-enable from saved rows
+    includeWardrobe: false,
     unlockSecretGuide: template.unlock_secret_guide === true,
     weatherSummary: String(
       template.weather_summary ?? summaryFields.weather_summary ?? '',

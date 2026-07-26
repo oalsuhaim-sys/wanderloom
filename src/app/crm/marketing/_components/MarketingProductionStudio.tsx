@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import toast from 'react-hot-toast';
-import { Clapperboard, Image as ImageIcon, Loader2, Pencil, Sparkles, Upload, Video, Wand2, X } from 'lucide-react';
+import { Clapperboard, Copy, Image as ImageIcon, Loader2, Pencil, Sparkles, Upload, Video, X } from 'lucide-react';
 
 import { uploadMarketingVideo } from '@/lib/marketing-files';
 import MarketingContentFilterBar, {
@@ -14,6 +14,8 @@ import {
   fetchAllMarketingContent,
   normalizeContentCategory,
   normalizeMediaType,
+  resolveMarketingCardCaption,
+  resolveMarketingCardPrompt,
   updateMarketingContent,
   type MarketingContentCategory,
   type MarketingContentItem,
@@ -22,13 +24,16 @@ import {
 } from '@/lib/marketing-content';
 
 const OUTER_CARD =
-  'flex h-full flex-col overflow-hidden rounded-[1.75rem] border border-[#1e3f20]/10 bg-white shadow-[0_12px_40px_rgba(30,63,32,0.06)]';
+  'flex min-h-0 flex-col rounded-[1.75rem] border border-[#1e3f20]/10 bg-white shadow-[0_12px_40px_rgba(30,63,32,0.06)]';
 
 const DARK_STUDIO =
-  'rounded-2xl border border-white/10 bg-[#111111] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]';
+  'shrink-0 rounded-2xl border border-white/10 bg-[#111111] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]';
 
-const DARK_TEXTAREA =
-  'min-h-[140px] w-full resize-y rounded-xl border border-white/10 bg-[#0a0a0a] px-4 py-3 font-mono text-xs leading-relaxed text-gray-200 outline-none transition placeholder:text-gray-600 focus:border-[#cda04c]/50 focus:ring-1 focus:ring-[#cda04c]/30';
+const PROMPT_TEXTAREA =
+  'crm-marketing-textarea min-h-[200px] w-full shrink-0 resize-y overflow-y-auto rounded-xl border border-white/10 bg-[#0a0a0a] px-4 py-3 font-mono text-xs leading-relaxed text-gray-200 outline-none transition placeholder:text-gray-600 focus:border-[#cda04c]/50 focus:ring-1 focus:ring-[#cda04c]/30';
+
+const CAPTION_TEXTAREA =
+  'crm-marketing-textarea min-h-[180px] w-full shrink-0 resize-y overflow-y-auto rounded-xl border border-[#cda04c]/25 bg-[#FFFBF0] px-4 py-3 text-sm font-bold leading-relaxed text-[#2d3a33] outline-none transition placeholder:text-[#2d3a33]/40 focus:border-[#cda04c]/50 focus:ring-1 focus:ring-[#cda04c]/30';
 
 const FIELD =
   'w-full rounded-lg border border-gray-300 bg-[#FDFBF7] p-3 text-sm font-bold text-[#111111] outline-none transition focus:border-[#cda04c] focus:ring-1 focus:ring-[#cda04c]';
@@ -64,7 +69,7 @@ type ProductionCardConfig = {
   fieldLabel: string;
   fieldPlaceholder: string;
   actionLabel: string;
-  actionIcon: typeof Wand2;
+  actionIcon: typeof Copy;
   getFieldValue: (item: MarketingContentItem) => string;
   patchField: (value: string) => Record<string, string>;
   emptyVideoLabel: string;
@@ -91,26 +96,35 @@ const AI_CONFIG: ProductionCardConfig = {
   accentClass: 'text-[#cda04c]',
   fieldLabel: 'البرومبت',
   fieldPlaceholder: 'اكتب البرومبت البصري لـ Midjourney / Sora…',
-  actionLabel: 'توليد',
-  actionIcon: Wand2,
-  getFieldValue: (item) => item.prompt,
+  actionLabel: 'نسخ البرومبت',
+  actionIcon: Copy,
+  getFieldValue: (item) => item.prompt_text || item.prompt || '',
   patchField: (value) => ({ prompt: value }),
   emptyVideoLabel: 'سيظهر الفيديو المُولَّد هنا بعد الرفع',
-  onAction: async ({ item, fieldValue, setItem, setBusy }) => {
-    setBusy(true);
-    const res = await updateCard(item, {
-      prompt: fieldValue,
-      status: 'جاري التوليد',
-    });
-    setBusy(false);
-    if (!res.ok || !res.item) {
-      toast.error(res.error ?? 'تعذّر حفظ البرومبت');
+  onAction: async ({ item, setItem, setBusy }) => {
+    const promptText = item.prompt_text || item.prompt;
+    if (!promptText.trim()) {
+      toast.error('البرومبت فارغ — اكتب نصاً للنسخ أولاً');
       return;
     }
-    setItem(res.item);
-    toast.success('تم حفظ البرومبت — جاهز للتوليد في Sora / Midjourney', {
-      style: { background: '#1e3f20', color: '#fff' },
+
+    try {
+      await navigator.clipboard.writeText(promptText);
+      toast.success('✅ تم نسخ البرومبت بنجاح!');
+    } catch {
+      toast.error('تعذّر النسخ إلى الحافظة');
+      return;
+    }
+
+    setBusy(true);
+    const res = await updateCard(item, {
+      prompt: promptText,
+      status: 'تم النسخ',
     });
+    setBusy(false);
+    if (res.ok && res.item) {
+      setItem(res.item);
+    }
   },
 };
 
@@ -168,15 +182,15 @@ function EditContentModal({
   const [mediaType, setMediaType] = useState<MarketingMediaType>(() =>
     normalizeMediaType(item.mediaType),
   );
-  const [prompt, setPrompt] = useState(item.prompt);
-  const [caption, setCaption] = useState(item.caption);
+  const [prompt, setPrompt] = useState(item.prompt_text || item.prompt || '');
+  const [caption, setCaption] = useState(item.caption || '');
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     setCategory(normalizeContentCategory(item.contentCategory));
     setMediaType(normalizeMediaType(item.mediaType));
-    setPrompt(item.prompt);
-    setCaption(item.caption);
+    setPrompt(item.prompt_text || item.prompt || '');
+    setCaption(item.caption || '');
   }, [item]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -260,9 +274,9 @@ function EditContentModal({
             <textarea
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
-              rows={4}
+              rows={6}
               dir="ltr"
-              className={`${FIELD} font-mono text-xs`}
+              className={`${FIELD} min-h-[150px] resize-y overflow-y-auto font-mono text-xs`}
               placeholder="Visual prompt for Midjourney / Sora…"
             />
           </div>
@@ -272,8 +286,8 @@ function EditContentModal({
             <textarea
               value={caption}
               onChange={(e) => setCaption(e.target.value)}
-              rows={4}
-              className={FIELD}
+              rows={6}
+              className={`${FIELD} min-h-[150px] resize-y overflow-y-auto`}
               placeholder="النص التسويقي للمنشور…"
             />
           </div>
@@ -303,10 +317,12 @@ function EditContentModal({
 
 function ProductionStudioCard({
   item: initialItem,
+  allCards,
   onItemChange,
   onEdit,
 }: {
   item: MarketingContentItem;
+  allCards: MarketingContentItem[];
   onItemChange: (item: MarketingContentItem) => void;
   onEdit: () => void;
 }) {
@@ -315,15 +331,44 @@ function ProductionStudioCard({
   const ActionIcon = config.actionIcon;
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const displayPrompt = useMemo(
+    () => resolveMarketingCardPrompt(initialItem, allCards),
+    [initialItem, allCards],
+  );
+  const displayCaption = useMemo(
+    () => resolveMarketingCardCaption(initialItem, allCards),
+    [initialItem, allCards],
+  );
+
   const [busy, setBusy] = useState(false);
-  const [item, setItem] = useState(initialItem);
-  const [fieldValue, setFieldValue] = useState(config.getFieldValue(initialItem));
+  const [item, setItem] = useState<MarketingContentItem>(() => ({
+    ...initialItem,
+    prompt: displayPrompt,
+    prompt_text: displayPrompt,
+    caption: displayCaption,
+  }));
 
   useEffect(() => {
-    setItem(initialItem);
-    const cfg = initialItem.productionType === 'ai' ? AI_CONFIG : HUMAN_CONFIG;
-    setFieldValue(cfg.getFieldValue(initialItem));
-  }, [initialItem]);
+    const prompt = resolveMarketingCardPrompt(initialItem, allCards);
+    const caption = resolveMarketingCardCaption(initialItem, allCards);
+    setItem({
+      ...initialItem,
+      prompt,
+      prompt_text: prompt,
+      caption,
+    });
+  }, [
+    initialItem,
+    allCards,
+    initialItem.id,
+    initialItem.prompt,
+    initialItem.prompt_text,
+    initialItem.caption,
+    initialItem.script,
+    initialItem.productionType,
+  ]);
+
+  const fieldValue = config.getFieldValue(item);
 
   const syncItem = useCallback(
     (next: MarketingContentItem) => {
@@ -334,11 +379,39 @@ function ProductionStudioCard({
   );
 
   const persistField = useCallback(async () => {
-    const current = config.getFieldValue(item);
-    if (fieldValue === current) return;
-    const res = await updateCard(item, config.patchField(fieldValue));
+    const value = config.getFieldValue(item);
+    const saved = config.getFieldValue({
+      ...initialItem,
+      prompt: displayPrompt,
+      prompt_text: displayPrompt,
+      script: initialItem.script,
+    });
+    if (value === saved) return;
+    const res = await updateCard(item, config.patchField(value));
     if (res.ok && res.item) syncItem(res.item);
-  }, [config, fieldValue, item, syncItem]);
+  }, [config, displayPrompt, initialItem, item, syncItem]);
+
+  const persistCaption = useCallback(async () => {
+    if (item.productionType !== 'ai') return;
+    if (item.caption === displayCaption) return;
+    const res = await updateCard(item, { caption: item.caption });
+    if (res.ok && res.item) syncItem(res.item);
+  }, [displayCaption, item, syncItem]);
+
+  const handleFieldChange = useCallback(
+    (value: string) => {
+      setItem((prev) =>
+        prev.productionType === 'ai'
+          ? { ...prev, prompt: value, prompt_text: value }
+          : { ...prev, script: value },
+      );
+    },
+    [],
+  );
+
+  const handleCaptionChange = useCallback((value: string) => {
+    setItem((prev) => ({ ...prev, caption: value }));
+  }, []);
 
   const handleVideoUpload = useCallback(
     async (file: File | undefined) => {
@@ -361,7 +434,7 @@ function ProductionStudioCard({
       const save = await updateCard(item, {
         video_url: upload.file.publicUrl,
         status: config.productionType === 'human' ? 'تم الرفع' : 'تم التوليد',
-        ...config.patchField(fieldValue),
+        ...config.patchField(config.getFieldValue(item)),
       });
       setBusy(false);
 
@@ -373,7 +446,7 @@ function ProductionStudioCard({
       syncItem(save.item);
       toast.success('تم رفع الفيديو بنجاح', { style: { background: '#1e3f20', color: '#fff' } });
     },
-    [config, fieldValue, item, persistField, syncItem],
+    [config, item, persistField, syncItem],
   );
 
   return (
@@ -388,8 +461,8 @@ function ProductionStudioCard({
             <h2 className="mt-1 text-xl font-black text-[#1e3f20]">{config.header}</h2>
           </div>
           <div className="flex flex-wrap items-center justify-end gap-2">
-            <MediaBadge mediaType={item.media_type} />
-            <CategoryBadge category={item.content_category} />
+            <MediaBadge mediaType={item.media_type ?? item.mediaType} />
+            <CategoryBadge category={item.content_category ?? item.contentCategory} />
             <span className="rounded-full border border-[#1e3f20]/15 bg-[#FDFBF7] px-3 py-1 text-[10px] font-black text-[#1e3f20]">
               {item.status}
             </span>
@@ -405,26 +478,44 @@ function ProductionStudioCard({
         </div>
       </div>
 
-      <div className="flex flex-1 flex-col gap-4 p-6">
-        {item.caption ? (
-          <div className="rounded-xl border border-[#cda04c]/25 bg-[#FFFBF0] px-4 py-3">
-            <p className="mb-1 text-[10px] font-black text-[#cda04c]">الكابشن</p>
-            <p className="text-sm font-bold leading-relaxed text-[#2d3a33]">{item.caption}</p>
+      <div className="flex min-h-0 flex-1 flex-col gap-4 p-6">
+        {item.productionType === 'ai' ? (
+          <div className="shrink-0">
+            <label className="mb-2 block text-xs font-black text-[#1e3f20]">الكابشن (Caption)</label>
+            <textarea
+              value={item.caption || ''}
+              onChange={(e) => handleCaptionChange(e.target.value)}
+              onBlur={() => void persistCaption()}
+              rows={8}
+              className="crm-marketing-textarea w-full resize-y overflow-y-auto rounded-xl border border-[#D4AF37]/30 bg-[#FFFBF0] p-4 text-sm font-bold leading-relaxed text-[#2d3a33] focus:border-[#D4AF37] focus:outline-none"
+              placeholder="النص التسويقي للمنشور…"
+            />
           </div>
         ) : null}
 
-        <div>
+        <div className="shrink-0">
           <label className="mb-2 block text-xs font-black text-[#1e3f20]">{config.fieldLabel}</label>
-          <div className={DARK_STUDIO}>
+          {initialItem.productionType === 'ai' ? (
             <textarea
-              value={fieldValue}
-              onChange={(e) => setFieldValue(e.target.value)}
+              value={item.prompt_text || item.prompt || ''}
+              onChange={(e) => handleFieldChange(e.target.value)}
               onBlur={() => void persistField()}
-              placeholder={config.fieldPlaceholder}
-              className={DARK_TEXTAREA}
-              dir={config.productionType === 'ai' ? 'ltr' : 'rtl'}
+              rows={12}
+              spellCheck={false}
+              dir="ltr"
+              className="crm-marketing-textarea w-full resize-y overflow-y-auto rounded-xl border border-[#1e2420] bg-[#111412] p-4 font-mono text-xs leading-relaxed text-white transition-colors focus:border-[#D4AF37] focus:outline-none"
             />
-          </div>
+          ) : (
+            <textarea
+              value={item.script}
+              onChange={(e) => handleFieldChange(e.target.value)}
+              onBlur={() => void persistField()}
+              rows={12}
+              spellCheck={false}
+              dir="rtl"
+              className="crm-marketing-textarea w-full resize-y overflow-y-auto rounded-xl border border-[#1e2420] bg-[#111412] p-4 text-sm leading-relaxed text-white transition-colors focus:border-[#D4AF37] focus:outline-none"
+            />
+          )}
         </div>
 
         <button
@@ -515,10 +606,14 @@ export default function MarketingProductionStudio() {
     setCards((prev) => prev.map((x) => (x.id === updated.id ? updated : x)));
   }, []);
 
-  const handleEditSaved = useCallback((updated: MarketingContentItem) => {
-    handleItemChange(updated);
-    setEditingItem(null);
-  }, [handleItemChange]);
+  const handleEditSaved = useCallback(
+    (updated: MarketingContentItem) => {
+      handleItemChange(updated);
+      setEditingItem(null);
+      void load();
+    },
+    [handleItemChange, load],
+  );
 
   return (
     <>
@@ -547,8 +642,16 @@ export default function MarketingProductionStudio() {
             <ProductionStudioCard
               key={item.id}
               item={item}
+              allCards={cards}
               onItemChange={handleItemChange}
-              onEdit={() => setEditingItem(item)}
+              onEdit={() =>
+                setEditingItem({
+                  ...item,
+                  prompt: resolveMarketingCardPrompt(item, cards),
+                  prompt_text: resolveMarketingCardPrompt(item, cards),
+                  caption: resolveMarketingCardCaption(item, cards),
+                })
+              }
             />
           ))}
         </div>

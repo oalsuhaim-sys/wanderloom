@@ -6,6 +6,7 @@ import { ArrowRight, Loader2, Plus, Trash2 } from 'lucide-react';
 
 import VipCompassPreferences from '@/app/crm/itineraries/_components/VipCompassPreferences';
 import VipDayCardHeader from '@/app/crm/itineraries/_components/VipDayCardHeader';
+import { VipDateField, VipTimeSlotSelect } from '@/app/crm/itineraries/_components/VipBookingFields';
 import { useCrmEmployee } from '@/app/crm/_components/CrmEmployeeProvider';
 import {
   activityFromPlaceBank,
@@ -527,25 +528,23 @@ export default function ItineraryVipLightDualPane() {
           </label>
           <label>
             <span className={LABEL}>مغادرة</span>
-            <input
+            <VipTimeSlotSelect
               className={INPUT}
-              dir="ltr"
               value={draft.flight.departure_time || draft.flight.flight_time}
-              onChange={(e) =>
+              onChange={(v) =>
                 patchDraft({
-                  flight: patchFlight(draft.flight, 'departure_time', e.target.value),
+                  flight: patchFlight(draft.flight, 'departure_time', v),
                 })
               }
             />
           </label>
           <label>
             <span className={LABEL}>وصول</span>
-            <input
+            <VipTimeSlotSelect
               className={INPUT}
-              dir="ltr"
               value={draft.flight.arrival_time}
-              onChange={(e) =>
-                patchDraft({ flight: patchFlight(draft.flight, 'arrival_time', e.target.value) })
+              onChange={(v) =>
+                patchDraft({ flight: patchFlight(draft.flight, 'arrival_time', v) })
               }
             />
           </label>
@@ -557,6 +556,35 @@ export default function ItineraryVipLightDualPane() {
               value={draft.flight.gate}
               onChange={(e) => patchDraft({ flight: patchFlight(draft.flight, 'gate', e.target.value) })}
             />
+          </label>
+          <label>
+            <span className={LABEL}>المبنى</span>
+            <input
+              className={INPUT}
+              dir="ltr"
+              placeholder="T1"
+              value={draft.flight.terminal}
+              onChange={(e) =>
+                patchDraft({ flight: patchFlight(draft.flight, 'terminal', e.target.value) })
+              }
+            />
+          </label>
+          <label>
+            <span className={LABEL}>درجة الإركاب</span>
+            <select
+              className={INPUT}
+              dir="ltr"
+              value={draft.flight.flight_class}
+              onChange={(e) =>
+                patchDraft({ flight: patchFlight(draft.flight, 'flight_class', e.target.value) })
+              }
+            >
+              <option value="">—</option>
+              <option value="Economy">Economy</option>
+              <option value="Premium Economy">Premium Economy</option>
+              <option value="Business">Business</option>
+              <option value="First Class">First Class</option>
+            </select>
           </label>
           <label>
             <span className={LABEL}>المقعد</span>
@@ -594,6 +622,19 @@ export default function ItineraryVipLightDualPane() {
             />
           </label>
           <label>
+            <span className={LABEL}>دولة المغادرة</span>
+            <input
+              className={INPUT}
+              placeholder="السعودية"
+              value={draft.flight.departure_country}
+              onChange={(e) =>
+                patchDraft({
+                  flight: patchFlight(draft.flight, 'departure_country', e.target.value),
+                })
+              }
+            />
+          </label>
+          <label>
             <span className={LABEL}>إلى</span>
             <input
               className={INPUT}
@@ -606,6 +647,19 @@ export default function ItineraryVipLightDualPane() {
                   ...(e.target.value.trim() ? { destination: e.target.value.trim() } : {}),
                 });
               }}
+            />
+          </label>
+          <label>
+            <span className={LABEL}>دولة الوصول</span>
+            <input
+              className={INPUT}
+              placeholder="هنغاريا"
+              value={draft.flight.arrival_country}
+              onChange={(e) =>
+                patchDraft({
+                  flight: patchFlight(draft.flight, 'arrival_country', e.target.value),
+                })
+              }
             />
           </label>
         </div>
@@ -651,26 +705,24 @@ export default function ItineraryVipLightDualPane() {
           </label>
           <label>
             <span className={LABEL}>دخول</span>
-            <input
+            <VipDateField
               className={INPUT}
-              dir="ltr"
               value={draft.primaryHotel.check_in}
-              onChange={(e) =>
+              onChange={(v) =>
                 patchDraft({
-                  primaryHotel: patchHotel(draft.primaryHotel, 'check_in', e.target.value),
+                  primaryHotel: patchHotel(draft.primaryHotel, 'check_in', v),
                 })
               }
             />
           </label>
           <label>
             <span className={LABEL}>خروج</span>
-            <input
+            <VipDateField
               className={INPUT}
-              dir="ltr"
               value={draft.primaryHotel.check_out}
-              onChange={(e) =>
+              onChange={(v) =>
                 patchDraft({
-                  primaryHotel: patchHotel(draft.primaryHotel, 'check_out', e.target.value),
+                  primaryHotel: patchHotel(draft.primaryHotel, 'check_out', v),
                 })
               }
             />
@@ -962,6 +1014,25 @@ export default function ItineraryVipLightDualPane() {
                           >
                             📍 أماكن قريبة
                           </button>
+                        ) : null}
+
+                        {act.kind === 'place' || act.kind === 'transport' ? (
+                          <label className="mt-3 block">
+                            <span className={LABEL}>وقت الزيارة</span>
+                            <input
+                              type="time"
+                              className={INPUT}
+                              value={act.visit_time || act.time_slot || ''}
+                              onChange={(e) => {
+                                const visit_time = e.target.value
+                                activeDay &&
+                                  updateActivity(activeDay.id, act.id, {
+                                    visit_time,
+                                    time_slot: visit_time,
+                                  })
+                              }}
+                            />
+                          </label>
                         ) : null}
 
                         {index > 0 && act.kind !== 'transport' ? (

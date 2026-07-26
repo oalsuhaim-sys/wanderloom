@@ -14,16 +14,29 @@ import {
   Ticket,
 } from 'lucide-react';
 
+import { approveQuotationAction } from '@/app/actions/quotationActions';
 import { supabase } from '@/lib/supabase';
 import {
-  approveQuotation,
+  buildInvoicePublicUrl,
+  formatInvoiceAmount,
+  INVOICE_RECEIVABLE_DB_STATUSES,
+  INVOICE_TYPE_LABEL,
+  isInvoiceReceivableStatus,
+  type InvoiceType,
+} from '@/lib/crm-invoices';
+import {
   calculateProfitFromMargin,
+  extractClientQuoteActivities,
+  extractClientQuoteTransportation,
   formatDestinationsLabel,
   formatQuotationDateRange,
   isQuotationStatusApproved,
   mapQuotationRow,
+  PUBLIC_QUOTATION_SELECT,
   QUOTATION_STATUS_LABEL,
   quotationTotalPrice,
+  type ClientQuoteActivity,
+  type ClientQuoteTransport,
   type QuotationRow,
 } from '@/lib/crm-quotations';
 import { createItineraryFromApprovedQuotation } from '@/lib/quotation-to-itinerary';
@@ -33,16 +46,26 @@ function formatSar(value: number): string {
   return `${value.toLocaleString('ar-SA')} ر.س`;
 }
 
+type PublicPendingInvoice = {
+  id: string;
+  amount: number;
+  type: InvoiceType;
+  url: string;
+};
+
 export default function PublicQuotationPage() {
   const params = useParams();
   const rawQuoteId = params?.id ?? (params as { quoteId?: string | string[] })?.quoteId;
   const quoteId = Array.isArray(rawQuoteId) ? rawQuoteId[0] : rawQuoteId;
 
   const [quotation, setQuotation] = useState<QuotationRow | null>(null);
+  const [clientActivities, setClientActivities] = useState<ClientQuoteActivity[]>([]);
+  const [clientTransportation, setClientTransportation] = useState<ClientQuoteTransport[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [approving, setApproving] = useState(false);
   const [approved, setApproved] = useState(false);
+  const [pendingInvoices, setPendingInvoices] = useState<PublicPendingInvoice[]>([]);
   const [fetchDebug, setFetchDebug] = useState<{
     quoteId: string | undefined;
     supabaseError: unknown;
@@ -82,11 +105,31 @@ export default function PublicQuotationPage() {
         return;
       }
 
-      const { data: quotationData, error: supabaseError } = await supabase
+      let quotationData: Record<string, unknown> | null = null;
+      let supabaseError: { message?: string } | null = null;
+
+      const primary = await supabase
         .from('quotations')
-        .select('*, clients(*)')
+        .select(PUBLIC_QUOTATION_SELECT)
         .eq('id', quoteId)
         .single();
+
+      if (!primary.error && primary.data) {
+        quotationData = primary.data as Record<string, unknown>;
+      } else {
+        supabaseError = primary.error;
+        const fallback = await supabase
+          .from('quotations')
+          .select('*, clients(*)')
+          .eq('id', quoteId)
+          .single();
+        if (!fallback.error && fallback.data) {
+          quotationData = fallback.data as Record<string, unknown>;
+          supabaseError = null;
+        } else if (fallback.error) {
+          supabaseError = fallback.error;
+        }
+      }
 
       if (cancelled) return;
 
@@ -98,13 +141,48 @@ export default function PublicQuotationPage() {
 
       if (supabaseError || !quotationData) {
         setQuotation(null);
+        setClientActivities([]);
+        setClientTransportation([]);
         setLoading(false);
         return;
       }
 
-      const row = mapQuotationRow(quotationData as Record<string, unknown>);
+      const record = quotationData as Record<string, unknown>;
+      const row = mapQuotationRow(record);
       setQuotation(row);
-      setApproved(isQuotationStatusApproved(row.status));
+      setClientActivities(extractClientQuoteActivities(record));
+      setClientTransportation(extractClientQuoteTransportation(record));
+      setApproved(
+        isQuotationStatusApproved(row.status) ||
+          row.status === 'awaiting_payment' ||
+          row.status === 'deposit_paid' ||
+          row.status === 'fully_paid',
+      );
+
+      const invoiceRes = await supabase
+        .from('invoices')
+        .select('id, amount, type, status')
+        .eq('quote_id', quoteId)
+        .in('status', [...INVOICE_RECEIVABLE_DB_STATUSES]);
+
+      if (!cancelled) {
+        const receivable = (invoiceRes.data ?? [])
+          .filter((item) => isInvoiceReceivableStatus((item as { status?: unknown }).status))
+          .map((item) => {
+            const o = item as { id?: unknown; amount?: unknown; type?: unknown };
+            const id = String(o.id ?? '').trim();
+            const type = String(o.type ?? '').trim() === 'full' ? 'full' : 'deposit';
+            return {
+              id,
+              amount: Number(o.amount) || 0,
+              type: type as InvoiceType,
+              url: buildInvoicePublicUrl(id),
+            };
+          })
+          .filter((item) => item.id && item.amount > 0);
+        setPendingInvoices(receivable);
+      }
+
       setLoading(false);
     })();
 
@@ -123,20 +201,33 @@ export default function PublicQuotationPage() {
     setApproving(true);
     setError('');
     try {
-      await approveQuotation(quoteId);
+      const result = await approveQuotationAction(quoteId);
+      if (!result.ok) throw new Error(result.error);
 
-      const itineraryResult = await createItineraryFromApprovedQuotation(quotation);
-      if (!itineraryResult) {
-        console.error(
-          'Failed to auto-create itinerary after quotation approval for quote:',
-          quoteId,
-        );
-      } else {
-        console.log('Auto-created itinerary from approved quotation:', itineraryResult);
-      }
+      const approvedRow = result.row;
 
       setApproved(true);
-      setQuotation((prev) => (prev ? { ...prev, status: 'approved' } : prev));
+      setQuotation((prev) =>
+        prev
+          ? { ...prev, ...approvedRow, status: 'approved' }
+          : { ...approvedRow, status: 'approved' },
+      );
+
+      try {
+        const itineraryResult = await createItineraryFromApprovedQuotation({
+          ...quotation,
+          ...approvedRow,
+          status: 'approved',
+        });
+        if (!itineraryResult) {
+          console.error(
+            'Failed to auto-create itinerary after quotation approval for quote:',
+            quoteId,
+          );
+        }
+      } catch (itineraryErr) {
+        console.error('Itinerary auto-create after approval:', itineraryErr);
+      }
     } catch (e) {
       console.error('Approval Update Error:', e);
       setError(e instanceof Error ? e.message : 'تعذر اعتماد العرض. حاول مرة أخرى.');
@@ -198,12 +289,6 @@ export default function PublicQuotationPage() {
   const hotels = quotation.hotel_proposals.filter(
     (h) => h.hotel_name || h.city || h.room_type || h.price > 0,
   );
-  const activities = quotation.activities_proposals.filter(
-    (a) => a.name || a.description || a.price > 0,
-  );
-  const transports = quotation.transport_proposals.filter(
-    (t) => t.description || t.mode || t.price > 0,
-  );
 
   if (approved) {
     return (
@@ -218,9 +303,40 @@ export default function PublicQuotationPage() {
           </span>
           <h1 className="text-2xl font-black text-[#FAFAFA] sm:text-3xl">شكراً لثقتكم</h1>
           <p className="mt-4 text-base font-semibold leading-relaxed text-white/70">
-            تم استلام موافقتك، سيقوم مصمم رحلتك بالبدء في إجراءات الحجز المؤكد.
+            {pendingInvoices.length > 0
+              ? 'تم استلام موافقتكم. يُرجى إتمام السداد عبر الفاتورة أدناه لتأكيد الحجز.'
+              : 'تم استلام موافقتك، سيقوم مصمم رحلتك بالبدء في إجراءات الحجز المؤكد.'}
           </p>
           <p className="mt-6 text-sm text-white/40">{quotation.title}</p>
+
+          {pendingInvoices.length > 0 ? (
+            <section className="mt-10 w-full max-w-md text-right">
+              <div className="mb-4 text-center">
+                <h2 className="text-lg font-black text-amber-200">🧾 فواتير بانتظار السداد</h2>
+              </div>
+              <div className="space-y-3">
+                {pendingInvoices.map((invoice) => (
+                  <article
+                    key={invoice.id}
+                    className="rounded-2xl border border-amber-400/35 bg-gradient-to-b from-amber-950/40 to-[#111412] p-5 text-right shadow-[0_0_40px_rgba(245,158,11,0.1)]"
+                  >
+                    <p className="text-sm font-black text-amber-100">
+                      {INVOICE_TYPE_LABEL[invoice.type]}
+                    </p>
+                    <p className="mt-2 text-2xl font-black text-[#D4AF37]" dir="ltr">
+                      {formatInvoiceAmount(invoice.amount)}
+                    </p>
+                    <a
+                      href={invoice.url}
+                      className="mt-4 inline-flex w-full items-center justify-center rounded-xl bg-[#D4AF37] px-4 py-3.5 text-sm font-black text-[#0D0F0E] transition hover:brightness-110"
+                    >
+                      اضغط للسداد
+                    </a>
+                  </article>
+                ))}
+              </div>
+            </section>
+          ) : null}
         </div>
       </PageShell>
     );
@@ -317,52 +433,64 @@ export default function PublicQuotationPage() {
         </section>
       ) : null}
 
-      {activities.length > 0 ? (
-        <section className="mb-8">
-          <SectionTitle icon={<Ticket className="h-4 w-4" />} title="الفعاليات" />
-          <div className="space-y-3">
-            {activities.map((activity) => (
-              <article
-                key={activity.id}
-                className="rounded-2xl border border-white/10 bg-white/[0.04] p-5 backdrop-blur-sm"
+      {clientActivities.length > 0 ? (
+        <div className="mb-8">
+          <h3 className="mb-4 flex items-center gap-2 text-xl font-bold text-[#D4AF37]">
+            <Ticket className="h-6 w-6" aria-hidden />
+            الفعاليات المقترحة
+          </h3>
+          <div className="rounded-xl border border-[#1e2420] bg-[#111412] p-4">
+            {clientActivities.map((activity, idx) => (
+              <div
+                key={`activity-${idx}-${activity.title}`}
+                className="border-b border-[#1e2420] py-3 last:border-0"
               >
-                <p className="text-lg font-black text-[#FAFAFA]">{activity.name || '—'}</p>
+                <h4 className="text-lg font-bold text-white">{activity.title}</h4>
+                {activity.location ? (
+                  <p className="mt-1 inline-flex items-center gap-1.5 text-sm text-gray-400">
+                    <MapPin className="h-3.5 w-3.5 shrink-0 text-[#D4AF37]" aria-hidden />
+                    {activity.location}
+                  </p>
+                ) : null}
                 {activity.description ? (
-                  <p className="mt-2 text-sm font-semibold text-white/50">{activity.description}</p>
+                  <p className="mt-1 text-sm text-gray-400">{activity.description}</p>
                 ) : null}
                 {activity.price > 0 ? (
                   <p className="mt-2 text-sm font-black text-[#D4AF37]" dir="ltr">
                     {formatSar(activity.price)}
                   </p>
                 ) : null}
-              </article>
+              </div>
             ))}
           </div>
-        </section>
+        </div>
       ) : null}
 
-      {transports.length > 0 ? (
-        <section className="mb-8">
-          <SectionTitle icon={<Bus className="h-4 w-4" />} title="المواصلات" />
-          <div className="space-y-3">
-            {transports.map((transport) => (
-              <article
-                key={transport.id}
-                className="rounded-2xl border border-white/10 bg-white/[0.04] p-5 backdrop-blur-sm"
+      {clientTransportation.length > 0 ? (
+        <div className="mb-8">
+          <h3 className="mb-4 flex items-center gap-2 text-xl font-bold text-[#D4AF37]">
+            <Bus className="h-6 w-6" aria-hidden />
+            تفاصيل المواصلات
+          </h3>
+          <div className="rounded-xl border border-[#1e2420] bg-[#111412] p-4">
+            {clientTransportation.map((trans, idx) => (
+              <div
+                key={`transport-${idx}-${trans.title}`}
+                className="border-b border-[#1e2420] py-3 last:border-0"
               >
-                <p className="text-lg font-black text-[#FAFAFA]">{transport.description || '—'}</p>
-                {transport.mode ? (
-                  <p className="mt-2 text-sm font-semibold text-white/50">{transport.mode}</p>
+                <h4 className="text-lg font-bold text-white">{trans.type || trans.title}</h4>
+                {trans.description ? (
+                  <p className="mt-1 text-sm text-gray-400">{trans.description}</p>
                 ) : null}
-                {transport.price > 0 ? (
+                {trans.price > 0 ? (
                   <p className="mt-2 text-sm font-black text-[#D4AF37]" dir="ltr">
-                    {formatSar(transport.price)}
+                    {formatSar(trans.price)}
                   </p>
                 ) : null}
-              </article>
+              </div>
             ))}
           </div>
-        </section>
+        </div>
       ) : null}
 
       <section className="overflow-hidden rounded-2xl border border-[#D4AF37]/50 bg-gradient-to-br from-[#0D0F0E] via-[#1A2520] to-[#0D0F0E] p-6 shadow-[0_16px_48px_rgba(0,0,0,0.35)] ring-1 ring-[#D4AF37]/25">

@@ -101,7 +101,8 @@ export default function DestinationAdvisor() {
   };
 
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col items-center px-4">
+    <div className="relative mx-auto flex w-full max-w-5xl flex-col items-center bg-transparent px-4">
+      <div className="relative z-10 flex w-full flex-col items-center">
       <div className="mb-10 w-full text-center">
         <p className="inline-flex items-center gap-2 rounded-full border border-[#cda04c]/30 bg-[#cda04c]/10 px-4 py-1.5 text-[11px] font-black tracking-wide text-[#9a7b45]">
           <Sparkles className="h-3.5 w-3.5" aria-hidden />
@@ -173,10 +174,8 @@ export default function DestinationAdvisor() {
                   key={id}
                   type="button"
                   onClick={() => selectCountry(id)}
-                  className={`inline-flex cursor-pointer select-none rounded-full border px-4 py-1.5 text-sm font-bold transition-all duration-200 ${
-                    isSelected
-                      ? 'border-[#1e3f20] bg-[#1e3f20] text-white'
-                      : 'border-gray-300 bg-transparent text-[#111111] hover:border-[#cda04c]/50 hover:bg-[#f4f0e6]/50'
+                  className={`wl-dest-tag inline-flex cursor-pointer select-none rounded-full border border-gray-200 bg-white px-4 py-1.5 text-sm font-bold text-gray-700 transition-all duration-300 hover:border-[#1A3B2A] hover:shadow-sm ${
+                    isSelected ? 'is-active scale-105 border-transparent bg-[#1A3B2A] text-[#C5A059] shadow-md' : ''
                   }`}
                 >
                   {label}
@@ -201,7 +200,7 @@ export default function DestinationAdvisor() {
                     key={key}
                     type="button"
                     onClick={() => selectSeason(key)}
-                    className="group flex flex-col rounded-2xl border border-[#1e3f20]/15 bg-[#FDFBF7] p-5 text-start shadow-sm transition hover:border-[#cda04c]/60 hover:shadow-md"
+                    className="wl-lift-card group flex flex-col rounded-2xl border border-gray-200 bg-white p-5 text-start shadow-sm transition-all duration-500 hover:-translate-y-2 hover:border-[#C5A059]/50 hover:shadow-[0_20px_40px_rgba(0,0,0,0.06)]"
                   >
                     <div className="mb-3 flex items-center justify-between gap-2">
                       <span className="text-lg font-black text-[#111111]">{SEASON_LABELS[key]}</span>
@@ -317,16 +316,21 @@ export default function DestinationAdvisor() {
               {seasonData.images.map((src, i) => (
                 <div
                   key={`${src}-${i}`}
-                  className={`overflow-hidden rounded-xl border border-[#1e3f20]/10 shadow-sm ${
+                  className={`group overflow-hidden rounded-xl border border-[#1e3f20]/10 shadow-sm transition-all duration-500 hover:-translate-y-1 hover:shadow-[0_20px_40px_rgba(0,0,0,0.06)] ${
                     i === 0 ? 'col-span-2 aspect-[16/9] sm:col-span-1 sm:aspect-[3/4]' : 'aspect-square'
                   }`}
                 >
-                  <AdvisorImage src={src} alt={`${countryLabel} — ${seasonData.name}`} />
+                  <AdvisorImage
+                    src={src}
+                    alt={`${countryLabel} — ${seasonData.name}`}
+                    className="transition-transform duration-700 group-hover:scale-105"
+                  />
                 </div>
               ))}
             </div>
           </div>
         ) : null}
+      </div>
       </div>
     </div>
   );

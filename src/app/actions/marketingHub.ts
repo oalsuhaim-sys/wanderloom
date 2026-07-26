@@ -44,7 +44,7 @@ export async function createAiPromptAction(
   const { data: row, error } = await supabase
     .from('marketing_ai_prompts')
     .insert(aiItemToInsert(data) as never)
-    .select('id, category, campaign, visual_prompt, caption, hashtags, status, sort_order')
+    .select('*')
     .single();
 
   if (error) return dbError(error.message);

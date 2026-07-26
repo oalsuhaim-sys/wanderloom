@@ -21,12 +21,37 @@ function unlockKey(slug: string) {
   return `${UNLOCK_PREFIX}:${slug.trim()}`
 }
 
+/** One-time migration from persistent localStorage auth to tab-scoped sessionStorage */
+function migrateClientAuthFromLocalStorage() {
+  if (typeof window === 'undefined') return
+  try {
+    const legacyKey = localStorage.getItem(WANDERLOOM_ACCESS_KEY_STORAGE)
+    if (legacyKey && !sessionStorage.getItem(WANDERLOOM_ACCESS_KEY_STORAGE)) {
+      sessionStorage.setItem(WANDERLOOM_ACCESS_KEY_STORAGE, legacyKey)
+    }
+    localStorage.removeItem(WANDERLOOM_ACCESS_KEY_STORAGE)
+
+    for (let i = localStorage.length - 1; i >= 0; i -= 1) {
+      const key = localStorage.key(i)
+      if (!key?.startsWith(`${UNLOCK_PREFIX}:`)) continue
+      const value = localStorage.getItem(key)
+      if (value && !sessionStorage.getItem(key)) {
+        sessionStorage.setItem(key, value)
+      }
+      localStorage.removeItem(key)
+    }
+  } catch {
+    /* private mode */
+  }
+}
+
 export function persistWanderloomAccessKey(key: string) {
   if (typeof window === 'undefined') return
   const normalized = key.trim().toUpperCase()
   if (!normalized) return
   try {
-    localStorage.setItem(WANDERLOOM_ACCESS_KEY_STORAGE, normalized)
+    sessionStorage.setItem(WANDERLOOM_ACCESS_KEY_STORAGE, normalized)
+    localStorage.removeItem(WANDERLOOM_ACCESS_KEY_STORAGE)
   } catch {
     /* quota / private mode */
   }
@@ -34,8 +59,9 @@ export function persistWanderloomAccessKey(key: string) {
 
 export function loadWanderloomAccessKey(): string | null {
   if (typeof window === 'undefined') return null
+  migrateClientAuthFromLocalStorage()
   try {
-    const raw = localStorage.getItem(WANDERLOOM_ACCESS_KEY_STORAGE)
+    const raw = sessionStorage.getItem(WANDERLOOM_ACCESS_KEY_STORAGE)
     const normalized = raw?.trim().toUpperCase()
     return normalized || null
   } catch {
@@ -46,7 +72,25 @@ export function loadWanderloomAccessKey(): string | null {
 export function clearWanderloomAccessKey() {
   if (typeof window === 'undefined') return
   try {
+    sessionStorage.removeItem(WANDERLOOM_ACCESS_KEY_STORAGE)
     localStorage.removeItem(WANDERLOOM_ACCESS_KEY_STORAGE)
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Clears tab session auth so the client can enter a different trip code */
+export function clearClientPortalSessionAuth(_slug?: string) {
+  clearWanderloomAccessKey()
+  if (typeof window === 'undefined') return
+  try {
+    for (let i = sessionStorage.length - 1; i >= 0; i -= 1) {
+      const key = sessionStorage.key(i)
+      if (key?.startsWith(`${UNLOCK_PREFIX}:`)) {
+        sessionStorage.removeItem(key)
+        localStorage.removeItem(key)
+      }
+    }
   } catch {
     /* ignore */
   }
@@ -60,8 +104,10 @@ export function passcodeMatchesAccessKey(expected: string, input?: string): bool
 
 export function persistItineraryUnlock(slug: string) {
   if (typeof window === 'undefined') return
+  const key = unlockKey(slug)
   try {
-    localStorage.setItem(unlockKey(slug), '1')
+    sessionStorage.setItem(key, '1')
+    localStorage.removeItem(key)
   } catch {
     /* quota / private mode */
   }
@@ -69,8 +115,9 @@ export function persistItineraryUnlock(slug: string) {
 
 export function hasItineraryUnlock(slug: string): boolean {
   if (typeof window === 'undefined') return false
+  migrateClientAuthFromLocalStorage()
   try {
-    return localStorage.getItem(unlockKey(slug)) === '1'
+    return sessionStorage.getItem(unlockKey(slug)) === '1'
   } catch {
     return false
   }
@@ -78,8 +125,10 @@ export function hasItineraryUnlock(slug: string): boolean {
 
 export function clearItineraryUnlock(slug: string) {
   if (typeof window === 'undefined') return
+  const key = unlockKey(slug)
   try {
-    localStorage.removeItem(unlockKey(slug))
+    sessionStorage.removeItem(key)
+    localStorage.removeItem(key)
   } catch {
     /* ignore */
   }

@@ -232,7 +232,8 @@ export async function persistItineraryClientId(
     .from('itineraries')
     .update({ client_id: clientId })
     .eq('id', queryId)
-    .select('id, client_id');
+    .select('id, client_id')
+    .single();
 
   if (error) {
     console.error('[persistItineraryClientId] Supabase error:', error);
@@ -245,7 +246,7 @@ export async function persistItineraryClientId(
     };
   }
 
-  if (!data?.length) {
+  if (!data) {
     console.error('[persistItineraryClientId] zero rows updated', { queryId, clientId });
     return {
       ok: false,
@@ -254,7 +255,7 @@ export async function persistItineraryClientId(
     };
   }
 
-  const row = data[0];
+  const row = data;
   const saved =
     row?.client_id != null && row.client_id !== ''
       ? (typeof row.client_id === 'number'
@@ -319,15 +320,77 @@ export function resolveClientPhone(client?: CrmClientMini | null): string {
 }
 
 export function resolveItineraryPublicSlug(row: Record<string, unknown>, fallbackId: string): string {
+  // Prefer stable numeric primary key so multi-trip clients never collide on magic_link_id
+  const id = row.id != null ? String(row.id).trim() : '';
+  if (/^\d+$/.test(id)) return id;
   const magic = String(row.magic_link_id ?? '').trim();
   if (magic) return magic;
-  const id = row.id != null ? String(row.id).trim() : '';
   return id || fallbackId;
+}
+
+/**
+ * Magic Link path — ALWAYS keyed by numeric trip id when available:
+ * `/itinerary/12345?trip_id=12345&itinerary_id=12345&client_id=…`
+ */
+export function buildItineraryPortalPath(input: {
+  itinerarySlug?: string | null;
+  clientId?: string | number | null;
+  itineraryId?: string | number | null;
+}): string {
+  const tripIdRaw = String(input.itineraryId ?? '')
+    .trim()
+    .replace(/^(client-|vip-)/i, '');
+  const slugRaw = String(input.itinerarySlug ?? '')
+    .trim()
+    .replace(/^(client-|vip-)/i, '');
+
+  const numericTripId = /^\d+$/.test(tripIdRaw)
+    ? tripIdRaw
+    : /^\d+$/.test(slugRaw)
+      ? slugRaw
+      : '';
+
+  // Path segment = numeric id (hard identity). Fallback to legacy magic slug only if needed.
+  const pathKey = numericTripId || slugRaw || tripIdRaw;
+  if (!pathKey) return '/itinerary';
+
+  const params = new URLSearchParams();
+
+  if (numericTripId) {
+    params.set('trip_id', numericTripId);
+    params.set('itinerary_id', numericTripId);
+  }
+
+  const clientId = parseCrmClientIdForSave(input.clientId);
+  if (clientId != null) {
+    params.set('client_id', String(clientId));
+  }
+
+  const qs = params.toString();
+  return qs
+    ? `/itinerary/${encodeURIComponent(pathKey)}?${qs}`
+    : `/itinerary/${encodeURIComponent(pathKey)}`;
+}
+
+/** Public client portal URL — includes trip_id for multi-trip VIP clients. */
+export function buildItineraryPortalUrl(input: {
+  itinerarySlug?: string | null;
+  clientId?: string | number | null;
+  itineraryId?: string | number | null;
+  origin?: string;
+}): string {
+  const base = (input.origin ?? (typeof window !== 'undefined' ? window.location.origin : '')).replace(
+    /\/$/,
+    '',
+  );
+  return `${base}${buildItineraryPortalPath(input)}`;
 }
 
 export function buildItineraryWhatsAppShareUrl(input: {
   client?: CrmClientMini | null;
-  itinerarySlug: string;
+  clientId?: string | number | null;
+  itinerarySlug?: string | null;
+  itineraryId?: string | number | null;
   origin?: string;
 }): { url: string } | { error: string } {
   const digits = normalizeWhatsAppPhoneDigits(resolveClientPhone(input.client));
@@ -335,11 +398,12 @@ export function buildItineraryWhatsAppShareUrl(input: {
     return { error: '⚠️ لا يوجد رقم جوال مسجل لهذا العميل في قاعدة البيانات.' };
   }
 
-  const base = (input.origin ?? (typeof window !== 'undefined' ? window.location.origin : '')).replace(
-    /\/$/,
-    '',
-  );
-  const link = `${base}/itinerary/${encodeURIComponent(input.itinerarySlug)}`;
+  const link = buildItineraryPortalUrl({
+    itinerarySlug: input.itinerarySlug,
+    clientId: input.clientId ?? input.client?.id ?? null,
+    itineraryId: input.itineraryId ?? null,
+    origin: input.origin,
+  });
   const name = input.client ? clientDisplayName(input.client) : 'عزيزي العميل';
   const message = [
     `مرحباً ${name} ✨`,
@@ -355,7 +419,9 @@ export function buildItineraryWhatsAppShareUrl(input: {
 
 export function openItineraryWhatsAppShare(input: {
   client?: CrmClientMini | null;
-  itinerarySlug: string;
+  clientId?: string | number | null;
+  itinerarySlug?: string | null;
+  itineraryId?: string | number | null;
   origin?: string;
 }): { ok: true } | { ok: false; error: string } {
   const result = buildItineraryWhatsAppShareUrl(input);
@@ -363,6 +429,41 @@ export function openItineraryWhatsAppShare(input: {
   if (typeof window === 'undefined') return { ok: false, error: 'غير متاح خارج المتصفح.' };
   window.open(result.url, '_blank', 'noopener,noreferrer');
   return { ok: true };
+}
+
+export async function copyItineraryPortalUrl(input: {
+  itinerarySlug?: string | null;
+  clientId?: string | number | null;
+  itineraryId?: string | number | null;
+  origin?: string;
+}): Promise<{ ok: true; url: string } | { ok: false; error: string }> {
+  const tripId = String(input.itineraryId ?? '')
+    .trim()
+    .replace(/^(client-|vip-)/i, '');
+  const slug = String(input.itinerarySlug ?? '').trim();
+
+  if (!tripId && !slug) {
+    return { ok: false, error: 'معرّف المسار غير متوفر — احفظ المسار أولاً.' };
+  }
+
+  if (typeof window === 'undefined') {
+    return { ok: false, error: 'غير متاح خارج المتصفح.' };
+  }
+
+  const shareUrl = buildItineraryPortalUrl({
+    itinerarySlug: /^\d+$/.test(tripId) ? tripId : slug || tripId,
+    clientId: input.clientId ?? null,
+    itineraryId: tripId || slug,
+    origin: input.origin,
+  });
+
+  try {
+    await navigator.clipboard.writeText(shareUrl);
+    return { ok: true, url: shareUrl };
+  } catch {
+    window.prompt('انسخ رابط المسار:', shareUrl);
+    return { ok: true, url: shareUrl };
+  }
 }
 
 export const ITINERARY_CLIENT_JOIN_SELECT =

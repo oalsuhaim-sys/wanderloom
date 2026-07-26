@@ -52,7 +52,7 @@ function matchesCountryFilter(countryStored: string, filterId: string): boolean 
 }
 
 const CONTROL_FIELD =
-  'h-12 w-full rounded-xl border border-gray-300 bg-white px-4 text-sm font-semibold text-gray-900 shadow-sm outline-none transition placeholder:text-gray-400 focus:border-[#001f3f]/35 focus:ring-2 focus:ring-[#d4af37]/40 focus:ring-offset-2 focus:ring-offset-[#F6F4F0] [color-scheme:light]'
+  'h-12 w-full rounded-lg border border-gray-200 bg-white px-4 text-sm font-semibold text-[#1A3B2A] outline-none transition-all placeholder:text-gray-400 focus:border-[#C5A059] focus:ring-2 focus:ring-[#C5A059]/50 [color-scheme:light]'
 
 export default function SuppliersPage() {
   const [rows, setRows] = useState<SupplierRow[]>([])

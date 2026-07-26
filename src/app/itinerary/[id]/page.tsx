@@ -1,15 +1,14 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { AlertCircle, Loader2, Map, RefreshCw, User } from 'lucide-react';
 
 import VipButlerFab from '../_components/VipButlerFab';
 import VipLuxuryBookingVoucherPrint from '../_components/VipLuxuryBookingVoucherPrint';
-import VipClientBoardingPass from '../_components/VipClientBoardingPass';
+import PremiumBoardingPass from '../_components/PremiumBoardingPass';
 import VipClientBookingsTab from '../_components/VipClientBookingsTab';
-import VipClientFashionTab from '../_components/VipClientFashionTab';
 import VipClientPackingTab from '../_components/VipClientPackingTab';
 import VipClientTabNav, { type VipClientTab } from '../_components/VipClientTabNav';
 import ClientProfilePinModal from '../_components/ClientProfilePinModal';
@@ -27,11 +26,6 @@ import VipPwaInstallButton from '../_components/VipPwaInstallButton';
 import VipItineraryPinGate from '../_components/VipItineraryPinGate';
 import ClientPortalSignOutButton from '../_components/ClientPortalSignOutButton';
 import { useVipSessionIdleLock } from '@/lib/use-vip-session-idle-lock';
-import {
-  buildTripMatchContext,
-  filterWardrobeForTrip,
-  type WardrobeMatchRow,
-} from '@/lib/travel-wardrobe-trip';
 
 import {
   clearItineraryUnlock,
@@ -120,23 +114,53 @@ async function enrichTripWithClientPublicFields(
   }
 
   if (resolvedClientId == null || String(resolvedClientId).trim() === '') {
-    return normalizePublicItinerary({ ...trip, referralCode: trip.referralCode ?? null });
+    // No linked client — never invent a referral code from itinerary columns
+    return normalizePublicItinerary({ ...trip, referralCode: null });
   }
 
-  const { data } = await supabase
-    .from('clients')
-    .select('referral_code, ref_code')
-    .eq('id', resolvedClientId)
-    .maybeSingle();
+  // Prefer service-role API (bypasses RLS) so portal matches Admin CRM
+  let referral: string | null = null;
+  try {
+    const params = new URLSearchParams({
+      client_id: String(resolvedClientId),
+    });
+    if (trip.id != null) params.set('trip_id', String(trip.id));
+    const res = await fetch(`/api/itinerary/client-referral?${params.toString()}`, {
+      cache: 'no-store',
+    });
+    if (res.ok) {
+      const body = (await res.json()) as { ok?: boolean; referralCode?: string | null };
+      if (body.ok && body.referralCode != null) {
+        referral = String(body.referralCode).trim() || null;
+      }
+    }
+  } catch (err) {
+    console.warn('[vip-itinerary] client-referral API failed', err);
+  }
 
-  const referral =
-    String(data?.referral_code ?? data?.ref_code ?? trip.referralCode ?? '').trim() || null;
+  // Soft fallback via browser supabase (may be blocked by RLS)
+  if (!referral) {
+    const { data, error } = await supabase
+      .from('clients')
+      .select('referral_code, ref_code')
+      .eq('id', resolvedClientId)
+      .maybeSingle();
 
-  return normalizePublicItinerary({ ...trip, clientId: resolvedClientId, referralCode: referral });
+    if (error) {
+      console.warn('[vip-itinerary] clients referral lookup:', error.message);
+    } else {
+      // Same priority as Admin: ref_code || referral_code
+      referral =
+        String(data?.ref_code ?? data?.referral_code ?? '').trim() || null;
+    }
+  }
+
+  return normalizePublicItinerary({
+    ...trip,
+    clientId: resolvedClientId,
+    referralCode: referral,
+  });
 }
-
-const UUID_RE =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function passcodeFromRow(row: Record<string, unknown>): string | null {
   const raw = row.passcode;
@@ -243,6 +267,13 @@ function errorMessageFromUnknown(err: unknown): string {
   return String(err);
 }
 
+function normalizeResolvedEntityId(raw: unknown): string {
+  if (raw == null) return '';
+  return String(raw)
+    .trim()
+    .replace(/^(client-|vip-)/i, '');
+}
+
 function applyOfflineTripCache(
   slug: string,
   cached: PublicItinerary,
@@ -251,6 +282,8 @@ function applyOfflineTripCache(
     setPasscode: (code: string | null) => void;
     setAuthenticated: (value: boolean) => void;
     setFetchError: (value: string) => void;
+    setResolvedTripId?: (id: string) => void;
+    setResolvedClientId?: (id: string | null) => void;
   },
 ): boolean {
   if (cached.hasPin && !hasItineraryUnlock(slug)) {
@@ -260,46 +293,154 @@ function applyOfflineTripCache(
     return false;
   }
 
+  const tripId = normalizeResolvedEntityId(cached.id);
+  const clientId = normalizeResolvedEntityId(cached.clientId) || null;
+
   setters.setTrip(cached);
+  setters.setResolvedTripId?.(tripId);
+  setters.setResolvedClientId?.(clientId);
   setters.setPasscode(null);
   setters.setAuthenticated(!cached.hasPin || hasItineraryUnlock(slug));
   setters.setFetchError('');
+  console.log('[vip-itinerary] resolved IDs (offline cache):', { tripId, clientId });
   return true;
+}
+
+async function fetchItineraryByTripId(
+  supabase: SupabaseClient,
+  tripId: string,
+): Promise<{ row: Record<string, unknown> | null; error: string | null }> {
+  const id = tripId.trim().replace(/^(client-|vip-)/i, '');
+  console.log('CURRENT TRIP ID:', id);
+
+  if (!/^\d+$/.test(id)) {
+    return { row: null, error: 'معرّف الرحلة غير صالح.' };
+  }
+
+  const { data, error } = await supabase
+    .from('itineraries')
+    .select(ITINERARY_FETCH_SELECT)
+    .eq('id', Number(id))
+    .single();
+
+  if (error) {
+    console.error('[vip-itinerary] trip id fetch failed:', id, error.message);
+    return { row: null, error: error.message };
+  }
+
+  return { row: (data as Record<string, unknown> | null) ?? null, error: null };
+}
+
+async function fetchLatestItineraryForClient(
+  supabase: SupabaseClient,
+  clientId: string | number,
+): Promise<{ row: Record<string, unknown> | null; error: string | null }> {
+  const key =
+    typeof clientId === 'number'
+      ? clientId
+      : /^\d+$/.test(String(clientId).trim())
+        ? Number(clientId)
+        : String(clientId).trim();
+
+  console.log('CURRENT TRIP ID: (client fallback)', key);
+
+  const query = () =>
+    supabase
+      .from('itineraries')
+      .select(ITINERARY_FETCH_SELECT)
+      .eq('client_id', key)
+      .or('is_template.is.null,is_template.eq.false');
+
+  let res = await query().order('created_at', { ascending: false }).limit(1);
+  if (res.error && /created_at|column|schema cache/i.test(res.error.message)) {
+    res = await query().order('id', { ascending: false }).limit(1);
+  }
+
+  if (res.error) return { row: null, error: res.error.message };
+  const rows = (res.data ?? []) as Record<string, unknown>[];
+  if (rows[0]) {
+    console.log('CURRENT TRIP ID: resolved →', String(rows[0].id ?? ''));
+    return { row: rows[0], error: null };
+  }
+  return { row: null, error: null };
 }
 
 async function fetchItineraryBySlug(
   supabase: SupabaseClient,
   slug: string,
+  preferredItineraryId?: string | null,
+  preferredClientId?: string | null,
 ): Promise<{ row: Record<string, unknown> | null; error: string | null }> {
-  // معرّفات اصطناعية قديمة (client-… / vip-…) تكسر مطابقة uuid — ننزع البادئة قبل الاستعلام
-  const trimmed = slug.trim().replace(/^(client-|vip-)/i, '');
-  if (!trimmed) return { row: null, error: null };
+  const rawSlug = slug.trim();
+  const isClientPrefixed = /^(client-|vip-)/i.test(rawSlug);
+  const trimmed = rawSlug.replace(/^(client-|vip-)/i, '');
+  const pinned = String(preferredItineraryId ?? '')
+    .trim()
+    .replace(/^(client-|vip-)/i, '');
+  const clientFromQuery = String(preferredClientId ?? '')
+    .trim()
+    .replace(/^(client-|vip-)/i, '');
 
-  const query = () => supabase.from('itineraries').select(ITINERARY_FETCH_SELECT);
+  // 1) Explicit trip_id / numeric itinerary id in path (when not a client-prefixed slug)
+  const numericTripId = /^\d+$/.test(pinned)
+    ? pinned
+    : !isClientPrefixed && /^\d+$/.test(trimmed)
+      ? trimmed
+      : '';
 
-  if (/^\d+$/.test(trimmed)) {
-    const res = await query().eq('id', Number(trimmed)).maybeSingle();
-    if (res.error) return { row: null, error: res.error.message };
-    if (res.data) return { row: res.data as Record<string, unknown>, error: null };
+  if (numericTripId) {
+    return fetchItineraryByTripId(supabase, numericTripId);
   }
 
-  if (UUID_RE.test(trimmed)) {
-    const res = await query().eq('magic_link_id', trimmed).maybeSingle();
-    if (res.error) return { row: null, error: res.error.message };
-    if (res.data) return { row: res.data as Record<string, unknown>, error: null };
-  } else {
-    // نص غير uuid — نجرب magic_link_id ثم id مع تجاهل أخطاء صيغة uuid/الأرقام
-    const byMagic = await query().eq('magic_link_id', trimmed).maybeSingle();
-    if (byMagic.data) return { row: byMagic.data as Record<string, unknown>, error: null };
-    if (byMagic.error && !/invalid input syntax/i.test(byMagic.error.message)) {
-      return { row: null, error: byMagic.error.message };
+  // 2) Legacy Magic Link: magic_link_id
+  if (trimmed && !isClientPrefixed) {
+    console.log('CURRENT TRIP ID: (legacy magic slug)', trimmed);
+    const { data, error } = await supabase
+      .from('itineraries')
+      .select(ITINERARY_FETCH_SELECT)
+      .eq('magic_link_id', trimmed)
+      .limit(1);
+
+    if (!error) {
+      const rows = (data ?? []) as Record<string, unknown>[];
+      if (rows[0]) {
+        console.log(
+          'CURRENT TRIP ID: resolved from magic_link_id →',
+          String(rows[0].id ?? ''),
+        );
+        return { row: rows[0], error: null };
+      }
+    } else if (!/column|schema cache|does not exist|invalid input/i.test(error.message)) {
+      return { row: null, error: error.message };
     }
 
-    const byId = await query().eq('id', trimmed).maybeSingle();
-    if (byId.data) return { row: byId.data as Record<string, unknown>, error: null };
-    if (byId.error && !/invalid input syntax/i.test(byId.error.message)) {
-      return { row: null, error: byId.error.message };
+    // Legacy passcode
+    const byPass = await supabase
+      .from('itineraries')
+      .select(ITINERARY_FETCH_SELECT)
+      .eq('passcode', trimmed.toUpperCase())
+      .order('id', { ascending: false })
+      .limit(1);
+    if (!byPass.error) {
+      const rows = (byPass.data ?? []) as Record<string, unknown>[];
+      if (rows[0]) {
+        console.log(
+          'CURRENT TRIP ID: resolved from passcode →',
+          String(rows[0].id ?? ''),
+        );
+        return { row: rows[0], error: null };
+      }
     }
+  }
+
+  // 3) Client fallback — most recent trip (old links / client-prefixed paths)
+  const clientId =
+    (/^\d+$/.test(clientFromQuery) && clientFromQuery) ||
+    (isClientPrefixed && /^\d+$/.test(trimmed) ? trimmed : '') ||
+    '';
+
+  if (clientId) {
+    return fetchLatestItineraryForClient(supabase, clientId);
   }
 
   return { row: null, error: null };
@@ -370,7 +511,7 @@ function Shell({
   return (
     <div
       dir="rtl"
-      className={`relative min-h-screen overflow-x-hidden bg-[#FDFBF7] font-[family-name:var(--font-tajawal),system-ui,sans-serif] text-gray-900 ${className}`}
+      className={`relative min-h-screen overflow-x-hidden bg-[#F9F9F6] font-[family-name:var(--font-tajawal),system-ui,sans-serif] text-gray-900 ${className}`}
     >
       <link href={MAPBOX_CSS_CDN} rel="stylesheet" />
       <ConfidentialWatermark />
@@ -379,105 +520,16 @@ function Shell({
   );
 }
 
-const WARDROBE_PLACEHOLDER =
-  'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?q=80&w=1200&auto=format&fit=crop';
-
-function VipGoldHangerIcon({
-  active = false,
-  className = 'h-[18px] w-[18px] shrink-0',
-}: {
-  active?: boolean;
-  className?: string;
-}) {
-  const stroke = active ? '#D4AF37' : 'currentColor';
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      className={className}
-      aria-hidden
-    >
-      <path
-        d="M12 2.75v2.1M12 2.75c-1.15 0-2.08.93-2.08 2.08 0 .62.27 1.18.71 1.56"
-        stroke={stroke}
-        strokeWidth="1.6"
-        strokeLinecap="round"
-      />
-      <path
-        d="M12 2.75c1.15 0 2.08.93 2.08 2.08 0 .62-.27 1.18-.71 1.56"
-        stroke={stroke}
-        strokeWidth="1.6"
-        strokeLinecap="round"
-      />
-      <path
-        d="M4.25 11.25c0-3.58 3.47-5.75 7.75-5.75s7.75 2.17 7.75 5.75"
-        stroke={stroke}
-        strokeWidth="1.6"
-        strokeLinecap="round"
-      />
-      <path
-        d="M3.5 11.25h17"
-        stroke={stroke}
-        strokeWidth="1.6"
-        strokeLinecap="round"
-      />
-      <path
-        d="M5.25 11.25v1.75h13.5v-1.75"
-        stroke={stroke}
-        strokeWidth="1.6"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-function filterWardrobeForDestination(
-  rows: WardrobeMatchRow[],
-  trip: PublicItinerary,
-): WardrobeMatchRow[] {
-  const destination = String(trip.destination ?? '').trim();
-  if (!destination) return [];
-
-  const ctx = buildTripMatchContext({
-    title: `${trip.title} ${destination}`,
-    dates:
-      trip.startDate && trip.endDate
-        ? `${trip.startDate} → ${trip.endDate}`
-        : trip.startDate ?? '',
-    days: (trip.days ?? []).map((d) => ({
-      title: d.title,
-      notes: d.cityLabel,
-    })),
-  });
-
-  const matched = filterWardrobeForTrip(rows, ctx);
-  if (matched.length > 0) return matched;
-
-  const needle = destination.toLowerCase();
-  return rows.filter((row) => {
-    const tags = [
-      ...(Array.isArray(row.destinations) ? row.destinations : []),
-      ...(Array.isArray(row.destination_tags) ? row.destination_tags : []),
-    ].map((t) => String(t).toLowerCase());
-
-    return tags.some(
-      (tag) =>
-        tag.includes(needle) ||
-        needle.includes(tag) ||
-        needle.split(/[\s،,]+/).some((part) => part.length > 2 && tag.includes(part)),
-    );
-  });
-}
-
-type PortalActiveTab = 'itinerary' | 'wardrobe';
-
 type ClientViewProps = {
   itinerary: PublicItinerary;
+  /** Stable PK from parent fetch — never parsed from the URL in children */
+  tripId: string;
+  /** Stable client PK from parent fetch — never parsed from the URL in children */
+  clientId: string | null;
+  /** magic_link_id from fetched row — secondary upload resolver */
+  magicLinkId?: string | null;
   dateRange: string | null;
   isUnlocked: boolean;
-  activeTab: PortalActiveTab;
-  setActiveTab: (tab: PortalActiveTab) => void;
-  wardrobeItems: Record<string, unknown>[];
   clientSectionTab: VipClientTab;
   onClientSectionTabChange: (tab: VipClientTab) => void;
   hasLinkedClient: boolean;
@@ -491,11 +543,11 @@ type ClientViewProps = {
 /** واجهة العميل VIP — هيكل لوحة التحكم الثابت (بوردينق · طقس · تبويبات · محتوى) */
 function ClientView({
   itinerary,
+  tripId,
+  clientId,
+  magicLinkId = null,
   dateRange,
   isUnlocked,
-  activeTab,
-  setActiveTab,
-  wardrobeItems,
   clientSectionTab,
   onClientSectionTabChange,
   hasLinkedClient,
@@ -506,13 +558,11 @@ function ClientView({
   currentItinerarySlug,
 }: ClientViewProps) {
   const safeDays = itinerary?.days ?? [];
-  const totalActivities = safeDays.reduce((n, d) => n + (d?.activities?.length ?? 0), 0);
   const salonServices = filterNonMedicalPreTripServices(itinerary?.preTripServices ?? []);
   const destination = itinerary?.destination ?? '';
-  const showFashion = itinerary?.showFashionServices === true;
   const tripFinished = isTripFinished(itinerary?.endDate);
 
-  if (itinerary?.id == null || String(itinerary.id).trim() === '') {
+  if (!tripId || itinerary?.id == null || String(itinerary.id).trim() === '') {
     return (
       <div className="flex min-h-[50vh] items-center justify-center px-6 text-center text-sm font-semibold text-gray-600">
         لم يتم العثور على المسار.
@@ -522,7 +572,7 @@ function ClientView({
 
   if (profilePortalActive && profileUnlocked) {
     return (
-      <div className="min-h-screen bg-[#FDFBF7] text-gray-900">
+      <div className="min-h-screen bg-[#F9F9F6] text-gray-900">
         <div className="mx-auto max-w-lg px-4 pt-4 sm:max-w-xl">
           <button
             type="button"
@@ -546,7 +596,7 @@ function ClientView({
 
   if (tripFinished) {
     return (
-      <div className="min-h-screen bg-[#FDFBF7] text-gray-900">
+      <div className="min-h-screen bg-[#F9F9F6] text-gray-900">
         <div className="mx-auto flex max-w-lg justify-center px-4 pt-3 sm:max-w-xl">
           <VipPwaInstallButton />
         </div>
@@ -559,6 +609,8 @@ function ClientView({
           />
           {itinerary.referralCode ? (
             <ItineraryReferralShareCard referralCode={itinerary.referralCode} />
+          ) : hasLinkedClient ? (
+            <ItineraryReferralShareCard showPending />
           ) : null}
         </main>
       </div>
@@ -566,8 +618,8 @@ function ClientView({
   }
 
   return (
-    <div className="min-h-screen bg-[#FDFBF7] text-gray-900">
-      <VipClientBoardingPass trip={itinerary} dateRange={dateRange} />
+    <div className="min-h-screen bg-[#F9F9F6] text-gray-900">
+      <PremiumBoardingPass trip={itinerary} dateRange={dateRange} />
 
       <div className="mx-auto flex max-w-lg justify-center px-4 pt-3 sm:max-w-xl">
         <VipPwaInstallButton />
@@ -579,49 +631,23 @@ function ClientView({
         ) : null}
         {itinerary.referralCode ? (
           <ItineraryReferralShareCard referralCode={itinerary.referralCode} />
+        ) : hasLinkedClient ? (
+          <ItineraryReferralShareCard showPending />
         ) : null}
       </div>
 
-      <div className="border-b border-gray-200 bg-[#FDFBF7]">
+      <div className="border-b border-gray-200 bg-[#F9F9F6]">
         <div className="my-8 flex justify-center gap-4 px-4">
-          <button
-            type="button"
-            onClick={() => setActiveTab('itinerary')}
-            className={`inline-flex items-center gap-2 rounded-full px-6 py-2.5 font-bold transition-all ${
-              activeTab === 'itinerary'
-                ? 'bg-[#1E2720] text-white shadow-md ring-2 ring-[#D4AF37]/50'
-                : 'border border-gray-200 bg-white text-gray-600 shadow-sm hover:ring-[#D4AF37]/40'
-            }`}
-          >
-            <Map
-              className={`h-4 w-4 shrink-0 ${activeTab === 'itinerary' ? 'text-[#D4AF37]' : 'text-gray-400'}`}
-              strokeWidth={2}
-              aria-hidden
-            />
+          <div className="inline-flex items-center gap-2 rounded-full bg-[#1E2720] px-6 py-2.5 font-bold text-white shadow-md ring-2 ring-[#D4AF37]/50">
+            <Map className="h-4 w-4 shrink-0 text-[#D4AF37]" strokeWidth={2} aria-hidden />
             مسار الرحلة
-          </button>
-          {showFashion ? (
-          <button
-            type="button"
-            onClick={() => setActiveTab('wardrobe')}
-            className={`inline-flex items-center gap-2 rounded-full px-6 py-2.5 font-bold transition-all ${
-              activeTab === 'wardrobe'
-                ? 'bg-[#1E2720] text-white shadow-md ring-2 ring-[#D4AF37]/50'
-                : 'border border-gray-200 bg-white text-gray-600 shadow-sm hover:ring-[#D4AF37]/40'
-            }`}
-          >
-            <VipGoldHangerIcon active={activeTab === 'wardrobe'} />
-            أزياء السفر
-          </button>
-          ) : null}
+          </div>
         </div>
       </div>
 
-      {activeTab === 'itinerary' ? (
-        <VipClientTabNav activeTab={clientSectionTab} onTabChange={onClientSectionTabChange} />
-      ) : null}
+      <VipClientTabNav activeTab={clientSectionTab} onTabChange={onClientSectionTabChange} />
 
-      {activeTab === 'itinerary' && clientSectionTab === 'itinerary' ? (
+      {clientSectionTab === 'itinerary' ? (
         <div className="relative z-10 mx-auto mb-4 max-w-lg px-4 sm:max-w-xl">
           <VipLiveWeatherWidget
             destination={destination}
@@ -632,14 +658,12 @@ function ClientView({
 
       <main
         className={`relative z-10 mx-auto p-4 pb-28 font-[family-name:var(--font-tajawal),system-ui,sans-serif] sm:px-6 sm:pb-32 ${
-          activeTab === 'wardrobe' ? 'max-w-6xl' : 'max-w-lg sm:max-w-xl'
+          clientSectionTab === 'itinerary'
+            ? 'max-w-3xl sm:max-w-4xl'
+            : 'max-w-lg sm:max-w-xl'
         }`}
       >
-        {activeTab === 'wardrobe' ? (
-          <VipClientFashionTab itinerary={itinerary} wardrobeItems={wardrobeItems} />
-        ) : null}
-
-        {activeTab === 'itinerary' && clientSectionTab === 'itinerary' ? (
+        {clientSectionTab === 'itinerary' ? (
           !isUnlocked ? (
             <div className="locked-vault-card">
               <VipVaultCountdown
@@ -648,34 +672,31 @@ function ClientView({
               />
             </div>
           ) : (
-            <div className="daily-timeline">
-              <header className="mb-5 text-center">
-                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#D4AF37]">
-                  برنامجك اليومي
-                </p>
-                <h2 className="mt-1 text-lg font-black tracking-wide text-gray-900 sm:text-xl">
-                  مسار الأماكن المختارة
-                </h2>
-                {safeDays.length > 0 ? (
-                  <p className="mt-1 text-xs font-semibold text-gray-600">
-                    {safeDays.length} يوم
-                    {totalActivities > 0 ? ` · ${totalActivities} محطة` : ''}
-                  </p>
-                ) : null}
-              </header>
-              {showFashion ? (
-                <VipPreTripServicesCard services={salonServices} />
+            <div className="daily-timeline rounded-3xl bg-[#F9F9F6]">
+              {salonServices.length > 0 ? (
+                <div className="mb-6">
+                  <VipPreTripServicesCard services={salonServices} />
+                </div>
               ) : null}
               {safeDays.length > 0 ? (
                 <VipDailyItineraryTimeline
                   days={safeDays}
                   destination={destination}
+                  tripTitle={itinerary.title}
+                  coverImage={itinerary.coverImage}
+                  startDate={itinerary.startDate}
+                  endDate={itinerary.endDate}
+                  dateRangeLabel={dateRange}
                   tripWeather={itinerary?.weather}
-                  itineraryId={itinerary.id}
-                  clientId={itinerary.clientId}
+                  tripId={tripId}
+                  magicLinkId={magicLinkId ?? itinerary.magicLinkId}
+                  clientId={
+                    clientId ??
+                    (itinerary.clientId != null ? String(itinerary.clientId).trim() : null)
+                  }
                 />
               ) : (
-                <p className="rounded-2xl border border-[#D4AF37]/30 bg-white py-12 text-center text-sm text-gray-600 shadow-sm">
+                <p className="rounded-2xl border border-[#C5A059]/20 bg-white py-12 text-center text-sm text-gray-500 shadow-sm">
                   لا توجد أيام مُنسّقة بعد في هذا المسار.
                 </p>
               )}
@@ -683,7 +704,7 @@ function ClientView({
           )
         ) : null}
 
-        {activeTab === 'itinerary' && clientSectionTab === 'bookings' ? (
+        {clientSectionTab === 'bookings' ? (
           <VipClientBookingsTab
             trip={itinerary}
             dateRange={dateRange}
@@ -691,7 +712,7 @@ function ClientView({
           />
         ) : null}
 
-        {activeTab === 'itinerary' && clientSectionTab === 'packing' ? (
+        {clientSectionTab === 'packing' ? (
           <VipClientPackingTab trip={itinerary} profileUnlocked={profileUnlocked} />
         ) : null}
       </main>
@@ -701,9 +722,22 @@ function ClientView({
 
 export default function VipItineraryPage() {
   const params = useParams<{ id: string | string[] }>();
+  const searchParams = useSearchParams();
   const slug = resolveRouteSlug(params?.id);
+  const pinnedItineraryId =
+    searchParams.get('trip_id')?.trim() ||
+    searchParams.get('itinerary_id')?.trim() ||
+    searchParams.get('trip')?.trim() ||
+    null;
+  const pinnedClientId =
+    searchParams.get('client_id')?.trim() ||
+    searchParams.get('clientId')?.trim() ||
+    null;
 
   const [trip, setTrip] = useState<PublicItinerary | null>(null);
+  /** Stable IDs from successful fetch (exact URL or fallback) — source of truth for children */
+  const [resolvedTripId, setResolvedTripId] = useState<string>('');
+  const [resolvedClientId, setResolvedClientId] = useState<string | null>(null);
   const [passcode, setPasscode] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState('');
@@ -714,13 +748,19 @@ export default function VipItineraryPage() {
   const [pinExiting, setPinExiting] = useState(false);
   const [unlocking, setUnlocking] = useState(false);
 
-  const [activeTab, setActiveTab] = useState<PortalActiveTab>('itinerary');
-  const [wardrobeItems, setWardrobeItems] = useState<Record<string, unknown>[]>([]);
   const [clientSectionTab, setClientSectionTab] = useState<VipClientTab>('itinerary');
   const [sessionExpired, setSessionExpired] = useState(false);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
   const [profileUnlocked, setProfileUnlocked] = useState(false);
   const [profilePortalActive, setProfilePortalActive] = useState(false);
+
+  useEffect(() => {
+    if (!resolvedTripId && !resolvedClientId) return;
+    console.log('[vip-itinerary] stable resolved IDs:', {
+      tripId: resolvedTripId || null,
+      clientId: resolvedClientId,
+    });
+  }, [resolvedTripId, resolvedClientId]);
 
   const { sessionLocked, resetSessionLock } = useVipSessionIdleLock(
     authenticated && !!trip?.hasPin,
@@ -736,58 +776,38 @@ export default function VipItineraryPage() {
   }, [sessionLocked, slug]);
 
   useEffect(() => {
-    if (!authenticated || !trip || !trip.showFashionServices) {
-      if (!trip?.showFashionServices) setWardrobeItems([]);
-      return;
-    }
-
-    const fetchWardrobe = async () => {
-      const supabase = getSupabase();
-      if (!supabase) return;
-
-      const destination = String(trip.destination ?? '').trim();
-      if (!destination) {
-        setWardrobeItems([]);
-        return;
-      }
-
-      const { data, error } = await supabase.from('travel_wardrobe').select('*');
-      if (error || !data) {
-        setWardrobeItems([]);
-        return;
-      }
-
-      const filtered = filterWardrobeForDestination(data as WardrobeMatchRow[], trip);
-      setWardrobeItems(filtered as Record<string, unknown>[]);
-    };
-
-    void fetchWardrobe();
-  }, [authenticated, trip]);
-
-  useEffect(() => {
-    if (trip?.clientId != null && String(trip.clientId).trim() !== '') {
-      setProfileUnlocked(hasClientProfileUnlock(trip.clientId));
+    if (resolvedClientId) {
+      setProfileUnlocked(hasClientProfileUnlock(resolvedClientId));
     } else {
       setProfileUnlocked(false);
       setProfilePortalActive(false);
     }
-  }, [trip?.clientId]);
-
-  useEffect(() => {
-    if (trip && !trip.showFashionServices && activeTab === 'wardrobe') {
-      setActiveTab('itinerary');
-    }
-  }, [trip, activeTab]);
+  }, [resolvedClientId]);
 
   const loadTrip = useCallback(async () => {
     setLoading(true);
     setFetchError('');
+
+    const clearResolvedIds = () => {
+      setResolvedTripId('');
+      setResolvedClientId(null);
+    };
+
+    const offlineSetters = {
+      setTrip,
+      setPasscode,
+      setAuthenticated,
+      setFetchError,
+      setResolvedTripId,
+      setResolvedClientId,
+    };
 
     try {
       if (!slug) {
         setFetchError('معرّف الرحلة غير صالح.');
         setTrip(null);
         setPasscode(null);
+        clearResolvedIds();
         return;
       }
 
@@ -795,12 +815,7 @@ export default function VipItineraryPage() {
       if (!supabase) {
         const cached = hydrateTripFromOfflineCache(slug);
         if (cached) {
-          const applied = applyOfflineTripCache(slug, cached, {
-            setTrip,
-            setPasscode,
-            setAuthenticated,
-            setFetchError,
-          });
+          const applied = applyOfflineTripCache(slug, cached, offlineSetters);
           if (applied) return;
         }
         setFetchError(
@@ -808,37 +823,34 @@ export default function VipItineraryPage() {
         );
         setTrip(null);
         setPasscode(null);
+        clearResolvedIds();
         return;
       }
 
-      const { row, error } = await fetchItineraryBySlug(supabase, slug);
+      const { row, error } = await fetchItineraryBySlug(
+        supabase,
+        slug,
+        pinnedItineraryId,
+        pinnedClientId,
+      );
 
       if (error) {
         const cached = hydrateTripFromOfflineCache(slug);
         if (cached) {
-          const applied = applyOfflineTripCache(slug, cached, {
-            setTrip,
-            setPasscode,
-            setAuthenticated,
-            setFetchError,
-          });
+          const applied = applyOfflineTripCache(slug, cached, offlineSetters);
           if (applied) return;
         }
         setFetchError(error);
         setTrip(null);
         setPasscode(null);
+        clearResolvedIds();
         return;
       }
 
       if (!row) {
         const cached = hydrateTripFromOfflineCache(slug);
         if (cached) {
-          const applied = applyOfflineTripCache(slug, cached, {
-            setTrip,
-            setPasscode,
-            setAuthenticated,
-            setFetchError,
-          });
+          const applied = applyOfflineTripCache(slug, cached, offlineSetters);
           if (applied) return;
         }
         clearWanderloomAccessKey();
@@ -846,6 +858,7 @@ export default function VipItineraryPage() {
         setFetchError('لم يتم العثور على المسار. تحقق من الرابط أو تواصل مع الكونسيرج.');
         setTrip(null);
         setPasscode(null);
+        clearResolvedIds();
         return;
       }
 
@@ -862,8 +875,19 @@ export default function VipItineraryPage() {
           : parsed;
       const code = passcodeFromRow(normalizeFetchedItineraryRow(row));
 
+      const nextTripId = normalizeResolvedEntityId(tripWithClient.id);
+      const nextClientId = normalizeResolvedEntityId(tripWithClient.clientId) || null;
+
       setTrip(tripWithClient);
+      setResolvedTripId(nextTripId);
+      setResolvedClientId(nextClientId);
       setPasscode(code);
+
+      console.log('[vip-itinerary] resolved IDs after fetch:', {
+        tripId: nextTripId,
+        clientId: nextClientId,
+        source: pinnedItineraryId ? 'pinned_trip_id' : 'slug_or_fallback',
+      });
 
       const needsPin = parsed.hasPin && !!code;
       const savedKey = typeof window !== 'undefined' ? loadWanderloomAccessKey() : null;
@@ -891,6 +915,8 @@ export default function VipItineraryPage() {
           setPasscode,
           setAuthenticated,
           setFetchError,
+          setResolvedTripId,
+          setResolvedClientId,
         });
         if (applied) return;
       }
@@ -900,10 +926,12 @@ export default function VipItineraryPage() {
       );
       setTrip(null);
       setPasscode(null);
+      setResolvedTripId('');
+      setResolvedClientId(null);
     } finally {
       setLoading(false);
     }
-  }, [slug]);
+  }, [slug, pinnedItineraryId, pinnedClientId]);
 
   useEffect(() => {
     void loadTrip();
@@ -999,7 +1027,9 @@ export default function VipItineraryPage() {
     ? formatTripDateRange(trip.startDate, trip.endDate)
     : null;
 
-  const hasLinkedClient = trip.clientId != null && String(trip.clientId).trim() !== '';
+  const effectiveClientId =
+    resolvedClientId || normalizeResolvedEntityId(trip.clientId) || null;
+  const hasLinkedClient = Boolean(effectiveClientId);
 
   const handleOpenProfile = () => {
     if (profileUnlocked) {
@@ -1010,8 +1040,8 @@ export default function VipItineraryPage() {
   };
 
   const handleProfilePinSuccess = () => {
-    if (trip.clientId != null) {
-      persistClientProfileUnlock(trip.clientId);
+    if (effectiveClientId) {
+      persistClientProfileUnlock(effectiveClientId);
     }
     setProfileUnlocked(true);
     setProfilePortalActive(true);
@@ -1048,11 +1078,11 @@ export default function VipItineraryPage() {
 
         <ClientView
           itinerary={trip}
+          tripId={resolvedTripId || normalizeResolvedEntityId(trip.id)}
+          clientId={effectiveClientId}
+          magicLinkId={trip.magicLinkId}
           dateRange={dateRange}
           isUnlocked={isUnlocked}
-          activeTab={activeTab}
-          setActiveTab={setActiveTab}
-          wardrobeItems={wardrobeItems}
           clientSectionTab={clientSectionTab}
           onClientSectionTabChange={setClientSectionTab}
           hasLinkedClient={hasLinkedClient}
@@ -1063,11 +1093,11 @@ export default function VipItineraryPage() {
           currentItinerarySlug={slug}
         />
 
-        {hasLinkedClient && trip.clientId != null ? (
+        {hasLinkedClient && effectiveClientId ? (
           <ClientProfilePinModal
             open={profileModalOpen}
-            clientId={trip.clientId}
-            itineraryId={trip.id}
+            clientId={effectiveClientId}
+            tripId={resolvedTripId || normalizeResolvedEntityId(trip.id)}
             onClose={() => setProfileModalOpen(false)}
             onSuccess={handleProfilePinSuccess}
           />

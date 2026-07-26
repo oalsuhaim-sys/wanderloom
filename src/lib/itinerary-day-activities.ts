@@ -16,6 +16,7 @@ function newLocalId(): string {
 
 function emptyActivityFields(): Omit<DayActivityDraft, 'id' | 'kind'> {
   return {
+    visit_time: '',
     time_slot: '',
     transit_mode: '',
     transit_duration: '',
@@ -64,7 +65,8 @@ export function collapseDayForSave(day: ItineraryDayDraft): {
       stops.push({
         id: act.id,
         place_name: act.place_name,
-        time_slot: act.time_slot,
+        visit_time: act.visit_time || act.time_slot || '',
+        time_slot: act.visit_time || act.time_slot || '',
         note: act.note,
         story: act.story,
         transport_type: '',
@@ -145,10 +147,12 @@ export function activityFromPlaceBank(place: PlaceBankRow): DayActivityDraft {
 
 export function stopToActivity(stop: ItineraryStopDraft, index: number): DayActivityDraft {
   const isTransport = stop.category === 'transport';
+  const visit = stop.visit_time || stop.time_slot || '';
   return {
     id: stop.id,
     kind: isTransport ? 'transport' : 'place',
-    time_slot: stop.time_slot,
+    visit_time: visit,
+    time_slot: visit,
     transit_mode: index > 0 ? stop.transit_mode : '',
     transit_duration: index > 0 ? stop.transit_duration : '',
     place_name: stop.place_name,
@@ -169,10 +173,12 @@ export function stopToActivity(stop: ItineraryStopDraft, index: number): DayActi
 }
 
 export function activityToStop(act: DayActivityDraft, stopIndex: number): ItineraryStopDraft {
+  const visit = act.visit_time || act.time_slot || '';
   return {
     id: act.id,
     place_name: act.place_name,
-    time_slot: act.time_slot,
+    visit_time: visit,
+    time_slot: visit,
     note: act.note,
     story: act.story,
     transport_type: '',

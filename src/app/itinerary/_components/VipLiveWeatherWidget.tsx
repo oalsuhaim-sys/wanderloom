@@ -3,24 +3,20 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Cloud, CloudRain, CloudSun, Loader2, Snowflake, Sun, Zap } from 'lucide-react'
 
-import type { DayWeatherApiPayload } from '@/app/api/weather/route'
 import type { PublicWeatherForecast } from '@/lib/public-itinerary'
+import {
+  extractWeatherCity,
+  weatherEmoji,
+  type DayWeatherApiPayload,
+} from '@/lib/weather'
+
+export { extractWeatherCity }
 
 type VipLiveWeatherWidgetProps = {
   /** نص الوجهة من المسار — يُستخرج منه اسم المدينة */
   destination: string
   fallback?: PublicWeatherForecast | null
   className?: string
-}
-
-export function extractWeatherCity(destination: string): string {
-  const trimmed = destination.trim()
-  if (!trimmed) return ''
-  const parts = trimmed
-    .split(/[,،|/·]+/)
-    .map((part) => part.trim())
-    .filter(Boolean)
-  return parts[0] ?? trimmed
 }
 
 function WeatherIcon({ code, large }: { code: string; large?: boolean }) {
@@ -45,13 +41,16 @@ function WeatherIcon({ code, large }: { code: string; large?: boolean }) {
 
 function forecastToPayload(city: string, f: PublicWeatherForecast): DayWeatherApiPayload {
   const temp = Math.round((f.tempMin + f.tempMax) / 2)
+  const icon = 'partly' as const
   return {
     city: f.destination || city,
+    date: null,
     temp,
     tempMin: f.tempMin,
     tempMax: f.tempMax,
     condition: f.condition,
-    icon: 'partly',
+    icon,
+    emoji: weatherEmoji(icon),
     source: 'placeholder',
   }
 }
@@ -100,11 +99,13 @@ export default function VipLiveWeatherWidget({
         } else if (!cancelled) {
           setData({
             city: queryCity,
+            date: null,
             temp: 22,
             tempMin: 18,
             tempMax: 26,
             condition: 'طقس معتدل',
             icon: 'partly',
+            emoji: weatherEmoji('partly'),
             source: 'placeholder',
           })
         }

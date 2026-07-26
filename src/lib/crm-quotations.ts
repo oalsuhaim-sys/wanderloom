@@ -1,7 +1,15 @@
 import { supabase } from '@/lib/supabase';
 import { processReferralRewardForQuotation } from '@/lib/referral-rewards';
 
-export type QuotationStatus = 'draft' | 'pending_client' | 'approved';
+export type QuotationStatus =
+  | 'draft'
+  | 'pending_client'
+  | 'approved'
+  | 'awaiting_payment'
+  | 'deposit_paid'
+  | 'fully_paid';
+
+export type QuotationTripCategory = 'private' | 'group';
 
 export type QuotationFlightProposal = {
   id: string;
@@ -23,6 +31,7 @@ export type QuotationHotelProposal = {
 export type QuotationActivityProposal = {
   id: string;
   name: string;
+  location: string;
   description: string;
   price: number;
 };
@@ -36,6 +45,7 @@ export type QuotationTransportProposal = {
 
 export type QuotationRow = {
   id: string;
+  lead_id?: string | null;
   client_id: string | null;
   title: string;
   destinations: string[];
@@ -44,6 +54,9 @@ export type QuotationRow = {
   total_estimated_cost: number;
   expected_profit: number;
   status: QuotationStatus;
+  paid_amount: number;
+  remaining_amount: number;
+  trip_category: QuotationTripCategory;
   flight_proposals: QuotationFlightProposal[];
   hotel_proposals: QuotationHotelProposal[];
   activities_proposals: QuotationActivityProposal[];
@@ -78,7 +91,20 @@ export const QUOTATION_STATUS_LABEL: Record<QuotationStatus, string> = {
   draft: 'مسودة 📝',
   pending_client: 'بانتظار العميل ⏳',
   approved: 'تم الاعتماد ✨',
+  awaiting_payment: 'بانتظار الدفع 💳',
+  deposit_paid: 'عربون مدفوع 💰',
+  fully_paid: 'مدفوع بالكامل ✅',
 };
+
+/** أعمدة clients المطلوبة لقائمة العروض وواتساب (بترتيب من الأشمل للأضيق عند الفشل) */
+export const QUOTATION_CLIENT_EMBED_SELECTS = [
+  'id, name, phone_wa, phone_number, phone',
+  'id, name, phone_wa, phone_number',
+  'id, name, phone_wa',
+  'id, name, phone',
+] as const;
+
+export const QUOTATION_CLIENT_EMBED_SELECT = QUOTATION_CLIENT_EMBED_SELECTS[0];
 
 /** يطابق القيم الإنجليزية في DB أو أي نص عربي مرن */
 export function isQuotationStatusApproved(raw: unknown): boolean {
@@ -97,9 +123,13 @@ export function isQuotationStatusPending(raw: unknown): boolean {
 }
 
 function parseQuotationStatus(raw: unknown): QuotationStatus {
-  if (isQuotationStatusApproved(raw)) return 'approved';
   const s = String(raw ?? '').trim();
+  if (s === 'fully_paid') return 'fully_paid';
+  if (s === 'deposit_paid') return 'deposit_paid';
+  if (s === 'awaiting_payment') return 'awaiting_payment';
   if (s === 'draft') return 'draft';
+  if (s === 'pending_client') return 'pending_client';
+  if (s === 'approved' || isQuotationStatusApproved(raw)) return 'approved';
   return 'pending_client';
 }
 
@@ -165,6 +195,7 @@ export function createEmptyActivityProposal(): QuotationActivityProposal {
   return {
     id: newProposalId(),
     name: '',
+    location: '',
     description: '',
     price: 0,
   };
@@ -196,10 +227,151 @@ export function normalizeQuotationId(raw: unknown): string {
   return s;
 }
 
+const QUOTATION_UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+export function isQuotationUuid(id: string): boolean {
+  return QUOTATION_UUID_RE.test(normalizeQuotationId(id));
+}
+
+/** يُستخدم في مسارات API و Server Actions */
+export function resolveQuotationRouteId(raw: unknown): string {
+  return normalizeQuotationId(raw);
+}
+
+/** مسار صفحة التعديل — quotations.id فقط */
+export function buildQuotationEditPath(quotationId: string): string {
+  const id = normalizeQuotationId(quotationId);
+  if (!id) return '/crm/quotations';
+  return `/crm/quotations/edit/${encodeURIComponent(id)}`;
+}
+
+/** مسار إنشاء عرض من طلب DNA — يمرّر leadId و clientId وبيانات التعبئة */
+export type BuildQuotationNewFromLeadInput = {
+  leadId: string;
+  clientId?: string | number | null;
+  tripTitle?: string;
+  destination?: string;
+  startDate?: string | null;
+  endDate?: string | null;
+  clientName?: string;
+};
+
+export function buildQuotationNewFromLeadPath(
+  leadIdOrInput: string | BuildQuotationNewFromLeadInput,
+  clientId?: string | number | null,
+): string {
+  const input: BuildQuotationNewFromLeadInput =
+    typeof leadIdOrInput === 'string'
+      ? { leadId: leadIdOrInput, clientId }
+      : leadIdOrInput;
+
+  const params = new URLSearchParams();
+  params.set('from', 'lead');
+
+  const lid = normalizeQuotationId(input.leadId);
+  if (lid) params.set('leadId', lid);
+
+  const cid =
+    input.clientId != null && String(input.clientId).trim() !== ''
+      ? normalizeQuotationId(input.clientId)
+      : '';
+  if (cid) {
+    params.set('clientId', cid);
+    params.set('client_id', cid);
+  }
+
+  const tripTitle = String(input.tripTitle ?? '').trim();
+  if (tripTitle) {
+    params.set('tripTitle', tripTitle);
+    params.set('title', tripTitle);
+  }
+
+  const destination = String(input.destination ?? '').trim();
+  if (destination && destination !== '—') {
+    params.set('destination', destination);
+    params.set('destinations', destination);
+  }
+
+  const startDate = String(input.startDate ?? '').trim().slice(0, 10);
+  if (startDate) params.set('startDate', startDate);
+
+  const endDate = String(input.endDate ?? '').trim().slice(0, 10);
+  if (endDate) params.set('endDate', endDate);
+
+  const clientName = String(input.clientName ?? '').trim();
+  if (clientName) params.set('clientName', clientName);
+
+  return `/crm/quotations/new?${params.toString()}`;
+}
+
 function quotationIdForQuery(id: string | number): string {
   const s = normalizeQuotationId(id);
   if (!s) throw new Error('معرّف العرض غير صالح.');
   return s;
+}
+
+/** bigint في Postgres — يُفضّل تمرير رقم عندما يكون المعرّف رقمياً */
+export function coerceQuotationIdForDb(id: string | number): string | number {
+  const key = quotationIdForQuery(id);
+  if (/^\d+$/.test(key)) {
+    const n = Number(key);
+    if (Number.isSafeInteger(n) && n > 0) return n;
+  }
+  return key;
+}
+
+function quotationReferenceKey(raw: unknown): string {
+  return normalizeQuotationId(raw).toLowerCase();
+}
+
+/** يبحث في قائمة العروض بـ quotations.id أو lead_id */
+export function findQuotationInList(
+  list: QuotationRow[],
+  needle: string,
+): QuotationRow | undefined {
+  const key = quotationReferenceKey(needle);
+  if (!key) return undefined;
+  return list.find(
+    (row) =>
+      quotationReferenceKey(row.id) === key ||
+      (row.lead_id != null && quotationReferenceKey(row.lead_id) === key),
+  );
+}
+
+/** معرّف quotations.id للروابط — لا يُستخدم lead_id أبداً */
+export function quotationEditId(row: Pick<QuotationRow, 'id' | 'lead_id'>): string {
+  const pk = normalizeQuotationId(row.id);
+  if (!pk || pk === 'new') return '';
+  const leadId = row.lead_id ? normalizeQuotationId(row.lead_id) : '';
+  if (leadId && pk === leadId) return '';
+  return pk;
+}
+
+/** @deprecated alias — use quotationEditId */
+export function quotationRouteId(row: Pick<QuotationRow, 'id' | 'lead_id'>): string {
+  return quotationEditId(row);
+}
+
+/** هل العرض محفوظ فعلياً في quotations (وليس مسودة lead فقط) */
+export function isQuotationPersisted(row: Pick<QuotationRow, 'id' | 'lead_id'>): boolean {
+  return quotationEditId(row).length > 0;
+}
+
+/** معرّف محفوظ — bigint أو UUID؛ يستبعد "new" والقيم الفارغة */
+export function isQuoteSavedId(id: string | null | undefined): boolean {
+  const pk = normalizeQuotationId(id);
+  return Boolean(pk && pk !== 'new');
+}
+
+/** @deprecated استخدم isQuoteSavedId */
+export function isQuotationUuidSaved(id: string | null | undefined): boolean {
+  return isQuoteSavedId(id);
+}
+
+/** معرّف الفواتير — quotations.id المحفوظ */
+export function quotationInvoiceId(row: Pick<QuotationRow, 'id' | 'lead_id'>): string {
+  return quotationEditId(row);
 }
 
 function parseMoney(raw: unknown): number {
@@ -275,6 +447,7 @@ function parseActivityProposals(raw: unknown): QuotationActivityProposal[] {
       return {
         id: String(o.id ?? `activity-${index}`),
         name: String(o.name ?? o.title ?? '').trim(),
+        location: String(o.location ?? o.place ?? '').trim(),
         description: String(o.description ?? o.notes ?? '').trim(),
         price: parseMoney(o.price),
       };
@@ -291,7 +464,7 @@ function parseTransportProposals(raw: unknown): QuotationTransportProposal[] {
       return {
         id: String(o.id ?? `transport-${index}`),
         description: String(o.description ?? o.notes ?? '').trim(),
-        mode: String(o.mode ?? o.type ?? o.vehicle ?? '').trim(),
+        mode: String(o.mode ?? o.type ?? o.title ?? o.vehicle ?? '').trim(),
         price: parseMoney(o.price),
       };
     })
@@ -299,24 +472,228 @@ function parseTransportProposals(raw: unknown): QuotationTransportProposal[] {
 }
 
 function pickJsonbArray(row: Record<string, unknown>, ...keys: string[]): unknown {
+  let fallback: unknown = null;
   for (const key of keys) {
-    if (key in row && row[key] != null) return row[key];
+    if (!(key in row) || row[key] == null) continue;
+    const val = row[key];
+    if (Array.isArray(val)) {
+      if (val.length > 0) return val;
+      if (fallback == null) fallback = val;
+      continue;
+    }
+    return val;
   }
-  return null;
+  return fallback;
+}
+
+/** عناصر الفعاليات لعرض العميل — يدعم name/title */
+export type ClientQuoteActivity = {
+  title: string;
+  description: string;
+  location: string;
+  price: number;
+};
+
+/** عناصر المواصلات لعرض العميل — يدعم mode/type/title */
+export type ClientQuoteTransport = {
+  title: string;
+  type: string;
+  description: string;
+  price: number;
+};
+
+function parseClientActivitiesRaw(raw: unknown): ClientQuoteActivity[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((item, index) => {
+      if (!item || typeof item !== 'object') return null;
+      const o = item as Record<string, unknown>;
+      const title = String(o.title ?? o.name ?? '').trim();
+      const description = String(o.description ?? o.notes ?? '').trim();
+      const location = String(o.location ?? o.place ?? '').trim();
+      const price = parseMoney(o.price);
+      if (!title && !description && !location && price <= 0) return null;
+      return { title: title || '—', description, location, price };
+    })
+    .filter(Boolean) as ClientQuoteActivity[];
+}
+
+function parseClientTransportRaw(raw: unknown): ClientQuoteTransport[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((item, index) => {
+      if (!item || typeof item !== 'object') return null;
+      const o = item as Record<string, unknown>;
+      const type = String(o.type ?? o.mode ?? o.vehicle ?? '').trim();
+      const title = String(o.title ?? o.name ?? type ?? '').trim();
+      const description = String(o.description ?? o.notes ?? o.route ?? '').trim();
+      const price = parseMoney(o.price);
+      if (!title && !type && !description && price <= 0) return null;
+      return {
+        title: title || type || '—',
+        type: type || title,
+        description,
+        price,
+      };
+    })
+    .filter(Boolean) as ClientQuoteTransport[];
+}
+
+/** يدمج activities_proposals و activities (وأي alias) لصفحة العميل */
+export function extractClientQuoteActivities(
+  row: QuotationRow | Record<string, unknown>,
+): ClientQuoteActivity[] {
+  const record = row as Record<string, unknown>;
+  const mapped = mapQuotationRow(record);
+
+  const fromProposals = mapped.activities_proposals
+    .filter((a) => a.name || a.location || a.description || a.price > 0)
+    .map((a) => ({
+      title: a.name || '—',
+      description: a.description,
+      location: a.location,
+      price: a.price,
+    }));
+
+  const fromRaw = parseClientActivitiesRaw(
+    pickJsonbArray(record, 'activities', 'activities_details', 'activitiesDetails'),
+  );
+
+  const seen = new Set<string>();
+  const merged: ClientQuoteActivity[] = [];
+  for (const item of [...fromProposals, ...fromRaw]) {
+    const key = `${item.title}|${item.description}|${item.location}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    merged.push(item);
+  }
+  return merged;
+}
+
+/** يدمج transport_proposals و transportation (وأي alias) لصفحة العميل */
+export function extractClientQuoteTransportation(
+  row: QuotationRow | Record<string, unknown>,
+): ClientQuoteTransport[] {
+  const record = row as Record<string, unknown>;
+  const mapped = mapQuotationRow(record);
+
+  const fromProposals = mapped.transport_proposals
+    .filter((t) => t.description || t.mode || t.price > 0)
+    .map((t) => ({
+      title: t.mode || t.description || '—',
+      type: t.mode,
+      description: t.description,
+      price: t.price,
+    }));
+
+  const fromRaw = parseClientTransportRaw(
+    pickJsonbArray(record, 'transportation', 'transport_details', 'transportDetails'),
+  );
+
+  const seen = new Set<string>();
+  const merged: ClientQuoteTransport[] = [];
+  for (const item of [...fromProposals, ...fromRaw]) {
+    const key = `${item.title}|${item.type}|${item.description}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    merged.push(item);
+  }
+  return merged;
+}
+
+/** JSON للحفظ في أعمدة activities / transportation (توافق العرض للعميل) */
+export function serializeActivitiesForClientColumn(
+  rows: QuotationActivityProposal[] | null | undefined,
+): Record<string, unknown>[] {
+  const saved = serializeActivityProposalsForSave(rows ?? []);
+  return Array.isArray(saved)
+    ? saved.map((row) => ({
+        ...row,
+        title: row.name,
+      }))
+    : [];
+}
+
+export function serializeTransportationForClientColumn(
+  rows: QuotationTransportProposal[] | null | undefined,
+): Record<string, unknown>[] {
+  const saved = serializeTransportProposalsForSave(rows ?? []);
+  return Array.isArray(saved)
+    ? saved.map((row) => ({
+        ...row,
+        type: row.mode,
+        title: row.mode || row.description,
+      }))
+    : [];
+}
+
+/** أعمدة quotations المطلوبة لصفحة العميل */
+export const PUBLIC_QUOTATION_SELECT =
+  'id, client_id, lead_id, title, destinations, start_date, end_date, total_estimated_cost, expected_profit, status, flight_proposals, hotel_proposals, activities, transportation, profit_margin, service_fee, grand_total, lead_source, created_at, clients(id, name, phone_wa), lead:leads(id, full_name, phone_wa)';
+
+/** أعمدة هاتف العميل المحتملة في clients */
+const CLIENT_PHONE_KEYS = ['phone_wa', 'phone_number', 'phone'] as const;
+
+/** يختار أول رقم هاتف غير فارغ من صف clients */
+export function pickClientPhoneFromRecord(
+  record: Record<string, unknown> | null | undefined,
+): string {
+  if (!record) return '';
+  for (const key of CLIENT_PHONE_KEYS) {
+    const value = String(record[key] ?? '').trim();
+    if (value) return value;
+  }
+  return '';
+}
+
+/** يوحّد صف clients المضمّن (اسم + هاتف) لصفوف عروض الأسعار */
+export function mapQuotationClientEmbed(raw: unknown): QuotationRow['clients'] | null {
+  if (!raw) return null;
+  const record = Array.isArray(raw) ? raw[0] : raw;
+  if (!record || typeof record !== 'object') return null;
+  const o = record as Record<string, unknown>;
+  const idRaw = o.id;
+  const id =
+    idRaw != null && String(idRaw).trim() !== ''
+      ? Number.isFinite(Number(idRaw))
+        ? Number(idRaw)
+        : undefined
+      : undefined;
+  const name = String(o.name ?? '').trim() || null;
+  const phone = pickClientPhoneFromRecord(o);
+  if (!id && !name && !phone) return null;
+  return { id, name, phone_wa: phone || null };
 }
 
 export function mapQuotationRow(row: Record<string, unknown>): QuotationRow {
   const status = parseQuotationStatus(row.status);
-  const rawClients = row.clients ?? row.client;
-  const clients =
-    rawClients && typeof rawClients === 'object' && !Array.isArray(rawClients)
-      ? (rawClients as QuotationRow['clients'])
-      : Array.isArray(rawClients)
-        ? (rawClients[0] as QuotationRow['clients'])
-        : null;
+  let clients = mapQuotationClientEmbed(row.clients ?? row.client);
+
+  // Merge lead contact when clients embed is empty / incomplete
+  const leadRaw = row.leads ?? row.lead;
+  const leadRecord = Array.isArray(leadRaw) ? leadRaw[0] : leadRaw;
+  if (leadRecord && typeof leadRecord === 'object') {
+    const lead = leadRecord as Record<string, unknown>;
+    const leadName = String(lead.full_name ?? lead.name ?? '').trim();
+    const leadPhone =
+      pickClientPhoneFromRecord(lead) || String(lead.phone_wa ?? '').trim();
+    if (leadName || leadPhone) {
+      clients = {
+        id: clients?.id,
+        name: clients?.name || leadName || null,
+        phone_wa: clients?.phone_wa || leadPhone || null,
+      };
+    }
+  }
+
+  const leadId = row.lead_id != null ? normalizeQuotationId(row.lead_id) || null : null;
+  const tripCategoryRaw = String(row.trip_category ?? 'private').trim();
+  const trip_category: QuotationTripCategory =
+    tripCategoryRaw === 'group' ? 'group' : 'private';
 
   return {
     id: normalizeQuotationId(row.id),
+    lead_id: leadId,
     client_id: row.client_id != null ? normalizeQuotationId(row.client_id) || null : null,
     title: String(row.title ?? '').trim(),
     destinations: parseDestinations(row.destinations),
@@ -325,6 +702,9 @@ export function mapQuotationRow(row: Record<string, unknown>): QuotationRow {
     total_estimated_cost: parseMoney(row.total_estimated_cost),
     expected_profit: parseMoney(row.expected_profit),
     status,
+    paid_amount: parseMoney(row.paid_amount),
+    remaining_amount: parseMoney(row.remaining_amount),
+    trip_category,
     flight_proposals: parseFlightProposals(
       pickJsonbArray(row, 'flight_proposals', 'flights_details', 'flightsDetails'),
     ),
@@ -332,10 +712,22 @@ export function mapQuotationRow(row: Record<string, unknown>): QuotationRow {
       pickJsonbArray(row, 'hotel_proposals', 'hotels_details', 'hotelsDetails'),
     ),
     activities_proposals: parseActivityProposals(
-      pickJsonbArray(row, 'activities_proposals', 'activities_details', 'activitiesDetails'),
+      pickJsonbArray(
+        row,
+        'activities',
+        'activities_proposals',
+        'activities_details',
+        'activitiesDetails',
+      ),
     ),
     transport_proposals: parseTransportProposals(
-      pickJsonbArray(row, 'transport_proposals', 'transport_details', 'transportDetails'),
+      pickJsonbArray(
+        row,
+        'transportation',
+        'transport_proposals',
+        'transport_details',
+        'transportDetails',
+      ),
     ),
     profit_margin: parseMoney(row.profit_margin ?? 20),
     service_fee: parseMoney(row.service_fee),
@@ -355,8 +747,7 @@ export function quotationClientName(row: QuotationRow): string {
 }
 
 export function quotationClientPhone(row: QuotationRow): string {
-  const c = row.clients;
-  return String(c?.phone_wa ?? '').trim();
+  return pickClientPhoneFromRecord(row.clients as Record<string, unknown> | null | undefined);
 }
 
 export function quotationTotalPrice(row: QuotationRow): number {
@@ -413,10 +804,11 @@ export function serializeActivityProposalsForSave(
   rows: QuotationActivityProposal[],
 ): Record<string, unknown>[] {
   return rows
-    .filter((r) => r.name.trim() || r.description.trim() || r.price > 0)
+    .filter((r) => r.name.trim() || r.location.trim() || r.description.trim() || r.price > 0)
     .map((r) => ({
       id: r.id,
       name: r.name.trim(),
+      location: r.location.trim(),
       description: r.description.trim(),
       price: parseMoney(r.price),
     }));
@@ -470,17 +862,91 @@ export async function insertQuotation(input: QuotationInsertInput): Promise<stri
 export async function fetchQuotationsList(): Promise<QuotationRow[]> {
   if (!supabase) return [];
 
-  const { data, error } = await supabase
+  const withLeadEmbed = await supabase
     .from('quotations')
     .select(
-      'id, client_id, title, destinations, start_date, end_date, total_estimated_cost, expected_profit, status, flight_proposals, hotel_proposals, created_at, updated_at, client:clients(id, name, phone_wa)',
+      'id, client_id, lead_id, title, destinations, start_date, end_date, total_estimated_cost, expected_profit, status, flight_proposals, hotel_proposals, created_at, updated_at, client:clients(id, name, phone_wa), lead:leads(id, full_name, phone_wa)',
     )
     .order('created_at', { ascending: false });
 
+  let data = withLeadEmbed.data;
+  let error = withLeadEmbed.error;
+
+  if (error) {
+    // FK embed may be missing — still pull lead_id and attach contacts separately
+    const fallback = await supabase
+      .from('quotations')
+      .select(
+        'id, client_id, lead_id, title, destinations, start_date, end_date, total_estimated_cost, expected_profit, status, flight_proposals, hotel_proposals, created_at, updated_at, client:clients(id, name, phone_wa)',
+      )
+      .order('created_at', { ascending: false });
+    data = fallback.data;
+    error = fallback.error;
+  }
+
   if (error) throw new Error(error.message || 'تعذر تحميل عروض الأسعار.');
-  return (data ?? [])
+
+  const mapped = (data ?? [])
     .map((row) => mapQuotationRow(row as Record<string, unknown>))
     .filter((row) => Boolean(row.id));
+
+  return attachLeadContactsToQuotationRows(mapped);
+}
+
+async function attachLeadContactsToQuotationRows(
+  rows: QuotationRow[],
+): Promise<QuotationRow[]> {
+  if (!supabase || !rows.length) return rows;
+
+  const needsContact = rows.filter(
+    (r) => quotationClientName(r) === '—' || !quotationClientPhone(r),
+  );
+  if (!needsContact.length) return rows;
+
+  const leadIds = [
+    ...new Set(needsContact.map((r) => r.lead_id).filter((id): id is string => Boolean(id))),
+  ];
+
+  const byLeadId = new Map<string, { name: string; phone: string }>();
+
+  if (leadIds.length) {
+    const { data: leads, error } = await supabase
+      .from('leads')
+      .select('id, full_name, phone_wa')
+      .in('id', leadIds);
+    if (error) console.warn('[quotations] leads contact fallback:', error.message);
+    for (const lead of leads ?? []) {
+      const key = normalizeQuotationId((lead as { id?: unknown }).id);
+      if (!key) continue;
+      byLeadId.set(key, {
+        name: String((lead as { full_name?: unknown }).full_name ?? '').trim(),
+        phone: String((lead as { phone_wa?: unknown }).phone_wa ?? '').trim(),
+      });
+    }
+  }
+
+  // Skip leads.client_id lookup — column often missing until clients_intake_pipeline.sql
+
+  if (!byLeadId.size) return rows;
+
+  return rows.map((row) => {
+    const currentName = quotationClientName(row);
+    const currentPhone = quotationClientPhone(row);
+    if (currentName !== '—' && currentPhone) return row;
+
+    const fromLead = row.lead_id ? byLeadId.get(normalizeQuotationId(row.lead_id)) : undefined;
+    if (!fromLead || (!fromLead.name && !fromLead.phone)) return row;
+
+    return {
+      ...row,
+      clients: {
+        ...row.clients,
+        id: row.clients?.id,
+        name: currentName !== '—' ? row.clients?.name : fromLead.name || row.clients?.name || null,
+        phone_wa: currentPhone || fromLead.phone || row.clients?.phone_wa || null,
+      },
+    };
+  });
 }
 
 export async function cloneQuotation(sourceId: string | number): Promise<string> {
@@ -511,8 +977,8 @@ export async function cloneQuotation(sourceId: string | number): Promise<string>
     status: 'draft' as const,
     flight_proposals: row.flight_proposals ?? [],
     hotel_proposals: row.hotel_proposals ?? [],
-    activities_proposals: row.activities_proposals ?? [],
-    transport_proposals: row.transport_proposals ?? [],
+    activities: pickJsonbArray(row, 'activities', 'activities_proposals') ?? [],
+    transportation: pickJsonbArray(row, 'transportation', 'transport_proposals') ?? [],
     profit_margin: parseMoney(row.profit_margin ?? 20),
     service_fee: parseMoney(row.service_fee),
     grand_total: parseMoney(row.grand_total),
@@ -588,10 +1054,10 @@ export function hotelMatchesDestination(
   const countryNorm = normalizeArabic(countryRaw);
 
   return (
-    (cityNorm && cityNorm === selNorm) ||
-    (countryNorm && countryNorm === selNorm) ||
-    (cityRaw && (cityRaw.includes(sel) || sel.includes(cityRaw))) ||
-    (countryRaw && (countryRaw.includes(sel) || sel.includes(countryRaw)))
+    Boolean(cityNorm && cityNorm === selNorm) ||
+    Boolean(countryNorm && countryNorm === selNorm) ||
+    Boolean(cityRaw && (cityRaw.includes(sel) || sel.includes(cityRaw))) ||
+    Boolean(countryRaw && (countryRaw.includes(sel) || sel.includes(countryRaw)))
   );
 }
 
@@ -682,15 +1148,30 @@ export async function fetchQuotationById(id: string | number): Promise<Quotation
   if (!supabase) throw new Error('Supabase غير مهيأ.');
   const key = quotationIdForQuery(id);
 
-  const { data, error } = await supabase
+  let data: Record<string, unknown> | null = null;
+
+  const primary = await supabase
     .from('quotations')
-    .select('*, clients(id, name, phone_wa)')
+    .select(PUBLIC_QUOTATION_SELECT)
     .eq('id', key)
     .maybeSingle();
 
-  if (error) throw new Error(error.message || 'تعذر تحميل عرض السعر.');
+  if (!primary.error && primary.data) {
+    data = primary.data as Record<string, unknown>;
+  } else {
+    const fallback = await supabase
+      .from('quotations')
+      .select('*, clients(id, name, phone_wa)')
+      .eq('id', key)
+      .maybeSingle();
+    if (fallback.error) {
+      throw new Error(fallback.error.message || primary.error?.message || 'تعذر تحميل عرض السعر.');
+    }
+    data = (fallback.data as Record<string, unknown> | null) ?? null;
+  }
+
   if (!data) return null;
-  return mapQuotationRow(data as Record<string, unknown>);
+  return mapQuotationRow(data);
 }
 
 export async function approveQuotation(id: string | number): Promise<void> {

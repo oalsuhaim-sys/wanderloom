@@ -1,6 +1,10 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { isQuotationStatusApproved, normalizeQuotationId } from '@/lib/crm-quotations';
+import {
+  canonicalizeReferralCode,
+  referralCodeLookupVariants,
+} from '@/lib/referral-url';
 import { addClientWalletTransaction } from '@/lib/vip-wallet-ledger';
 
 /** مكافأة المحفظة للمُحيل عند تأكيد الحجز */
@@ -23,6 +27,12 @@ export function isQuotationReferralTriggerStatus(raw: unknown): boolean {
 
 function normalizeReferralCode(raw: unknown): string {
   return String(raw ?? '').trim();
+}
+
+function referralCodesEqual(a: unknown, b: unknown): boolean {
+  const left = canonicalizeReferralCode(String(a ?? ''));
+  const right = canonicalizeReferralCode(String(b ?? ''));
+  return Boolean(left && right && left === right);
 }
 
 async function resolveReferralCodeForQuotation(
@@ -73,42 +83,76 @@ async function findReferrerByCode(
   if (!normalized) return null;
 
   const selectCols = 'id, wallet_balance, referral_code, ref_code';
+  const variants = referralCodeLookupVariants(normalized);
 
-  const byReferralCode = await supabase
-    .from('clients')
-    .select(selectCols)
-    .eq('referral_code', normalized)
-    .maybeSingle();
-
-  if (byReferralCode.error && !byReferralCode.error.message.includes('referral_code')) {
-    throw byReferralCode.error;
-  }
-
-  let row = byReferralCode.data as Record<string, unknown> | null;
-
-  if (!row) {
-    const byRefCode = await supabase
+  for (const variant of variants) {
+    const byReferralCode = await supabase
       .from('clients')
       .select(selectCols)
-      .eq('ref_code', normalized)
+      .eq('referral_code', variant)
       .maybeSingle();
-    if (byRefCode.error) throw byRefCode.error;
-    row = byRefCode.data as Record<string, unknown> | null;
+
+    if (byReferralCode.error && !byReferralCode.error.message.includes('referral_code')) {
+      throw byReferralCode.error;
+    }
+
+    let row = byReferralCode.data as Record<string, unknown> | null;
+
+    if (!row) {
+      const byRefCode = await supabase
+        .from('clients')
+        .select(selectCols)
+        .eq('ref_code', variant)
+        .maybeSingle();
+      if (byRefCode.error) throw byRefCode.error;
+      row = byRefCode.data as Record<string, unknown> | null;
+    }
+
+    if (!row?.id) continue;
+
+    const id = Number(row.id);
+    if (!Number.isFinite(id) || id <= 0) continue;
+    if (excludeClientId != null && id === excludeClientId) continue;
+
+    return {
+      id,
+      wallet_balance: Number(row.wallet_balance ?? 0) || 0,
+    };
   }
 
-  if (!row?.id) return null;
+  // Soft fallback: scan recent clients and match canonical form (WL-HALA100 ≡ WL-HALA-100)
+  const target = canonicalizeReferralCode(normalized);
+  if (!target) return null;
 
-  const referrerId = Number(row.id);
-  if (!Number.isFinite(referrerId)) return null;
-  if (excludeClientId != null && referrerId === excludeClientId) return null;
+  const { data: candidates, error } = await supabase
+    .from('clients')
+    .select(selectCols)
+    .or('referral_code.not.is.null,ref_code.not.is.null')
+    .order('id', { ascending: false })
+    .limit(500);
 
-  const wallet_balance =
-    row.wallet_balance != null ? Number(row.wallet_balance) : 0;
+  if (error) {
+    if (!/column|schema cache/i.test(error.message)) throw error;
+    return null;
+  }
 
-  return {
-    id: referrerId,
-    wallet_balance: Number.isFinite(wallet_balance) ? wallet_balance : 0,
-  };
+  for (const row of candidates ?? []) {
+    const record = row as Record<string, unknown>;
+    const id = Number(record.id);
+    if (!Number.isFinite(id) || id <= 0) continue;
+    if (excludeClientId != null && id === excludeClientId) continue;
+    if (
+      referralCodesEqual(record.referral_code, target) ||
+      referralCodesEqual(record.ref_code, target)
+    ) {
+      return {
+        id,
+        wallet_balance: Number(record.wallet_balance ?? 0) || 0,
+      };
+    }
+  }
+
+  return null;
 }
 
 async function releaseReferralClaim(

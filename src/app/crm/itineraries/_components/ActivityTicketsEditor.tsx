@@ -2,10 +2,7 @@
 
 import { Plus, Trash2 } from 'lucide-react';
 
-import {
-  createEmptyActivityTicket,
-  type ActivityTicket,
-} from '@/lib/itinerary-tickets';
+import { createEmptyActivityTicket, type ActivityTicket } from '@/lib/itinerary-tickets';
 
 type Props = {
   tickets: ActivityTicket[];

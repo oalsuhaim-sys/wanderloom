@@ -1,11 +1,19 @@
 /** أنواع وتحويلات مركز التسويق — مصدر الحقيقة للـ UI */
 
 import {
+  marketingItemCategory,
+  marketingRowCategory,
   normalizeContentCategory,
   normalizeMediaType,
   type MarketingContentCategory,
+  type MarketingContentRow,
   type MarketingMediaType,
 } from '@/lib/marketing-content';
+import {
+  marketingFullText,
+  marketingLongestCaptionFromRow,
+  marketingLongestPromptFromRow,
+} from '@/lib/marketing-prompt-text';
 
 export type { MarketingContentCategory, MarketingMediaType };
 
@@ -14,6 +22,7 @@ export type AiContentItem = {
   mediaType: MarketingMediaType;
   contentCategory: MarketingContentCategory;
   media_type?: string;
+  category?: string;
   content_category?: string;
   campaign: string;
   visualPrompt: string;
@@ -69,7 +78,9 @@ export type MarketingAiPromptRow = {
   category: string;
   content_category?: string | null;
   media_type: string | null;
-  campaign: string;
+  campaign_name?: string | null;
+  /** @deprecated استخدم campaign_name */
+  campaign?: string | null;
   visual_prompt: string;
   caption: string;
   hashtags: string;
@@ -107,25 +118,88 @@ export type BrandIdentityRow = {
 };
 
 function safeStr(value: string | null | undefined): string {
-  return value ?? '';
+  return marketingFullText(value);
 }
 
 function normalizeCategory(value: string | null | undefined): MarketingContentCategory {
   return normalizeContentCategory(value);
 }
 
+function hubCardKey(contentCategory: string, title: string): string {
+  return `${contentCategory.trim()}::${title.trim()}`;
+}
+
+function preferLongerHubText(current: string, candidate: string): string {
+  if (!candidate.trim()) return current;
+  if (!current.trim()) return candidate;
+  return candidate.length > current.length ? candidate : current;
+}
+
+/** دمج نصوص marketing_content القديمة (مثل قروبات) في بطاقات مصنع الـ AI */
+export function mergeLegacyContentIntoAiItems(
+  aiItems: AiContentItem[],
+  legacyRows: MarketingContentRow[],
+): AiContentItem[] {
+  const legacyByKey = new Map<string, MarketingContentRow>();
+  for (const row of legacyRows) {
+    const title = marketingFullText(row.title).trim();
+    const category = marketingFullText(row.content_category).trim();
+    const prompt = marketingFullText(row.prompt).trim();
+    if (!prompt) continue;
+    if (title === 'الذكاء الاصطناعي' && category === 'أخرى') continue;
+    legacyByKey.set(hubCardKey(category, title), row);
+  }
+
+  const merged = aiItems.map((item) => {
+    const key = hubCardKey(item.content_category ?? '', item.campaign);
+    const legacy = legacyByKey.get(key);
+    if (!legacy) return item;
+
+    return {
+      ...item,
+      visualPrompt: preferLongerHubText(item.visualPrompt, marketingFullText(legacy.prompt)),
+      caption: preferLongerHubText(item.caption, marketingFullText(legacy.caption)),
+    };
+  });
+
+  const existingKeys = new Set(
+    merged.map((item) => hubCardKey(item.content_category ?? '', item.campaign)),
+  );
+
+  for (const [key, legacy] of legacyByKey) {
+    if (existingKeys.has(key)) continue;
+    const category = marketingFullText(legacy.content_category).trim();
+    merged.push({
+      id: legacy.id,
+      mediaType: normalizeMediaType(legacy.media_type),
+      contentCategory: normalizeCategory(category),
+      media_type: marketingFullText(legacy.media_type).trim() || 'فيديو',
+      content_category: category || 'عام',
+      campaign: marketingFullText(legacy.title).trim() || 'حملة AI',
+      visualPrompt: marketingFullText(legacy.prompt),
+      caption: marketingFullText(legacy.caption),
+      hashtags: '',
+      status: marketingFullText(legacy.status) || 'جاهز للتوليد',
+    });
+  }
+
+  return merged;
+}
+
 export function mapAiRow(row: MarketingAiPromptRow): AiContentItem {
+  const raw = row as unknown as Record<string, unknown>;
   const media_type = String(row.media_type ?? '').trim() || 'فيديو';
-  const content_category = String(row.content_category ?? row.category ?? '').trim() || 'عام';
+  const normalizedCategory = marketingRowCategory(row);
   return {
     id: row.id,
     mediaType: normalizeMediaType(row.media_type),
-    contentCategory: normalizeCategory(row.content_category ?? row.category),
+    contentCategory: normalizedCategory,
     media_type,
-    content_category,
-    campaign: safeStr(row.campaign),
-    visualPrompt: safeStr(row.visual_prompt),
-    caption: safeStr(row.caption),
+    category: normalizedCategory,
+    content_category: normalizedCategory,
+    campaign: safeStr(row.campaign_name ?? row.campaign),
+    visualPrompt: marketingLongestPromptFromRow(raw),
+    caption: marketingLongestCaptionFromRow(raw),
     hashtags: safeStr(row.hashtags),
     status: safeStr(row.status),
   };
@@ -167,14 +241,19 @@ export function mapBrandRow(row: BrandIdentityRow | null): BrandIdentity {
 }
 
 export function aiItemToInsert(data: Omit<AiContentItem, 'id'>) {
+  const campaign = marketingFullText(data.campaign);
+  const category = marketingFullText(data.category ?? data.content_category ?? data.contentCategory);
   return {
-    category: data.content_category,
+    category,
+    content_category: category,
     media_type: data.media_type,
-    campaign: data.campaign,
-    visual_prompt: data.visualPrompt,
-    caption: data.caption,
-    hashtags: data.hashtags,
-    status: data.status,
+    campaign,
+    campaign_name: campaign,
+    visual_prompt: marketingFullText(data.visualPrompt),
+    prompt: marketingFullText(data.visualPrompt),
+    caption: marketingFullText(data.caption),
+    hashtags: marketingFullText(data.hashtags),
+    status: marketingFullText(data.status),
     updated_at: new Date().toISOString(),
   };
 }

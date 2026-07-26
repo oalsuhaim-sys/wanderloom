@@ -1,6 +1,6 @@
 'use client'
 
-import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import {
   Activity,
@@ -23,6 +23,7 @@ import {
 } from 'lucide-react'
 
 import VipSpendingTierBadge from '@/components/VipSpendingTierBadge'
+import { deleteClientAction, fetchClientDirectoryAction } from '@/app/actions/clientDirectoryActions'
 import ReferralCodeBadge from '@/app/crm/clients/_components/ReferralCodeBadge'
 import ReferralQrModal from '@/app/crm/clients/_components/ReferralQrModal'
 import ContactFilterTabs from '@/app/crm/clients/_components/ContactFilterTabs'
@@ -32,7 +33,6 @@ import ClientDnaSmartEventRecommendations from '@/app/crm/clients/_components/Cl
 import ClientPaymentWhatsAppButton from '@/app/crm/clients/_components/ClientPaymentWhatsAppButton'
 import ClientSalesStageControl from '@/app/crm/clients/_components/ClientSalesStageControl'
 import ClientTargetTripBadge from '@/app/crm/clients/_components/ClientTargetTripBadge'
-import InfluencerStatsSection from '@/app/crm/clients/_components/InfluencerStatsSection'
 import { countClientTripsByClientIds, sumClientTripProfitByClientIds } from '@/lib/client-trips-crm'
 import {
   countClientsByTab,
@@ -45,15 +45,9 @@ import { ONBOARDING_HOTEL_TYPE_OPTIONS } from '@/lib/client-onboarding'
 import {
   buildClientInsertPayload,
   buildClientUpdatePayload,
-  CLIENT_INFLUENCER_COLUMNS,
   CLIENT_TIER_OPTIONS,
-  CLIENT_TYPE_OPTIONS,
-  clientTypeEmoji,
   DEFAULT_CLIENT_TYPE,
-  isInfluencerClient,
-  isLeaderClient,
-  normalizeVipClient,
-  shouldShowInfluencerCardSection,
+  clientTypeEmoji,
   type ClientTier,
   type ClientType,
   type VipClientProfile,
@@ -68,10 +62,10 @@ import { LEAD_SOURCE_OPTIONS, LEAD_SOURCE_SELECT_CLASS } from '@/lib/lead-source
 const ar = {
   "loyalty": "نظام الولاء",
   "title": "قاعدة العملاء ونظام الولاء",
-  "subtitle": "شرائح العملاء، إحصائيات الرحلات والإحالات، وأكواد الإحالة — مع ملف الـ DNA السياحي لكل عميل.",
+  "subtitle": "مصدر واحد للحقيقة: جدول العملاء — الشرائح، الرحلات، الإحالات، وملف الـ DNA السياحي.",
   "addBtn": "إضافة عميل جديد",
   "searchPh": "بحث بالاسم، الشريحة، كود الإحالة، الهاتف، أو التفضيلات…",
-  "searchPhUnified": "بحث في العملاء، الليدرز، والمؤثرين…",
+  "searchPhUnified": "بحث في قاعدة العملاء…",
   "loading": "جاري تحميل قاعدة العملاء…",
   "empty": "لا يوجد عملاء بعد — أضف أول عميل من الزر أعلاه.",
   "noMatch": "لا توجد نتائج مطابقة للبحث.",
@@ -84,6 +78,8 @@ const ar = {
   "delete": "حذف",
   "deleteConfirm": "هل أنت متأكد من حذف هذا العميل نهائياً؟",
   "deleteConstraintErr": "عذراً، لا يمكن حذف هذا العميل لوجود عروض أسعار أو رحلات مرتبطة به.",
+  "deleteOk": "تم حذف العميل بنجاح من قاعدة البيانات.",
+  "deleteFail": "فشل حذف العميل من قاعدة البيانات.",
   "editTitle": "تعديل بيانات العميل",
   "addTitle": "إضافة عميل جديد",
   "modalHint": "يُحفظ الاسم في name مع بيانات الولاء والـ DNA",
@@ -110,18 +106,9 @@ const ar = {
   "copyOk": "تم نسخ كود الإحالة!",
   "copyFail": "تعذر نسخ الكود — انسخه يدوياً: ",
   "resultCount": "{n} من {m} عميل",
-  "resultCountUnified": "{n} من {m} جهة اتصال",
+  "resultCountUnified": "{n} من {m} عميل",
   "emptyTabClients": "لا يوجد عملاء في هذه القائمة بعد.",
-  "emptyTabLeaders": "لا يوجد ليدرز بكود إحالة بعد.",
-  "emptyTabInfluencers": "لا يوجد مؤثرون في هذه القائمة بعد.",
-  "clientType": "نوع جهة الاتصال",
-  "influencerSection": "بيانات المؤثر",
-  "platforms": "المنصات (سناب، إنستغرام…)",
-  "followers": "عدد المتابعين",
-  "influencerCommission": "عمولة الإحالة (%)",
-  "contentFocus": "المحتوى / التخصص",
-  "profileUrl": "رابط الحساب",
-  "emptyTabAll": "لا توجد جهات اتصال بعد.",
+  "emptyTabAll": "لا توجد عملاء بعد.",
   "dnaFlight": "المقعد المفضل (طيران)",
   "dnaHotel": "نوع الفنادق المفضلة",
   "dnaDietary": "الحساسية أو تفضيل الطعام",
@@ -138,16 +125,7 @@ const ar = {
 } as const
 
 const CRM_FIELD =
-  'w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm font-semibold text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-[#001f3f]/40 focus:ring-2 focus:ring-[#d4af37]/45 [color-scheme:light]'
-
-const CLIENT_SELECT_CORE =
-  'id, name, phone_wa, email, birth_date, flight_seat, food_allergies, favorite_drink, hotel_preference, passport_expiry, flight_preferences, hotel_preferences, dietary, secret_notes, dna_interests, dna_special_requests, dna_activity_level, travel_dna, created_at, client_type, client_tier, total_trips, referrals_count, referral_code, ref_code, lead_source, is_leader, sales_stage, used_code, target_trip, tags'
-
-const CLIENT_SELECT_FALLBACK =
-  `${CLIENT_SELECT_CORE}, ${CLIENT_INFLUENCER_COLUMNS}`
-
-const CLIENT_LIST_SELECT =
-  `${CLIENT_SELECT_FALLBACK}, total_spent, total_profit, vip_tier, wallet_balance, tags, onboarding_completed`
+  'w-full rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-[#1A3B2A] outline-none transition-all placeholder:text-gray-400 focus:border-[#C5A059] focus:ring-2 focus:ring-[#C5A059]/50 [color-scheme:light]'
 
 const EMPTY_FORM = {
   name: '',
@@ -244,6 +222,19 @@ function formToClientPatch(form: typeof EMPTY_FORM): Partial<VipClientProfile> {
   }
 }
 
+/** Replace-only: never append. Keeps first occurrence of each DB id. */
+function uniqueClientsById(rows: VipClientProfile[]): VipClientProfile[] {
+  const seen = new Set<string>()
+  const out: VipClientProfile[] = []
+  for (const row of rows) {
+    const id = String(row.id ?? '').trim()
+    if (!id || seen.has(id)) continue
+    seen.add(id)
+    out.push(row)
+  }
+  return out
+}
+
 function CollapsibleSection({
   title,
   icon,
@@ -265,11 +256,14 @@ function CollapsibleSection({
     <div className="border-t border-gray-100/90 first:border-t-0">
       <button
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={(e) => {
+          e.stopPropagation()
+          setOpen((v) => !v)
+        }}
         className="flex w-full items-center justify-between gap-2 py-3 text-right transition hover:bg-gray-50/80"
       >
-        <span className="flex items-center gap-2 text-xs font-bold tracking-wide text-[#001f3f]">
-          <span className="text-[#d4af37]">{icon}</span>
+        <span className="flex items-center gap-2 text-xs font-bold tracking-wide text-[#1A3B2A]">
+          <span className="text-[#C5A059]">{icon}</span>
           {title}
         </span>
         <ChevronDown
@@ -283,7 +277,7 @@ function CollapsibleSection({
         <div className="overflow-hidden">
           {premiumNote ? (
             <div className="pb-3">
-              <div className="mt-2 rounded-lg border border-[#D4AF37]/30 bg-[#FEFDF9] p-3 shadow-sm">
+              <div className="mt-2 rounded-lg border border-[#C5A059]/30 bg-[#FEFDF9] p-3 shadow-sm">
                 <p className="whitespace-pre-wrap text-sm font-medium leading-relaxed text-gray-800">
                   {hasContent ? text : 'لا توجد ملاحظات سرية.'}
                 </p>
@@ -303,6 +297,7 @@ function CollapsibleSection({
 }
 
 export default function ClientsLoyaltyPage() {
+  const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [clients, setClients] = useState<VipClientProfile[]>([])
@@ -326,6 +321,19 @@ export default function ClientsLoyaltyPage() {
     window.setTimeout(() => setErrorToast(''), 6000)
   }
 
+  const openClientProfile = useCallback(
+    (row: VipClientProfile) => {
+      if (row.id) router.push(`/crm/clients/${row.id}`)
+    },
+    [router],
+  )
+
+  const applyClientsReplace = useCallback((rows: VipClientProfile[]) => {
+    // ALWAYS replace — never setClients(prev => [...prev, ...rows])
+    setClients(uniqueClientsById(rows))
+  }, [])
+
+  /** Manual refresh after save — does not run on mount (avoids Strict Mode thrash). */
   const loadClients = useCallback(async () => {
     setError('')
     if (!supabase) {
@@ -339,48 +347,14 @@ export default function ClientsLoyaltyPage() {
 
     setLoading(true)
     try {
-      let data: Record<string, unknown>[] | null = null
-      let fetchError: { message?: string } | null = null
-
-      const primary = await supabase
-        .from('clients')
-        .select(CLIENT_LIST_SELECT)
-        .order('created_at', { ascending: false })
-
-      if (!primary.error) {
-        data = (primary.data ?? []) as unknown as Record<string, unknown>[]
-      } else {
-        fetchError = primary.error
-        const msg = String(primary.error.message ?? '').toLowerCase()
-        const missingColumn =
-          msg.includes('column') ||
-          msg.includes('schema cache') ||
-          msg.includes('does not exist')
-
-        if (missingColumn) {
-          const fallback = await supabase
-            .from('clients')
-            .select(CLIENT_SELECT_FALLBACK)
-            .order('created_at', { ascending: false })
-          if (!fallback.error) {
-            data = (fallback.data ?? []) as unknown as Record<string, unknown>[]
-            fetchError = null
-          } else {
-            fetchError = fallback.error
-          }
-        }
+      const result = await fetchClientDirectoryAction()
+      if (!result.ok) {
+        throw new Error(result.error || ar.loadErr)
       }
 
-      if (fetchError) {
-        throw new Error(fetchError.message || ar.loadErr)
-      }
+      applyClientsReplace(result.rows)
 
-      const list = (data ?? [])
-        .map((r) => normalizeVipClient(r))
-        .filter((x): x is VipClientProfile => Boolean(x))
-      setClients(list)
-
-      const ids = list.map((c) => String(c.id))
+      const ids = uniqueClientsById(result.rows).map((c) => String(c.id))
       try {
         const [counts, profits] = await Promise.all([
           countClientTripsByClientIds(ids),
@@ -403,11 +377,77 @@ export default function ClientsLoyaltyPage() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [applyClientsReplace])
 
+  // Mount-only fetch — empty deps; REPLACE state only (never append)
   useEffect(() => {
-    void loadClients()
-  }, [loadClients])
+    let isMounted = true
+
+    const fetchData = async () => {
+      if (!isMounted) return
+      setLoading(true)
+      setError('')
+
+      if (!supabase) {
+        if (isMounted) {
+          showErrorToast(ar.supabaseErr)
+          setClients([])
+          setTripCounts({})
+          setProfitTotals({})
+          setLoading(false)
+        }
+        return
+      }
+
+      try {
+        const result = await fetchClientDirectoryAction()
+        if (!isMounted) return
+
+        if (!result.ok) {
+          throw new Error(result.error || ar.loadErr)
+        }
+
+        applyClientsReplace(result.rows)
+
+        const ids = uniqueClientsById(result.rows).map((c) => String(c.id))
+        try {
+          const [counts, profits] = await Promise.all([
+            countClientTripsByClientIds(ids),
+            sumClientTripProfitByClientIds(ids),
+          ])
+          if (isMounted) {
+            setTripCounts(counts)
+            setProfitTotals(profits)
+          }
+        } catch (tripErr) {
+          console.error('[CRM clients] trip stats failed', tripErr)
+          if (isMounted) {
+            setTripCounts({})
+            setProfitTotals({})
+          }
+        }
+      } catch (e) {
+        console.error('[CRM clients] mount fetch failed', e)
+        if (isMounted) {
+          const msg = e instanceof Error ? e.message : ar.loadErr
+          showErrorToast(msg)
+          setClients([])
+          setTripCounts({})
+          setProfitTotals({})
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false)
+        }
+      }
+    }
+
+    void fetchData()
+    return () => {
+      isMounted = false
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only
+  }, [])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -428,8 +468,6 @@ export default function ClientsLoyaltyPage() {
   const emptyTabMessage = useMemo(() => {
     if (search.trim()) return ar.noMatch
     if (activeTab === 'clients') return ar.emptyTabClients
-    if (activeTab === 'leaders') return ar.emptyTabLeaders
-    if (activeTab === 'influencers') return ar.emptyTabInfluencers
     if (clients.length === 0) return ar.emptyTabAll
     return ar.noMatch
   }, [activeTab, search, clients.length])
@@ -449,44 +487,46 @@ export default function ClientsLoyaltyPage() {
   }
 
   const handleDeleteClient = async (client: VipClientProfile) => {
-    if (!supabase || !client?.id) return
+    if (!client?.id) return
 
     const confirmDelete = window.confirm(ar.deleteConfirm)
     if (!confirmDelete) return
 
     setDeletingId(client.id)
     try {
-      const { error: err } = await supabase.from('clients').delete().eq('id', client.id)
+      // Service-role delete — awaits DB confirmation before touching React state
+      const result = await deleteClientAction(client.id)
 
-      if (err) {
-        const msg = (err.message ?? '').toLowerCase()
-        if (
-          msg.includes('foreign key') ||
-          msg.includes('violates') ||
-          msg.includes('constraint') ||
-          msg.includes('23503')
-        ) {
+      if (!result.ok) {
+        const msg = result.error || ar.deleteFail
+        if (msg.includes('عروض أسعار') || msg.includes('رحلات مرتبطة')) {
           alert(ar.deleteConstraintErr)
         } else {
-          alert(err.message || ar.loadErr)
+          alert(msg)
         }
+        console.error('[CRM clients] delete failed:', result.error)
         return
       }
 
-      setClients((prev) => prev.filter((c) => c.id !== client.id))
+      const removedId = String(result.deletedId || client.id)
+      setClients((prev) => prev.filter((c) => String(c.id) !== removedId && String(c.id) !== String(client.id)))
       setTripCounts((prev) => {
         const next = { ...prev }
         delete next[client.id]
+        delete next[removedId]
         return next
       })
       setProfitTotals((prev) => {
         const next = { ...prev }
         delete next[client.id]
+        delete next[removedId]
         return next
       })
+      setCopyToast(ar.deleteOk)
+      window.setTimeout(() => setCopyToast(''), 2800)
     } catch (e) {
       console.error('[CRM clients] delete failed', e)
-      alert(e instanceof Error ? e.message : ar.loadErr)
+      alert(e instanceof Error ? e.message : ar.deleteFail)
     } finally {
       setDeletingId(null)
     }
@@ -605,14 +645,14 @@ export default function ClientsLoyaltyPage() {
   return (
     <div dir="rtl" className="min-h-0 bg-gradient-to-b from-[#F6F4F0] via-[#FAF8F4] to-[#EDE8DD] pb-8 font-sans sm:pb-16">
       <div className="mx-auto max-w-7xl">
-        <header className="mb-6 rounded-2xl border border-[#d4af37]/25 bg-gradient-to-br from-white via-white to-amber-50/50 p-4 shadow-[0_24px_64px_-28px_rgba(0,31,63,0.35)] sm:mb-8 sm:rounded-3xl sm:p-6 md:p-8">
+        <header className="mb-6 rounded-2xl border border-[#C5A059]/25 bg-gradient-to-br from-white via-white to-amber-50/50 p-4 shadow-[0_24px_64px_-28px_rgba(0,31,63,0.35)] sm:mb-8 sm:rounded-3xl sm:p-6 md:p-8">
           <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between sm:gap-6">
             <div className="space-y-2">
-              <p className="inline-flex items-center gap-2 rounded-full border border-[#d4af37]/40 bg-[#001f3f]/5 px-3 py-1 text-[11px] font-black uppercase tracking-[0.18em] text-[#001f3f]">
-                <Crown className="h-3.5 w-3.5 text-[#d4af37]" aria-hidden />
+              <p className="inline-flex items-center gap-2 rounded-full border border-[#C5A059]/40 bg-[#1A3B2A]/5 px-3 py-1 text-[11px] font-black uppercase tracking-[0.18em] text-[#1A3B2A]">
+                <Crown className="h-3.5 w-3.5 text-[#C5A059]" aria-hidden />
                 {ar.loyalty}
               </p>
-              <h1 className="text-2xl font-black tracking-tight text-[#001f3f] sm:text-3xl md:text-[2rem]">
+              <h1 className="text-2xl font-black tracking-tight text-[#1A3B2A] sm:text-3xl md:text-[2rem]">
                 {ar.title}</h1>
               <p className="max-w-lg text-sm font-semibold leading-relaxed text-slate-600">
                 {ar.subtitle}</p>
@@ -620,9 +660,9 @@ export default function ClientsLoyaltyPage() {
             <button
               type="button"
               onClick={openAdd}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[#001f3f] px-6 py-3.5 text-sm font-black text-white shadow-lg shadow-[#001f3f]/20 transition hover:bg-[#002a55] focus:outline-none focus:ring-2 focus:ring-[#d4af37] focus:ring-offset-2 sm:w-auto"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[#1A3B2A] px-6 py-3.5 text-sm font-black text-white shadow-lg shadow-[#1A3B2A]/20 transition hover:bg-[#244F38] focus:outline-none focus:ring-2 focus:ring-[#C5A059] focus:ring-offset-2 sm:w-auto"
             >
-              <Plus className="h-5 w-5 text-[#d4af37]" aria-hidden />
+              <Plus className="h-5 w-5 text-[#C5A059]" aria-hidden />
               {ar.addBtn}
             </button>
           </div>
@@ -646,7 +686,7 @@ export default function ClientsLoyaltyPage() {
 
           <label className="relative block">
             <Search
-              className="pointer-events-none absolute right-4 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-[#d4af37]"
+              className="pointer-events-none absolute right-4 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-[#C5A059]"
               aria-hidden
             />
             <input
@@ -668,7 +708,7 @@ export default function ClientsLoyaltyPage() {
 
         {loading ? (
           <div className="flex min-h-[280px] flex-col items-center justify-center gap-3 rounded-2xl border border-white/80 bg-white/80 py-16 shadow-sm">
-            <Loader2 className="h-10 w-10 animate-spin text-[#001f3f]" aria-hidden />
+            <Loader2 className="h-10 w-10 animate-spin text-[#1A3B2A]" aria-hidden />
             <p className="text-sm font-semibold text-slate-500">{ar.loading}</p>
           </div>
         ) : filtered.length === 0 ? (
@@ -677,47 +717,72 @@ export default function ClientsLoyaltyPage() {
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
             {filtered.map((c) => (
               <article
-                key={c.id}
+                key={String(c.id)}
                 dir="rtl"
-                className="flex flex-col overflow-hidden rounded-2xl border border-[#d4af37]/15 bg-white shadow-md transition-shadow duration-300 hover:shadow-lg"
+                role="link"
+                tabIndex={0}
+                onClick={() => openClientProfile(c)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    openClientProfile(c)
+                  }
+                }}
+                className="flex cursor-pointer flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_10px_20px_rgba(0,0,0,0.05)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#C5A059]/60 focus-visible:ring-offset-2"
               >
-                <div className="border-b border-[#d4af37]/10 bg-gradient-to-l from-[#001f3f]/[0.03] to-transparent px-6 py-5">
+                <div className="border-b border-[#C5A059]/10 bg-gradient-to-l from-[#1A3B2A]/[0.03] to-transparent px-6 py-5">
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0 flex-1">
-                      <Link
-                        href={`/crm/clients/${c.id}`}
-                        className="block text-lg font-bold leading-snug text-[#001f3f] transition hover:text-[#002a55]"
-                      >
+                      <p className="block text-lg font-bold leading-snug text-[#1A3B2A] transition group-hover:text-[#244F38]">
                         {c.name ?? '—'}
-                      </Link>
+                      </p>
 
-                      <div className="mt-3 flex flex-wrap items-center gap-2">
-                        <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[#D4AF37]/30 bg-white/90 px-2.5 py-1 text-[10px] font-black text-[#1c3d27]">
-                          <span aria-hidden>
-                            {isInfluencerClient(c) ? '🌟' : isLeaderClient(c) ? '🚀' : clientTypeEmoji(c.client_type)}
-                          </span>
-                          {isInfluencerClient(c) ? 'مؤثر' : isLeaderClient(c) ? 'ليدر' : c.client_type}
+                      <div
+                        className="mt-3 flex flex-wrap items-center gap-2"
+                        onClick={(e) => e.stopPropagation()}
+                        onKeyDown={(e) => e.stopPropagation()}
+                      >
+                        <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[#C5A059]/30 bg-white/90 px-2.5 py-1 text-[10px] font-black text-[#1c3d27]">
+                          <span aria-hidden>{clientTypeEmoji(c.client_type)}</span>
+                          عميل
                         </span>
+
+                        {c.client_tier === 'vip' || c.client_tier === 'vvip' ? (
+                          <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[#C5A059]/45 bg-[#C5A059]/10 px-2.5 py-1 text-[10px] font-black text-[#8a6d1f]">
+                            <Crown className="h-3 w-3" aria-hidden />
+                            {c.client_tier === 'vvip' ? 'VVIP' : 'VIP'}
+                          </span>
+                        ) : null}
+
+                        {c.is_influencer ? (
+                          <span className="inline-flex shrink-0 items-center rounded-full border border-fuchsia-200 bg-fuchsia-50 px-2.5 py-1 text-[10px] font-black text-fuchsia-800">
+                            مؤثر
+                          </span>
+                        ) : null}
+
+                        {c.is_leader ? (
+                          <span className="inline-flex shrink-0 items-center rounded-full border border-sky-200 bg-sky-50 px-2.5 py-1 text-[10px] font-black text-sky-800">
+                            ليدر
+                          </span>
+                        ) : null}
 
                         {c.target_trip?.trim() ? (
                           <ClientTargetTripBadge label={c.target_trip} className="min-w-0 shrink" />
                         ) : null}
 
-                        {!isLeaderClient(c) && !isInfluencerClient(c) ? (
-                          <ClientSalesStageControl
-                            clientId={c.id}
-                            value={c.sales_stage ?? ''}
-                            compact
-                            className="min-w-0 shrink"
-                            onUpdated={(stage) => {
-                              setClients((prev) =>
-                                prev.map((row) =>
-                                  row.id === c.id ? { ...row, sales_stage: stage || '' } : row,
-                                ),
-                              )
-                            }}
-                          />
-                        ) : null}
+                        <ClientSalesStageControl
+                          clientId={c.id}
+                          value={c.sales_stage ?? ''}
+                          compact
+                          className="min-w-0 shrink"
+                          onUpdated={(stage) => {
+                            setClients((prev) =>
+                              prev.map((row) =>
+                                row.id === c.id ? { ...row, sales_stage: stage || '' } : row,
+                              ),
+                            )
+                          }}
+                        />
 
                         <ClientPaymentWhatsAppButton
                           clientId={c.id}
@@ -730,14 +795,18 @@ export default function ClientsLoyaltyPage() {
                         />
                       </div>
 
-                      <div className="mt-3 flex flex-col gap-2 text-sm text-slate-600">
+                      <div
+                        className="mt-3 flex flex-col gap-2 text-sm text-slate-600"
+                        onClick={(e) => e.stopPropagation()}
+                        onKeyDown={(e) => e.stopPropagation()}
+                      >
                         {c?.phone_wa ? (
                           <div className="flex min-w-0 items-center gap-2 text-gray-700">
-                            <Phone className="h-4 w-4 shrink-0 text-[#d4af37]" aria-hidden />
+                            <Phone className="h-4 w-4 shrink-0 text-[#C5A059]" aria-hidden />
                             <a
                               href={`tel:${c.phone_wa.replace(/\s+/g, '')}`}
                               dir="ltr"
-                              className="min-w-0 text-left font-medium text-[#001f3f] transition-colors hover:text-[#d4af37]"
+                              className="min-w-0 text-left font-medium text-[#1A3B2A] transition-colors hover:text-[#C5A059]"
                             >
                               {c.phone_wa}
                             </a>
@@ -745,12 +814,12 @@ export default function ClientsLoyaltyPage() {
                         ) : null}
                         {c?.email ? (
                           <div className="flex min-w-0 items-center gap-2 text-gray-700">
-                            <Mail className="h-4 w-4 shrink-0 text-[#d4af37]" aria-hidden />
+                            <Mail className="h-4 w-4 shrink-0 text-[#C5A059]" aria-hidden />
                             <a
                               href={`mailto:${c.email}`}
                               dir="ltr"
                               title={c.email}
-                              className="min-w-0 max-w-full truncate text-left font-medium text-[#001f3f] transition-colors hover:text-[#d4af37]"
+                              className="min-w-0 max-w-full truncate text-left font-medium text-[#1A3B2A] transition-colors hover:text-[#C5A059]"
                             >
                               {c.email}
                             </a>
@@ -786,25 +855,27 @@ export default function ClientsLoyaltyPage() {
                     </span>
                   </div>
 
-                  {shouldShowInfluencerCardSection(c) ? (
-                    <InfluencerStatsSection client={c} />
-                  ) : null}
-
                   {c?.referral_code ? (
-                    <ReferralCodeBadge
-                      code={c.referral_code}
-                      label={ar.refCode}
-                      onCopy={() => void copyReferralCode(c.referral_code)}
-                      onOpenQr={() =>
-                        setQrModal({ code: c.referral_code, name: c.name ?? '—' })
-                      }
-                    />
-                  ) : !isInfluencerClient(c) ? (
+                    <div onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+                      <ReferralCodeBadge
+                        code={c.referral_code}
+                        label={ar.refCode}
+                        onCopy={() => void copyReferralCode(c.referral_code)}
+                        onOpenQr={() =>
+                          setQrModal({ code: c.referral_code, name: c.name ?? '—' })
+                        }
+                      />
+                    </div>
+                  ) : (
                     <p className="mt-3 text-[11px] font-semibold text-gray-400">{ar.noRef}</p>
-                  ) : null}
+                  )}
                 </div>
 
-                <div className="flex flex-1 flex-col px-5 pb-4 pt-1">
+                <div
+                  className="flex flex-1 flex-col px-5 pb-4 pt-1"
+                  onClick={(e) => e.stopPropagation()}
+                  onKeyDown={(e) => e.stopPropagation()}
+                >
                   <ClientDnaAdvancedDisplay client={c} className="mb-3" compact />
                   <CollapsibleSection title={ar.dnaFlight} icon={<Plane className="h-4 w-4" />}>
                     {c?.flight_seat?.trim() || c?.flight_preferences?.trim() || '—'}
@@ -837,21 +908,22 @@ export default function ClientsLoyaltyPage() {
                   </CollapsibleSection>
                 </div>
 
-                <div className="flex items-center justify-between gap-2 border-t border-gray-100 px-5 py-3">
-                  <Link
-                    href={`/crm/clients/${c?.id ?? ''}`}
-                    className="text-xs font-bold text-[#001f3f]/70 underline decoration-[#d4af37]/50 underline-offset-4 transition hover:text-[#001f3f]"
-                  >
+                <div
+                  className="flex items-center justify-between gap-2 border-t border-gray-100 px-5 py-3"
+                  onClick={(e) => e.stopPropagation()}
+                  onKeyDown={(e) => e.stopPropagation()}
+                >
+                  <span className="text-xs font-bold text-[#1A3B2A]/70 underline decoration-[#C5A059]/50 underline-offset-4">
                     {ar.openProfile}
-                  </Link>
+                  </span>
                   <div className="flex items-center gap-1">
                     <button
                       type="button"
                       onClick={() => openEdit(c)}
                       disabled={deletingId === c?.id}
-                      className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-bold text-[#001f3f] transition hover:bg-gray-100 disabled:opacity-50"
+                      className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-bold text-[#1A3B2A] transition hover:bg-gray-100 disabled:opacity-50"
                     >
-                      <Pencil className="h-3.5 w-3.5 text-[#d4af37]" aria-hidden />
+                      <Pencil className="h-3.5 w-3.5 text-[#C5A059]" aria-hidden />
                       {ar.edit}
                     </button>
                     <button
@@ -879,7 +951,7 @@ export default function ClientsLoyaltyPage() {
       {copyToast ? (
         <div
           role="status"
-          className="fixed bottom-6 left-1/2 z-[200] w-[min(100%,20rem)] -translate-x-1/2 rounded-2xl border border-[#d4af37]/45 bg-gradient-to-br from-[#001f3f] via-[#0a1830] to-[#001f3f] px-5 py-3.5 text-center text-sm font-bold text-[#d4af37] shadow-[0_20px_60px_rgba(0,31,63,0.55)]"
+          className="fixed bottom-6 left-1/2 z-[200] w-[min(100%,20rem)] -translate-x-1/2 rounded-2xl border border-[#C5A059]/45 bg-gradient-to-br from-[#1A3B2A] via-[#0a1830] to-[#1A3B2A] px-5 py-3.5 text-center text-sm font-bold text-[#C5A059] shadow-[0_20px_60px_rgba(0,31,63,0.55)]"
         >
           {copyToast}
         </div>
@@ -903,19 +975,19 @@ export default function ClientsLoyaltyPage() {
 
       {showModal ? (
         <div
-          className="fixed inset-0 z-[300] flex items-end justify-center bg-[#001f3f]/40 p-0 backdrop-blur-sm sm:items-center sm:p-4"
+          className="fixed inset-0 z-[300] flex items-end justify-center bg-[#1A3B2A]/40 p-0 backdrop-blur-sm sm:items-center sm:p-4"
           role="dialog"
           aria-modal="true"
           aria-labelledby="client-modal-title"
           onClick={closeModal}
         >
           <div
-            className="max-h-[92dvh] w-[95%] max-w-lg overflow-y-auto rounded-t-3xl border border-[#d4af37]/20 bg-white p-4 shadow-2xl sm:max-h-[90vh] sm:w-full sm:rounded-3xl sm:p-6 md:w-3/4 md:max-w-2xl lg:w-1/2 lg:max-w-3xl md:p-8"
+            className="max-h-[92dvh] w-[95%] max-w-lg overflow-y-auto rounded-t-3xl border border-[#C5A059]/20 bg-white p-4 shadow-2xl sm:max-h-[90vh] sm:w-full sm:rounded-3xl sm:p-6 md:w-3/4 md:max-w-2xl lg:w-1/2 lg:max-w-3xl md:p-8"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-4 flex items-start justify-between gap-4 sm:mb-6">
               <div>
-                <h2 id="client-modal-title" className="text-lg font-black text-[#001f3f] sm:text-xl">
+                <h2 id="client-modal-title" className="text-lg font-black text-[#1A3B2A] sm:text-xl">
                   {isEditing ? ar.editTitle : ar.addTitle}
                 </h2>
                 <p className="mt-1 text-xs font-semibold text-slate-500">{ar.modalHint}</p>
@@ -942,7 +1014,7 @@ export default function ClientsLoyaltyPage() {
 
             <div className="space-y-4">
               <label className="block">
-                <span className="mb-1.5 block text-xs font-bold text-[#001f3f]">{ar.fullName}</span>
+                <span className="mb-1.5 block text-xs font-bold text-[#1A3B2A]">{ar.fullName}</span>
                 <input
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
@@ -952,101 +1024,7 @@ export default function ClientsLoyaltyPage() {
               </label>
 
               <label className="block">
-                <span className="mb-1.5 block text-xs font-bold text-[#001f3f]">{ar.clientType}</span>
-                <select
-                  value={form.client_type}
-                  onChange={(e) => {
-                    const client_type = e.target.value as ClientType
-                    setForm({
-                      ...form,
-                      client_type,
-                      is_influencer: client_type === 'مؤثر',
-                      is_leader: client_type === 'ليدر',
-                    })
-                  }}
-                  className={CRM_FIELD}
-                >
-                  {CLIENT_TYPE_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.emoji} {opt.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              {form.client_type === 'مؤثر' || form.is_influencer ? (
-                <div className="rounded-2xl border border-[#d4af37]/15 bg-stone-50/80 p-4 space-y-4">
-                  <p className="text-xs font-black text-[#001f3f]">{ar.influencerSection}</p>
-                  <label className="block">
-                    <span className="mb-1.5 block text-xs font-bold text-[#001f3f]">{ar.platforms}</span>
-                    <input
-                      value={form.platforms}
-                      onChange={(e) => setForm({ ...form, platforms: e.target.value })}
-                      placeholder="Snapchat، Instagram، TikTok…"
-                      className={CRM_FIELD}
-                      dir="rtl"
-                    />
-                  </label>
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <label className="block">
-                      <span className="mb-1.5 block text-xs font-bold text-[#001f3f]">{ar.followers}</span>
-                      <input
-                        type="number"
-                        min={0}
-                        value={form.influencer_followers || ''}
-                        onChange={(e) =>
-                          setForm({
-                            ...form,
-                            influencer_followers: Math.max(0, parseInt(e.target.value, 10) || 0),
-                          })
-                        }
-                        className={CRM_FIELD}
-                        dir="ltr"
-                      />
-                    </label>
-                    <label className="block">
-                      <span className="mb-1.5 block text-xs font-bold text-[#001f3f]">{ar.influencerCommission}</span>
-                      <input
-                        type="number"
-                        min={0}
-                        step="0.01"
-                        value={form.influencer_commission || ''}
-                        onChange={(e) =>
-                          setForm({
-                            ...form,
-                            influencer_commission: Math.max(0, Number(e.target.value) || 0),
-                          })
-                        }
-                        className={CRM_FIELD}
-                        dir="ltr"
-                      />
-                    </label>
-                  </div>
-                  <label className="block">
-                    <span className="mb-1.5 block text-xs font-bold text-[#001f3f]">{ar.profileUrl}</span>
-                    <input
-                      value={form.profile_url}
-                      onChange={(e) => setForm({ ...form, profile_url: e.target.value })}
-                      placeholder="https://…"
-                      className={CRM_FIELD}
-                      dir="ltr"
-                    />
-                  </label>
-                  <label className="block">
-                    <span className="mb-1.5 block text-xs font-bold text-[#001f3f]">{ar.contentFocus}</span>
-                    <input
-                      value={form.content_focus}
-                      onChange={(e) => setForm({ ...form, content_focus: e.target.value })}
-                      placeholder="سفر، فاخر، عائلي…"
-                      className={CRM_FIELD}
-                      dir="rtl"
-                    />
-                  </label>
-                </div>
-              ) : null}
-
-              <label className="block">
-                <span className="mb-1.5 block text-xs font-bold text-[#001f3f]">{ar.leadSource}</span>
+                <span className="mb-1.5 block text-xs font-bold text-[#1A3B2A]">{ar.leadSource}</span>
                 <select
                   value={form.lead_source}
                   onChange={(e) => setForm({ ...form, lead_source: e.target.value })}
@@ -1064,7 +1042,7 @@ export default function ClientsLoyaltyPage() {
               </label>
 
               <label className="block">
-                <span className="mb-1.5 block text-xs font-bold text-[#001f3f]">{ar.salesStage}</span>
+                <span className="mb-1.5 block text-xs font-bold text-[#1A3B2A]">{ar.salesStage}</span>
                 <select
                   value={form.sales_stage}
                   onChange={(e) => setForm({ ...form, sales_stage: e.target.value })}
@@ -1081,10 +1059,10 @@ export default function ClientsLoyaltyPage() {
                 </select>
               </label>
 
-              <div className="rounded-2xl border border-[#d4af37]/15 bg-amber-50/40 p-4 space-y-4">
-                <p className="text-xs font-black text-[#001f3f]">{ar.loyaltySection}</p>
+              <div className="rounded-2xl border border-[#C5A059]/15 bg-amber-50/40 p-4 space-y-4">
+                <p className="text-xs font-black text-[#1A3B2A]">{ar.loyaltySection}</p>
                 <label className="block">
-                  <span className="mb-1.5 block text-xs font-bold text-[#001f3f]">{ar.tier}</span>
+                  <span className="mb-1.5 block text-xs font-bold text-[#1A3B2A]">{ar.tier}</span>
                   <select
                     value={form.client_tier}
                     onChange={(e) => setForm({ ...form, client_tier: e.target.value as ClientTier })}
@@ -1099,7 +1077,7 @@ export default function ClientsLoyaltyPage() {
                 </label>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <label className="block">
-                    <span className="mb-1.5 block text-xs font-bold text-[#001f3f]">{ar.trips}</span>
+                    <span className="mb-1.5 block text-xs font-bold text-[#1A3B2A]">{ar.trips}</span>
                     <input
                       type="number"
                       min={0}
@@ -1115,7 +1093,7 @@ export default function ClientsLoyaltyPage() {
                     />
                   </label>
                   <label className="block">
-                    <span className="mb-1.5 block text-xs font-bold text-[#001f3f]">{ar.referrals}</span>
+                    <span className="mb-1.5 block text-xs font-bold text-[#1A3B2A]">{ar.referrals}</span>
                     <input
                       type="number"
                       min={0}
@@ -1135,7 +1113,7 @@ export default function ClientsLoyaltyPage() {
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <label className="block">
-                  <span className="mb-1.5 block text-xs font-bold text-[#001f3f]">{ar.phone}</span>
+                  <span className="mb-1.5 block text-xs font-bold text-[#1A3B2A]">{ar.phone}</span>
                   <input
                     value={form.phone_wa}
                     onChange={(e) => setForm({ ...form, phone_wa: e.target.value })}
@@ -1144,7 +1122,7 @@ export default function ClientsLoyaltyPage() {
                   />
                 </label>
                 <label className="block">
-                  <span className="mb-1.5 block text-xs font-bold text-[#001f3f]">{ar.email}</span>
+                  <span className="mb-1.5 block text-xs font-bold text-[#1A3B2A]">{ar.email}</span>
                   <input
                     type="email"
                     value={form.email}
@@ -1154,7 +1132,7 @@ export default function ClientsLoyaltyPage() {
                   />
                 </label>
                 <label className="block">
-                  <span className="mb-1.5 block text-xs font-bold text-[#001f3f]">{ar.birthday}</span>
+                  <span className="mb-1.5 block text-xs font-bold text-[#1A3B2A]">{ar.birthday}</span>
                   <input
                     type="date"
                     value={form.birth_date}
@@ -1164,7 +1142,7 @@ export default function ClientsLoyaltyPage() {
                 </label>
               </div>
               <label className="block">
-                <span className="mb-1.5 block text-xs font-bold text-[#001f3f]">{ar.dnaFlight}</span>
+                <span className="mb-1.5 block text-xs font-bold text-[#1A3B2A]">{ar.dnaFlight}</span>
                 <input
                   value={form.flight_seat}
                   onChange={(e) => setForm({ ...form, flight_seat: e.target.value })}
@@ -1174,7 +1152,7 @@ export default function ClientsLoyaltyPage() {
                 />
               </label>
               <label className="block">
-                <span className="mb-1.5 block text-xs font-bold text-[#001f3f]">{ar.dnaDietary}</span>
+                <span className="mb-1.5 block text-xs font-bold text-[#1A3B2A]">{ar.dnaDietary}</span>
                 <textarea
                   value={form.food_allergies}
                   onChange={(e) => setForm({ ...form, food_allergies: e.target.value })}
@@ -1185,7 +1163,7 @@ export default function ClientsLoyaltyPage() {
               </label>
               <div className="grid gap-4 sm:grid-cols-2">
                 <label className="block">
-                  <span className="mb-1.5 block text-xs font-bold text-[#001f3f]">{ar.dnaHotel}</span>
+                  <span className="mb-1.5 block text-xs font-bold text-[#1A3B2A]">{ar.dnaHotel}</span>
                   <select
                     value={form.hotel_preference}
                     onChange={(e) => setForm({ ...form, hotel_preference: e.target.value })}
@@ -1200,7 +1178,7 @@ export default function ClientsLoyaltyPage() {
                   </select>
                 </label>
                 <label className="block">
-                  <span className="mb-1.5 block text-xs font-bold text-[#001f3f]">{ar.dnaFavoriteDrink}</span>
+                  <span className="mb-1.5 block text-xs font-bold text-[#1A3B2A]">{ar.dnaFavoriteDrink}</span>
                   <input
                     value={form.favorite_drink}
                     onChange={(e) => setForm({ ...form, favorite_drink: e.target.value })}
@@ -1211,7 +1189,7 @@ export default function ClientsLoyaltyPage() {
                 </label>
               </div>
               <label className="block">
-                <span className="mb-1.5 block text-xs font-bold text-[#001f3f]">{ar.dnaPassport}</span>
+                <span className="mb-1.5 block text-xs font-bold text-[#1A3B2A]">{ar.dnaPassport}</span>
                 <input
                   type="date"
                   value={form.passport_expiry}
@@ -1221,7 +1199,7 @@ export default function ClientsLoyaltyPage() {
                 />
               </label>
               <label className="block">
-                <span className="mb-1.5 block text-xs font-bold text-[#001f3f]">{ar.dnaSecret}</span>
+                <span className="mb-1.5 block text-xs font-bold text-[#1A3B2A]">{ar.dnaSecret}</span>
                 <textarea
                   value={form.secret_notes}
                   onChange={(e) => setForm({ ...form, secret_notes: e.target.value })}
@@ -1261,7 +1239,7 @@ export default function ClientsLoyaltyPage() {
                 type="button"
                 onClick={() => void saveClient()}
                 disabled={saving || !form.name.trim()}
-                className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-[#001f3f] py-3.5 text-sm font-black text-white transition hover:bg-[#002a55] disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-[#1A3B2A] py-3.5 text-sm font-black text-white transition hover:bg-[#244F38] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {saving ? (
                   <>

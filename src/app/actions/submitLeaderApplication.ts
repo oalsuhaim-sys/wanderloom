@@ -32,6 +32,25 @@ function formatInsertError(error: { message?: string; details?: string | null; c
 
 async function findLeaderByReferralCode(code: string) {
   const supabase = createServerSupabase()
+
+  const { data: leaderRow, error: leaderError } = await supabase
+    .from('leaders')
+    .select('id, name, referral_code, status')
+    .eq('referral_code', code)
+    .eq('status', 'active')
+    .maybeSingle()
+
+  if (!leaderError && leaderRow) {
+    return {
+      id: leaderRow.id,
+      name: leaderRow.name,
+      referral_code: leaderRow.referral_code,
+      ref_code: leaderRow.referral_code,
+      is_leader: true,
+      source: 'leaders' as const,
+    }
+  }
+
   const { data, error } = await supabase
     .from('clients')
     .select('id, name, referral_code, ref_code, is_leader')

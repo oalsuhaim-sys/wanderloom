@@ -28,8 +28,6 @@ import VipItineraryPinGate from './VipItineraryPinGate'
 import ClientPortalSignOutButton from './ClientPortalSignOutButton'
 import { useVipSessionIdleLock } from '@/lib/use-vip-session-idle-lock'
 import VipPackingListCard from './VipPackingListCard'
-import VipPortalTopNav, { type PortalSection } from './VipPortalTopNav'
-import VipTravelWardrobeStore from './VipTravelWardrobeStore'
 import PostTripDashboard from './PostTripDashboard'
 
 import {
@@ -394,7 +392,6 @@ export default function PublicVipItineraryView({
     return hasItineraryUnlock(slug)
   })
   const [activeTab, setActiveTab] = useState<ItineraryMainTab>('overview')
-  const [portalSection, setPortalSection] = useState<PortalSection>('itinerary')
   const [offlineMode, setOfflineMode] = useState(false)
   const [pinExiting, setPinExiting] = useState(false)
   const [unlocking, setUnlocking] = useState(false)
@@ -491,12 +488,6 @@ export default function PublicVipItineraryView({
     void registerItineraryServiceWorker()
     void warmItineraryOfflineAssets(slug)
   }, [authenticated, trip, slug])
-
-  useEffect(() => {
-    if (trip && !trip.showFashionServices && portalSection === 'wardrobe') {
-      setPortalSection('itinerary')
-    }
-  }, [trip, portalSection])
 
   const salonPreTripServices = trip
     ? filterNonMedicalPreTripServices(trip.preTripServices ?? [])
@@ -630,7 +621,7 @@ export default function PublicVipItineraryView({
         </div>
       </header>
 
-      <main className="mx-auto max-w-lg px-4 sm:max-w-xl sm:px-6">
+      <main className="mx-auto max-w-3xl px-4 sm:max-w-4xl sm:px-6">
         {trip.isMedical ? <VipMedicalConciergeBanner services={trip.preTripServices ?? []} /> : null}
 
         {tripFinished ? (
@@ -642,16 +633,6 @@ export default function PublicVipItineraryView({
               currentItinerarySlug={slug}
             />
           </div>
-        ) : (
-          <>
-        <VipPortalTopNav
-          active={portalSection}
-          onChange={setPortalSection}
-          showWardrobe={trip.showFashionServices}
-        />
-
-        {portalSection === 'wardrobe' && trip.showFashionServices ? (
-          <VipTravelWardrobeStore trip={trip} />
         ) : (
           <>
         {activeTab === 'overview' ? (
@@ -698,17 +679,21 @@ export default function PublicVipItineraryView({
 
         {activeTab === 'itinerary' ? (
           <section className="mb-10 pt-2 font-[family-name:var(--font-tajawal),system-ui,sans-serif]">
-            <h2 className="mb-5 text-center text-xl font-black tracking-wide text-[#d4af37]">
-              {'\u0628\u0631\u0646\u0627\u0645\u062c \u0627\u0644\u0631\u062d\u0644\u0629 \u0627\u0644\u064a\u0648\u0645\u064a'}
-            </h2>
-            {trip.showFashionServices ? (
-              <VipPreTripServicesCard services={salonPreTripServices} />
+            {salonPreTripServices.length > 0 ? (
+              <div className="mb-6">
+                <VipPreTripServicesCard services={salonPreTripServices} />
+              </div>
             ) : null}
             <VipDailyItineraryTimeline
               days={trip.days}
               destination={trip.destination}
+              tripTitle={trip.title}
+              coverImage={trip.coverImage}
+              startDate={trip.startDate}
+              endDate={trip.endDate}
               mapboxAccessToken={mapboxAccessToken}
-              itineraryId={trip.id}
+              tripId={trip.id}
+              magicLinkId={trip.magicLinkId}
               clientId={trip.clientId}
             />
           </section>
@@ -728,11 +713,9 @@ export default function PublicVipItineraryView({
         ) : null}
           </>
         )}
-          </>
-        )}
       </main>
 
-      {!tripFinished && portalSection === 'itinerary' ? (
+      {!tripFinished ? (
       <VipItineraryBottomNav activeTab={activeTab} onTabChange={setActiveTab} />
       ) : null}
 

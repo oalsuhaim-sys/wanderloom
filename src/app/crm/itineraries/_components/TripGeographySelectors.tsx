@@ -21,6 +21,8 @@ type Props = {
   /** مدن مخصصة (نص) في وضع دولة واحدة */
   customCitiesText?: string;
   onCustomCitiesTextChange?: (value: string) => void;
+  /** عنوان مقفول من عرض السعر */
+  titleReadOnly?: boolean;
 };
 
 function toggleValue(list: string[], value: string, checked: boolean): string[] {
@@ -39,6 +41,7 @@ export default function TripGeographySelectors({
   onTripTitleChange,
   customCitiesText = '',
   onCustomCitiesTextChange,
+  titleReadOnly = false,
 }: Props) {
   const countryOptions = TRIP_DESTINATIONS.map((c) => c.labelAr);
   const cityOptions = cityOptionsForCountries(countries);
@@ -246,10 +249,14 @@ export default function TripGeographySelectors({
           value={tripTitle}
           onChange={(e) => onTripTitleChange(e.target.value)}
           placeholder="مثال: عطلة الصيف في أوروبا"
-          className={FIELD}
+          readOnly={titleReadOnly}
+          disabled={titleReadOnly}
+          className={`${FIELD} ${titleReadOnly ? 'cursor-not-allowed bg-slate-100 text-slate-700' : ''}`}
         />
         <p className="text-xs text-gray-500">
-          هذا العنوان الرئيسي في بوابة العميل — منفصل عن مدن برنامج الأيام.
+          {titleReadOnly
+            ? 'مأخوذ تلقائياً من عرض السعر المحدد — للقراءة فقط.'
+            : 'هذا العنوان الرئيسي في بوابة العميل — منفصل عن مدن برنامج الأيام.'}
         </p>
       </label>
 

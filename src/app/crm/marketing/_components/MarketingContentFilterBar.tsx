@@ -1,5 +1,10 @@
 'use client';
 
+import {
+  marketingItemCategory,
+  normalizeMediaType,
+} from '@/lib/marketing-content';
+
 export const MEDIA_TYPE_FILTERS = ['الكل', 'فيديو', 'صورة'] as const;
 
 export const CATEGORY_FILTERS = [
@@ -88,20 +93,23 @@ export default function MarketingContentFilterBar({
 }
 
 export function filterMarketingContentCards<
-  T extends { media_type?: string; content_category?: string },
+  T extends {
+    category?: string;
+    media_type?: string;
+    mediaType?: string;
+    content_category?: string;
+    contentCategory?: string;
+  },
 >(cards: T[], selectedMediaType: string, selectedCategory: string): T[] {
   return cards.filter((card) => {
-    const cardMedia = String(card.media_type || 'فيديو').trim();
-    const cardCat = String(card.content_category || 'عام').trim();
+    const cardMedia = normalizeMediaType(card.media_type ?? card.mediaType);
+    const cardCat = marketingItemCategory(card);
 
     const filterMedia = selectedMediaType.trim();
     const filterCat = selectedCategory.trim();
 
-    const matchesMedia =
-      filterMedia === 'الكل' || cardMedia.includes(filterMedia) || filterMedia.includes(cardMedia);
-
-    const matchesCat =
-      filterCat === 'الكل' || cardCat.includes(filterCat) || filterCat.includes(cardCat);
+    const matchesMedia = filterMedia === 'الكل' || cardMedia === filterMedia;
+    const matchesCat = filterCat === 'الكل' || cardCat === filterCat;
 
     return matchesMedia && matchesCat;
   });

@@ -107,7 +107,7 @@ export default function ItineraryBuilderWorkspace({ itineraryId }: ItineraryBuil
           supabase
             .from('itineraries')
             .select(
-              'id, title, customer_name, days_data, include_wardrobe, unlock_secret_guide, budget_options, flight_details, weather_temp, highlights, hotel_details, experiences_details, destination, destination_story, taxi_phrase, secret_gem, local_lingo, weather_summary, packing_summary, budget_summary, flight_summary',
+              'id, title, customer_name, days_data, unlock_secret_guide, budget_options, flight_details, weather_temp, highlights, hotel_details, experiences_details, destination, destination_story, taxi_phrase, secret_gem, local_lingo, weather_summary, packing_summary, budget_summary, flight_summary',
             )
             .eq('is_template', true)
             .order('created_at', { ascending: false }),
@@ -217,7 +217,7 @@ export default function ItineraryBuilderWorkspace({ itineraryId }: ItineraryBuil
               `id, itinerary_days (
                 id, day_num, title, city, notes, sort_order,
                 itinerary_stops (
-                  id, place_name, category, time_slot, note, transport_type, taxi,
+                  id, place_name, category, visit_time, time_slot, note, transport_type, taxi,
                   transit_mode, transit_duration, sort_order
                 )
               )`,
@@ -440,7 +440,7 @@ export default function ItineraryBuilderWorkspace({ itineraryId }: ItineraryBuil
         .from('itineraries')
         .insert(payload)
         .select(
-          'id, title, customer_name, days_data, include_wardrobe, unlock_secret_guide, budget_options, flight_details, weather_temp, highlights, hotel_details, experiences_details, destination, destination_story, taxi_phrase, secret_gem, local_lingo, passcode, dates, weather_summary, packing_summary, budget_summary, flight_summary',
+          'id, title, customer_name, days_data, unlock_secret_guide, budget_options, flight_details, weather_temp, highlights, hotel_details, experiences_details, destination, destination_story, taxi_phrase, secret_gem, local_lingo, passcode, dates, weather_summary, packing_summary, budget_summary, flight_summary',
         )
         .single();
       if (insertRes.error && /column|schema cache|does not exist/i.test(insertRes.error.message ?? '')) {
@@ -449,7 +449,7 @@ export default function ItineraryBuilderWorkspace({ itineraryId }: ItineraryBuil
           .from('itineraries')
           .insert(stripItineraryPayloadForSchemaError(errMsg, payload))
           .select(
-            'id, title, customer_name, days_data, include_wardrobe, unlock_secret_guide, budget_options, flight_details, weather_temp, highlights, hotel_details, experiences_details, destination, destination_story, taxi_phrase, secret_gem, local_lingo, passcode, dates, weather_summary, packing_summary, budget_summary, flight_summary',
+            'id, title, customer_name, days_data, unlock_secret_guide, budget_options, flight_details, weather_temp, highlights, hotel_details, experiences_details, destination, destination_story, taxi_phrase, secret_gem, local_lingo, passcode, dates, weather_summary, packing_summary, budget_summary, flight_summary',
           )
           .single();
       }
@@ -575,27 +575,7 @@ export default function ItineraryBuilderWorkspace({ itineraryId }: ItineraryBuil
             </label>
           </div>
 
-          <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
-            <div className="flex flex-col gap-3 rounded-2xl border border-slate-200/90 bg-gradient-to-l from-slate-50 to-white px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
-              <div className="min-w-0 text-right">
-                <p className="text-sm font-black text-slate-800">إرفاق بوتيك الأزياء المخصص لهذه الرحلة</p>
-                <p className="mt-1 text-[11px] font-bold leading-relaxed text-slate-500">
-                  عند التفعيل، يظهر للعميل في الرابط السحري قسم الأزياء واللوك اليومي. عند الإيقاف، يعرض المسار فقط دون أزياء.
-                </p>
-              </div>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={draft.includeWardrobe}
-                onClick={() => patchDraft({ includeWardrobe: !draft.includeWardrobe })}
-                className={`relative h-9 w-[3.25rem] shrink-0 rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/30 ${draft.includeWardrobe ? 'bg-slate-900' : 'bg-slate-300'}`}
-              >
-                <span
-                  className={`pointer-events-none absolute top-1 h-7 w-7 rounded-full bg-white shadow-md transition-[inset-inline-start] ${draft.includeWardrobe ? 'start-[calc(100%-1.875rem)]' : 'start-1'}`}
-                />
-              </button>
-            </div>
-
+          <div className="mt-4 grid grid-cols-1 gap-3">
             <div className="flex flex-col gap-3 rounded-2xl border-2 border-slate-900/90 bg-gradient-to-br from-neutral-950 via-neutral-900 to-amber-950/30 px-4 py-4 shadow-inner shadow-black/20 sm:flex-row sm:items-center sm:justify-between sm:px-5">
               <div className="min-w-0 text-right">
                 <p className="inline-flex items-center gap-2 text-sm font-black text-amber-100">
@@ -792,6 +772,19 @@ export default function ItineraryBuilderWorkspace({ itineraryId }: ItineraryBuil
                   />
                 </label>
                 <label className="block">
+                  <span className={goldLabelClass}>دولة المغادرة</span>
+                  <input
+                    value={draft.flight.departure_country}
+                    onChange={(e) =>
+                      patchDraft({
+                        flight: { ...draft.flight, departure_country: e.target.value },
+                      })
+                    }
+                    className={contrastInputClass}
+                    placeholder="السعودية"
+                  />
+                </label>
+                <label className="block">
                   <span className={goldLabelClass}>إلى — flight_to</span>
                   <input
                     value={draft.flight.flight_to}
@@ -799,6 +792,19 @@ export default function ItineraryBuilderWorkspace({ itineraryId }: ItineraryBuil
                       patchDraft({ flight: { ...draft.flight, flight_to: e.target.value } })
                     }
                     className={contrastInputClass}
+                  />
+                </label>
+                <label className="block">
+                  <span className={goldLabelClass}>دولة الوصول</span>
+                  <input
+                    value={draft.flight.arrival_country}
+                    onChange={(e) =>
+                      patchDraft({
+                        flight: { ...draft.flight, arrival_country: e.target.value },
+                      })
+                    }
+                    className={contrastInputClass}
+                    placeholder="هنغاريا"
                   />
                 </label>
                 <label className="block">
@@ -822,6 +828,37 @@ export default function ItineraryBuilderWorkspace({ itineraryId }: ItineraryBuil
                     className={contrastInputClass}
                     dir="ltr"
                   />
+                </label>
+                <label className="block">
+                  <span className={goldLabelClass}>المبنى</span>
+                  <input
+                    value={draft.flight.terminal}
+                    onChange={(e) =>
+                      patchDraft({ flight: { ...draft.flight, terminal: e.target.value } })
+                    }
+                    className={contrastInputClass}
+                    dir="ltr"
+                  />
+                </label>
+                <label className="block">
+                  <span className={goldLabelClass}>درجة الإركاب</span>
+                  <select
+                    value={draft.flight.flight_class}
+                    onChange={(e) =>
+                      patchDraft({ flight: { ...draft.flight, flight_class: e.target.value } })
+                    }
+                    className={contrastInputClass}
+                    dir="ltr"
+                  >
+                    <option value="">—</option>
+                    {(['Economy', 'Premium Economy', 'Business', 'First Class'] as const).map(
+                      (opt) => (
+                        <option key={opt} value={opt}>
+                          {opt}
+                        </option>
+                      ),
+                    )}
+                  </select>
                 </label>
                 <label className="block sm:col-span-2">
                   <span className={goldLabelClass}>وقت الإقلاع</span>

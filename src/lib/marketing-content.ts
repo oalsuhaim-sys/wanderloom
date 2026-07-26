@@ -1,4 +1,9 @@
 import { marketingSupabase } from '@/lib/marketing-supabase-client';
+import {
+  marketingFullText,
+  marketingLongestCaptionFromRow,
+  marketingLongestPromptFromRow,
+} from '@/lib/marketing-prompt-text';
 
 export type MarketingProductionType = 'ai' | 'human';
 
@@ -12,13 +17,9 @@ export const MARKETING_CONTENT_CATEGORIES = [
 
 export type MarketingContentCategory = (typeof MARKETING_CONTENT_CATEGORIES)[number];
 
-export const MARKETING_CATEGORY_FILTER_ALL = 'الكل' as const;
-
 export const MARKETING_MEDIA_TYPES = ['فيديو', 'صورة'] as const;
 
 export type MarketingMediaType = (typeof MARKETING_MEDIA_TYPES)[number];
-
-export const MARKETING_MEDIA_FILTER_ALL = 'الكل' as const;
 
 export type MarketingContentRow = {
   id: string;
@@ -36,6 +37,8 @@ export type MarketingContentRow = {
   updated_at: string;
 };
 
+export const MARKETING_AI_PROMPT_SELECT = '*';
+
 export type MarketingContentItem = {
   id: string;
   title: string;
@@ -44,8 +47,12 @@ export type MarketingContentItem = {
   contentCategory: MarketingContentCategory;
   /** قيم خام من Supabase — للتصفية */
   media_type?: string;
+  /** عمود category في marketing_ai_prompts */
+  category?: string;
   content_category?: string;
   prompt: string;
+  /** أطول نص برومبت من كل الأعمدة — للعرض المباشر */
+  prompt_text?: string;
   script: string;
   caption: string;
   videoUrl: string;
@@ -74,27 +81,139 @@ export function normalizeContentCategory(value: string | null | undefined): Mark
   if ((MARKETING_CONTENT_CATEGORIES as readonly string[]).includes(trimmed)) {
     return trimmed as MarketingContentCategory;
   }
+  const lower = trimmed.toLowerCase();
+  if (lower === 'groups' || lower === 'group' || lower === 'قروب' || lower === 'قروبات') {
+    return 'قروبات';
+  }
+  if (lower === 'selling' || lower === 'feeling' || lower.includes('شعور')) {
+    return 'بيع الشعور';
+  }
+  if (lower === 'city' || lower.includes('مدينة')) {
+    return 'حياة المدينة';
+  }
+  if (lower === 'nature' || lower.includes('طبيع')) {
+    return 'طبيعة';
+  }
   return 'أخرى';
 }
 
+/** تصنيف الصف من Supabase — `category` هو مصدر الحقيقة بعد إضافة العمود */
+export function marketingRowCategory(row: {
+  category?: string | null;
+  content_category?: string | null;
+}): MarketingContentCategory {
+  return normalizeContentCategory(row.category ?? row.content_category);
+}
+
+export function marketingItemCategory(item: {
+  category?: string;
+  content_category?: string;
+  contentCategory?: MarketingContentCategory;
+}): MarketingContentCategory {
+  return normalizeContentCategory(item.category ?? item.content_category ?? item.contentCategory);
+}
+
+/** تصنيف افتراضي من فلتر التبويب النشط (مثلاً قروبات عند فتح تبويب القروبات) */
+export function marketingCategoryFromFilter(
+  selectedCategory: string,
+): MarketingContentCategory | undefined {
+  const trimmed = selectedCategory.trim();
+  if (!trimmed || trimmed === 'الكل') return undefined;
+  return normalizeContentCategory(trimmed);
+}
+
+export function marketingMediaTypeFromFilter(
+  selectedMediaType: string,
+): MarketingMediaType | undefined {
+  const trimmed = selectedMediaType.trim();
+  if (!trimmed || trimmed === 'الكل') return undefined;
+  return normalizeMediaType(trimmed);
+}
+
 export function mapMarketingContentRow(row: MarketingContentRow): MarketingContentItem {
+  const raw = row as unknown as Record<string, unknown>;
   const media_type = String(row.media_type ?? '').trim() || 'فيديو';
-  const content_category = String(row.content_category ?? '').trim() || 'عام';
+  const normalizedCategory = marketingRowCategory({ content_category: row.content_category });
+  const prompt = marketingLongestPromptFromRow(raw);
   return {
     id: row.id,
     title: row.title ?? '',
     productionType: row.production_type,
     mediaType: normalizeMediaType(row.media_type),
-    contentCategory: normalizeContentCategory(row.content_category),
+    contentCategory: normalizedCategory,
     media_type,
-    content_category,
-    prompt: row.prompt ?? '',
-    script: row.script ?? '',
-    caption: row.caption ?? '',
-    videoUrl: row.video_url ?? '',
-    status: row.status ?? 'draft',
+    category: normalizedCategory,
+    content_category: normalizedCategory,
+    prompt,
+    prompt_text: prompt,
+    script: marketingFullText(row.script),
+    caption: marketingLongestCaptionFromRow(raw),
+    videoUrl: marketingFullText(row.video_url),
+    status: marketingFullText(row.status) || 'draft',
     dataSource: 'legacy_content',
   };
+}
+
+function marketingTitleKey(title: string): string {
+  return title.trim().toLowerCase();
+}
+
+function itemPromptText(item: MarketingContentItem): string {
+  return item.prompt_text || item.prompt || '';
+}
+
+function itemCaptionText(item: MarketingContentItem): string {
+  return item.caption || '';
+}
+
+function preferLongerText(current: string, candidate: string): string {
+  if (!candidate.trim()) return current;
+  if (!current.trim()) return candidate;
+  return candidate.length > current.length ? candidate : current;
+}
+
+/** أطول برومبت لنفس الحملة عبر كل التصنيفات (يصلح قروبات ذات نص معاينة قصير). */
+export function resolveMarketingCardPrompt(
+  item: MarketingContentItem,
+  pool: MarketingContentItem[],
+): string {
+  const titleKey = marketingTitleKey(item.title);
+  let best = itemPromptText(item);
+  for (const other of pool) {
+    const sameCampaign =
+      other.id === item.id || marketingTitleKey(other.title) === titleKey;
+    if (!sameCampaign) continue;
+    best = preferLongerText(best, itemPromptText(other));
+  }
+  return best;
+}
+
+/** أطول كابشن لنفس الحملة عبر كل التصنيفات. */
+export function resolveMarketingCardCaption(
+  item: MarketingContentItem,
+  pool: MarketingContentItem[],
+): string {
+  const titleKey = marketingTitleKey(item.title);
+  let best = itemCaptionText(item);
+  for (const other of pool) {
+    const sameCampaign =
+      other.id === item.id || marketingTitleKey(other.title) === titleKey;
+    if (!sameCampaign) continue;
+    best = preferLongerText(best, itemCaptionText(other));
+  }
+  return best;
+}
+
+/** يطبّق أطول نصوص معروفة على كل بطاقة قبل دخولها للـ state. */
+export function unifyMarketingContentItems(items: MarketingContentItem[]): MarketingContentItem[] {
+  return items.map((item) => {
+    const prompt = resolveMarketingCardPrompt(item, items);
+    const caption = resolveMarketingCardCaption(item, items);
+    if (prompt === itemPromptText(item) && caption === itemCaptionText(item)) {
+      return item;
+    }
+    return { ...item, prompt, prompt_text: prompt, caption };
+  });
 }
 
 /** تحويل صف marketing_ai_prompts إلى بطاقة الاستوديو */
@@ -103,26 +222,33 @@ export function mapAiPromptRowToContentItem(row: {
   category?: string | null;
   content_category?: string | null;
   media_type?: string | null;
+  campaign_name?: string | null;
   campaign?: string | null;
   visual_prompt?: string | null;
   caption?: string | null;
   status?: string | null;
+  prompt?: string | null;
+  video_url?: string | null;
 }): MarketingContentItem {
+  const raw = row as Record<string, unknown>;
   const media_type = String(row.media_type ?? '').trim() || 'فيديو';
-  const content_category = String(row.content_category ?? row.category ?? '').trim() || 'عام';
+  const normalizedCategory = marketingRowCategory(row);
+  const prompt = marketingLongestPromptFromRow(raw);
   return {
     id: row.id,
-    title: String(row.campaign ?? '').trim() || 'حملة AI',
+    title: String(row.campaign_name ?? row.campaign ?? '').trim() || 'حملة AI',
     productionType: 'ai',
     mediaType: normalizeMediaType(row.media_type),
-    contentCategory: normalizeContentCategory(row.content_category ?? row.category),
+    contentCategory: normalizedCategory,
     media_type,
-    content_category,
-    prompt: String(row.visual_prompt ?? ''),
+    category: normalizedCategory,
+    content_category: normalizedCategory,
+    prompt,
+    prompt_text: prompt,
     script: '',
-    caption: String(row.caption ?? ''),
-    videoUrl: '',
-    status: String(row.status ?? 'جاهز للتوليد'),
+    caption: marketingLongestCaptionFromRow(raw),
+    videoUrl: marketingFullText(row.video_url),
+    status: marketingFullText(row.status) || 'جاهز للتوليد',
     dataSource: 'ai_prompt',
   };
 }
@@ -186,24 +312,25 @@ export async function fetchAllMarketingContent(): Promise<{
   items: MarketingContentItem[];
   error?: string;
 }> {
-  const { data, error } = await marketingSupabase
+  const aiRes = await marketingSupabase
     .from('marketing_ai_prompts')
-    .select('*')
+    .select(MARKETING_AI_PROMPT_SELECT)
     .order('sort_order', { ascending: true })
     .order('created_at', { ascending: true });
 
-  if (error) {
-    return { ok: false, items: [], error: error.message };
+  if (aiRes.error) {
+    return { ok: false, items: [], error: aiRes.error.message };
   }
 
-  const aiItems = ((data ?? []) as Parameters<typeof mapAiPromptRowToContentItem>[0][]).map(
+  const aiItems = ((aiRes.data ?? []) as Parameters<typeof mapAiPromptRowToContentItem>[0][]).map(
     mapAiPromptRowToContentItem,
   );
 
   const humanItem = await ensureMarketingContentRow('human');
-  const items = humanItem.ok && humanItem.item ? [...aiItems, humanItem.item] : aiItems;
+  const rawItems =
+    humanItem.ok && humanItem.item ? [...aiItems, humanItem.item] : aiItems;
 
-  return { ok: true, items };
+  return { ok: true, items: unifyMarketingContentItems(rawItems) };
 }
 
 export async function updateMarketingContent(
@@ -225,14 +352,17 @@ export async function updateMarketingContent(
       .from('marketing_ai_prompts')
       .update({
         ...(patch.media_type != null ? { media_type: patch.media_type } : {}),
-        ...(patch.content_category != null ? { category: patch.content_category } : {}),
-        ...(patch.prompt != null ? { visual_prompt: patch.prompt } : {}),
+        ...(patch.content_category != null
+          ? { category: patch.content_category, content_category: patch.content_category }
+          : {}),
+        ...(patch.title != null ? { campaign_name: patch.title } : {}),
+        ...(patch.prompt != null ? { visual_prompt: patch.prompt, prompt: patch.prompt } : {}),
         ...(patch.caption != null ? { caption: patch.caption } : {}),
         ...(patch.status != null ? { status: patch.status } : {}),
         updated_at: new Date().toISOString(),
       })
       .eq('id', id)
-      .select('id, category, media_type, campaign, visual_prompt, caption, hashtags, status, sort_order')
+      .select(MARKETING_AI_PROMPT_SELECT)
       .single();
 
     if (error || !data) {

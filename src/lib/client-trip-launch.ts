@@ -14,9 +14,32 @@ export type LaunchClientTripInput = {
 
 export type LaunchClientTripResult = {
   itineraryId: number;
+  publicSlug: string;
   newTotalProfit: number;
   newVipTier: VipSpendingTier;
 };
+
+/** يدعم id رقمي (clients.id) أو uuid نصي */
+export function resolveLaunchClientId(raw: unknown): string | number {
+  if (raw == null || raw === '') {
+    throw new Error('معرّف العميل غير صالح.');
+  }
+  if (typeof raw === 'number' && Number.isFinite(raw)) {
+    return raw;
+  }
+  const s = String(raw).trim();
+  if (!s || s === 'undefined' || s === 'null') {
+    throw new Error('معرّف العميل غير صالح.');
+  }
+  if (/^\d+$/.test(s)) {
+    const n = Number(s);
+    if (Number.isFinite(n)) return n;
+  }
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(s)) {
+    return s;
+  }
+  return s;
+}
 
 function stripMissingItineraryColumns(
   message: string,
@@ -35,8 +58,7 @@ export async function launchClientTrip(
 ): Promise<LaunchClientTripResult> {
   if (!supabase) throw new Error('Supabase غير مهيأ.');
 
-  const clientKey = Number(input.clientId);
-  if (!Number.isFinite(clientKey)) throw new Error('معرّف العميل غير صالح.');
+  const clientKey = resolveLaunchClientId(input.clientId);
 
   const destination = input.destination.trim();
   const startDate = input.startDate.trim();
@@ -61,15 +83,17 @@ export async function launchClientTrip(
     title: destination,
     customer_name: customerName,
     status: 'active',
-    days_data: { days: [] },
+    days_data: [],
   };
 
-  let insertRes = await supabase.from('itineraries').insert(insertPayload).select('id').single();
+  console.log('Submitting Trip for Client ID:', clientKey);
+
+  let insertRes = await supabase.from('itineraries').insert(insertPayload).select('id, magic_link_id').single();
   if (insertRes.error && /column|schema cache|does not exist/i.test(insertRes.error.message ?? '')) {
     insertRes = await supabase
       .from('itineraries')
       .insert(stripMissingItineraryColumns(insertRes.error.message ?? '', insertPayload))
-      .select('id')
+      .select('id, magic_link_id')
       .single();
   }
   if (insertRes.error || !insertRes.data?.id) {
@@ -93,8 +117,13 @@ export async function launchClientTrip(
     throw new Error(clientRes.error.message || 'تم إنشاء الرحلة لكن تعذر تحديث أرباح العميل.');
   }
 
+  const row = insertRes.data as { id: number | string; magic_link_id?: string | null };
+  const itineraryId = Number(row.id);
+  const publicSlug = String(row.magic_link_id ?? row.id).trim();
+
   return {
-    itineraryId: Number(insertRes.data.id),
+    itineraryId,
+    publicSlug,
     newTotalProfit,
     newVipTier,
   };

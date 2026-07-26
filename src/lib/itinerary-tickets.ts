@@ -3,6 +3,10 @@ export type ActivityTicket = {
   title: string;
   date: string;
   ticket_number: string;
+  /** @deprecated Per-ticket uploads removed — use Document Wallet instead */
+  file_url?: string;
+  /** @deprecated Per-ticket uploads removed — use Document Wallet instead */
+  file_name?: string;
 };
 
 export function createEmptyActivityTicket(): ActivityTicket {
@@ -41,6 +45,8 @@ export function parseActivityTickets(raw: unknown): ActivityTicket[] {
         title,
         date: String(row.date ?? row.entry_date ?? row.datetime ?? '').trim(),
         ticket_number: String(row.ticket_number ?? row.confirmation ?? row.pnr ?? '').trim(),
+        file_url: String(row.file_url ?? row.attachment_url ?? '').trim() || undefined,
+        file_name: String(row.file_name ?? row.attachment_name ?? '').trim() || undefined,
       } satisfies ActivityTicket;
     })
     .filter((t): t is ActivityTicket => t != null);

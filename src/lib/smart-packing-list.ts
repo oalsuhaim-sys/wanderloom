@@ -1,8 +1,6 @@
 /**
- * قائمة تعبئة ذكية من الوجهة والموسم + مطابقة اختيارية مع travel_wardrobe.
+ * قائمة تعبئة ذكية من الوجهة والموسم.
  */
-
-import type { WardrobeMatchRow } from '@/lib/travel-wardrobe-trip';
 
 export type PackingItemDef = {
   id: string;
@@ -11,15 +9,6 @@ export type PackingItemDef = {
   /** للبحث في اسم/وصف منتجات البوتيك */
   keywords: string[];
 };
-
-function normSimple(s: string): string {
-  return s
-    .trim()
-    .toLowerCase()
-    .replace(/[أإآ]/g, 'ا')
-    .replace(/ى/g, 'ي')
-    .replace(/ة/g, 'ه');
-}
 
 export function tripDestinationBlob(parts: string[]): string {
   return parts.filter(Boolean).join(' ');
@@ -150,16 +139,4 @@ export function buildSmartPackingList(tripBlob: string, seasons: string[]): Pack
     seen.add(x.id);
     return true;
   });
-}
-
-export function findWardrobeForPackingItem(rows: WardrobeMatchRow[], keywords: string[]): WardrobeMatchRow | null {
-  if (!rows.length || !keywords.length) return null;
-  for (const row of rows) {
-    const hay = normSimple(`${row.name} ${row.description || ''}`);
-    for (const kw of keywords) {
-      const k = normSimple(kw);
-      if (k.length >= 2 && hay.includes(k)) return row;
-    }
-  }
-  return null;
 }

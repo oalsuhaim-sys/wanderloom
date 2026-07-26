@@ -1,12 +1,12 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { createClient } from '@supabase/supabase-js';
 import { Crown, Loader2, Mail, Phone, Plus, Shield, UserRound, X } from 'lucide-react';
 
+import { createTeamMember } from '@/app/actions/adminActions';
 import { useCrmEmployee } from '@/app/crm/_components/CrmEmployeeProvider';
+import { getClientAccessToken } from '@/lib/crm-session-token';
 import { hasCrmAdminAccess, isEmployeeAdminRole } from '@/lib/crm-roles';
-import { supabaseAnonKey, supabaseUrl } from '@/lib/supabase/credentials';
 import { supabase } from '@/lib/supabase';
 
 type EmployeeRow = {
@@ -101,38 +101,21 @@ export default function CrmTeamPage() {
 
     const tempPassword = randomTempPassword();
     try {
-      const isolatedAuthClient = createClient(supabaseUrl, supabaseAnonKey, {
-        auth: {
-          persistSession: false,
-          autoRefreshToken: false,
-          detectSessionInUrl: false,
-        },
-      });
-
-      const { data: authData, error: authErr } = await isolatedAuthClient.auth.signUp({
-        email: em,
-        password: tempPassword,
-      });
-      if (authErr) throw authErr;
-
-      const userId = authData.user?.id;
-      if (!userId) {
-        throw new Error('تعذر إنشاء مستخدم Auth. تأكد من إعدادات Supabase Auth.');
-      }
-
-      const { error: insertErr } = await supabase.from('employees').insert({
-        user_id: userId,
+      const accessToken = await getClientAccessToken();
+      const result = await createTeamMember({
         full_name: n,
         email: em,
+        password: tempPassword,
+        is_admin: role === 'Admin',
         phone_wa: phoneWa.trim() || null,
-        role,
-        job_title: role === 'Admin' ? 'CRM Admin' : 'Travel Advisor',
+        access_token: accessToken,
       });
-      if (insertErr) throw insertErr;
+
+      if (!result.ok) throw new Error(result.error);
 
       await loadEmployees();
       setCreatedPassword(tempPassword);
-      setNotice({ type: 'ok', text: 'تم إنشاء حساب الموظف وحفظ بياناته بنجاح.' });
+      setNotice({ type: 'ok', text: result.message ?? '✅ تم إنشاء حساب الموظف بنجاح' });
       resetForm();
       setModalOpen(false);
     } catch (e) {

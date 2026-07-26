@@ -133,6 +133,21 @@ function TimelineCard({
               </button>
             </div>
 
+            {act.kind === 'place' || act.kind === 'transport' ? (
+              <div className="mt-2 flex items-center gap-2">
+                <label className="text-[10px] font-bold text-[#1E2720]/70">وقت الزيارة:</label>
+                <input
+                  type="time"
+                  className={VIP_INPUT}
+                  value={act.visit_time || act.time_slot || ''}
+                  onChange={(e) => {
+                    const visit_time = e.target.value;
+                    onUpdate(day.id, act.id, { visit_time, time_slot: visit_time });
+                  }}
+                />
+              </div>
+            ) : null}
+
             {act.kind === 'place' ? (
               <button
                 type="button"

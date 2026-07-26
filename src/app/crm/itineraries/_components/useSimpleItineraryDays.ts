@@ -38,8 +38,45 @@ export function useSimpleItineraryDays(initialDays?: SimpleItineraryDay[]) {
     return activeDay.title?.trim() || `اليوم ${idx + 1}`;
   }, [activeDay, itineraryDays]);
 
-  const handleAddDay = useCallback(() => {
-    setItineraryDays((prev) => [...prev, createEmptyDay(prev.length)]);
+  const handleAddDay = useCallback((opts?: { title?: string; city?: string }) => {
+    setItineraryDays((prev) => {
+      const next = createEmptyDay(prev.length);
+      if (opts?.title?.trim()) next.title = opts.title.trim();
+      if (opts?.city?.trim()) next.city = opts.city.trim();
+      return [...prev, next];
+    });
+  }, []);
+
+  /**
+   * Reorder entire day cards (places/hotel/city move with the day).
+   * Calendar position = array index; day_number is rewritten on save as index+1.
+   */
+  const moveDay = useCallback((dayId: number, direction: 'up' | 'down') => {
+    setItineraryDays((prev) => {
+      const currentIndex = prev.findIndex((d) => d.id === dayId);
+      if (currentIndex < 0) return prev;
+      const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+      if (targetIndex < 0 || targetIndex >= prev.length) return prev;
+
+      const next = [...prev];
+      const tmp = next[currentIndex]!;
+      next[currentIndex] = next[targetIndex]!;
+      next[targetIndex] = tmp;
+
+      // Refresh auto-generated titles so «اليوم الأول» stays chronological
+      return next.map((day, index) => {
+        const title = String(day.title ?? '').trim();
+        const isAuto =
+          !title ||
+          title === 'اليوم الأول' ||
+          /^اليوم\s+\d+$/.test(title);
+        if (!isAuto) return day;
+        return {
+          ...day,
+          title: index === 0 ? 'اليوم الأول' : `اليوم ${index + 1}`,
+        };
+      });
+    });
   }, []);
 
   const handleAddPlace = useCallback(
@@ -91,6 +128,25 @@ export function useSimpleItineraryDays(initialDays?: SimpleItineraryDay[]) {
     [],
   );
 
+  const updateVisitTime = useCallback(
+    (dayId: number, placeIndex: number, visit_time: string) => {
+      setItineraryDays((prev) =>
+        prev.map((day) => {
+          if (day.id !== dayId) return day;
+          return {
+            ...day,
+            places: day.places.map((p, index) =>
+              index === placeIndex
+                ? { ...p, visit_time, time_slot: visit_time }
+                : p,
+            ),
+          };
+        }),
+      );
+    },
+    [],
+  );
+
   const updateDayHotel = useCallback((dayId: number, hotelName: string) => {
     const normalized = hotelName.trim();
     setItineraryDays((prev) =>
@@ -108,6 +164,20 @@ export function useSimpleItineraryDays(initialDays?: SimpleItineraryDay[]) {
       prev.map((day) =>
         day.id === dayId ? { ...day, city: normalized || undefined } : day,
       ),
+    );
+  }, []);
+
+  const updateDayTitle = useCallback((dayId: number, title: string) => {
+    const normalized = title.trim();
+    setItineraryDays((prev) =>
+      prev.map((day, index) => {
+        if (day.id !== dayId) return day;
+        if (normalized) return { ...day, title: normalized };
+        return {
+          ...day,
+          title: index === 0 ? 'اليوم الأول' : `اليوم ${index + 1}`,
+        };
+      }),
     );
   }, []);
 
@@ -177,11 +247,14 @@ export function useSimpleItineraryDays(initialDays?: SimpleItineraryDay[]) {
     activeDay,
     activeDayLabel,
     handleAddDay,
+    moveDay,
     handleAddPlace,
     handleRemovePlace,
     updateTransport,
+    updateVisitTime,
     updateDayHotel,
     updateDayCity,
+    updateDayTitle,
     updateSupplierPaid,
     onDragEnd,
     dayDroppableId,

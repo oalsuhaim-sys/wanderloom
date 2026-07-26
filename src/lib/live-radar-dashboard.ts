@@ -18,6 +18,7 @@ export type SalesPipelinePulse = {
 
 export type VipInTransit = {
   id: string;
+  clientId: string | null;
   clientName: string;
   destination: string;
   dayNumber: number;
@@ -103,6 +104,21 @@ function resolveItineraryClientName(row: Record<string, unknown>): string {
     }
   }
   return String(row.customer_name ?? row.title ?? 'عميل VIP').trim() || 'عميل VIP';
+}
+
+function resolveItineraryClientId(row: Record<string, unknown>): string | null {
+  if (row.client_id != null && String(row.client_id).trim() !== '') {
+    return String(row.client_id).trim();
+  }
+  const joined = row.clients;
+  if (joined && typeof joined === 'object') {
+    const c = Array.isArray(joined) ? joined[0] : joined;
+    if (c && typeof c === 'object') {
+      const id = (c as Record<string, unknown>).id;
+      if (id != null && String(id).trim() !== '') return String(id).trim();
+    }
+  }
+  return null;
 }
 
 function isOperationalItinerary(row: Record<string, unknown>): boolean {
@@ -193,6 +209,7 @@ export function buildVipsInTransit(
 
     results.push({
       id: String(row.id ?? tripTitle),
+      clientId: resolveItineraryClientId(row),
       clientName: resolveItineraryClientName(row),
       destination,
       dayNumber,

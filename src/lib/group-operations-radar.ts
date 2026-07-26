@@ -25,11 +25,15 @@ export type GroupFulfillmentBucket = {
 }
 
 function pickPhone(raw: Record<string, unknown>): string {
-  return String(raw.phone_wa ?? raw.phone ?? '').trim()
+  return String(raw.phone_wa ?? '').trim()
 }
 
 function pickName(raw: Record<string, unknown>): string {
   return String(raw.name ?? '').trim()
+}
+
+function pickRadarFulfillment(raw: Record<string, unknown>): unknown {
+  return raw.radar_fulfillment ?? raw.radar_fulfillment_status
 }
 
 export function normalizeRadarFulfillmentStatus(raw: unknown): RadarFulfillmentStatus {
@@ -41,7 +45,7 @@ export function normalizeRadarFulfillmentStatus(raw: unknown): RadarFulfillmentS
 export function parseGroupFulfillmentClient(raw: Record<string, unknown>): GroupFulfillmentClient | null {
   const id = raw.id != null ? String(raw.id) : ''
   const name = pickName(raw)
-  const target_trip = resolveClientTargetTrip(raw)
+  const target_trip = String(raw.target_trip ?? '').trim() || resolveClientTargetTrip(raw)
   if (!id || !name || !target_trip) return null
 
   return {
@@ -50,7 +54,7 @@ export function parseGroupFulfillmentClient(raw: Record<string, unknown>): Group
     phone_wa: pickPhone(raw),
     target_trip,
     dna_special_requests: String(raw.dna_special_requests ?? '').trim(),
-    radar_fulfillment_status: normalizeRadarFulfillmentStatus(raw.radar_fulfillment_status),
+    radar_fulfillment_status: normalizeRadarFulfillmentStatus(pickRadarFulfillment(raw)),
   }
 }
 
@@ -75,43 +79,30 @@ export function groupFulfillmentClients(clients: GroupFulfillmentClient[]): Grou
     .sort((a, b) => a.target_trip.localeCompare(b.target_trip, 'ar'))
 }
 
+const GROUP_FULFILLMENT_SELECT =
+  'id, name, phone_wa, target_trip, dna_special_requests, radar_fulfillment, sales_stage'
+
 export async function fetchGroupFulfillmentClients(
   supabase: SupabaseClient,
-): Promise<{ clients: GroupFulfillmentClient[]; warning?: string }> {
-  const primary = await supabase
+): Promise<{ clients: GroupFulfillmentClient[]; error?: string }> {
+  const { data, error } = await supabase
     .from('clients')
-    .select('id, name, phone_wa, phone, target_trip, tags, dna_special_requests, radar_fulfillment_status, sales_stage')
+    .select(GROUP_FULFILLMENT_SELECT)
     .eq('sales_stage', SALES_STAGE_CONFIRMED)
     .not('target_trip', 'is', null)
     .neq('target_trip', '')
+    .order('target_trip', { ascending: true })
+    .order('name', { ascending: true })
 
-  let rows = (primary.data ?? []) as Record<string, unknown>[]
-  let warning: string | undefined
-
-  if (primary.error) {
-    const msg = primary.error.message ?? ''
-    if (msg.includes('column') || msg.includes('sales_stage') || msg.includes('target_trip')) {
-      warning =
-        'بعض أعمدة القروبات غير متوفرة — نفّذ clients_sales_stage.sql و clients_target_trip.sql و clients_radar_fulfillment.sql'
-      const fallback = await supabase
-        .from('clients')
-        .select('id, name, phone_wa, phone, tags, dna_special_requests')
-      if (fallback.error) {
-        return { clients: [], warning: fallback.error.message }
-      }
-      rows = (fallback.data ?? []) as Record<string, unknown>[]
-    } else {
-      return { clients: [], warning: msg }
-    }
-  } else {
-    rows = rows.filter((raw) => String(raw.sales_stage ?? '').trim() === SALES_STAGE_CONFIRMED)
+  if (error) {
+    return { clients: [], error: error.message }
   }
 
-  const clients = rows
+  const clients = ((data ?? []) as Record<string, unknown>[])
     .map(parseGroupFulfillmentClient)
     .filter((c): c is GroupFulfillmentClient => c != null)
 
-  return { clients, warning }
+  return { clients }
 }
 
 export async function updateRadarFulfillmentStatus(
@@ -119,18 +110,20 @@ export async function updateRadarFulfillmentStatus(
   clientId: string,
   status: RadarFulfillmentStatus,
 ): Promise<{ ok: boolean; error?: string }> {
-  const { error } = await supabase
+  let { error } = await supabase
     .from('clients')
-    .update({ radar_fulfillment_status: status })
+    .update({ radar_fulfillment: status } as never)
     .eq('id', clientId)
 
+  if (error && (error.message ?? '').includes('radar_fulfillment')) {
+    const fallback = await supabase
+      .from('clients')
+      .update({ radar_fulfillment_status: status })
+      .eq('id', clientId)
+    error = fallback.error
+  }
+
   if (error) {
-    if ((error.message ?? '').includes('radar_fulfillment_status')) {
-      return {
-        ok: false,
-        error: 'عمود radar_fulfillment_status غير موجود — نفّذ supabase/sql/clients_radar_fulfillment.sql',
-      }
-    }
     return { ok: false, error: error.message }
   }
 

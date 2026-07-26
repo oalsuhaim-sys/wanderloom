@@ -1,6 +1,5 @@
 'use client';
 
-import { fetchMarketingHubSafe } from '@/lib/marketing-hub-fetch-core';
 import { marketingSupabase } from '@/lib/marketing-supabase-client';
 import {
   aiItemToInsert,
@@ -10,7 +9,6 @@ import {
   mapAiRow,
   mapCalendarRow,
   mapHumanRow,
-  DEFAULT_BRAND_IDENTITY,
   type AiContentItem,
   type BrandIdentity,
   type ContentCalendarItem,
@@ -36,31 +34,6 @@ function wrapNetworkError(err: unknown): string {
   return msg;
 }
 
-/** جلب عبر API (يفضّل في الإنتاج — يتجنب مشاكل PWA/CORS) */
-export async function fetchMarketingHubViaApi() {
-  try {
-    const res = await fetch('/api/marketing/hub', { cache: 'no-store' });
-    if (!res.ok) {
-      const body = (await res.json().catch(() => null)) as { error?: string } | null;
-      return {
-        aiItems: [],
-        humanGuides: [],
-        calendarItems: [],
-        brandIdentity: { id: '', ...DEFAULT_BRAND_IDENTITY },
-        loadError: body?.error ?? `HTTP ${res.status}`,
-      };
-    }
-    return res.json();
-  } catch (err) {
-    return fetchMarketingHubLive();
-  }
-}
-
-/** جلب مباشر من المتصفح */
-export async function fetchMarketingHubLive() {
-  return fetchMarketingHubSafe(() => marketingSupabase);
-}
-
 export async function createAiPromptLive(
   data: Omit<AiContentItem, 'id'>,
 ): Promise<MarketingDbResult<AiContentItem>> {
@@ -70,7 +43,7 @@ export async function createAiPromptLive(
     const { data: row, error } = await supabase
       .from('marketing_ai_prompts')
       .insert(aiItemToInsert(data) as never)
-      .select('id, category, media_type, campaign, visual_prompt, caption, hashtags, status, sort_order')
+      .select('*')
       .single();
 
     if (error) return { ok: false, error: error.message };

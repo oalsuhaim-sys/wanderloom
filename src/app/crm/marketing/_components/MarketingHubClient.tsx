@@ -1,6 +1,5 @@
 'use client';
 
-import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import toast, { Toaster } from 'react-hot-toast';
 import {
@@ -38,7 +37,10 @@ import MarketingContentFilterBar, {
   EDIT_MEDIA_TYPE_OPTIONS,
   filterMarketingContentCards,
 } from '@/app/crm/marketing/_components/MarketingContentFilterBar';
+import MarketingFilesLibrary from '@/app/crm/marketing/_components/MarketingFilesLibrary';
 import {
+  marketingCategoryFromFilter,
+  marketingMediaTypeFromFilter,
   normalizeContentCategory,
   normalizeMediaType,
   type MarketingContentCategory,
@@ -83,6 +85,12 @@ const TABS: { id: MarketingTab; label: string; icon: typeof Sparkles }[] = [
 
 const FIELD =
   'w-full rounded-lg border border-gray-300 bg-[#FDFBF7] p-3 text-sm font-bold text-[#111111] outline-none transition focus:border-[#cda04c] focus:ring-1 focus:ring-[#cda04c]';
+
+const PROMPT_TEXTAREA =
+  'crm-marketing-textarea w-full min-h-[200px] shrink-0 resize-y overflow-y-auto rounded-lg border border-gray-300 bg-[#FDFBF7] p-3 text-sm font-bold text-[#111111] outline-none transition focus:border-[#cda04c] focus:ring-1 focus:ring-[#cda04c] font-mono text-xs';
+
+const CAPTION_TEXTAREA =
+  'crm-marketing-textarea w-full min-h-[180px] shrink-0 resize-y overflow-y-auto rounded-lg border border-[#cda04c]/25 bg-[#FFFBF0] p-3 text-sm font-bold leading-relaxed text-[#2d3a33] outline-none transition focus:border-[#cda04c] focus:ring-1 focus:ring-[#cda04c]';
 
 const INJECT_CHECKBOX_CLASS =
   "h-5 w-5 shrink-0 cursor-pointer appearance-none rounded-sm border-2 border-[#111111] bg-white checked:border-[#1e3f20] checked:bg-[#1e3f20] relative outline-none after:content-[''] after:hidden checked:after:block after:absolute after:inset-0 after:m-auto after:h-[8px] after:w-[4px] after:rotate-45 after:border-b-2 after:border-r-2 after:border-white";
@@ -147,7 +155,9 @@ export default function MarketingHubClient() {
           .order('created_at', { ascending: true }),
       ]);
 
-      const errors = [brandRes.error, aiRes.error, humanRes.error, calendarRes.error].filter(Boolean);
+      const errors = [brandRes.error, aiRes.error, humanRes.error, calendarRes.error].filter(
+        Boolean,
+      );
       if (errors.length) {
         setLoadError(errors.map((e) => e?.message).join(' · '));
       }
@@ -240,18 +250,32 @@ export default function MarketingHubClient() {
   }, []);
 
   const saveAi = useCallback(async (data: Omit<AiContentItem, 'id'>, id?: string) => {
+    const filterCategory = marketingCategoryFromFilter(selectedCategory);
+    const filterMedia = marketingMediaTypeFromFilter(selectedMediaType);
+    const category =
+      data.category ?? data.content_category ?? data.contentCategory ?? filterCategory ?? 'أخرى';
+    const media_type = data.media_type ?? data.mediaType ?? filterMedia ?? 'فيديو';
+    const payload: Omit<AiContentItem, 'id'> = {
+      ...data,
+      category,
+      content_category: category,
+      contentCategory: category,
+      media_type,
+      mediaType: media_type,
+    };
+
     setBusy(true);
     if (id) {
-      const res = await updateAiPromptLive(id, data);
+      const res = await updateAiPromptLive(id, payload);
       setBusy(false);
       if (!res.ok) {
         toast.error(res.error);
         return;
       }
-      setAiItems((prev) => prev.map((x) => (x.id === id ? { ...data, id } : x)));
+      setAiItems((prev) => prev.map((x) => (x.id === id ? { ...payload, id } : x)));
       toast.success('تم تحديث الحملة');
     } else {
-      const res = await createAiPromptLive(data);
+      const res = await createAiPromptLive(payload);
       setBusy(false);
       if (!res.ok || !res.data) {
         toast.error(res.error ?? 'فشل الإضافة');
@@ -261,7 +285,7 @@ export default function MarketingHubClient() {
       toast.success('تمت إضافة الحملة');
     }
     setModal({ open: false });
-  }, []);
+  }, [selectedCategory, selectedMediaType]);
 
   const saveHuman = useCallback(async (data: Omit<HumanProductionGuide, 'id'>, id?: string) => {
     setBusy(true);
@@ -329,7 +353,11 @@ export default function MarketingHubClient() {
   const copyPromptWithInject = useCallback(
     (item: AiContentItem) => {
       const inject = injectBrandById[item.id] ?? false;
-      let text = (item.visualPrompt ?? '').trim();
+      let text = item.visualPrompt ?? '';
+      if (!text.trim()) {
+        toast.error('البرومبت فارغ');
+        return;
+      }
       const rule = (brandIdentity.scarfPromptRule ?? '').trim();
       if (inject && rule) {
         const sep = text.endsWith(',') ? ' ' : ', ';
@@ -367,12 +395,6 @@ export default function MarketingHubClient() {
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-3">
-              <Link
-                href="/crm/marketing"
-                className="inline-flex items-center gap-2 rounded-xl border border-[#cda04c]/35 bg-[#cda04c]/10 px-4 py-2.5 text-xs font-black text-[#7a5f28] shadow-sm transition hover:bg-[#cda04c]/20"
-              >
-                المحتوى والحملات
-              </Link>
               <button
                 type="button"
                 onClick={() => void loadFromSupabase()}
@@ -504,9 +526,15 @@ export default function MarketingHubClient() {
                     </div>
                   </div>
                   <div className="rounded-xl border border-[#111111]/20 bg-[#111111] p-4">
-                    <p className="font-mono text-xs leading-relaxed text-gray-200" dir="ltr">
-                      {item.visualPrompt ?? ''}
-                    </p>
+                    <textarea
+                      value={item.visualPrompt ?? ''}
+                      readOnly
+                      rows={10}
+                      dir="ltr"
+                      spellCheck={false}
+                      className="crm-marketing-textarea min-h-[200px] w-full resize-y overflow-y-auto border-0 bg-transparent font-mono text-xs leading-relaxed text-gray-200 outline-none"
+                      aria-label="AI Prompt"
+                    />
                   </div>
                 </div>
 
@@ -524,10 +552,17 @@ export default function MarketingHubClient() {
                     </button>
                   </div>
                   <div className="rounded-xl border border-[#cda04c]/25 bg-[#FFFBF0] p-4">
-                    <p className="text-sm font-bold leading-[1.9] text-[#2d3a33]">{item.caption ?? ''}</p>
+                    <textarea
+                      value={item.caption ?? ''}
+                      readOnly
+                      rows={8}
+                      spellCheck={false}
+                      className="crm-marketing-textarea min-h-[180px] w-full resize-y overflow-y-auto border-0 bg-transparent text-sm font-bold leading-[1.9] text-[#2d3a33] outline-none"
+                      aria-label="Caption"
+                    />
                     <p className="mt-3 flex items-center gap-2 border-t border-[#cda04c]/20 pt-3 text-xs font-bold text-[#1e3f20]">
-                      <Hash className="h-3.5 w-3.5 text-[#cda04c]" aria-hidden />
-                      {item.hashtags ?? ''}
+                      <Hash className="h-3.5 w-3.5 shrink-0 text-[#cda04c]" aria-hidden />
+                      <span className="min-w-0 flex-1 whitespace-pre-wrap break-words">{item.hashtags ?? ''}</span>
                     </p>
                   </div>
                 </div>
@@ -541,7 +576,8 @@ export default function MarketingHubClient() {
         ) : null}
 
         {activeTab === 'human' ? (
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <div className="space-y-8">
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
             {humanGuides.map((item) => (
               <article key={item.id} className="flex flex-col gap-5 rounded-[1.75rem] border border-[#1e3f20]/10 bg-white p-6 shadow-sm">
                 <div className="flex flex-wrap items-start justify-between gap-3">
@@ -585,8 +621,21 @@ export default function MarketingHubClient() {
                   </div>
                   <p className="text-sm font-bold text-[#2d3a33]">{item.voiceover ?? ''}</p>
                 </div>
+                <UploadZone cardId={item.id} />
               </article>
             ))}
+            </div>
+
+            <section className="space-y-4">
+              <div>
+                <p className="text-xs font-black text-[#cda04c]">مكتبة الإنتاج</p>
+                <h3 className="mt-1 text-lg font-black text-[#1e3f20]">رفع الملفات والمواد الجاهزة</h3>
+                <p className="mt-1 text-xs font-bold text-gray-500">
+                  صور · فيديو · PDF · جداول — تُخزَّن في Supabase Storage
+                </p>
+              </div>
+              <MarketingFilesLibrary />
+            </section>
           </div>
         ) : null}
 
@@ -690,6 +739,8 @@ export default function MarketingHubClient() {
       {modal.open ? (
         <MarketingModal
           modal={modal}
+          selectedCategory={selectedCategory}
+          selectedMediaType={selectedMediaType}
           onClose={() => setModal({ open: false })}
           onSaveAi={saveAi}
           onSaveHuman={saveHuman}
@@ -734,12 +785,16 @@ function UploadZone({ cardId }: { cardId: string }) {
 
 function MarketingModal({
   modal,
+  selectedCategory,
+  selectedMediaType,
   onClose,
   onSaveAi,
   onSaveHuman,
   onSaveCalendar,
 }: {
   modal: Extract<ModalState, { open: true }>;
+  selectedCategory: string;
+  selectedMediaType: string;
   onClose: () => void;
   onSaveAi: (data: Omit<AiContentItem, 'id'>, id?: string) => void | Promise<void>;
   onSaveHuman: (data: Omit<HumanProductionGuide, 'id'>, id?: string) => void | Promise<void>;
@@ -754,6 +809,8 @@ function MarketingModal({
       <ModalShell title={isEdit ? 'تعديل المحتوى' : 'إضافة محتوى'} onClose={onClose}>
         <AiForm
           initial={ai}
+          defaultCategory={isEdit ? undefined : marketingCategoryFromFilter(selectedCategory)}
+          defaultMediaType={isEdit ? undefined : marketingMediaTypeFromFilter(selectedMediaType)}
           onSubmit={(data) => onSaveAi(data, isEdit ? ai?.id : undefined)}
           onCancel={onClose}
         />
@@ -818,18 +875,24 @@ function ModalShell({
 
 function AiForm({
   initial,
+  defaultCategory,
+  defaultMediaType,
   onSubmit,
   onCancel,
 }: {
   initial?: AiContentItem;
+  defaultCategory?: MarketingContentCategory;
+  defaultMediaType?: MarketingMediaType;
   onSubmit: (data: Omit<AiContentItem, 'id'>) => void;
   onCancel: () => void;
 }) {
   const [mediaType, setMediaType] = useState<MarketingMediaType>(() =>
-    normalizeMediaType(initial?.media_type),
+    normalizeMediaType(initial?.media_type ?? initial?.mediaType ?? defaultMediaType),
   );
   const [category, setCategory] = useState<MarketingContentCategory>(() =>
-    normalizeContentCategory(initial?.content_category),
+    normalizeContentCategory(
+      initial?.category ?? initial?.content_category ?? initial?.contentCategory ?? defaultCategory,
+    ),
   );
   const [campaign, setCampaign] = useState(initial?.campaign ?? '');
   const [visualPrompt, setVisualPrompt] = useState(initial?.visualPrompt ?? '');
@@ -846,6 +909,7 @@ function AiForm({
           mediaType,
           contentCategory: category,
           media_type: mediaType,
+          category,
           content_category: category,
           campaign,
           visualPrompt,
@@ -883,9 +947,9 @@ function AiForm({
       <label className="block text-xs font-black text-[#1e3f20]">اسم الحملة</label>
       <input value={campaign} onChange={(e) => setCampaign(e.target.value)} className={FIELD} required />
       <label className="block text-xs font-black text-[#1e3f20]">Visual Prompt</label>
-      <textarea value={visualPrompt} onChange={(e) => setVisualPrompt(e.target.value)} className={FIELD} rows={3} dir="ltr" required />
+      <textarea value={visualPrompt} onChange={(e) => setVisualPrompt(e.target.value)} className={PROMPT_TEXTAREA} rows={6} dir="ltr" required />
       <label className="block text-xs font-black text-[#1e3f20]">Caption</label>
-      <textarea value={caption} onChange={(e) => setCaption(e.target.value)} className={FIELD} rows={3} required />
+      <textarea value={caption} onChange={(e) => setCaption(e.target.value)} className={CAPTION_TEXTAREA} rows={6} required />
       <label className="block text-xs font-black text-[#1e3f20]">Hashtags</label>
       <input value={hashtags} onChange={(e) => setHashtags(e.target.value)} className={FIELD} />
       <label className="block text-xs font-black text-[#1e3f20]">الحالة</label>

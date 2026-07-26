@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useParams } from 'next/navigation';
-import { Loader2, MessageCircle, Plus, Trash2, Copy, FileStack } from 'lucide-react';
+import { Loader2, MessageCircle, Plus, Trash2, Copy, FileStack, Camera } from 'lucide-react';
 import { DragDropContext } from '@hello-pangea/dnd';
 
 import {
@@ -30,7 +30,7 @@ import {
   withTransportDefaults,
 } from '@/app/crm/itineraries/_components/simple-itinerary-day-utils';
 import { useSimpleItineraryDays } from '@/app/crm/itineraries/_components/useSimpleItineraryDays';
-import { buildStrictSimpleItinerarySavePayload, normalizeItinerarySaveStatus, parseDatesField, stripItineraryPayloadForSchemaError } from '@/lib/itinerary-builder-model';
+import { buildStrictSimpleItinerarySavePayload, FLIGHT_CLASS_OPTIONS, normalizeItinerarySaveStatus, parseDatesField, stripItineraryPayloadForSchemaError } from '@/lib/itinerary-builder-model';
 import {
   applyTemplateToBuilder,
   buildTemplateFlightDetails,
@@ -66,12 +66,15 @@ import {
   coerceClientIdForItinerarySave,
   fetchCrmClientMiniById,
   mergeClientIntoList,
+  copyItineraryPortalUrl,
   openItineraryWhatsAppShare,
+  parseCrmClientIdForSave,
   parseJoinedCrmClient,
   resolveItineraryClientIdFromDb,
   resolveItineraryPublicSlug,
   type CrmClientMini,
 } from '@/lib/itinerary-client-crm';
+import { getClientAccessToken } from '@/lib/crm-session-token';
 import { supabase } from '@/lib/supabase';
 import { fetchAllPlacesBank, filterPlacesBankInventory } from '@/lib/places-bank';
 import type { PlaceBankRow } from '@/types/place';
@@ -79,6 +82,14 @@ import type { PlaceBankRow } from '@/types/place';
 const CLIENT_BRIEF_SELECT =
   'id, name, travel_dna, hotel_preferences, dietary, secret_notes';
 const CLIENT_BRIEF_SELECT_MIN = 'id, name';
+
+type ExpertMini = {
+  id: string;
+  name: string;
+  status?: string | null;
+  specialty_regions?: string | null;
+  dna_profile?: unknown;
+};
 
 function formatSupabaseSaveError(error: {
   message?: string;
@@ -154,6 +165,7 @@ function daysDataToItineraryDays(raw: unknown): SimpleItineraryDay[] {
         rating: s.rating,
         transportToNext: transitModeToArabic(s.transit_mode ?? s.transport_type),
         transportDuration: String(s.transit_duration ?? '').trim(),
+        visit_time: String(s.visit_time ?? s.time_slot ?? s.time ?? '').trim(),
       }),
     );
 
@@ -177,6 +189,9 @@ function itineraryDaysToDaysData(days: SimpleItineraryDay[]): unknown[] {
       place_name: p.name,
       category: p.category,
       places_bank_id: p.id != null ? String(p.id) : undefined,
+      ...(p.visit_time?.trim()
+        ? { visit_time: p.visit_time.trim(), time_slot: p.visit_time.trim() }
+        : {}),
       ...(placeIndex > 0
         ? {
             transit_mode: arabicTransportToMode(p.transportToNext ?? 'سيارة'),
@@ -269,6 +284,9 @@ export default function EditItineraryPage() {
 
   const [places, setPlaces] = useState<any[]>([]);
   const [clientsList, setClientsList] = useState<CrmClientMini[]>([]);
+  const [expertsList, setExpertsList] = useState<ExpertMini[]>([]);
+  const [expertsLoadError, setExpertsLoadError] = useState<string | null>(null);
+  const [expertId, setExpertId] = useState('');
   const [clientId, setClientId] = useState('');
   const [clientLinkSaving, setClientLinkSaving] = useState(false);
   const [itineraryShareSlug, setItineraryShareSlug] = useState('');
@@ -296,6 +314,11 @@ export default function EditItineraryPage() {
   const [arrivalTime, setArrivalTime] = useState('');
   const [gate, setGate] = useState('');
   const [seat, setSeat] = useState('');
+  const [flightNumber, setFlightNumber] = useState('');
+  const [terminal, setTerminal] = useState('');
+  const [flightClass, setFlightClass] = useState('');
+  const [departureCountry, setDepartureCountry] = useState('');
+  const [arrivalCountry, setArrivalCountry] = useState('');
   const [pnr, setPnr] = useState('');
   const [hotels, setHotels] = useState<ItineraryHotelEntry[]>([createEmptyHotelEntry()]);
   const [preTripServices, setPreTripServices] = useState<PreTripService[]>([]);
@@ -306,13 +329,11 @@ export default function EditItineraryPage() {
   const [templateBusy, setTemplateBusy] = useState(false);
   const [templatesNotice, setTemplatesNotice] = useState('');
   const [expectedProfit, setExpectedProfit] = useState('');
-  const [includeFashionServices, setIncludeFashionServices] = useState(false);
   const [documents, setDocuments] = useState<ItineraryDocument[]>([]);
   const [supplierRequests, setSupplierRequests] = useState<SupplierRequest[]>([]);
   const [activityTickets, setActivityTickets] = useState<ActivityTicket[]>([]);
   const [allSuppliers, setAllSuppliers] = useState<CrmSupplier[]>([]);
   const [tripStatus, setTripStatus] = useState('active');
-
   const {
     itineraryDays,
     setItineraryDays,
@@ -320,11 +341,14 @@ export default function EditItineraryPage() {
     setActiveDayId,
     activeDayLabel,
     handleAddDay,
+    moveDay,
     handleAddPlace,
     handleRemovePlace,
     updateTransport,
+    updateVisitTime,
     updateDayHotel,
     updateDayCity,
+    updateDayTitle,
     onDragEnd,
     dayDroppableId,
   } = useSimpleItineraryDays([createEmptyDay(0)]);
@@ -336,8 +360,10 @@ export default function EditItineraryPage() {
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [clientLinkWarning, setClientLinkWarning] = useState<string | null>(null);
+  const [memoryUploading, setMemoryUploading] = useState(false);
   const daysStorageKeyRef = useRef<DaysStorageKey>('days_data');
   const pinnedClientRef = useRef<CrmClientMini | null>(null);
+  const adminMemoryInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     async function loadInitialData() {
@@ -375,6 +401,41 @@ export default function EditItineraryPage() {
           setAllSuppliers(supplierRows);
         } catch (supplierErr) {
           console.error('Failed to load suppliers', supplierErr);
+        }
+
+        const expertAccessToken = await getClientAccessToken();
+        const expertsResponse = await fetch('/api/crm/experts', {
+          cache: 'no-store',
+          headers: {
+            Authorization: `Bearer ${expertAccessToken}`,
+          },
+        });
+        const expertsPayload = (await expertsResponse.json()) as {
+          ok?: boolean;
+          rows?: ExpertMini[];
+          error?: string;
+        };
+        const expertsData = Array.isArray(expertsPayload.rows)
+          ? expertsPayload.rows
+          : [];
+        const expertsError =
+          !expertsResponse.ok || !expertsPayload.ok
+            ? expertsPayload.error || `status_${expertsResponse.status}`
+            : null;
+        console.log('FETCHED EXPERTS:', expertsData);
+        console.log('FETCH ERROR:', expertsError);
+
+        if (expertsError) {
+          console.error('Failed to load experts', expertsError);
+          setExpertsLoadError(expertsError);
+          setExpertsList([]);
+        } else {
+          setExpertsLoadError(null);
+          setExpertsList(
+            expertsData
+              .filter((row) => row?.id && row?.name)
+              .sort((a, b) => a.name.localeCompare(b.name, 'ar')),
+          );
         }
       } catch (error) {
         console.error('Data loading error:', error);
@@ -523,6 +584,7 @@ export default function EditItineraryPage() {
 
         setItineraryShareSlug(resolveItineraryPublicSlug(safeData, id));
         setClientId(resolvedClientId);
+        setExpertId(safeData.expert_id != null ? String(safeData.expert_id) : '');
 
         let clientForList = joinedClient;
         if (!clientForList && resolvedClientId) {
@@ -572,7 +634,12 @@ export default function EditItineraryPage() {
           strField(safeData, ['arrival_time']) ||
             strField(fd, ['arrival_time', 'landing_time']),
         );
-        setGate(strField(safeData, ['gate']) || strField(fd, ['gate', 'terminal']));
+        setGate(strField(safeData, ['gate']) || strField(fd, ['gate']));
+        setTerminal(strField(fd, ['terminal']));
+        setFlightNumber(strField(fd, ['flight_number']));
+        setFlightClass(strField(fd, ['flight_class', 'flightClass']));
+        setDepartureCountry(strField(fd, ['departure_country', 'departureCountry']));
+        setArrivalCountry(strField(fd, ['arrival_country', 'arrivalCountry']));
         setSeat(
           strField(safeData, ['seat']) || strField(fd, ['flight_seat', 'seat']),
         );
@@ -585,7 +652,6 @@ export default function EditItineraryPage() {
         setExpectedProfit(
           safeData.expected_profit != null ? String(safeData.expected_profit) : '',
         );
-        setIncludeFashionServices(safeData.include_wardrobe === true);
         setDocuments(parseItineraryDocuments(safeData.documents));
         setSupplierRequests(parseSupplierRequests(safeData.supplier_requests));
         setActivityTickets(parseActivityTickets(safeData.ticket_details));
@@ -639,7 +705,7 @@ export default function EditItineraryPage() {
             .select(
               `id, day_num, title, city, notes, sort_order,
               itinerary_stops (
-                id, place_name, category, time_slot, note,
+                id, place_name, category, visit_time, time_slot, note,
                 transport_type, taxi, transit_mode, transit_duration,
                 sort_order, places_bank_id
               )`,
@@ -762,6 +828,11 @@ export default function EditItineraryPage() {
           gate,
           seat,
           bookingRef: pnr,
+          flightNumber,
+          terminal,
+          flightClass,
+          departureCountry,
+          arrivalCountry,
         }),
         sourceItineraryId: id,
       });
@@ -779,7 +850,7 @@ export default function EditItineraryPage() {
     } finally {
       setTemplateBusy(false);
     }
-  }, [templateSaveTitle, geographyDestinationLabel, flightArrivalCity, itineraryDays, hotels, id, originCity, departureTime, arrivalTime, gate, seat, pnr, supabase]);
+  }, [templateSaveTitle, geographyDestinationLabel, flightArrivalCity, itineraryDays, hotels, id, originCity, departureTime, arrivalTime, gate, seat, pnr, flightNumber, terminal, flightClass, departureCountry, arrivalCountry, supabase]);
 
   const handleLoadTemplate = useCallback(() => {
     if (!selectedTemplateId) {
@@ -802,13 +873,16 @@ export default function EditItineraryPage() {
   }, [selectedTemplateId, templates, tripDateFrom]);
 
   const handleShareWhatsApp = useCallback(() => {
+    const tripId = String(id ?? '').trim();
     const currentClient = clientId
       ? clientsList.find((c) => String(c.id) === String(clientId))
       : null;
 
     const result = openItineraryWhatsAppShare({
       client: currentClient,
-      itinerarySlug: itineraryShareSlug || id || '',
+      clientId,
+      itinerarySlug: tripId || itineraryShareSlug || '',
+      itineraryId: tripId,
     });
 
     if (!result.ok) {
@@ -817,6 +891,100 @@ export default function EditItineraryPage() {
     }
     setNotice('تم فتح واتساب للعميل ✨');
   }, [clientsList, clientId, itineraryShareSlug, id]);
+
+  const handleCopyShareLink = useCallback(async () => {
+    const tripId = String(id ?? '').trim();
+    if (!tripId) {
+      setNotice('معرّف المسار غير متوفر — احفظ المسار أولاً.');
+      return;
+    }
+
+    const result = await copyItineraryPortalUrl({
+      itinerarySlug: tripId,
+      clientId: clientId || null,
+      itineraryId: tripId,
+    });
+
+    if (!result.ok) {
+      setNotice(result.error);
+      return;
+    }
+
+    setNotice(
+      result.url.includes('trip_id=')
+        ? 'تم نسخ رابط المسار مع trip_id ✨'
+        : 'تم نسخ رابط المسار ✨',
+    );
+  }, [clientId, id]);
+
+  const handleAdminMemoryUpload = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      e.target.value = '';
+      if (!file) return;
+
+      const resolvedClientId = parseCrmClientIdForSave(clientId);
+      const resolvedItineraryId = parseCrmClientIdForSave(id);
+
+      if (!resolvedClientId) {
+        window.alert('يرجى ربط المسار بعميل أولاً وحفظه قبل رفع الصور.');
+        return;
+      }
+
+      if (!supabase) {
+        window.alert('تعذر الاتصال بقاعدة البيانات.');
+        return;
+      }
+
+      setMemoryUploading(true);
+
+      try {
+        const fileExt = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+        const filePath = `${resolvedClientId}/${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('memories')
+          .upload(filePath, file, {
+            contentType: file.type || 'image/jpeg',
+            upsert: false,
+          });
+
+        if (uploadError) throw uploadError;
+
+        const { data: publicData } = supabase.storage.from('memories').getPublicUrl(filePath);
+        const publicUrl = publicData.publicUrl;
+
+        const payload: Record<string, unknown> = {
+          client_id: resolvedClientId,
+          location_name: 'مرفوع من الإدارة',
+          image_url: publicUrl,
+        };
+
+        if (resolvedItineraryId != null) {
+          payload.itinerary_id = resolvedItineraryId;
+        }
+
+        const { error: dbError } = await supabase.from('client_memories').insert(payload);
+
+        if (dbError) throw dbError;
+
+        window.alert('تم رفع الصورة بنجاح وحفظها في ذكريات العميل! 📸');
+        setNotice('تم رفع الذكرى من لوحة الإدارة بنجاح 📸');
+      } catch (error) {
+        console.error('[admin-memory-upload]', error);
+        const message =
+          error instanceof Error
+            ? error.message
+            : typeof error === 'object' && error != null
+              ? JSON.stringify(error)
+              : String(error);
+        window.alert(`فشل الرفع: ${message}`);
+      } finally {
+        setMemoryUploading(false);
+      }
+    },
+    [clientId, id],
+  );
 
   const persistClientLink = useCallback(
     async (rawClientId: string, { silent = false }: { silent?: boolean } = {}) => {
@@ -903,6 +1071,11 @@ export default function EditItineraryPage() {
       datesTo: tripDateTo,
       gate,
       seat,
+      flightNumber,
+      terminal,
+      flightClass,
+      departureCountry,
+      arrivalCountry,
       hotels: hotels.map((h) => ({
         name: h.name,
         pnr: h.pnr,
@@ -910,13 +1083,14 @@ export default function EditItineraryPage() {
         checkOut: h.checkOut,
       })),
       clientId: parsedClientId,
+      expertId: expertId.trim() || null,
       customerName: selectedClient ? clientDisplayName(selectedClient) : '',
       preTripServices,
-      includeWardrobe: includeFashionServices,
+      includeWardrobe: false,
       documents,
       supplierRequests,
       ticketDetails: activityTickets,
-      showFashionServices: includeFashionServices,
+      showFashionServices: false,
       isMedical: itineraryHasMedicalPreTrip(preTripServices),
       status: tripStatus || 'active',
     });
@@ -927,6 +1101,7 @@ export default function EditItineraryPage() {
       ...payload,
       expected_profit: expectedProfitNum,
       client_id: parsedClientId,
+      expert_id: expertId.trim() || null,
     };
 
     try {
@@ -1006,13 +1181,18 @@ export default function EditItineraryPage() {
     arrivalTime,
     gate,
     seat,
+    flightNumber,
+    terminal,
+    flightClass,
+    departureCountry,
+    arrivalCountry,
     pnr,
     hotels,
     itineraryDays,
     clientId,
+    expertId,
     clientsList,
     preTripServices,
-    includeFashionServices,
     expectedProfit,
     documents,
     supplierRequests,
@@ -1132,6 +1312,68 @@ export default function EditItineraryPage() {
                   {clientLinkWarning}
                 </p>
               ) : null}
+
+              <div className="mt-3 rounded-xl border border-dashed border-[#D4AF37]/45 bg-[#FFFBF0] p-3">
+                <p className="text-xs font-bold text-gray-800">رفع ذكرى من الإدارة 📸</p>
+                <p className="mt-0.5 text-[10px] font-semibold leading-relaxed text-gray-500">
+                  يُرفع مباشرة إلى ذكريات العميل المرتبط — بدون رابط العميل.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => adminMemoryInputRef.current?.click()}
+                  disabled={!clientId || memoryUploading || clientLinkSaving || saving}
+                  className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-[#D4AF37]/50 bg-white px-3 py-2.5 text-xs font-black text-[#1E2720] transition hover:bg-[#D4AF37]/10 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {memoryUploading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                      جاري الرفع…
+                    </>
+                  ) : (
+                    <>
+                      <Camera className="h-4 w-4 text-[#D4AF37]" aria-hidden />
+                      رفع صورة للعميل
+                    </>
+                  )}
+                </button>
+                <input
+                  ref={adminMemoryInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => void handleAdminMemoryUpload(e)}
+                />
+              </div>
+            </div>
+
+            <div className="min-w-0">
+              <label className="mb-2 block text-sm font-bold text-gray-700">
+                خبير الوجهة (مصمم المسار)
+              </label>
+              <select
+                name="expert_id"
+                value={expertId || ''}
+                disabled={saving}
+                onChange={(e) => setExpertId(e.target.value)}
+                className={EDIT_HEADER_FIELD}
+              >
+                <option value="">-- اختر الخبير الذي صمم المسار --</option>
+                {expertsList.map((expert) => (
+                  <option key={expert.id} value={expert.id}>
+                    {expert.name}
+                    {expert.specialty_regions ? ` · ${expert.specialty_regions}` : ''}
+                  </option>
+                ))}
+              </select>
+              <p
+                className={`mt-1.5 text-[11px] font-bold ${
+                  expertsLoadError ? 'text-rose-600' : 'text-slate-500'
+                }`}
+              >
+                {expertsLoadError
+                  ? `تعذر تحميل الخبراء: ${expertsLoadError}`
+                  : `تم تحميل ${expertsList.length} خبير من قاعدة البيانات`}
+              </p>
             </div>
 
             <div className="min-w-0">
@@ -1176,6 +1418,15 @@ export default function EditItineraryPage() {
               className="min-w-[5ch] border-0 bg-transparent p-0 text-sm font-bold tracking-wider text-[#D4AF37] outline-none placeholder:text-[#D4AF37]/40"
             />
           </div>
+          <button
+            type="button"
+            onClick={() => void handleCopyShareLink()}
+            disabled={!id}
+            className="inline-flex items-center gap-2 rounded-full border-2 border-[#D4AF37]/50 bg-white px-4 py-2 text-xs font-black text-[#1E2720] shadow-sm transition hover:bg-[#FFFBF0] disabled:cursor-not-allowed disabled:opacity-45"
+          >
+            <Copy className="h-4 w-4 shrink-0" aria-hidden />
+            نسخ الرابط
+          </button>
           <button
             type="button"
             onClick={handleShareWhatsApp}
@@ -1260,31 +1511,6 @@ export default function EditItineraryPage() {
           </div>
         </div>
 
-        <div className="border-t border-gray-100 pt-5">
-          <div className="flex items-center justify-between gap-3 rounded-xl border border-[#D4AF37]/25 bg-[#FEFDF9] p-4">
-            <div>
-              <p className="text-sm font-bold text-gray-800">تفعيل خدمات الأزياء والكونسيرج</p>
-              <p className="text-xs text-gray-500">
-                عند الإيقاف يُخفى تبويب الصالون الذهبي / أزياء السفر من واجهة العميل
-              </p>
-            </div>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={includeFashionServices}
-              onClick={() => setIncludeFashionServices((v) => !v)}
-              className={`relative h-9 w-[3.25rem] shrink-0 rounded-full transition-colors ${
-                includeFashionServices ? 'bg-[#1A2520]' : 'bg-gray-300'
-              }`}
-            >
-              <span
-                className={`pointer-events-none absolute top-1 h-7 w-7 rounded-full bg-white shadow-md transition-[inset-inline-start] ${
-                  includeFashionServices ? 'start-[calc(100%-1.875rem)]' : 'start-1'
-                }`}
-              />
-            </button>
-          </div>
-        </div>
       </section>
 
       <section className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm mb-6 flex flex-col gap-4">
@@ -1357,6 +1583,16 @@ export default function EditItineraryPage() {
               className="bg-gray-50 border border-gray-300 rounded-lg p-2.5 text-sm text-gray-900 focus:border-[#D4AF37] outline-none"
             />
           </label>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-sm font-bold text-gray-600">دولة المغادرة</span>
+            <input
+              type="text"
+              value={departureCountry}
+              onChange={(e) => setDepartureCountry(e.target.value)}
+              placeholder="السعودية"
+              className="bg-gray-50 border border-gray-300 rounded-lg p-2.5 text-sm text-gray-900 focus:border-[#D4AF37] outline-none"
+            />
+          </label>
           <label className="flex flex-col gap-1.5 md:col-span-2">
             <span className="text-sm font-bold text-gray-600">
               إلى مدينة (رحلة الطيران — مدينة واحدة)
@@ -1382,6 +1618,54 @@ export default function EditItineraryPage() {
             <span className="text-xs text-gray-500">
               مدينة هبوط الطيران فقط — لا تُربط تلقائياً بكل مدن المسار.
             </span>
+          </label>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-sm font-bold text-gray-600">دولة الوصول</span>
+            <input
+              type="text"
+              value={arrivalCountry}
+              onChange={(e) => setArrivalCountry(e.target.value)}
+              placeholder="هنغاريا"
+              className="bg-gray-50 border border-gray-300 rounded-lg p-2.5 text-sm text-gray-900 focus:border-[#D4AF37] outline-none"
+            />
+          </label>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-sm font-bold text-gray-600">رقم الرحلة</span>
+            <input
+              type="text"
+              value={flightNumber}
+              onChange={(e) => setFlightNumber(e.target.value)}
+              placeholder="SV130"
+              dir="ltr"
+              className="bg-gray-50 border border-gray-300 rounded-lg p-2.5 text-sm text-gray-900 focus:border-[#D4AF37] outline-none"
+            />
+          </label>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-sm font-bold text-gray-600">المبنى</span>
+            <input
+              type="text"
+              value={terminal}
+              onChange={(e) => setTerminal(e.target.value)}
+              placeholder="T1"
+              dir="ltr"
+              className="bg-gray-50 border border-gray-300 rounded-lg p-2.5 text-sm text-gray-900 focus:border-[#D4AF37] outline-none"
+            />
+          </label>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-sm font-bold text-gray-600">الدرجة</span>
+            <select
+              value={flightClass}
+              onChange={(e) => setFlightClass(e.target.value)}
+              dir="ltr"
+              className="bg-gray-50 border border-gray-300 rounded-lg p-2.5 text-sm text-gray-900 focus:border-[#D4AF37] outline-none"
+            >
+              <option value="">— اختر —</option>
+              {FLIGHT_CLASS_OPTIONS.map((opt) => (
+                <option key={opt} value={opt}>
+                  {opt}
+                </option>
+              ))}
+            </select>
           </label>
           <label className="flex flex-col gap-1.5">
             <span className="text-sm font-bold text-gray-600">وقت المغادرة</span>
@@ -1655,10 +1939,13 @@ export default function EditItineraryPage() {
           activeDayId={activeDayId}
           onActiveDayIdChange={setActiveDayId}
           onAddDay={handleAddDay}
+          onMoveDay={moveDay}
           onRemovePlace={handleRemovePlace}
           onUpdateDayHotel={updateDayHotel}
           onUpdateDayCity={updateDayCity}
+          onUpdateDayTitle={updateDayTitle}
           onUpdateTransport={updateTransport}
+          onUpdateVisitTime={updateVisitTime}
           dayDroppableId={dayDroppableId}
           supplierBrief={supplierBrief}
           predictiveWishContext={

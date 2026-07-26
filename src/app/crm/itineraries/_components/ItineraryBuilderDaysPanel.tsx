@@ -109,6 +109,20 @@ function ActivityCard({
               <Trash2 className="h-4 w-4" />
             </button>
           </div>
+          {(act.kind === 'place' || act.kind === 'transport') ? (
+            <div className="mt-2 flex items-center gap-2">
+              <label className="text-[10px] font-bold text-[#1E2720]/60">وقت الزيارة:</label>
+              <input
+                type="time"
+                value={act.visit_time || act.time_slot || ''}
+                onChange={(e) => {
+                  const visit_time = e.target.value;
+                  onUpdate(day.id, act.id, { visit_time, time_slot: visit_time });
+                }}
+                className={inputClass}
+              />
+            </div>
+          ) : null}
           {index > 0 && act.kind !== 'transport' ? (
             <div className="mt-2 grid grid-cols-2 gap-2">
               <select

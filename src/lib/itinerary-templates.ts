@@ -200,6 +200,11 @@ export function buildTemplateFlightDetails(input: {
   gate?: string;
   seat?: string;
   bookingRef?: string;
+  flightNumber?: string;
+  terminal?: string;
+  flightClass?: string;
+  departureCountry?: string;
+  arrivalCountry?: string;
 }): Record<string, unknown> | null {
   const origin = input.originCity?.trim() ?? '';
   const destination = input.destination?.trim() ?? '';
@@ -208,8 +213,26 @@ export function buildTemplateFlightDetails(input: {
   const gate = input.gate?.trim() ?? '';
   const seat = input.seat?.trim() ?? '';
   const bookingRef = input.bookingRef?.trim() ?? '';
+  const flightNumber = input.flightNumber?.trim() ?? '';
+  const terminal = input.terminal?.trim() ?? '';
+  const flightClass = input.flightClass?.trim() ?? '';
+  const departureCountry = input.departureCountry?.trim() ?? '';
+  const arrivalCountry = input.arrivalCountry?.trim() ?? '';
 
-  if (!origin && !destination && !departure && !arrival && !gate && !seat && !bookingRef) {
+  if (
+    !origin &&
+    !destination &&
+    !departure &&
+    !arrival &&
+    !gate &&
+    !seat &&
+    !bookingRef &&
+    !flightNumber &&
+    !terminal &&
+    !flightClass &&
+    !departureCountry &&
+    !arrivalCountry
+  ) {
     return null;
   }
 
@@ -223,6 +246,11 @@ export function buildTemplateFlightDetails(input: {
     gate,
     seat,
     flight_seat: seat,
+    flight_number: flightNumber,
+    terminal,
+    flight_class: flightClass,
+    departure_country: departureCountry,
+    arrival_country: arrivalCountry,
     ...(bookingRef ? { booking_reference: bookingRef, pnr: bookingRef } : {}),
   };
 }

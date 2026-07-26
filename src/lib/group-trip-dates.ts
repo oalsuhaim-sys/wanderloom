@@ -150,3 +150,22 @@ export function resolveGroupTripDateDisplay(
 
   return { dates_ar: arRaw, dates_en: enRaw };
 }
+
+function isoDateLocal(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+/** Parse stored group_trips date strings to ISO yyyy-mm-dd for itinerary forms */
+export function parseGroupTripStoredDates(
+  dates_ar?: string | null,
+  dates_en?: string | null,
+): { from: string; to: string } {
+  const arRaw = String(dates_ar ?? '').trim();
+  const enRaw = String(dates_en ?? '').trim();
+  const parsed = parseEnDateRange(enRaw) ?? parseArDateRange(arRaw);
+  if (!parsed) return { from: '', to: '' };
+  return { from: isoDateLocal(parsed.start), to: isoDateLocal(parsed.end) };
+}

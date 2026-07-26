@@ -6,6 +6,8 @@ import { Loader2, MapPin, Search, X } from 'lucide-react';
 import {
   PLACES_BANK_CATEGORIES,
   PLACES_BANK_PAGE_SIZE,
+  fetchAllPlacesBank,
+  filterPlacesBankInventory,
   placeBankCategoryLabel,
 } from '@/lib/places-bank';
 import { supabase } from '@/lib/supabase';
@@ -84,22 +86,24 @@ export default function PlacesBankPickerModal({
     }
     setLoading(true);
     setError(null);
-    let q = supabase.from('places').select('*', { count: 'exact' });
-    if (search.trim()) q = q.ilike('name', `%${search.trim()}%`);
-    if (filterCountry) q = q.eq('country', filterCountry);
-    if (filterCity) q = q.eq('city', filterCity);
-    if (filterCat) q = q.eq('category', filterCat);
-    const { data, count, error: qErr } = await q
-      .order('name')
-      .range(page * PLACES_BANK_PAGE_SIZE, (page + 1) * PLACES_BANK_PAGE_SIZE - 1);
-    if (qErr) {
-      setError(qErr.message);
+    try {
+      const inventory = await fetchAllPlacesBank(supabase);
+      const filtered = filterPlacesBankInventory(inventory, {
+        countries: filterCountry ? [filterCountry] : undefined,
+        cityFilter: filterCity || undefined,
+        search: search.trim() || undefined,
+        category: filterCat || undefined,
+      });
+      setTotal(filtered.length);
+      const start = page * PLACES_BANK_PAGE_SIZE;
+      setPlaces(filtered.slice(start, start + PLACES_BANK_PAGE_SIZE));
+    } catch (qErr) {
+      setError(qErr instanceof Error ? qErr.message : 'تعذر تحميل الأماكن.');
       setPlaces([]);
-    } else {
-      setPlaces((data ?? []) as PlaceBankRow[]);
-      setTotal(count ?? 0);
+      setTotal(0);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, [search, filterCountry, filterCity, filterCat, page]);
 
   useEffect(() => {

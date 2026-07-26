@@ -28,10 +28,23 @@ export function groupTripLeaderRoleEmoji(_role: GroupTripLeaderOption['role']): 
   return '🚀'
 }
 
-/** جلب الليدرز فقط — clients.is_leader = true */
+/** جلب الليدرز من جدول leaders — مع تراجع مؤقت لـ clients.is_leader */
 export async function fetchGroupTripLeaderOptions(
   supabase: SupabaseClient,
 ): Promise<{ options: GroupTripLeaderOption[]; error: string | null }> {
+  const leadersRes = await supabase
+    .from('leaders')
+    .select('id, name')
+    .eq('status', 'active')
+    .order('name', { ascending: true })
+
+  if (!leadersRes.error && leadersRes.data?.length) {
+    const options = (leadersRes.data as Record<string, unknown>[])
+      .map(parseGroupTripLeaderOption)
+      .filter((row): row is GroupTripLeaderOption => row != null)
+    return { options, error: null }
+  }
+
   const { data, error } = await supabase
     .from('clients')
     .select('id, name, full_name')

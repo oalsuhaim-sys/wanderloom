@@ -19,4 +19,5 @@ export type GroupTripRow = {
   allow_waitlist?: boolean | null;
   leader_id?: number | null;
   leader_name?: string | null;
+  registered_client_ids?: number[] | null;
 };

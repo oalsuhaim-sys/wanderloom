@@ -2,10 +2,14 @@
 
 import { Plane } from 'lucide-react';
 
-import type { FlightDetailsDraft } from '@/lib/itinerary-builder-model';
+import { VipTimeSlotSelect } from '@/app/crm/itineraries/_components/VipBookingFields';
+import {
+  FLIGHT_CLASS_OPTIONS,
+  type FlightDetailsDraft,
+} from '@/lib/itinerary-builder-model';
 
 const inputClass =
-  'w-full rounded-lg border border-[#1E2720]/15 bg-white px-3 py-2 text-sm font-bold text-[#1E2720] outline-none focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37]/40';
+  'w-full rounded-lg border border-gray-200 bg-white p-3 text-sm font-semibold text-[#1A3B2A] outline-none transition-all focus:border-[#C5A059] focus:ring-2 focus:ring-[#C5A059]/50';
 
 type Props = {
   flight: FlightDetailsDraft;
@@ -53,8 +57,19 @@ export default function ItineraryBoardingDetailsForm({ flight, onChange }: Props
             value={flight.flight_from}
             onChange={(e) => onChange(patch(flight, 'flight_from', e.target.value))}
             className={inputClass}
-            placeholder="RUH"
+            placeholder="RUH / الرياض"
             dir="ltr"
+          />
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-[10px] font-black uppercase tracking-wider text-[#D4AF37]">
+            دولة المغادرة
+          </span>
+          <input
+            value={flight.departure_country}
+            onChange={(e) => onChange(patch(flight, 'departure_country', e.target.value))}
+            className={inputClass}
+            placeholder="السعودية"
           />
         </label>
         <label className="block sm:col-span-2">
@@ -65,8 +80,19 @@ export default function ItineraryBoardingDetailsForm({ flight, onChange }: Props
             value={flight.flight_to}
             onChange={(e) => onChange(patch(flight, 'flight_to', e.target.value))}
             className={inputClass}
-            placeholder="CDG"
+            placeholder="BUD / بودابست"
             dir="ltr"
+          />
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-[10px] font-black uppercase tracking-wider text-[#D4AF37]">
+            دولة الوصول
+          </span>
+          <input
+            value={flight.arrival_country}
+            onChange={(e) => onChange(patch(flight, 'arrival_country', e.target.value))}
+            className={inputClass}
+            placeholder="هنغاريا"
           />
         </label>
         <label className="block">
@@ -92,6 +118,36 @@ export default function ItineraryBoardingDetailsForm({ flight, onChange }: Props
             placeholder="ABC12X"
             dir="ltr"
           />
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-[10px] font-black uppercase tracking-wider text-[#D4AF37]">
+            المبنى
+          </span>
+          <input
+            value={flight.terminal}
+            onChange={(e) => onChange(patch(flight, 'terminal', e.target.value))}
+            className={inputClass}
+            placeholder="T1"
+            dir="ltr"
+          />
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-[10px] font-black uppercase tracking-wider text-[#D4AF37]">
+            درجة الإركاب
+          </span>
+          <select
+            value={flight.flight_class}
+            onChange={(e) => onChange(patch(flight, 'flight_class', e.target.value))}
+            className={inputClass}
+            dir="ltr"
+          >
+            <option value="">— اختر —</option>
+            {FLIGHT_CLASS_OPTIONS.map((opt) => (
+              <option key={opt} value={opt}>
+                {opt}
+              </option>
+            ))}
+          </select>
         </label>
         <label className="block">
           <span className="mb-1 block text-[10px] font-black uppercase tracking-wider text-[#D4AF37]">
@@ -121,24 +177,18 @@ export default function ItineraryBoardingDetailsForm({ flight, onChange }: Props
           <span className="mb-1 block text-[10px] font-black uppercase tracking-wider text-[#D4AF37]">
             وقت المغادرة
           </span>
-          <input
+          <VipTimeSlotSelect
             value={flight.departure_time || flight.flight_time}
-            onChange={(e) => onChange(patch(flight, 'departure_time', e.target.value))}
-            className={inputClass}
-            placeholder="14:30"
-            dir="ltr"
+            onChange={(v) => onChange(patch(flight, 'departure_time', v))}
           />
         </label>
         <label className="block">
           <span className="mb-1 block text-[10px] font-black uppercase tracking-wider text-[#D4AF37]">
             وقت الوصول
           </span>
-          <input
+          <VipTimeSlotSelect
             value={flight.arrival_time}
-            onChange={(e) => onChange(patch(flight, 'arrival_time', e.target.value))}
-            className={inputClass}
-            placeholder="18:45"
-            dir="ltr"
+            onChange={(v) => onChange(patch(flight, 'arrival_time', v))}
           />
         </label>
       </div>

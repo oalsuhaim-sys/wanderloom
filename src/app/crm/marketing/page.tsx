@@ -1,7 +1,7 @@
-import ContentCampaignsClient from './_components/ContentCampaignsClient';
+import MarketingOperationsClient from './_components/MarketingOperationsClient';
 
 export const dynamic = 'force-dynamic';
 
-export default function ContentCampaignsPage() {
-  return <ContentCampaignsClient />;
+export default function MarketingPage() {
+  return <MarketingOperationsClient />;
 }

@@ -3,32 +3,41 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { deleteClientAction } from '@/app/actions/clientDirectoryActions'
 import { supabase } from '@/lib/supabase'
-import { fetchUnifiedClientTrips, sumUnifiedTripProfit, type UnifiedTripRow } from '@/lib/client-trips-crm'
+import { buildItineraryPortalPath } from '@/lib/itinerary-client-crm'
+import { getClientAccessToken } from '@/lib/crm-session-token'
+import { sumUnifiedTripProfit, type UnifiedTripRow } from '@/lib/client-trips-crm'
 import { clientDnaSupabasePatch } from '@/lib/client-dna-columns'
-import { parseTravelDnaFromClient, serializeTravelDna, buildReferralCodeUpdatePayload, clientDnaAdvancedPayload, isInfluencerClient, isLeaderClient, resolveClientTargetTrip, type ClientDnaAdvancedFields } from '@/lib/clientsTravelDna'
+import { parseTravelDnaFromClient, serializeTravelDna, buildReferralCodeUpdatePayload, clientDnaAdvancedPayload, resolveClientTargetTrip, type ClientDnaAdvancedFields } from '@/lib/clientsTravelDna'
 import ClientDnaAdvancedDisplay from '@/app/crm/clients/_components/ClientDnaAdvancedDisplay'
 import ClientDnaAdvancedFieldsEditor from '@/app/crm/clients/_components/ClientDnaAdvancedFieldsEditor'
 import ClientDnaSmartEventRecommendations from '@/app/crm/clients/_components/ClientDnaSmartEventRecommendations'
+import AiPredictiveWishesCard from '@/app/crm/itineraries/_components/AiPredictiveWishesCard'
+import { buildItineraryBuilderPath } from '@/lib/itinerary-builder-prefill'
 import ClientPaymentWhatsAppButton from '@/app/crm/clients/_components/ClientPaymentWhatsAppButton'
 import ClientSalesStageControl from '@/app/crm/clients/_components/ClientSalesStageControl'
 import ClientTargetTripBadge from '@/app/crm/clients/_components/ClientTargetTripBadge'
 import { formatBirthdayDisplayDate } from '@/lib/birthday-radar'
+import Client360Profile from '@/app/crm/clients/_components/Client360Profile';
+import ClientFinancialHub from '@/app/crm/clients/_components/ClientFinancialHub';
 import ClientWalletLedgerCard from '@/app/crm/clients/_components/ClientWalletLedgerCard';
 import ReferralQrCard from '@/app/crm/clients/_components/ReferralQrCard';
 import VipSpendingTierBadge from '@/components/VipSpendingTierBadge';
 import {
   formatWalletAmount,
-  parseWalletBalance,
 } from '@/lib/vip-wallet-ledger';
+import DnaInviteTripTypePicker from '@/app/crm/_components/DnaInviteTripTypePicker';
 import {
-  ensureClientOnboardingToken,
-} from '@/lib/client-onboarding';
+  buildClientDnaWelcomeUrlByClientId,
+  buildDnaInviteWhatsAppPayload,
+  markDnaLinkSent,
+  type DnaInviteTripType,
+} from '@/lib/client-intake-pipeline';
+import { ensureClientOnboardingToken } from '@/lib/client-onboarding';
 import { launchClientTrip } from '@/lib/client-trip-launch';
 import {
   ArrowRight,
-  Phone,
-  Mail,
   Pencil,
   Trash2,
   Save,
@@ -43,7 +52,11 @@ import {
   UsersRound,
   Wallet,
   Link2,
+  Lock,
+  PauseCircle,
 } from 'lucide-react'
+import toast, { Toaster } from 'react-hot-toast'
+import { setLeadPipelineStatus } from '@/lib/lead-pipeline-automation'
 
 type UnifiedTrip = UnifiedTripRow
 
@@ -78,7 +91,8 @@ function formatPassportExpiryForInput(raw: unknown): string {
 export default function ClientDetailPage() {
   const params = useParams()
   const router = useRouter()
-  const clientId = params.id as string
+  const rawRouteId = params?.id
+  const clientId = Array.isArray(rawRouteId) ? rawRouteId[0] ?? '' : String(rawRouteId ?? '')
 
   const [client, setClient] = useState<any>(null)
   const [trips, setTrips] = useState<UnifiedTrip[]>([])
@@ -87,6 +101,9 @@ export default function ClientDetailPage() {
 
   const [editingCode, setEditingCode] = useState(false)
   const [newCode, setNewCode] = useState('')
+  const [editingProfileCode, setEditingProfileCode] = useState(false)
+  const [newProfileCode, setNewProfileCode] = useState('')
+  const [generatingProfileCode, setGeneratingProfileCode] = useState(false)
   const [codeCount, setCodeCount] = useState(0)
   const [editingTrip, setEditingTrip] = useState<string | null>(null)
   const [editTripData, setEditTripData] = useState({ destination: '', cost: 0, trip_date: '' })
@@ -100,6 +117,7 @@ export default function ClientDetailPage() {
   const [launchTripSaving, setLaunchTripSaving] = useState(false)
   const [launchTripNotice, setLaunchTripNotice] = useState<string | null>(null)
   const [launchTripSuccess, setLaunchTripSuccess] = useState<string | null>(null)
+  const [launchTripItineraryUrl, setLaunchTripItineraryUrl] = useState<string | null>(null)
   const [passportExpiry, setPassportExpiry] = useState('')
   const [tripNotice, setTripNotice] = useState<string | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -120,13 +138,39 @@ export default function ClientDetailPage() {
 
   const [joinedGroups, setJoinedGroups] = useState<JoinedGroupRow[]>([])
   const [copyingOnboardingLink, setCopyingOnboardingLink] = useState(false)
+  const [sendingDnaWhatsApp, setSendingDnaWhatsApp] = useState(false)
+  const [dnaInviteTripType, setDnaInviteTripType] = useState<DnaInviteTripType>('private')
   const [deletingClient, setDeletingClient] = useState(false)
+  const [leadPipelineBusy, setLeadPipelineBusy] = useState<'postpone' | 'hardDelete' | null>(null)
 
   const loadTrips = useCallback(async () => {
-    const rows = await fetchUnifiedClientTrips(clientId)
-    setTrips(rows)
-    setTripCount(rows.length)
-    return rows
+    try {
+      const accessToken = await getClientAccessToken()
+      const res = await fetch(`/api/crm/clients/${encodeURIComponent(clientId)}/trips`, {
+        cache: 'no-store',
+        headers: { Authorization: `Bearer ${accessToken}` },
+      })
+      const payload = (await res.json()) as {
+        ok?: boolean
+        trips?: UnifiedTripRow[]
+        error?: string
+      }
+      if (!res.ok || !payload.ok) {
+        console.warn('[client-detail] trips API:', payload.error || res.status)
+        setTrips([])
+        setTripCount(0)
+        return []
+      }
+      const rows = Array.isArray(payload.trips) ? payload.trips : []
+      setTrips(rows)
+      setTripCount(rows.length)
+      return rows
+    } catch (err) {
+      console.warn('[client-detail] trips fetch failed', err)
+      setTrips([])
+      setTripCount(0)
+      return []
+    }
   }, [clientId])
 
   const load = async () => {
@@ -140,6 +184,11 @@ export default function ClientDetailPage() {
     try {
       const idNum = Number(clientId)
       const clientKey = Number.isFinite(idNum) ? idNum : clientId
+      // Kept as select('*'): `client` is untyped and dozens of columns are read
+      // dynamically below (DNA, wallet, onboarding, pipeline fields) plus spread
+      // wholesale into AiPredictiveWishesCard's clientRow context. Single-row
+      // fetch by id — low volume, so the perf win doesn't justify the risk of
+      // silently dropping a column some downstream consumer still needs.
       const { data: c, error: cErr } = await supabase
         .from('clients')
         .select('*')
@@ -156,7 +205,7 @@ export default function ClientDetailPage() {
         return
       }
 
-      const tripRows = await loadTrips()
+      await loadTrips()
 
       if (c) {
         const normalizedClient = {
@@ -175,6 +224,7 @@ export default function ClientDetailPage() {
         })
         setPassportExpiry(formatPassportExpiryForInput(c.passport_expiry))
         setNewCode(c.ref_code || c.referral_code || '')
+        setNewProfileCode(String(c.profile_code ?? '').toUpperCase())
       } else {
         setClient(null)
         setTravelDnaForm({
@@ -191,14 +241,7 @@ export default function ClientDetailPage() {
         setPassportExpiry('')
       }
 
-      if (Number.isFinite(idNum)) {
-        const { count: itineraryCount } = await supabase
-          .from('itineraries')
-          .select('*', { count: 'exact', head: true })
-          .eq('client_id', idNum)
-          .or('is_template.is.null,is_template.eq.false')
-        setTripCount(tripRows.length + (itineraryCount ?? 0))
-      }
+      // tripCount is sourced only from loadTrips (no separate double-count)
 
       if (Number.isFinite(idNum)) {
         const seen = new Map<number, JoinedGroupRow>()
@@ -373,7 +416,73 @@ export default function ClientDetailPage() {
     setSaveNotice('تم إنشاء كود إحالة جديد.')
   }
 
+  const saveProfileCode = async () => {
+    if (!supabase || !client) return
+    setSaveNotice(null)
+    const code = newProfileCode.trim() || null
+    const idNum = Number(clientId)
+    const dbClientId = client.id ?? (Number.isFinite(idNum) ? idNum : clientId)
+    const { error } = await supabase.from('clients').update({ profile_code: code }).eq('id', dbClientId)
+    if (error) {
+      setSaveNotice(error.message || 'تعذر حفظ رمز الملف الشخصي.')
+      return
+    }
+    setClient({ ...client, profile_code: code })
+    setEditingProfileCode(false)
+    setSaveNotice('تم حفظ رمز الملف الشخصي الخاص.')
+  }
+
+  const handleGenerateProfileCode = async () => {
+    if (!supabase || !client) return
+    setSaveNotice(null)
+    setGeneratingProfileCode(true)
+
+    const newPin = Math.floor(100000 + Math.random() * 900000).toString()
+    const idNum = Number(clientId)
+    const dbClientId = client.id ?? (Number.isFinite(idNum) ? idNum : clientId)
+
+    try {
+      const { data, error } = await supabase
+        .from('clients')
+        .update({ profile_code: newPin })
+        .eq('id', dbClientId)
+        .select('profile_code')
+        .single()
+
+      if (error) {
+        setSaveNotice(error.message || 'تعذر إنشاء رمز الملف الشخصي.')
+        return
+      }
+
+      const savedPin = String(data?.profile_code ?? newPin)
+      setClient({ ...client, profile_code: savedPin })
+      setNewProfileCode(savedPin)
+      setSaveNotice('تم إنشاء رمز الملف الشخصي الخاص.')
+    } finally {
+      setGeneratingProfileCode(false)
+    }
+  }
+
+  const deleteProfileCode = async () => {
+    if (!supabase || !client || !window.confirm('حذف رمز الملف الشخصي؟')) return
+    setSaveNotice(null)
+    const idNum = Number(clientId)
+    const dbClientId = client.id ?? (Number.isFinite(idNum) ? idNum : clientId)
+    const { error } = await supabase.from('clients').update({ profile_code: null }).eq('id', dbClientId)
+    if (error) {
+      setSaveNotice(error.message || 'تعذر حذف رمز الملف الشخصي.')
+      return
+    }
+    setClient({ ...client, profile_code: null })
+    setNewProfileCode('')
+    setSaveNotice('تم حذف رمز الملف الشخصي.')
+  }
+
   const deleteTrip = async (trip: UnifiedTrip) => {
+    if (trip.backend === 'itineraries') {
+      setTripNotice('حذف مسارات CRM يتم من صفحة تعديل المسار.')
+      return
+    }
     if (!supabase || !window.confirm('هل أنت متأكد من حذف هذه الرحلة؟')) return
     const table = trip.backend
     const { error } = await supabase.from(table).delete().eq('id', trip.id)
@@ -436,6 +545,11 @@ export default function ClientDetailPage() {
 
   const submitLaunchTrip = async () => {
     if (!supabase || !client) return
+    const tripClientId = client.id ?? clientId
+    if (tripClientId == null || String(tripClientId).trim() === '') {
+      setLaunchTripNotice('معرّف العميل غير متوفر — أعد تحميل الصفحة.')
+      return
+    }
     const expectedProfit = Number(launchTripForm.expected_profit)
     if (Number.isNaN(expectedProfit) || expectedProfit < 0) {
       setLaunchTripNotice('أدخل فائدة / رسوم خدمة صحيحة (رقماً غير سالب).')
@@ -444,9 +558,10 @@ export default function ClientDetailPage() {
     setLaunchTripSaving(true)
     setLaunchTripNotice(null)
     setLaunchTripSuccess(null)
+    setLaunchTripItineraryUrl(null)
     try {
       const result = await launchClientTrip({
-        clientId,
+        clientId: tripClientId,
         clientName: String(client.name ?? ''),
         destination: launchTripForm.destination,
         startDate: launchTripForm.start_date,
@@ -462,7 +577,14 @@ export default function ClientDetailPage() {
       setTripCount((prev) => prev + 1)
       setShowLaunchTripModal(false)
       setLaunchTripForm({ destination: '', start_date: '', end_date: '', expected_profit: '' })
+      const itineraryPath = buildItineraryPortalPath({
+        itinerarySlug: result.publicSlug,
+        clientId: tripClientId,
+        itineraryId: result.itineraryId,
+      })
+      setLaunchTripItineraryUrl(itineraryPath)
       setLaunchTripSuccess('تم إطلاق الرحلة بنجاح. ستظهر الآن في الرادار وتقارير الأرباح.')
+      router.push(itineraryPath)
     } catch (e) {
       setLaunchTripNotice(e instanceof Error ? e.message : 'تعذر إطلاق الرحلة.')
     } finally {
@@ -471,7 +593,7 @@ export default function ClientDetailPage() {
   }
 
   const deleteClient = async () => {
-    if (!supabase || !client) return
+    if (!client) return
 
     const confirmed = window.confirm(
       'هل أنت متأكد من حذف هذا العميل بشكل نهائي؟ لا يمكن التراجع عن هذا الإجراء.',
@@ -483,20 +605,12 @@ export default function ClientDetailPage() {
     try {
       const idNum = Number(clientId)
       const dbId = Number.isFinite(idNum) ? idNum : client.id ?? clientId
-      const { error } = await supabase.from('clients').delete().eq('id', dbId)
 
-      if (error) {
-        const msg = (error.message ?? '').toLowerCase()
-        if (
-          msg.includes('foreign key') ||
-          msg.includes('violates') ||
-          msg.includes('constraint') ||
-          msg.includes('23503')
-        ) {
-          setSaveNotice('عذراً، لا يمكن حذف هذا العميل لوجود عروض أسعار أو رحلات مرتبطة به.')
-        } else {
-          setSaveNotice(error.message || 'تعذر حذف العميل.')
-        }
+      // Service-role delete — only navigate away after DB confirms the row was removed
+      const result = await deleteClientAction(dbId)
+      if (!result.ok) {
+        setSaveNotice(result.error || 'فشل حذف العميل من قاعدة البيانات.')
+        console.error('[CRM client detail] delete failed:', result.error)
         return
       }
 
@@ -504,27 +618,123 @@ export default function ClientDetailPage() {
       router.push('/crm/clients')
     } catch (e) {
       console.error('[CRM client detail] delete failed', e)
-      setSaveNotice(e instanceof Error ? e.message : 'تعذر حذف العميل.')
+      setSaveNotice(e instanceof Error ? e.message : 'فشل حذف العميل من قاعدة البيانات.')
     } finally {
       setDeletingClient(false)
     }
   }
 
-  const copySecretOnboardingLink = async () => {
+  /** Soft-archive linked pipeline leads — real clients who dropped off */
+  const handlePostponeLeads = async () => {
     if (!supabase || !client) return
+    if (
+      !window.confirm(
+        'هل تريد تأجيل طلبات هذا العميل؟ ستختفي من اللوحة النشطة ويمكنك العودة لها لاحقاً عبر الحالة «مؤجّل».',
+      )
+    ) {
+      return
+    }
+
+    setLeadPipelineBusy('postpone')
+    try {
+      const idNum = Number(clientId)
+      const dbId = Number.isFinite(idNum) ? idNum : client.id ?? clientId
+      await setLeadPipelineStatus(supabase, { clientId: dbId, force: true }, 'postponed')
+      toast.success('تم تأجيل الطلبات بنجاح')
+      router.push('/crm/pipeline')
+    } catch (err) {
+      console.error('[postpone leads]', err)
+      toast.error('حدث خطأ أثناء التأجيل')
+    } finally {
+      setLeadPipelineBusy(null)
+    }
+  }
+
+  /** Hard-delete linked leads only — for fake/test pipeline data */
+  const handleHardDeleteLeads = async () => {
+    if (!supabase || !client) return
+    if (
+      !window.confirm(
+        'تحذير: هل أنت متأكد من الحذف النهائي لطلبات المسار المرتبطة؟ سيتم مسحها من قاعدة البيانات ولن يمكن استرجاعها. (ملف العميل نفسه لن يُحذف)',
+      )
+    ) {
+      return
+    }
+
+    setLeadPipelineBusy('hardDelete')
+    try {
+      const idNum = Number(clientId)
+      const dbId = Number.isFinite(idNum) ? idNum : client.id ?? clientId
+      let del = await supabase.from('leads').delete().eq('client_id', dbId)
+      if (del.error && /client_id|column|schema cache|does not exist/i.test(del.error.message ?? '')) {
+        const phone = String(client.phone_wa ?? '').trim()
+        if (phone) {
+          del = await supabase.from('leads').delete().eq('phone_wa', phone)
+        } else {
+          throw new Error(
+            'عمود leads.client_id غير موجود — نفّذ supabase/sql/clients_intake_pipeline.sql أو احذف الطلب من الكانبان.',
+          )
+        }
+      }
+      if (del.error) throw del.error
+      toast.success('تم حذف طلبات المسار نهائياً')
+      router.push('/crm/pipeline')
+    } catch (err) {
+      console.error('[hard delete leads]', err)
+      toast.error(err instanceof Error ? err.message : 'حدث خطأ أثناء الحذف')
+    } finally {
+      setLeadPipelineBusy(null)
+    }
+  }
+
+  const copySecretOnboardingLink = async () => {
+    if (!client || !supabase) return
     setCopyingOnboardingLink(true)
     try {
-      const token = await ensureClientOnboardingToken(clientId, client.onboarding_token)
-      if (token !== client.onboarding_token) {
-        setClient({ ...client, onboarding_token: token })
-      }
-      const url = `${window.location.origin}/welcome/${token}`
+      await ensureClientOnboardingToken(
+        clientId,
+        (client as { onboarding_token?: string | null }).onboarding_token,
+      )
+      const url = buildClientDnaWelcomeUrlByClientId(clientId, window.location.origin)
       await navigator.clipboard.writeText(url)
-      setSaveNotice('تم نسخ رابط التعارف السري 🔗')
+      setSaveNotice('تم نسخ رابط DNA الموحّد 🔗')
     } catch (e) {
       setSaveNotice(e instanceof Error ? e.message : 'تعذر نسخ رابط التعارف.')
     } finally {
       setCopyingOnboardingLink(false)
+    }
+  }
+
+  const sendDnaViaWhatsApp = async () => {
+    if (!supabase || !client) return
+    const phone = String(client.phone_wa ?? (client as { phone?: string }).phone ?? '').trim()
+    if (!phone) {
+      setSaveNotice('لا يوجد رقم واتساب للعميل.')
+      return
+    }
+    setSendingDnaWhatsApp(true)
+    try {
+      await ensureClientOnboardingToken(
+        clientId,
+        (client as { onboarding_token?: string | null }).onboarding_token,
+      )
+      const { whatsAppUrl } = buildDnaInviteWhatsAppPayload(
+        phone,
+        clientId,
+        dnaInviteTripType,
+        window.location.origin,
+      )
+      await markDnaLinkSent(supabase, Number(clientId))
+      window.open(whatsAppUrl, '_blank', 'noopener,noreferrer')
+      setSaveNotice(
+        dnaInviteTripType === 'group'
+          ? 'تم فتح واتساب برسالة الرحلة الجماعية ✨'
+          : 'تم فتح واتساب برسالة الرحلة الخاصة ✨',
+      )
+    } catch (e) {
+      setSaveNotice(e instanceof Error ? e.message : 'تعذر فتح واتساب.')
+    } finally {
+      setSendingDnaWhatsApp(false)
     }
   }
 
@@ -563,10 +773,11 @@ export default function ClientDetailPage() {
   const onboardingDone = client.onboarding_completed === true
   const tripsProfitSum = sumUnifiedTripProfit(trips)
   const targetTripLabel = resolveClientTargetTrip(client as Record<string, unknown>)
-  const showSalesPipeline = !isLeaderClient(client) && !isInfluencerClient(client)
+  const showSalesPipeline = true
 
   return (
     <div dir="rtl" className="mx-auto max-w-7xl p-4 font-[family-name:var(--font-tajawal),system-ui,sans-serif] text-slate-800">
+      <Toaster position="top-center" toastOptions={{ className: 'text-sm font-bold' }} />
       <Link
         href="/crm/clients"
         className="mb-4 inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-sm text-slate-500 hover:bg-slate-100"
@@ -582,8 +793,18 @@ export default function ClientDetailPage() {
       )}
 
       {launchTripSuccess && (
-        <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-bold text-emerald-800">
-          {launchTripSuccess}
+        <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-800">
+          <p>{launchTripSuccess}</p>
+          {launchTripItineraryUrl ? (
+            <Link
+              href={launchTripItineraryUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="mt-2 inline-flex items-center gap-1.5 text-xs font-black text-emerald-900 underline underline-offset-2"
+            >
+              فتح مسار الرحلة في تبويب جديد
+            </Link>
+          ) : null}
         </div>
       )}
 
@@ -599,123 +820,142 @@ export default function ClientDetailPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <div className="space-y-6 lg:col-span-2">
-          <section className={cardClass}>
-            <div className="mb-4 flex flex-wrap items-start justify-between gap-4">
-              <div className="min-w-0 flex-1">
-                <h1 className="text-2xl font-black text-slate-900">{client.name}</h1>
-
-                <div className="mt-3 flex flex-wrap items-center gap-2">
-                  <VipSpendingTierBadge tier={client.vip_tier} />
-                  <span
-                    className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-black ${
-                      onboardingDone
-                        ? 'bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200'
-                        : 'bg-amber-50 text-amber-900 ring-1 ring-amber-200'
-                    }`}
-                  >
-                    {onboardingDone ? '🟢 اكتمل التعارف' : '🟡 بانتظار العميل'}
-                  </span>
-                  {targetTripLabel ? (
-                    <ClientTargetTripBadge label={targetTripLabel} className="min-w-0 shrink" />
-                  ) : null}
-                  {showSalesPipeline ? (
-                    <ClientSalesStageControl
-                      clientId={clientId}
-                      value={String(client.sales_stage ?? '')}
-                      compact
-                      className="min-w-0 shrink"
-                      onUpdated={(stage) => setClient({ ...client, sales_stage: stage || null })}
-                    />
-                  ) : null}
-                </div>
-
-                <ClientPaymentWhatsAppButton
-                  clientId={clientId}
-                  clientName={client.name ?? '—'}
-                  phone={client.phone_wa}
-                  targetTrip={targetTripLabel}
-                  salesStage={client.sales_stage}
-                  className="mt-4"
-                />
-
-                <div className="mt-3 flex flex-wrap gap-3 text-xs text-slate-600">
-                  {client.phone_wa && (
-                    <span className="inline-flex items-center gap-1">
-                      <Phone size={12} />
-                      {client.phone_wa}
-                    </span>
-                  )}
-                  {client.email && (
-                    <span className="inline-flex items-center gap-1">
-                      <Mail size={12} />
-                      {client.email}
-                    </span>
-                  )}
-                  {client.job_type && <span>💼 {client.job_type}</span>}
-                  {client.travel_type && <span>🧳 {client.travel_type}</span>}
-                </div>
-                {client.birth_date ? (
-                  <div className="mt-2 flex items-center gap-2 text-sm text-gray-600">
-                    <span>🎂 يوم الميلاد:</span>
-                    <span className="font-medium text-gray-800" dir="ltr">
-                      {formatBirthdayDisplayDate(String(client.birth_date).slice(0, 10))}
-                    </span>
-                  </div>
-                ) : null}
-              </div>
-              <div className="flex items-center gap-2">
-                {customerPhone ? (
-                  <>
-                    <a
-                      href={waUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 ring-1 ring-emerald-200 transition hover:bg-emerald-100"
-                      aria-label="واتساب"
-                    >
-                      <MessageCircle size={16} />
-                    </a>
-                    <a
-                      href={callUrl}
-                      className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-700 ring-1 ring-slate-200 transition hover:bg-slate-200"
-                      aria-label="اتصال"
-                    >
-                      <PhoneCall size={16} />
-                    </a>
-                  </>
-                ) : null}
-                <button
-                  type="button"
-                  onClick={() => void deleteClient()}
-                  disabled={deletingClient}
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-full text-red-500 ring-1 ring-red-100 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
-                  aria-label="حذف العميل"
-                  title="حذف العميل"
+      <Client360Profile
+        clientId={clientId}
+        name={String(client.name ?? '')}
+        phone={client.phone_wa ?? (client as { phone?: string }).phone}
+        email={client.email}
+        jobType={client.job_type}
+        travelType={client.travel_type}
+        vipTier={client.vip_tier}
+        totalProfit={tripsProfitSum}
+        trips={trips}
+        badges={
+          <>
+            <span
+              className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-black ${
+                onboardingDone
+                  ? 'bg-emerald-400/20 text-emerald-100 ring-1 ring-emerald-300/40'
+                  : 'bg-amber-400/20 text-amber-100 ring-1 ring-amber-300/40'
+              }`}
+            >
+              {onboardingDone ? 'اكتمل التعارف' : 'بانتظار العميل'}
+            </span>
+            {targetTripLabel ? (
+              <ClientTargetTripBadge label={targetTripLabel} className="min-w-0 shrink" />
+            ) : null}
+            {showSalesPipeline ? (
+              <ClientSalesStageControl
+                clientId={clientId}
+                value={String(client.sales_stage ?? '')}
+                compact
+                className="min-w-0 shrink"
+                onUpdated={(stage) => setClient({ ...client, sales_stage: stage || null })}
+              />
+            ) : null}
+            {client.birth_date ? (
+              <span className="text-xs font-semibold text-white/65" dir="ltr">
+                🎂 {formatBirthdayDisplayDate(String(client.birth_date).slice(0, 10))}
+              </span>
+            ) : null}
+          </>
+        }
+        actions={
+          <>
+            {customerPhone ? (
+              <>
+                <a
+                  href={waUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-emerald-300 ring-1 ring-white/15 transition hover:bg-white/20"
+                  aria-label="واتساب"
                 >
-                  {deletingClient ? (
-                    <Loader2 size={16} className="animate-spin" aria-hidden />
-                  ) : (
-                    <Trash2 size={16} aria-hidden />
-                  )}
-                </button>
-              </div>
-            </div>
+                  <MessageCircle size={16} />
+                </a>
+                <a
+                  href={callUrl}
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white ring-1 ring-white/15 transition hover:bg-white/20"
+                  aria-label="اتصال"
+                >
+                  <PhoneCall size={16} />
+                </a>
+              </>
+            ) : null}
+            <button
+              type="button"
+              onClick={() => void handlePostponeLeads()}
+              disabled={leadPipelineBusy !== null || deletingClient}
+              className="inline-flex h-10 items-center justify-center gap-1.5 rounded-full bg-white/10 px-3 text-[10px] font-black text-amber-200 ring-1 ring-amber-300/30 transition hover:bg-amber-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+              aria-label="تأجيل الطلب"
+              title="تأجيل طلبات المسار (أرشفة ناعمة)"
+            >
+              {leadPipelineBusy === 'postpone' ? (
+                <Loader2 size={14} className="animate-spin" aria-hidden />
+              ) : (
+                <PauseCircle size={14} aria-hidden />
+              )}
+              تأجيل
+            </button>
+            <button
+              type="button"
+              onClick={() => void handleHardDeleteLeads()}
+              disabled={leadPipelineBusy !== null || deletingClient}
+              className="inline-flex h-10 items-center justify-center gap-1.5 rounded-full bg-white/10 px-3 text-[10px] font-black text-rose-200 ring-1 ring-rose-300/35 transition hover:bg-rose-500/25 disabled:cursor-not-allowed disabled:opacity-50"
+              aria-label="حذف نهائي للطلبات"
+              title="حذف نهائي لطلبات المسار (بيانات تجريبية)"
+            >
+              {leadPipelineBusy === 'hardDelete' ? (
+                <Loader2 size={14} className="animate-spin" aria-hidden />
+              ) : (
+                <Trash2 size={14} aria-hidden />
+              )}
+              حذف طلب
+            </button>
+            <button
+              type="button"
+              onClick={() => void deleteClient()}
+              disabled={deletingClient || leadPipelineBusy !== null}
+              className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-red-300 ring-1 ring-red-300/30 transition hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+              aria-label="حذف العميل"
+              title="حذف ملف العميل بالكامل"
+            >
+              {deletingClient ? (
+                <Loader2 size={16} className="animate-spin" aria-hidden />
+              ) : (
+                <Trash2 size={16} aria-hidden />
+              )}
+            </button>
+          </>
+        }
+        footer={
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <ClientPaymentWhatsAppButton
+              clientId={clientId}
+              clientName={client.name ?? '—'}
+              phone={client.phone_wa}
+              targetTrip={targetTripLabel}
+              salesStage={client.sales_stage}
+            />
             <button
               type="button"
               onClick={() => {
                 setLaunchTripNotice(null)
                 setLaunchTripSuccess(null)
+                setLaunchTripItineraryUrl(null)
                 setShowLaunchTripModal(true)
               }}
-              className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-l from-[#D4AF37] via-[#C9A227] to-[#B8941F] px-5 py-3.5 text-sm font-black text-[#0D0F0E] shadow-lg ring-1 ring-[#D4AF37]/40 transition hover:brightness-105 sm:w-auto"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-l from-[#D4AF37] via-[#C9A227] to-[#B8941F] px-5 py-3.5 text-sm font-black text-[#0D0F0E] shadow-lg ring-1 ring-[#D4AF37]/40 transition hover:brightness-105 sm:w-auto"
             >
               <Plane size={18} aria-hidden />
               إطلاق رحلة جديدة ✈️
             </button>
-          </section>
+          </div>
+        }
+      />
 
+      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <div className="space-y-6 lg:col-span-2">
           <section className={cardClass}>
             <div className="mb-5">
               <h2 className="inline-flex items-center gap-2 text-base font-black text-gray-900">
@@ -734,6 +974,32 @@ export default function ClientDetailPage() {
                 dna_activity_level: dnaAdvancedForm.dna_activity_level,
               }}
               className="mb-4"
+            />
+
+            <AiPredictiveWishesCard
+              className="mb-5"
+              storageKey={`predictive-wish-client-${clientId}`}
+              builderHref={buildItineraryBuilderPath({
+                from: 'client',
+                clientId,
+                clientName: client?.name ?? undefined,
+                tripTitle: targetTripLabel.trim() || undefined,
+                destinations: targetTripLabel.trim() || undefined,
+              })}
+              context={{
+                clientRow: client
+                  ? {
+                      ...client,
+                      travel_dna: client.travel_dna,
+                      favorite_drink: travelDnaForm.drink_coffee,
+                      dna_interests: dnaAdvancedForm.dna_interests,
+                      dna_activity_level: dnaAdvancedForm.dna_activity_level,
+                    }
+                  : null,
+                destination: resolveClientTargetTrip(client ?? {}),
+                tripDateFrom: '',
+                tripDateTo: '',
+              }}
             />
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -824,10 +1090,14 @@ export default function ClientDetailPage() {
             </button>
           </section>
 
+          <ClientFinancialHub clientId={clientId} />
+
           <ClientWalletLedgerCard
             clientId={clientId}
             initialBalance={clientQuickStatNum(client?.wallet_balance)}
-            onBalanceChange={(next) => setClient({ ...client, wallet_balance: next })}
+            onBalanceChange={(next) =>
+              setClient((prev) => (prev ? { ...prev, wallet_balance: next } : prev))
+            }
           />
 
           {(client.ref_code || client.referral_code) ? (
@@ -884,6 +1154,7 @@ export default function ClientDetailPage() {
                 onClick={() => {
                   setLaunchTripNotice(null)
                   setLaunchTripSuccess(null)
+                  setLaunchTripItineraryUrl(null)
                   setShowLaunchTripModal(true)
                 }}
                 className="inline-flex items-center gap-1 rounded-xl border border-[#D4AF37]/40 bg-[#FEFDF9] px-3 py-2 text-xs font-bold text-[#1E2720] hover:bg-amber-50"
@@ -898,7 +1169,7 @@ export default function ClientDetailPage() {
             ) : (
               trips.map((t) => (
                 <div key={`${t.backend}-${t.id}`} className="mb-2 rounded-xl border border-slate-200 bg-slate-50 p-3">
-                  {editingTrip === t.id ? (
+                  {editingTrip === t.id && t.backend !== 'itineraries' ? (
                     <div>
                       <div className="mb-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
                         <input
@@ -938,29 +1209,49 @@ export default function ClientDetailPage() {
                     </div>
                   ) : (
                     <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <div className="font-bold text-slate-800">{t.destination}</div>
-                        {t.trip_date && <div className="text-xs text-slate-500">{t.trip_date}</div>}
+                      <div className="min-w-0">
+                        <div className="font-bold text-slate-800">{t.destination || 'لا يوجد'}</div>
+                        {(t.trip_date || t.end_date) && (
+                          <div className="text-xs text-slate-500" dir="ltr">
+                            {[t.trip_date, t.end_date].filter(Boolean).join(' → ')}
+                          </div>
+                        )}
+                        {t.backend === 'itineraries' ? (
+                          <div className="mt-1 text-[10px] font-bold text-emerald-700">
+                            مسار CRM{t.status ? ` · ${t.status}` : ''}
+                          </div>
+                        ) : null}
                         {t.backend === 'client_trips' && (
                           <div className="mt-1 text-[10px] font-bold text-amber-700">سجل قديم (client_trips)</div>
                         )}
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-black text-emerald-700">{(t.cost || 0).toLocaleString('ar-SA')} ر.س</span>
-                        <button
-                          type="button"
-                          onClick={() => startEditTrip(t)}
-                          className="rounded-lg bg-slate-200 p-2 text-slate-700"
-                        >
-                          <Pencil size={12} />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => void deleteTrip(t)}
-                          className="rounded-lg bg-rose-100 p-2 text-rose-600"
-                        >
-                          <Trash2 size={12} />
-                        </button>
+                        {t.backend === 'itineraries' && t.viewUrl ? (
+                          <Link
+                            href={t.viewUrl}
+                            className="rounded-lg bg-[#1E2720] px-3 py-2 text-[10px] font-bold text-[#D4AF37]"
+                          >
+                            فتح المسار
+                          </Link>
+                        ) : (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => startEditTrip(t)}
+                              className="rounded-lg bg-slate-200 p-2 text-slate-700"
+                            >
+                              <Pencil size={12} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => void deleteTrip(t)}
+                              className="rounded-lg bg-rose-100 p-2 text-rose-600"
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                          </>
+                        )}
                       </div>
                     </div>
                   )}
@@ -995,6 +1286,12 @@ export default function ClientDetailPage() {
                 {onboardingDone ? '🟢 اكتمل التعارف' : '🟡 بانتظار العميل'}
               </span>
             </div>
+            <DnaInviteTripTypePicker
+              value={dnaInviteTripType}
+              onChange={setDnaInviteTripType}
+              disabled={sendingDnaWhatsApp || copyingOnboardingLink}
+              className="mb-3"
+            />
             <button
               type="button"
               onClick={() => void copySecretOnboardingLink()}
@@ -1007,8 +1304,21 @@ export default function ClientDetailPage() {
                   جاري التحضير…
                 </span>
               ) : (
-                'نسخ رابط التعارف السري ✨'
+                'نسخ رابط DNA (/welcome/{id}) ✨'
               )}
+            </button>
+            <button
+              type="button"
+              onClick={() => void sendDnaViaWhatsApp()}
+              disabled={sendingDnaWhatsApp}
+              className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-[#25D366] px-4 py-3 text-sm font-black text-white shadow-sm transition hover:brightness-110 disabled:opacity-60"
+            >
+              {sendingDnaWhatsApp ? (
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+              ) : (
+                <MessageCircle size={16} aria-hidden />
+              )}
+              إرسال رابط DNA عبر واتساب
             </button>
           </section>
 
@@ -1053,6 +1363,83 @@ export default function ClientDetailPage() {
             ) : (
               <button type="button" onClick={() => void generateCode()} className="w-full rounded-xl bg-slate-800 px-4 py-2.5 text-sm font-bold text-white">
                 توليد كود إحالة
+              </button>
+            )}
+          </section>
+
+          <section className={cardClass}>
+            <h2 className="mb-3 inline-flex items-center gap-2 text-base font-black text-slate-900">
+              <Lock size={16} className="text-rose-600" />
+              رمز الملف الشخصي الخاص
+            </h2>
+            <p className="mb-3 text-xs leading-relaxed text-slate-600">
+              للوصول إلى المحفظة والبيانات المالية فقط — لا يُشارك مع رابط المسار ولا مع كود الإحالة.
+            </p>
+            {client.profile_code ? (
+              <div>
+                {editingProfileCode ? (
+                  <div className="mb-2 flex items-center gap-2">
+                    <input
+                      value={newProfileCode}
+                      onChange={(e) => setNewProfileCode(e.target.value.toUpperCase())}
+                      dir="ltr"
+                      className="min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-center font-mono text-sm font-bold outline-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => void saveProfileCode()}
+                      className="rounded-lg bg-slate-800 p-2 text-white"
+                    >
+                      <Save size={14} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditingProfileCode(false)}
+                      className="rounded-lg bg-slate-200 p-2 text-slate-700"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="mb-2 flex items-center gap-2">
+                    <div
+                      className="flex-1 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-center font-mono text-lg font-black tracking-wider text-slate-900"
+                      dir="ltr"
+                    >
+                      {client.profile_code}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setEditingProfileCode(true)}
+                      className="rounded-lg bg-slate-200 p-2 text-slate-700"
+                    >
+                      <Pencil size={12} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void deleteProfileCode()}
+                      className="rounded-lg bg-rose-100 p-2 text-rose-600"
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => void handleGenerateProfileCode()}
+                disabled={generatingProfileCode}
+                className="w-full rounded-xl bg-rose-700 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-rose-800 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {generatingProfileCode ? (
+                  <span className="inline-flex items-center justify-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                    جاري التوليد…
+                  </span>
+                ) : (
+                  'توليد رمز الملف الشخصي'
+                )}
               </button>
             )}
           </section>

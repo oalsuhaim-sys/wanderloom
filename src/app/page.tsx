@@ -1,4 +1,5 @@
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 /**
  * قائمة الدول ومدن كل دولة في نموذج «سجّل رحلتك» لا تُعرَّف هنا؛ المصدر الوحيد هو
