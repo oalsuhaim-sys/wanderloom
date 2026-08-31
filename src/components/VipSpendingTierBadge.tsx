@@ -15,7 +15,12 @@ type Props = {
   className?: string;
   /** أصغر للهيدر في واجهة العميل */
   subtle?: boolean;
+  /** Glass style for navy/olive banners */
+  variant?: 'default' | 'glass';
 };
+
+const GLASS =
+  'inline-flex items-center rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-medium text-white shadow-none backdrop-blur-sm';
 
 export default function VipSpendingTierBadge({
   tier,
@@ -23,16 +28,25 @@ export default function VipSpendingTierBadge({
   totalSpent,
   className = '',
   subtle = false,
+  variant = 'default',
 }: Props) {
   const profitBasis = totalProfit ?? totalSpent;
   const resolved = normalizeVipSpendingTier(tier ?? 'gold', profitBasis);
-  const label = vipSpendingTierLabel(resolved);
+  const label = vipSpendingTierLabel(resolved).replace(/\s*[🟡⚫✨]\s*$/u, '');
   const subtleClass = subtle ? 'scale-90 opacity-95' : '';
+
+  if (variant === 'glass') {
+    return (
+      <span className={`${GLASS} ${subtleClass} ${className}`} title={label}>
+        {label}
+      </span>
+    );
+  }
 
   if (resolved === 'signature') {
     return (
       <span
-        className={`inline-flex items-center bg-gradient-to-r from-[#D4AF37] via-white to-[#D4AF37] text-black px-3 py-1 rounded-full text-xs font-extrabold shadow-lg ${subtleClass} ${className}`}
+        className={`inline-flex items-center rounded-full border border-[#D4AF37]/35 bg-[#D4AF37]/10 px-3 py-1 text-xs font-semibold text-[#8a6f1a] dark:text-[#D4AF37] ${subtleClass} ${className}`}
       >
         {label}
       </span>
@@ -42,7 +56,7 @@ export default function VipSpendingTierBadge({
   if (resolved === 'black') {
     return (
       <span
-        className={`inline-flex items-center bg-[#1A2520] text-[#D4AF37] border border-[#D4AF37] px-3 py-1 rounded-full text-xs font-bold shadow-md ${subtleClass} ${className}`}
+        className={`inline-flex items-center rounded-full border border-slate-800/20 bg-slate-900 px-3 py-1 text-xs font-semibold text-[#D4AF37] ${subtleClass} ${className}`}
       >
         {label}
       </span>
@@ -51,7 +65,7 @@ export default function VipSpendingTierBadge({
 
   return (
     <span
-      className={`inline-flex items-center bg-yellow-100 text-yellow-800 border border-yellow-300 px-3 py-1 rounded-full text-xs font-bold shadow-sm ${subtleClass} ${className}`}
+      className={`inline-flex items-center rounded-full border border-[#D4AF37]/30 bg-[#D4AF37]/10 px-3 py-1 text-xs font-semibold text-[#8a6f1a] dark:border-[#D4AF37]/30 dark:bg-[#D4AF37]/10 dark:text-[#D4AF37] ${subtleClass} ${className}`}
     >
       {label}
     </span>

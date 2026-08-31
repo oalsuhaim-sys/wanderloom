@@ -78,10 +78,22 @@ function formatHotelWhatsApp(h: HotelRow): string {
 🔗 رابط الفندق: ${url}`;
 }
 
-/** حقول النماذج — نص غامق يغلب إعدادات الوضع الداكن للنظام (وراثة body) + autofill */
+/** حقول النماذج — ثيم فاخر ثنائي (فاتح/داكن) */
 const CRM_FORM_FIELD =
-  'w-full rounded-[10px] border border-gray-300 bg-white px-2.5 py-2.5 text-[13px] font-bold text-gray-900 placeholder:text-gray-600 placeholder:opacity-100 outline-none focus:ring-2 focus:ring-[#1C4532]/25 [color-scheme:light] [caret-color:#0a1d37] [&:-webkit-autofill]:shadow-[inset_0_0_0_1000px_rgb(255,255,255)] [&:-webkit-autofill]:[-webkit-text-fill-color:rgb(17,24,39)]';
+  'w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-300 focus:ring-2 focus:ring-slate-200 dark:border-[#2D3F3A] dark:bg-[#1A2421] dark:text-gray-100 dark:focus:border-[#D4AF37]/40 dark:focus:ring-[#D4AF37]/15';
 const CRM_FORM_FIELD_LTR = `${CRM_FORM_FIELD} text-left`;
+
+const BTN_PRIMARY =
+  'inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50 dark:border dark:border-[#D4AF37]/50 dark:bg-[#D4AF37]/20 dark:text-[#D4AF37] dark:hover:bg-[#D4AF37]/30';
+
+const BTN_SECONDARY =
+  'inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 dark:border-[#2D3F3A] dark:bg-[#1A2421] dark:text-gray-300';
+
+const CARD =
+  'rounded-xl border border-slate-200 bg-white shadow-sm dark:border-[#2D3F3A] dark:bg-[#22302C]';
+
+const CATEGORY_BADGE =
+  'inline-flex rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-800 dark:bg-[#D4AF37]/10 dark:text-[#D4AF37]';
 
 export default function HotelsCRMPage() {
   const [countries, setCountries] = useState<string[]>([]);
@@ -290,519 +302,389 @@ export default function HotelsCRMPage() {
     }
   };
 
-  const btn = (bg: string, color: string) => ({
-    padding: '8px 14px',
-    background: bg,
-    color,
-    border: 'none',
-    borderRadius: 8,
-    cursor: 'pointer',
-    fontSize: 11,
-    fontWeight: 700 as const,
-    display: 'inline-flex' as const,
-    alignItems: 'center' as const,
-    gap: 6,
-  });
-
   return (
     <div
       dir="rtl"
-      className="min-h-screen bg-[#eef0ec] font-[family-name:var(--font-tajawal),system-ui,sans-serif] text-gray-900 [color-scheme:light]"
-      style={{ padding: '20px 16px', maxWidth: 1200, margin: '0 auto' }}
+      className="min-h-full bg-[#F9FAFB] font-sans dark:bg-[#1A2421]"
     >
-      {toast ? (
-        <div
-          role="status"
-          style={{
-            position: 'fixed',
-            bottom: 24,
-            left: '50%',
-            transform: 'translateX(-50%)',
-            zIndex: 9999,
-            padding: '12px 22px',
-            borderRadius: 14,
-            background: 'linear-gradient(135deg,#1C4532,#163a30)',
-            color: '#f0e4c4',
-            fontSize: 13,
-            fontWeight: 800,
-            boxShadow: '0 8px 32px rgba(28,69,50,0.35)',
-            border: '1px solid rgba(201,168,76,0.35)',
-          }}
-        >
-          {toast}
-        </div>
-      ) : null}
-      <button
-        type="button"
-        onClick={() => window.history.back()}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 6,
-          background: 'none',
-          border: 'none',
-          color: '#6B7280',
-          cursor: 'pointer',
-          fontSize: 12,
-          marginBottom: 16,
-        }}
-      >
-        <ArrowRight size={14} /> رجوع
-      </button>
-
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
-        <div>
-          <div style={{ fontSize: 22, fontWeight: 800, color: '#1C4532', display: 'flex', alignItems: 'center', gap: 10 }}>
-            <Hotel size={26} color="#C9A84C" strokeWidth={2} />
-            قاعدة بيانات الفنادق
-          </div>
-          <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 4 }}>
-            {rows.length} فندق معروض
-            {filterCountry ? ` · الدولة: ${filterCountry}` : ''}
-            {filterCategory ? ` · التصنيف: ${categoryLabel(filterCategory)}` : ''}
-          </div>
-        </div>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <Link
-            href="/crm"
-            style={{
-              textDecoration: 'none',
-              ...btn('#F3F0EB', '#1C4532'),
-            }}
+      <div className="mx-auto max-w-7xl space-y-4">
+        {toast ? (
+          <div
+            role="status"
+            className="fixed bottom-6 left-1/2 z-[9999] -translate-x-1/2 rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white shadow-lg dark:border dark:border-[#D4AF37]/40 dark:bg-[#22302C] dark:text-[#D4AF37]"
           >
-            لوحة التحكم
-          </Link>
-          <button type="button" onClick={() => setAdding(true)} style={{ ...btn('#C9A84C', '#1C4532'), padding: '10px 18px', fontSize: 12 }}>
-            <Plus size={16} /> إضافة فندق
-          </button>
-        </div>
-      </div>
+            {toast}
+          </div>
+        ) : null}
 
-      {banner ? (
-        <div
-          style={{
-            marginBottom: 14,
-            padding: '12px 14px',
-            borderRadius: 12,
-            fontSize: 13,
-            fontWeight: 700,
-            background: banner.type === 'ok' ? '#D1FAE5' : '#FEE2E2',
-            color: banner.type === 'ok' ? '#065F46' : '#991B1B',
-            border: `1px solid ${banner.type === 'ok' ? '#6EE7B7' : '#FECACA'}`,
-          }}
+        <button
+          type="button"
+          onClick={() => window.history.back()}
+          className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 transition hover:text-slate-800 dark:text-gray-400 dark:hover:text-[#D4AF37]"
         >
-          {banner.text}
-        </div>
-      ) : null}
+          <ArrowRight className="h-3.5 w-3.5" aria-hidden /> رجوع
+        </button>
 
-      <div
-        style={{
-          marginBottom: 16,
-          padding: '14px 16px',
-          borderRadius: 14,
-          background: 'linear-gradient(135deg, #fffef9 0%, #f0f4f1 100%)',
-          border: '1px solid rgba(201,168,76,0.35)',
-          boxShadow: '0 4px 20px rgba(28,69,50,0.06)',
-        }}
-      >
-        <div style={{ fontSize: 12, fontWeight: 800, color: '#1C4532', marginBottom: 10 }}>
-          دليل التصنيف للموظف — اختر الأنسب لملف العميل
-        </div>
-        <ul style={{ margin: 0, paddingRight: 18, fontSize: 11, fontWeight: 700, color: '#3d4a42', lineHeight: 1.75 }}>
-          {CATEGORY_OPTIONS.map((o) => (
-            <li key={o.value} style={{ marginBottom: 6 }}>
-              <span style={{ color: '#1C4532' }}>{o.label}:</span> {o.hint}
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
-          gap: 10,
-          marginBottom: 16,
-          background: '#fff',
-          padding: 14,
-          borderRadius: 14,
-          border: '1px solid #E8E4DC',
-          boxShadow: '0 4px 20px rgba(28,69,50,0.06)',
-        }}
-      >
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="بحث بالاسم أو المدينة أو ملاحظات الموظفين…"
-          className={CRM_FORM_FIELD}
-        />
-        <select
-          value={filterCountry}
-          onChange={(e) => setFilterCountry(e.target.value)}
-          className={CRM_FORM_FIELD}
-        >
-          <option value="">كل الدول ({countries.length})</option>
-          {countries.map((c) => (
-            <option key={c} value={c}>
-              {c}
-            </option>
-          ))}
-        </select>
-        <select
-          value={filterCategory}
-          onChange={(e) => setFilterCategory((e.target.value || '') as '' | HotelCategory)}
-          className={CRM_FORM_FIELD}
-        >
-          <option value="">كل التصنيفات</option>
-          {CATEGORY_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value} title={o.hint}>
-              {o.label}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      {adding && (
-        <div
-          style={{
-            background: '#FFFBEB',
-            border: '1px solid #FDE68A',
-            borderRadius: 14,
-            padding: 16,
-            marginBottom: 16,
-          }}
-        >
-          <div style={{ fontWeight: 800, color: '#92400E', marginBottom: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            فندق جديد
-            <button type="button" onClick={() => setAdding(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#92400E' }}>
-              <X size={18} />
+        <header className="flex flex-col gap-4 rounded-2xl bg-slate-900 p-4 text-white shadow-sm sm:flex-row sm:items-center sm:justify-between sm:p-6 dark:border dark:border-[#D4AF37]/30 dark:!bg-[#22302C] dark:text-[#D4AF37]">
+          <div className="space-y-1.5">
+            <p className="inline-flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-white/50 dark:text-[#D4AF37]/80">
+              <Hotel className="h-3.5 w-3.5" aria-hidden />
+              Hotels Bank
+            </p>
+            <h1 className="text-2xl font-semibold tracking-tight text-white sm:text-3xl dark:text-gray-100">
+              قاعدة بيانات الفنادق
+            </h1>
+            <p className="text-sm text-white/70 dark:text-gray-300">
+              {rows.length} فندق معروض
+              {filterCountry ? ` · الدولة: ${filterCountry}` : ''}
+              {filterCategory ? ` · التصنيف: ${categoryLabel(filterCategory)}` : ''}
+            </p>
+          </div>
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+            <Link
+              href="/crm"
+              className={`${BTN_SECONDARY} w-full border-white/20 !bg-white/10 !text-white hover:!bg-white/20 sm:w-auto dark:!border-[#D4AF37]/30 dark:!bg-[#1A2421] dark:!text-[#D4AF37]`}
+            >
+              لوحة التحكم
+            </Link>
+            <button
+              type="button"
+              onClick={() => setAdding(true)}
+              className={`${BTN_PRIMARY} w-full !bg-white !text-slate-900 hover:!bg-slate-50 sm:w-auto`}
+            >
+              <Plus className="h-4 w-4" aria-hidden /> إضافة فندق
             </button>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 10 }}>
-            <input
-              value={newRow.name}
-              onChange={(e) => setNewRow({ ...newRow, name: e.target.value })}
-              placeholder="اسم الفندق *"
-              className={CRM_FORM_FIELD}
-            />
-            <input
-              value={newRow.country}
-              onChange={(e) => setNewRow({ ...newRow, country: e.target.value })}
-              placeholder="الدولة *"
-              className={CRM_FORM_FIELD}
-            />
-            <input
-              value={newRow.city}
-              onChange={(e) => setNewRow({ ...newRow, city: e.target.value })}
-              placeholder="المدينة"
-              className={CRM_FORM_FIELD}
-            />
-            <select
-              value={newRow.category}
-              onChange={(e) => setNewRow({ ...newRow, category: e.target.value as HotelCategory })}
-              className={CRM_FORM_FIELD}
-            >
-              {CATEGORY_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value} title={o.hint}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
-            <input
-              value={newRow.booking_url}
-              onChange={(e) => setNewRow({ ...newRow, booking_url: e.target.value })}
-              placeholder="رابط Booking / الموقع"
-              dir="ltr"
-              className={CRM_FORM_FIELD_LTR}
-            />
-            <input
-              value={newRow.manager_name}
-              onChange={(e) => setNewRow({ ...newRow, manager_name: e.target.value })}
-              placeholder="اسم المسؤول"
-              className={CRM_FORM_FIELD}
-            />
-            <input
-              value={newRow.contact_number}
-              onChange={(e) => setNewRow({ ...newRow, contact_number: e.target.value })}
-              placeholder="رقم التواصل"
-              dir="ltr"
-              className={CRM_FORM_FIELD_LTR}
-            />
-          </div>
-          <textarea
-            value={newRow.notes}
-            onChange={(e) => setNewRow({ ...newRow, notes: e.target.value })}
-            placeholder="ملاحظاتك عن الفندق…"
-            rows={3}
-            className={`${CRM_FORM_FIELD} mt-2.5 resize-y`}
-          />
-          <button type="button" onClick={addHotel} style={{ ...btn('#1C4532', '#fff'), marginTop: 12 }}>
-            <Save size={16} /> حفظ الفندق
-          </button>
-        </div>
-      )}
+        </header>
 
-      {loading ? (
-        <div style={{ textAlign: 'center', padding: 48, color: '#9CA3AF' }}>جارٍ التحميل…</div>
-      ) : rows.length === 0 ? (
-        <div
-          style={{
-            textAlign: 'center',
-            padding: 40,
-            color: '#6B7280',
-            background: '#FAFAF8',
-            borderRadius: 14,
-            border: '1px dashed #E5E0D6',
-          }}
-        >
-          لا توجد فنادق بعد أو لا نتائج للتصفية. أضف فندقاً أو غيّر الدولة.
+        {banner ? (
+          <div
+            role="alert"
+            className={`rounded-xl border px-4 py-3 text-sm font-medium ${
+              banner.type === 'ok'
+                ? 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-300'
+                : 'border-rose-200 bg-rose-50 text-rose-800 dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-200'
+            }`}
+          >
+            {banner.text}
+          </div>
+        ) : null}
+
+        <div className={`${CARD} space-y-3 p-5`}>
+          <h2 className="text-sm font-semibold text-slate-900 dark:text-gray-100">
+            دليل التصنيف للموظف — اختر الأنسب لملف العميل
+          </h2>
+          <ul className="space-y-2 text-xs leading-relaxed text-slate-600 dark:text-gray-300">
+            {CATEGORY_OPTIONS.map((o) => (
+              <li key={o.value}>
+                <span className="font-semibold text-slate-800 dark:text-[#D4AF37]">{o.label}:</span>{' '}
+                {o.hint}
+              </li>
+            ))}
+          </ul>
         </div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {rows.map((h) => {
-            const bookingHref = normalizeUrl(h.booking_url)
-            return (
-            <div
-              key={h.id}
-              style={{
-                background: '#fff',
-                borderRadius: 14,
-                border: '1px solid #F3F0EB',
-                padding: '14px 16px',
-                boxShadow: '0 1px 6px rgba(0,0,0,.04)',
-              }}
-            >
-              {editing?.id === h.id ? (
-                <div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 8 }}>
-                    <input
-                      value={editing.name}
-                      onChange={(e) => setEditing({ ...editing, name: e.target.value })}
-                      className={CRM_FORM_FIELD}
-                    />
-                    <input
-                      value={editing.country}
-                      onChange={(e) => setEditing({ ...editing, country: e.target.value })}
-                      className={CRM_FORM_FIELD}
-                    />
-                    <input
-                      value={editing.city}
-                      onChange={(e) => setEditing({ ...editing, city: e.target.value })}
-                      className={CRM_FORM_FIELD}
-                    />
-                    <select
-                      value={editing.category}
-                      onChange={(e) => setEditing({ ...editing, category: e.target.value as HotelCategory })}
-                      className={CRM_FORM_FIELD}
-                    >
-                      {categoryOptionsForEdit(String(editing.category)).map((o) => (
-                        <option key={o.value} value={o.value} title={o.hint}>
-                          {o.label}
-                        </option>
-                      ))}
-                    </select>
-                    <input
-                      value={editing.booking_url ?? ''}
-                      onChange={(e) => setEditing({ ...editing, booking_url: e.target.value })}
-                      placeholder="رابط"
-                      dir="ltr"
-                      className={CRM_FORM_FIELD_LTR}
-                    />
-                    <input
-                      value={editing.manager_name ?? ''}
-                      onChange={(e) => setEditing({ ...editing, manager_name: e.target.value })}
-                      placeholder="اسم المسؤول"
-                      className={CRM_FORM_FIELD}
-                    />
-                    <input
-                      value={editing.contact_number ?? ''}
-                      onChange={(e) => setEditing({ ...editing, contact_number: e.target.value })}
-                      placeholder="رقم التواصل"
-                      dir="ltr"
-                      className={CRM_FORM_FIELD_LTR}
-                    />
-                  </div>
-                  <textarea
-                    value={editing.notes ?? ''}
-                    onChange={(e) => setEditing({ ...editing, notes: e.target.value })}
-                    rows={2}
-                    className={`${CRM_FORM_FIELD} mt-2 resize-y`}
-                  />
-                  <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
-                    <button type="button" onClick={saveEdit} style={btn('#1C4532', '#fff')}>
-                      <Save size={14} /> حفظ
-                    </button>
-                    <button type="button" onClick={() => setEditing(null)} style={btn('#F3F0EB', '#374151')}>
-                      إلغاء
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start', flexWrap: 'wrap' }}>
-                  <div style={{ flex: 1, minWidth: 200 }}>
-                    <div style={{ fontSize: 16, fontWeight: 800, color: '#0a1d37' }}>{h.name}</div>
-                    <div style={{ fontSize: 12, color: '#374151', fontWeight: 700, marginTop: 4 }}>
-                      {h.city ? `${h.city} · ` : ''}
-                      {h.country}
-                      <span
-                        style={{
-                          marginRight: 8,
-                          padding: '2px 8px',
-                          borderRadius: 8,
-                          background: '#FEF3C7',
-                          color: '#92400E',
-                          fontWeight: 700,
-                          fontSize: 11,
-                        }}
-                      >
-                        {categoryLabel(h.category)}
-                      </span>
-                    </div>
-                    {h.manager_name?.trim() || h.contact_number?.trim() ? (
-                      <div
-                        style={{
-                          display: 'flex',
-                          flexWrap: 'wrap',
-                          gap: 12,
-                          marginTop: 8,
-                          fontSize: 12,
-                          fontWeight: 700,
-                          color: '#374151',
-                        }}
-                      >
-                        {h.manager_name?.trim() ? (
-                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                            <UserRound size={14} color="#1C4532" aria-hidden />
-                            {h.manager_name.trim()}
-                          </span>
-                        ) : null}
-                        {h.contact_number?.trim() ? (
-                          <a
-                            href={`tel:${h.contact_number.trim().replace(/\s+/g, '')}`}
-                            style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: 6,
-                              color: '#1C4532',
-                              textDecoration: 'none',
-                            }}
-                            dir="ltr"
-                          >
-                            <Phone size={14} color="#C9A84C" aria-hidden />
-                            {h.contact_number.trim()}
-                          </a>
-                        ) : null}
-                      </div>
-                    ) : null}
-                    {h.notes ? (
-                      <div style={{ fontSize: 13, fontWeight: 700, color: '#111827', marginTop: 8, lineHeight: 1.65, whiteSpace: 'pre-wrap' }}>
-                        {h.notes}
-                      </div>
-                    ) : null}
-                    {bookingHref ? (
-                      <a
-                        href={bookingHref}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: 6,
-                          marginTop: 10,
-                          fontSize: 12,
-                          fontWeight: 700,
-                          color: '#1C4532',
-                        }}
-                      >
-                        <ExternalLink size={14} /> فتح الرابط
-                      </a>
-                    ) : null}
-                  </div>
-                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', justifyContent: 'flex-end' }}>
-                    <button
-                      type="button"
-                      onClick={() => copyHotelWhatsApp(h)}
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 6,
-                        padding: '8px 12px',
-                        borderRadius: 10,
-                        border: '1px solid rgba(37,211,102,0.45)',
-                        background: 'linear-gradient(135deg, #e8f8ec 0%, #d4f0dc 100%)',
-                        color: '#166534',
-                        cursor: 'pointer',
-                        fontSize: 11,
-                        fontWeight: 800,
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      <MessageCircle size={16} color="#25D366" />
-                      نسخ للواتساب
-                    </button>
-                    {bookingHref ? (
-                      <a
-                        href={bookingHref}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-[10px] border border-blue-200 bg-blue-50 px-3 py-2 text-[11px] font-extrabold text-blue-700 transition hover:bg-blue-100"
-                      >
-                        رابط الحجز 🔗
-                      </a>
-                    ) : (
-                      <button
-                        type="button"
-                        disabled
-                        title="لا يوجد رابط"
-                        className="inline-flex cursor-not-allowed items-center gap-1.5 whitespace-nowrap rounded-[10px] border border-gray-200 bg-gray-50 px-3 py-2 text-[11px] font-extrabold text-gray-400"
-                      >
-                        رابط الحجز 🔗
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => setEditing({ ...h })}
-                      style={{
-                        width: 36,
-                        height: 36,
-                        borderRadius: 10,
-                        border: 'none',
-                        background: '#FEF3C7',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }}
-                      aria-label="تعديل"
-                    >
-                      <Pencil size={16} color="#D97706" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => deleteHotel(h.id)}
-                      style={{
-                        width: 36,
-                        height: 36,
-                        borderRadius: 10,
-                        border: 'none',
-                        background: '#FEE2E2',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }}
-                      aria-label="حذف"
-                    >
-                      <Trash2 size={16} color="#DC2626" />
-                    </button>
-                  </div>
-                </div>
-              )}
+
+        <div className={`${CARD} grid grid-cols-1 gap-3 p-4 sm:grid-cols-3`}>
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="بحث بالاسم أو المدينة أو ملاحظات الموظفين…"
+            className={CRM_FORM_FIELD}
+          />
+          <select
+            value={filterCountry}
+            onChange={(e) => setFilterCountry(e.target.value)}
+            className={CRM_FORM_FIELD}
+          >
+            <option value="">كل الدول ({countries.length})</option>
+            {countries.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+          <select
+            value={filterCategory}
+            onChange={(e) => setFilterCategory((e.target.value || '') as '' | HotelCategory)}
+            className={CRM_FORM_FIELD}
+          >
+            <option value="">كل التصنيفات</option>
+            {CATEGORY_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value} title={o.hint}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {adding ? (
+          <div className={`${CARD} space-y-4 border-[#D4AF37]/30 p-5 dark:border-[#D4AF37]/40`}>
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-slate-900 dark:text-[#D4AF37]">فندق جديد</h3>
+              <button
+                type="button"
+                onClick={() => setAdding(false)}
+                className="rounded-lg p-1.5 text-slate-500 transition hover:bg-slate-100 dark:hover:bg-[#1A2421] dark:hover:text-[#D4AF37]"
+                aria-label="إغلاق"
+              >
+                <X className="h-4 w-4" aria-hidden />
+              </button>
             </div>
-            )
-          })}
-        </div>
-      )}
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <input
+                value={newRow.name}
+                onChange={(e) => setNewRow({ ...newRow, name: e.target.value })}
+                placeholder="اسم الفندق *"
+                className={CRM_FORM_FIELD}
+              />
+              <input
+                value={newRow.country}
+                onChange={(e) => setNewRow({ ...newRow, country: e.target.value })}
+                placeholder="الدولة *"
+                className={CRM_FORM_FIELD}
+              />
+              <input
+                value={newRow.city}
+                onChange={(e) => setNewRow({ ...newRow, city: e.target.value })}
+                placeholder="المدينة"
+                className={CRM_FORM_FIELD}
+              />
+              <select
+                value={newRow.category}
+                onChange={(e) => setNewRow({ ...newRow, category: e.target.value as HotelCategory })}
+                className={CRM_FORM_FIELD}
+              >
+                {CATEGORY_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value} title={o.hint}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+              <input
+                value={newRow.booking_url}
+                onChange={(e) => setNewRow({ ...newRow, booking_url: e.target.value })}
+                placeholder="رابط Booking / الموقع"
+                dir="ltr"
+                className={CRM_FORM_FIELD_LTR}
+              />
+              <input
+                value={newRow.manager_name}
+                onChange={(e) => setNewRow({ ...newRow, manager_name: e.target.value })}
+                placeholder="اسم المسؤول"
+                className={CRM_FORM_FIELD}
+              />
+              <input
+                value={newRow.contact_number}
+                onChange={(e) => setNewRow({ ...newRow, contact_number: e.target.value })}
+                placeholder="رقم التواصل"
+                dir="ltr"
+                className={CRM_FORM_FIELD_LTR}
+              />
+            </div>
+            <textarea
+              value={newRow.notes}
+              onChange={(e) => setNewRow({ ...newRow, notes: e.target.value })}
+              placeholder="ملاحظاتك عن الفندق…"
+              rows={3}
+              className={`${CRM_FORM_FIELD} resize-y`}
+            />
+            <button type="button" onClick={addHotel} className={BTN_PRIMARY}>
+              <Save className="h-4 w-4" aria-hidden /> حفظ الفندق
+            </button>
+          </div>
+        ) : null}
+
+        {loading ? (
+          <div className={`${CARD} px-6 py-14 text-center text-sm font-medium text-slate-500 dark:text-slate-400`}>
+            جارٍ التحميل…
+          </div>
+        ) : rows.length === 0 ? (
+          <div className={`${CARD} border-dashed px-6 py-14 text-center text-sm font-medium text-slate-500 dark:text-slate-400`}>
+            لا توجد فنادق بعد أو لا نتائج للتصفية. أضف فندقاً أو غيّر الدولة.
+          </div>
+        ) : (
+          <div className="w-full overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm dark:border-[#2D3F3A] dark:bg-[#22302C]">
+              <table className="min-w-full text-right text-sm">
+                <thead className="bg-slate-50 text-sm font-semibold text-slate-600 dark:bg-[#1A2421] dark:text-slate-300">
+                  <tr className="border-b border-slate-200 dark:border-[#2D3F3A]">
+                    <th className="whitespace-nowrap px-4 py-3">الفندق</th>
+                    <th className="whitespace-nowrap px-4 py-3">الموقع</th>
+                    <th className="whitespace-nowrap px-4 py-3">التصنيف</th>
+                    <th className="whitespace-nowrap px-4 py-3">التواصل</th>
+                    <th className="whitespace-nowrap px-4 py-3">إجراءات</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((h) => {
+                    const bookingHref = normalizeUrl(h.booking_url);
+                    const isEditing = editing?.id === h.id;
+                    return (
+                      <tr
+                        key={h.id}
+                        className="border-b border-slate-100 align-top dark:border-[#2D3F3A]"
+                      >
+                        {isEditing && editing ? (
+                          <td colSpan={5} className="px-4 py-4">
+                            <div className="space-y-3">
+                              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                                <input
+                                  value={editing.name}
+                                  onChange={(e) => setEditing({ ...editing, name: e.target.value })}
+                                  className={CRM_FORM_FIELD}
+                                />
+                                <input
+                                  value={editing.country}
+                                  onChange={(e) => setEditing({ ...editing, country: e.target.value })}
+                                  className={CRM_FORM_FIELD}
+                                />
+                                <input
+                                  value={editing.city}
+                                  onChange={(e) => setEditing({ ...editing, city: e.target.value })}
+                                  className={CRM_FORM_FIELD}
+                                />
+                                <select
+                                  value={editing.category}
+                                  onChange={(e) =>
+                                    setEditing({ ...editing, category: e.target.value as HotelCategory })
+                                  }
+                                  className={CRM_FORM_FIELD}
+                                >
+                                  {categoryOptionsForEdit(String(editing.category)).map((o) => (
+                                    <option key={o.value} value={o.value} title={o.hint}>
+                                      {o.label}
+                                    </option>
+                                  ))}
+                                </select>
+                                <input
+                                  value={editing.booking_url ?? ''}
+                                  onChange={(e) => setEditing({ ...editing, booking_url: e.target.value })}
+                                  placeholder="رابط"
+                                  dir="ltr"
+                                  className={CRM_FORM_FIELD_LTR}
+                                />
+                                <input
+                                  value={editing.manager_name ?? ''}
+                                  onChange={(e) => setEditing({ ...editing, manager_name: e.target.value })}
+                                  placeholder="اسم المسؤول"
+                                  className={CRM_FORM_FIELD}
+                                />
+                                <input
+                                  value={editing.contact_number ?? ''}
+                                  onChange={(e) => setEditing({ ...editing, contact_number: e.target.value })}
+                                  placeholder="رقم التواصل"
+                                  dir="ltr"
+                                  className={CRM_FORM_FIELD_LTR}
+                                />
+                              </div>
+                              <textarea
+                                value={editing.notes ?? ''}
+                                onChange={(e) => setEditing({ ...editing, notes: e.target.value })}
+                                rows={2}
+                                className={`${CRM_FORM_FIELD} resize-y`}
+                              />
+                              <div className="flex flex-wrap gap-2">
+                                <button type="button" onClick={saveEdit} className={BTN_PRIMARY}>
+                                  <Save className="h-3.5 w-3.5" aria-hidden /> حفظ
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setEditing(null)}
+                                  className={BTN_SECONDARY}
+                                >
+                                  إلغاء
+                                </button>
+                              </div>
+                            </div>
+                          </td>
+                        ) : (
+                          <>
+                            <td className="px-4 py-3.5 text-slate-900 dark:text-gray-100">
+                              <div className="font-semibold">{h.name}</div>
+                              {h.notes ? (
+                                <p className="mt-1 line-clamp-2 text-xs font-normal text-slate-500 dark:text-gray-400">
+                                  {h.notes}
+                                </p>
+                              ) : null}
+                            </td>
+                            <td className="whitespace-nowrap px-4 py-3.5 text-slate-900 dark:text-gray-100">
+                              {h.city ? `${h.city} · ` : ''}
+                              {h.country}
+                            </td>
+                            <td className="whitespace-nowrap px-4 py-3.5">
+                              <span className={CATEGORY_BADGE}>{categoryLabel(h.category)}</span>
+                            </td>
+                            <td className="px-4 py-3.5 text-slate-900 dark:text-gray-100">
+                              <div className="space-y-1 text-xs">
+                                {h.manager_name?.trim() ? (
+                                  <p className="inline-flex items-center gap-1.5">
+                                    <UserRound className="h-3.5 w-3.5 text-slate-400 dark:text-[#D4AF37]" aria-hidden />
+                                    {h.manager_name.trim()}
+                                  </p>
+                                ) : null}
+                                {h.contact_number?.trim() ? (
+                                  <a
+                                    href={`tel:${h.contact_number.trim().replace(/\s+/g, '')}`}
+                                    className="inline-flex items-center gap-1.5 font-medium text-slate-700 hover:underline dark:text-gray-200"
+                                    dir="ltr"
+                                  >
+                                    <Phone className="h-3.5 w-3.5 text-slate-400 dark:text-[#D4AF37]" aria-hidden />
+                                    {h.contact_number.trim()}
+                                  </a>
+                                ) : null}
+                                {!h.manager_name?.trim() && !h.contact_number?.trim() ? (
+                                  <span className="text-slate-400">—</span>
+                                ) : null}
+                              </div>
+                            </td>
+                            <td className="px-4 py-3.5">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => copyHotelWhatsApp(h)}
+                                  className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-xs font-medium text-emerald-800 transition hover:bg-emerald-100 dark:border-emerald-900/40 dark:bg-emerald-950/30 dark:text-emerald-300"
+                                >
+                                  <MessageCircle className="h-3.5 w-3.5" aria-hidden />
+                                  واتساب
+                                </button>
+                                {bookingHref ? (
+                                  <a
+                                    href={bookingHref}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-100 dark:border-[#2D3F3A] dark:bg-[#1A2421] dark:text-gray-300"
+                                  >
+                                    <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+                                    رابط
+                                  </a>
+                                ) : null}
+                                <button
+                                  type="button"
+                                  onClick={() => setEditing({ ...h })}
+                                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-amber-50 text-amber-700 transition hover:bg-amber-100 dark:bg-[#D4AF37]/10 dark:text-[#D4AF37]"
+                                  aria-label="تعديل"
+                                >
+                                  <Pencil className="h-3.5 w-3.5" aria-hidden />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => deleteHotel(h.id)}
+                                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-rose-50 text-rose-600 transition hover:bg-rose-100 dark:bg-rose-950/40 dark:text-rose-300"
+                                  aria-label="حذف"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" aria-hidden />
+                                </button>
+                              </div>
+                            </td>
+                          </>
+                        )}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+        )}
+      </div>
     </div>
   );
 }

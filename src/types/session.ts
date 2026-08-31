@@ -8,7 +8,6 @@ export interface Session {
   description: string;
   location_url?: string;
   created_at?: string;
-  [key: string]: any;
 }
 
 export type SessionInsert = Omit<Session, 'id' | 'created_at'>;
@@ -19,5 +18,4 @@ export interface SessionRegistration {
   name: string;
   whatsapp: string;
   created_at?: string;
-  [key: string]: any;
 }

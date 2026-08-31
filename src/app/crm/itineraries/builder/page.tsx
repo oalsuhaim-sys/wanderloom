@@ -1,17 +1,23 @@
 'use client';
 
 import React, { Suspense, useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { DragDropContext } from '@hello-pangea/dnd';
 import { ArrowRight, Copy, FileStack, Loader2, Plus, Trash2 } from 'lucide-react';
 
 import { getQuoteLedgerAction } from '@/app/actions/invoiceActions';
 import { saveItineraryClientLinkAction } from '@/app/actions/itineraryClientActions';
+import { toast } from '@/lib/crm-toast';
 import SimpleItineraryDayPlanner from '@/app/crm/itineraries/_components/SimpleItineraryDayPlanner';
 import SimpleItineraryPlacesBank from '@/app/crm/itineraries/_components/SimpleItineraryPlacesBank';
+import ExperiencesExplorer from '@/app/crm/itineraries/_components/ExperiencesExplorer';
+import ItineraryPlacesSourceTabs, {
+  type ItineraryPlacesSource,
+} from '@/app/crm/itineraries/_components/ItineraryPlacesSourceTabs';
 import TripGeographySelectors from '@/app/crm/itineraries/_components/TripGeographySelectors';
 import ItineraryHotelsEditor from '@/app/crm/itineraries/_components/ItineraryHotelsEditor';
-import { VipTimeSlotSelect } from '@/app/crm/itineraries/_components/VipBookingFields';
+import BoardingFlightFieldsPanel from '@/app/crm/itineraries/_components/BoardingFlightFieldsPanel';
 import ActivityTicketsEditor from '@/app/crm/itineraries/_components/ActivityTicketsEditor';
 import ItineraryDocumentWallet from '@/app/crm/itineraries/_components/ItineraryDocumentWallet';
 import SupplierRequestsEditor from '@/app/crm/itineraries/_components/SupplierRequestsEditor';
@@ -32,7 +38,6 @@ import {
 } from '@/lib/supplier-whatsapp-brief';
 import {
   buildStrictSimpleItineraryInsertPayload,
-  FLIGHT_CLASS_OPTIONS,
   stripItineraryPayloadForSchemaError,
 } from '@/lib/itinerary-builder-model';
 import {
@@ -54,7 +59,7 @@ import {
 import { type ItineraryDocument } from '@/lib/itinerary-documents';
 import { parseGroupTripStoredDates } from '@/lib/group-trip-dates';
 import { emptyPreTripService, itineraryHasMedicalPreTrip, type PreTripService } from '@/lib/public-itinerary';
-import { type ActivityTicket } from '@/lib/itinerary-tickets';
+import { activityTicketsFromQuotation, type ActivityTicket } from '@/lib/itinerary-tickets';
 import { type SupplierRequest } from '@/lib/supplier-requests';
 import { fetchCrmSuppliers, type CrmSupplier } from '@/lib/crm-suppliers';
 import {
@@ -62,20 +67,45 @@ import {
   mapQuotationRow,
   quotationTotalPrice,
 } from '@/lib/crm-quotations';
-import { fetchAllPlacesBank, filterPlacesBankInventory } from '@/lib/places-bank';
-import type { PlaceBankRow } from '@/types/place';
+import {
+  PLACE_CATEGORY_OPTIONS,
+  PLACES_BANK_PAGE_SIZE,
+  fetchPlacesBankCityOptions,
+  fetchPlacesBankPage,
+} from '@/lib/places-bank';
 import { coerceClientIdForItinerarySave } from '@/lib/itinerary-client-crm';
 import { getClientAccessToken } from '@/lib/crm-session-token';
 import { supabase } from '@/lib/supabase';
+import {
+  WL_BTN_DANGER,
+  WL_BTN_PRIMARY,
+  WL_BTN_SECONDARY,
+  WL_CARD,
+  WL_EMPTY,
+  WL_HINT,
+  WL_INPUT,
+  WL_DATE_INPUT,
+  WL_LABEL,
+  WL_OPTION,
+  WL_PAGE,
+  WL_SECTION,
+  WL_SELECT,
+  WL_TEXTAREA,
+  WL_TITLE,
+  WL_TOGGLE_ACTIVE,
+  WL_TOGGLE_BASE,
+  WL_TOGGLE_INACTIVE,
+} from '@/lib/itinerary-builder-ui';
 
-const ACTIVE_TRIP_KIND =
-  'border-[#D4AF37]/50 bg-[#0B1511] text-[#D4AF37] ring-2 ring-[#D4AF37]/35';
-const IDLE_TRIP_KIND =
-  'border-gray-200 bg-white text-gray-800 hover:border-[#D4AF37]/40';
+const ACTIVE_TRIP_KIND = `${WL_TOGGLE_BASE} ${WL_TOGGLE_ACTIVE} border border-[#D4AF37] ring-2 ring-[#D4AF37]/35`;
+const IDLE_TRIP_KIND = `${WL_TOGGLE_BASE} ${WL_TOGGLE_INACTIVE}`;
+const ACTIVE_TRIP_KIND_TITLE = 'block text-sm font-black text-slate-950';
+const IDLE_TRIP_KIND_TITLE = 'block text-sm font-black text-slate-100';
+const ACTIVE_TRIP_KIND_SUB = 'mt-1 block text-xs font-semibold text-slate-800';
+const IDLE_TRIP_KIND_SUB = 'mt-1 block text-xs font-semibold text-slate-500';
 const LOCKED_FIELD =
-  'cursor-not-allowed border-slate-200 bg-slate-100 text-slate-700';
-const BUILDER_FIELD =
-  'w-full rounded-lg border border-gray-300 bg-white p-3 text-sm font-bold text-gray-900 outline-none focus:border-[#D4AF37]';
+  'cursor-not-allowed border-slate-200 bg-slate-50 text-slate-500 opacity-80';
+const BUILDER_FIELD = WL_INPUT;
 
 type ExpertMini = {
   id: string;
@@ -172,8 +202,8 @@ export default function ItineraryBuilderWorkspace() {
   return (
     <Suspense
       fallback={
-        <div className="flex min-h-[50vh] items-center justify-center gap-2 text-sm font-bold text-slate-500">
-          <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
+        <div className="itinerary-builder-page flex min-h-[50vh] items-center justify-center gap-2 bg-[#f8fafc] text-sm font-bold text-slate-600">
+          <Loader2 className="h-5 w-5 animate-spin text-[#D4AF37]" aria-hidden />
           جاري تحميل مساحة البناء…
         </div>
       }
@@ -192,18 +222,23 @@ function ItineraryBuilderPageContent() {
   );
   const urlPrefillApplied = useRef(false);
   // --- 1. States (الحالات) ---
-  const [places, setPlaces] = useState<any[]>([]);
+  const [places, setPlaces] = useState<Record<string, unknown>[]>([]);
+  const [placesTotal, setPlacesTotal] = useState(0);
+  const [placesPage, setPlacesPage] = useState(0);
+  const [placesLoading, setPlacesLoading] = useState(false);
+  const [cityOptions, setCityOptions] = useState<string[]>([]);
   const [clients, setClients] = useState<any[]>([]);
   const [expertsList, setExpertsList] = useState<ExpertMini[]>([]);
   const [expertsLoadError, setExpertsLoadError] = useState<string | null>(null);
   const [expertId, setExpertId] = useState('');
+  const [expertName, setExpertName] = useState('');
   const [quotes, setQuotes] = useState<QuoteOption[]>([]);
   const [readyGroups, setReadyGroups] = useState<ReadyGroupOption[]>([]);
   /** null حتى يختار الأدمن — إلزامي قبل الحفظ */
   const [tripKind, setTripKind] = useState<BuilderTripKind | null>(null);
   const [selectedQuoteId, setSelectedQuoteId] = useState('');
   const [selectedGroupId, setSelectedGroupId] = useState('');
-  const [groupTourName, setGroupTourName] = useState('');
+  const [groupTripName, setGroupTripName] = useState('');
   const [selectedClientId, setSelectedClientId] = useState('');
   const [activeClient, setActiveClient] = useState<any | null>(null);
   const [clientInterests, setClientInterests] = useState<string[]>([]);
@@ -222,6 +257,7 @@ function ItineraryBuilderPageContent() {
   const [tripDateTo, setTripDateTo] = useState('');
   const [filterCity, setFilterCity] = useState('');
   const [filterCategory, setFilterCategory] = useState('');
+  const [placesSourceTab, setPlacesSourceTab] = useState<ItineraryPlacesSource>('bank');
 
   // المالية
   const [budget, setBudget] = useState('');
@@ -305,15 +341,15 @@ function ItineraryBuilderPageContent() {
               'القوالب تُحمّل من itineraries (is_template) — نفّذ itinerary_templates.sql للجدول المخصص.',
             );
           }
-        } catch (templateErr) {
-          console.warn('[builder] templates:', templateErr);
+        } catch {
+          /* templates optional */
         }
 
         try {
           const supplierRows = await fetchCrmSuppliers(supabase);
           setAllSuppliers(supplierRows);
-        } catch (supplierErr) {
-          console.warn('[builder] suppliers:', supplierErr);
+        } catch {
+          /* suppliers optional */
         }
 
         const clientsById = new Map<string, string>();
@@ -373,11 +409,8 @@ function ItineraryBuilderPageContent() {
           !expertsResponse.ok || !expertsPayload.ok
             ? expertsPayload.error || `status_${expertsResponse.status}`
             : null;
-        console.log('FETCHED EXPERTS:', expertsData);
-        console.log('FETCH ERROR:', expertsError);
 
         if (expertsError) {
-          console.warn('[builder] experts:', expertsError);
           setExpertsLoadError(expertsError);
           setExpertsList([]);
         } else {
@@ -395,15 +428,89 @@ function ItineraryBuilderPageContent() {
     void loadInitialData();
   }, []);
 
-  function applyDestinationsToGeography(destLabels: string[]) {
-    const geo = geographyFromDestinationLabels(destLabels);
+  function applyDestinationsToGeography(
+    destLabels: string[],
+    opts?: { fillTitle?: boolean; force?: boolean },
+  ) {
+    const labels = (destLabels ?? []).map((x) => String(x ?? '').trim()).filter(Boolean);
+    if (!labels.length) return;
+    const geo = geographyFromDestinationLabels(labels);
+    const force = Boolean(opts?.force);
     setGeoTripType(geo.geoTripType);
-    setTripCountries(geo.countries);
-    setTripCities(geo.cities);
+    setTripCountries((prev) => (prev.length && !force ? prev : geo.countries));
+    setTripCities((prev) => (prev.length && !force ? prev : geo.cities));
     if (geo.cities.length) {
-      setCustomCitiesText(geo.cities.join('، '));
+      setCustomCitiesText((prev) => (prev.trim() && !force ? prev : geo.cities.join('، ')));
+    }
+    if (opts?.fillTitle) {
+      const titleHint = geo.cities[0] || geo.countries[0] || labels[0] || '';
+      if (titleHint) {
+        setTripTitle((prev) => (prev.trim() ? prev : `رحلة ${titleHint}`));
+      }
     }
   }
+
+  /** When a client is linked — auto-fill country/city/destination from target_trip / DNA */
+  useEffect(() => {
+    if (tripKind !== 'private' || !selectedClientId || !supabase) return;
+    // Don't overwrite geography already set from quote sync / URL prefill
+    if (tripCountries.length || tripCities.length) return;
+
+    let cancelled = false;
+    void (async () => {
+      try {
+        const { data: clientRow } = await supabase
+          .from('clients')
+          .select('target_trip, name, travel_dna')
+          .eq('id', selectedClientId)
+          .maybeSingle();
+        if (cancelled || !clientRow) return;
+
+        const row = clientRow as Record<string, unknown>;
+        const targetTrip = String(row.target_trip ?? '').trim();
+        let dnaDest = '';
+        const dnaRaw = row.travel_dna;
+        if (dnaRaw && typeof dnaRaw === 'object' && !Array.isArray(dnaRaw)) {
+          const dna = dnaRaw as Record<string, unknown>;
+          dnaDest = String(
+            dna.destination ?? dna.preferred_destination ?? dna.target_trip ?? '',
+          ).trim();
+        }
+
+        // Also try latest lead destinations for this client
+        let leadDests: string[] = [];
+        const byClient = await supabase
+          .from('leads')
+          .select('destinations, created_at')
+          .eq('client_id', selectedClientId)
+          .order('created_at', { ascending: false })
+          .limit(1);
+        if (!byClient.error && Array.isArray(byClient.data) && byClient.data[0]) {
+          const d = (byClient.data[0] as { destinations?: unknown }).destinations;
+          if (Array.isArray(d)) {
+            leadDests = d.map((x) => String(x ?? '').trim()).filter(Boolean);
+          } else if (typeof d === 'string' && d.trim()) {
+            leadDests = [d.trim()];
+          }
+        }
+
+        const labels = [
+          ...leadDests,
+          ...(targetTrip ? [targetTrip] : []),
+          ...(dnaDest ? [dnaDest] : []),
+        ];
+        if (!labels.length) return;
+        if (cancelled) return;
+        applyDestinationsToGeography(labels, { fillTitle: true });
+      } catch (err) {
+        console.warn('[builder] client destination autofill:', err);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedClientId, tripKind, tripCountries.length, tripCities.length]);
 
   useEffect(() => {
     if (urlPrefillApplied.current || !urlPrefill.hasAny) return;
@@ -416,7 +523,7 @@ function ItineraryBuilderPageContent() {
     if (urlPrefill.startDate) setTripDateFrom(urlPrefill.startDate);
     if (urlPrefill.endDate) setTripDateTo(urlPrefill.endDate);
     if (urlPrefill.destinations.length) {
-      applyDestinationsToGeography(urlPrefill.destinations);
+      applyDestinationsToGeography(urlPrefill.destinations, { force: true });
     }
     if (urlPrefill.clientId) setSelectedClientId(urlPrefill.clientId);
     if (urlPrefill.quoteId) setSelectedQuoteId(urlPrefill.quoteId);
@@ -447,7 +554,7 @@ function ItineraryBuilderPageContent() {
       clearQuoteSyncedFields();
     } else {
       setSelectedGroupId('');
-      setGroupTourName('');
+      setGroupTripName('');
     }
   }
 
@@ -462,22 +569,20 @@ function ItineraryBuilderPageContent() {
     setSelectedGroupId(groupId);
     const group = readyGroups.find((g) => g.id === groupId);
     if (!group) {
-      setGroupTourName('');
+      setGroupTripName('');
       return;
     }
     const title = group.title_ar || group.title_en || 'رحلة جماعية';
-    setGroupTourName(title);
+    setGroupTripName(title);
     setTripTitle(title);
 
-    const cities = extractGroupDestinationCities(group.title_ar, group.title_en);
-    if (cities.length) {
-      setTripCities(cities);
-      setCustomCitiesText(cities.join('، '));
-      if (cities.length === 1) {
-        setGeoTripType('single');
-      } else if (cities.length > 1) {
-        setGeoTripType('multi');
-      }
+    const destLabels = [
+      ...extractGroupDestinationCities(group.title_ar, group.title_en),
+      group.title_ar,
+      group.title_en,
+    ].filter(Boolean);
+    if (destLabels.length) {
+      applyDestinationsToGeography(destLabels, { force: true });
     }
 
     const parsedDates = parseGroupTripStoredDates(group.dates_ar, group.dates_en);
@@ -536,7 +641,23 @@ function ItineraryBuilderPageContent() {
         setBudget(total > 0 ? String(total) : '0');
         setPaid(String(paidAmount));
         if (row.destinations.length) {
-          applyDestinationsToGeography(row.destinations);
+          applyDestinationsToGeography(row.destinations, { force: true });
+        } else {
+          // Fallback: infer geography from client target_trip when quote has no destinations
+          const clientId = row.client_id;
+          if (clientId && supabase) {
+            const { data: clientRow } = await supabase
+              .from('clients')
+              .select('target_trip')
+              .eq('id', clientId)
+              .maybeSingle();
+            const targetTrip = String(
+              (clientRow as { target_trip?: unknown } | null)?.target_trip ?? '',
+            ).trim();
+            if (targetTrip) {
+              applyDestinationsToGeography([targetTrip], { force: true, fillTitle: true });
+            }
+          }
         }
 
         const clientId = row.client_id;
@@ -551,6 +672,18 @@ function ItineraryBuilderPageContent() {
             const found = clients.find((c) => String(c.id) === option.client_id);
             setActiveClient(found || null);
           }
+        }
+
+        const importedTickets = activityTicketsFromQuotation({
+          activity_options: row.activity_options,
+          activities_proposals: row.activities_proposals,
+          activities:
+            (data as Record<string, unknown>).activities ??
+            (data as Record<string, unknown>).activities_details,
+          start_date: row.start_date,
+        });
+        if (importedTickets.length > 0) {
+          setActivityTickets(importedTickets);
         }
 
         setQuoteFieldsLocked(true);
@@ -571,36 +704,73 @@ function ItineraryBuilderPageContent() {
   }, [selectedQuoteId, tripKind, clients, quotes]);
 
   useEffect(() => {
-    async function loadPlacesInventory() {
-      if (!supabase) return;
+    setPlacesPage(0);
+  }, [searchQuery, filterCity, filterCategory, tripCountries]);
+
+  useEffect(() => {
+    if (!supabase) return;
+    let cancelled = false;
+    const handle = window.setTimeout(() => {
+      void (async () => {
+        setPlacesLoading(true);
+        try {
+          const { rows, total } = await fetchPlacesBankPage(supabase, {
+            page: placesPage,
+            pageSize: PLACES_BANK_PAGE_SIZE,
+            search: searchQuery.trim() || undefined,
+            category: filterCategory || undefined,
+            countries: tripCountries.length ? tripCountries : undefined,
+            cityFilter: filterCity || undefined,
+          });
+          if (cancelled) return;
+          setPlaces(rows as Record<string, unknown>[]);
+          setPlacesTotal(total);
+        } catch (error) {
+          console.error('[builder] Failed to load places inventory', error);
+          if (!cancelled) {
+            setPlaces([]);
+            setPlacesTotal(0);
+          }
+        } finally {
+          if (!cancelled) setPlacesLoading(false);
+        }
+      })();
+    }, searchQuery.trim() ? 280 : 0);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(handle);
+    };
+  }, [searchQuery, filterCity, filterCategory, tripCountries, placesPage]);
+
+  useEffect(() => {
+    if (!supabase) return;
+    let cancelled = false;
+    void (async () => {
       try {
-        const loaded = await fetchAllPlacesBank(supabase);
-        setPlaces(loaded as Record<string, unknown>[]);
-      } catch (error) {
-        console.error('Failed to load places inventory', error);
-        setPlaces([]);
+        const cities = await fetchPlacesBankCityOptions(
+          supabase,
+          tripCountries.length ? tripCountries : undefined,
+        );
+        if (!cancelled) {
+          setCityOptions(
+            [...new Set([...cities, ...tripCities].filter(Boolean))].sort((a, b) =>
+              a.localeCompare(b, 'ar'),
+            ),
+          );
+        }
+      } catch {
+        if (!cancelled) setCityOptions(tripCities);
       }
-    }
-    void loadPlacesInventory();
-  }, []);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [tripCountries, tripCities]);
 
-  // --- 3. استخراج المدن والفئات للقوائم ---
-  const uniqueCities = useMemo(() => {
-    const pool = filterPlacesBankInventory((places ?? []) as PlaceBankRow[], {
-      countries: tripCountries,
-    });
-    return Array.from(new Set(pool.map((p) => p?.city).filter(Boolean)));
-  }, [places, tripCountries]);
-  const uniqueCategories = Array.from(new Set(places.map((p) => p.category).filter(Boolean)));
+  // --- 3. قوائم الفلاتر ---
+  const uniqueCities = cityOptions;
 
-  const displayedPlaces = useMemo(() => {
-    return filterPlacesBankInventory((places ?? []) as PlaceBankRow[], {
-      countries: tripCountries,
-      cityFilter: filterCity || undefined,
-      search: searchQuery,
-      category: filterCategory || undefined,
-    });
-  }, [places, tripCountries, filterCity, searchQuery, filterCategory]);
+  const displayedPlaces = places;
   useEffect(() => {
     if (selectedClientId) {
       const found = clients.find(c => c.id == selectedClientId);
@@ -678,15 +848,15 @@ function ItineraryBuilderPageContent() {
     if (applied.destination) {
       const dest = applied.destination.trim();
       if (dest) {
-        setTripCities([dest]);
-        setCustomCitiesText(dest);
+        applyDestinationsToGeography([dest], { force: true });
+        if (!tripTitle.trim()) setTripTitle(dest);
       }
     }
     if (applied.hotels.length > 0) setHotels(applied.hotels);
     if (applied.datesFrom) setTripDateFrom(applied.datesFrom);
     if (applied.datesTo) setTripDateTo(applied.datesTo);
     setSaveNotice(`تم استدعاء القالب: ${template.title}`);
-  }, [selectedTemplateId, templates, tripDateFrom, setItineraryDays]);
+  }, [selectedTemplateId, templates, tripDateFrom, tripTitle, setItineraryDays]);
 
   const handleSaveAsTemplate = useCallback(async () => {
     if (!supabase) return;
@@ -785,7 +955,7 @@ function ItineraryBuilderPageContent() {
     const privateClientId =
       !isGroupSave ? coerceClientIdForItinerarySave(selectedClientId) : null;
     const groupLabel =
-      groupTourName.trim() ||
+      groupTripName.trim() ||
       selectedGroup?.title_ar ||
       selectedGroup?.title_en ||
       'رحلة جماعية';
@@ -830,6 +1000,10 @@ function ItineraryBuilderPageContent() {
           : selectedQuote?.client_name || 'عميل VIP',
       clientId: privateClientId,
       expertId: expertId.trim() || null,
+      expertName:
+        expertName.trim() ||
+        expertsList.find((e) => String(e.id) === String(expertId))?.name?.trim() ||
+        null,
       tripType: isGroupSave ? 'Group' : 'Individual',
       quoteId: isGroupSave ? null : selectedQuoteId || null,
       groupName: isGroupSave ? groupLabel : null,
@@ -843,25 +1017,62 @@ function ItineraryBuilderPageContent() {
     });
 
     try {
-      console.log('🔥 SAVING ITINERARY PAYLOAD:', payload);
-      console.log('[builder] client state:', { selectedClientId, privateClientId });
-
-      let res = await supabase.from('itineraries').insert(payload).select('id').single();
-      if (res.error && /column|schema cache|does not exist/i.test(res.error.message ?? '')) {
+      console.log('[builder] itinerary save payload expert:', {
+        expert_id: payload.expert_id,
+        expert_name: payload.expert_name,
+        flight_expert: (payload.flight_details as { expert_name?: string } | undefined)
+          ?.expert_name,
+        days_meta: (payload.days_data as { meta?: unknown } | undefined)?.meta,
+      })
+      let res = await supabase.from('itineraries').insert(payload).select('id').single()
+      let attemptPayload = payload
+      for (let attempt = 0; attempt < 3; attempt++) {
+        if (
+          !res.error ||
+          !/column|schema cache|does not exist|foreign key|expert_id|expert_name/i.test(
+            res.error.message ?? '',
+          )
+        ) {
+          break
+        }
+        attemptPayload = stripItineraryPayloadForSchemaError(
+          res.error.message ?? '',
+          attemptPayload,
+        )
         res = await supabase
-        .from('itineraries')
-          .insert(stripItineraryPayloadForSchemaError(res.error.message ?? '', payload))
+          .from('itineraries')
+          .insert(attemptPayload)
           .select('id')
-        .single();
+          .single()
       }
       if (res.error) {
-        console.error('DB Save Error:', res.error);
-        const msg = formatSupabaseSaveError(res.error);
-        window.alert(`فشل الحفظ في قاعدة البيانات: ${msg}`);
-        throw new Error(msg);
+        console.error('DB Save Error:', res.error)
+        const msg = formatSupabaseSaveError(res.error)
+        toast.error(`فشل الحفظ في قاعدة البيانات: ${msg}`)
+        throw new Error(msg)
       }
 
-      const itineraryId = res.data?.id;
+      const itineraryId = res.data?.id
+      // Best-effort column sync (name must appear in Command Center even if FK blocked)
+      if (itineraryId != null && (expertId.trim() || expertName.trim())) {
+        const resolvedName =
+          expertName.trim() ||
+          expertsList.find((e) => String(e.id) === String(expertId))?.name?.trim() ||
+          ''
+        const expertPatch: Record<string, unknown> = {}
+        if (expertId.trim()) expertPatch.expert_id = expertId.trim()
+        if (resolvedName) expertPatch.expert_name = resolvedName
+        if (Object.keys(expertPatch).length) {
+          const patchRes = await supabase
+            .from('itineraries')
+            .update(expertPatch)
+            .eq('id', itineraryId)
+          if (patchRes.error) {
+            // Column/FK may be unavailable — days_data / flight_details already hold the name
+            console.warn('[builder] expert column patch skipped:', patchRes.error.message)
+          }
+        }
+      }
       if (itineraryId != null && !isGroupSave) {
         const linkResult = await saveItineraryClientLinkAction(
           itineraryId,
@@ -869,18 +1080,17 @@ function ItineraryBuilderPageContent() {
         );
         if (!linkResult.ok) {
           console.error('[builder] client_id save failed:', linkResult.error);
-          window.alert(
+          toast.error(
             linkResult.columnMissing
               ? linkResult.error
               : `فشل ربط العميل: ${linkResult.error}`,
           );
           throw new Error(linkResult.error);
         }
-        console.log('[builder] client_id saved:', linkResult.client_id);
       }
 
       setSaveNotice('تم حفظ المسار بنجاح.');
-      window.alert('تم حفظ المسار بنجاح!');
+      toast.success('تم حفظ المسار بنجاح!');
       if (itineraryId != null) {
         router.push(`/crm/itineraries/${itineraryId}/edit`);
       }
@@ -896,7 +1106,7 @@ function ItineraryBuilderPageContent() {
     tripKind,
     selectedQuoteId,
     selectedGroupId,
-    groupTourName,
+    groupTripName,
     quotes,
     readyGroups,
     geoTripType,
@@ -928,6 +1138,8 @@ function ItineraryBuilderPageContent() {
     supplierRequests,
     activityTickets,
     expertId,
+    expertName,
+    expertsList,
   ]);
 
   const handleDragEnd = useCallback(
@@ -962,24 +1174,25 @@ function ItineraryBuilderPageContent() {
 
   // --- 5. واجهة المستخدم ---
   return (
-    <div className="min-h-screen bg-[#FAFAFA] text-[#1E2720] p-8 font-sans" dir="rtl">
+    <div className={`${WL_PAGE} font-sans`} dir="rtl">
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <button
-            type="button"
-            onClick={() => router.back()}
-            className="mb-3 inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-600 transition hover:border-[#0B1511]/20 hover:bg-slate-50 hover:text-[#0B1511]"
+          <Link
+            href="/crm/itineraries"
+            className="mb-2 flex items-center gap-1 text-sm font-medium text-slate-600 transition-colors hover:text-[#D4AF37]"
           >
             <ArrowRight className="h-4 w-4" aria-hidden />
-            العودة للصفحة السابقة
-          </button>
-          <h1 className="text-3xl font-bold text-gray-900">مساحة بناء المسار الذكي</h1>
+            ← العودة إلى المسارات
+          </Link>
+          <h1 className="text-2xl font-extrabold tracking-wide text-[#D4AF37] sm:text-3xl">
+            مساحة بناء المسار الذكي
+          </h1>
         </div>
         <button
           type="button"
           onClick={() => void handleSave()}
           disabled={saving || quoteLoading}
-          className="rounded-lg bg-[#0B1511] px-8 py-3 font-bold text-[#D4AF37] disabled:cursor-not-allowed disabled:opacity-60"
+          className={WL_BTN_PRIMARY}
         >
           {saving ? 'جاري الحفظ...' : 'حفظ المسار'}
         </button>
@@ -989,8 +1202,8 @@ function ItineraryBuilderPageContent() {
         <div
           className={`mb-4 rounded-xl border px-4 py-3 text-sm font-bold ${
             saveNotice.includes('نجاح') || saveNotice.includes('تم حفظ')
-              ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
-              : 'border-amber-200 bg-amber-50 text-amber-900'
+              ? 'border-emerald-500/40 bg-emerald-950/40 text-emerald-300'
+              : 'border-amber-500/40 bg-amber-950/30 text-amber-200'
           }`}
         >
           {saveNotice}
@@ -998,46 +1211,42 @@ function ItineraryBuilderPageContent() {
       ) : null}
 
       {/* نوع المسار — إلزامي قبل البناء */}
-      <section className="mb-6 rounded-2xl border border-[#D4AF37]/35 bg-gradient-to-l from-white to-[#FEFDF9] p-5 shadow-sm">
-        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-[#C9A84C]">
+      <section className={`mb-6 ${WL_SECTION}`}>
+        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-[#D4AF37]/80">
           Step 1 · Trip Type
         </p>
-        <h2 className="mt-1 text-lg font-black text-[#1E2720]">نوع المسار</h2>
-        <p className="mt-1 text-xs font-semibold text-gray-500">
+        <h2 className={WL_TITLE}>نوع المسار</h2>
+        <p className={WL_HINT}>
           اختر نوع الرحلة قبل بناء المسار — يحدد الربط في قاعدة البيانات
         </p>
         <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
           <button
             type="button"
             onClick={() => handleTripKindChange('private')}
-            className={`rounded-2xl border px-4 py-4 text-right transition ${
+            className={`rounded-2xl px-4 py-4 text-right transition ${
               isPrivate ? ACTIVE_TRIP_KIND : IDLE_TRIP_KIND
             }`}
             aria-pressed={isPrivate}
           >
-            <span className="block text-sm font-black">رحلة خاصة — Private Trip</span>
-            <span
-              className={`mt-1 block text-[11px] font-semibold ${
-                isPrivate ? 'text-[#D4AF37]/75' : 'text-gray-500'
-              }`}
-            >
+            <span className={isPrivate ? ACTIVE_TRIP_KIND_TITLE : IDLE_TRIP_KIND_TITLE}>
+              رحلة خاصة — Private Trip
+            </span>
+            <span className={isPrivate ? ACTIVE_TRIP_KIND_SUB : IDLE_TRIP_KIND_SUB}>
               يُربط بعرض سعر معتمد — تُزامن البيانات تلقائياً
             </span>
           </button>
           <button
             type="button"
             onClick={() => handleTripKindChange('group')}
-            className={`rounded-2xl border px-4 py-4 text-right transition ${
+            className={`rounded-2xl px-4 py-4 text-right transition ${
               isGroup ? ACTIVE_TRIP_KIND : IDLE_TRIP_KIND
             }`}
             aria-pressed={isGroup}
           >
-            <span className="block text-sm font-black">رحلة جماعية — Group Tour</span>
-            <span
-              className={`mt-1 block text-[11px] font-semibold ${
-                isGroup ? 'text-[#D4AF37]/75' : 'text-gray-500'
-              }`}
-            >
+            <span className={isGroup ? ACTIVE_TRIP_KIND_TITLE : IDLE_TRIP_KIND_TITLE}>
+              رحلة جماعية — Group Tour
+            </span>
+            <span className={isGroup ? ACTIVE_TRIP_KIND_SUB : IDLE_TRIP_KIND_SUB}>
               اختيار من القروبات الجاهزة · كود القروب · بدون ملخص مالي فردي
             </span>
           </button>
@@ -1047,13 +1256,13 @@ function ItineraryBuilderPageContent() {
         {isPrivate ? (
           <div className="mt-4">
             <label className="block">
-              <span className="mb-1.5 block text-sm font-bold text-gray-700">
-                اسم العميل / عرض السعر <span className="text-red-500">*</span>
+              <span className={WL_LABEL}>
+                اسم العميل / عرض السعر <span className="text-red-400">*</span>
               </span>
               <select
                 value={selectedQuoteId}
                 onChange={(e) => handleQuoteSelect(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 bg-white p-3 text-sm font-bold text-gray-900 outline-none focus:border-[#D4AF37]"
+                className={WL_INPUT}
                 required
               >
                 <option value="">— اختر العميل من العروض —</option>
@@ -1065,20 +1274,20 @@ function ItineraryBuilderPageContent() {
               </select>
             </label>
             {quoteLoading ? (
-              <p className="mt-2 inline-flex items-center gap-2 text-xs font-bold text-[#0B1511]">
+              <p className="mt-2 inline-flex items-center gap-2 text-xs font-bold text-[#D4AF37]">
                 <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
                 جاري مزامنة بيانات العرض…
               </p>
             ) : null}
             {selectedQuoteId && quoteFieldsLocked && !quoteLoading ? (
-              <p className="mt-2 text-xs font-bold text-[#0B1511]">
+              <p className="mt-2 text-xs font-bold text-slate-600">
                 تمت المزامنة من العرض ·{' '}
                 {quotes.find((q) => q.id === selectedQuoteId)?.client_name} · #
                 {selectedQuoteId.slice(0, 8)}
               </p>
             ) : null}
             {selectedClientId ? (
-              <p className="mt-2 rounded-lg border border-[#D4AF37]/25 bg-[#FFFBF0] px-3 py-2 text-xs font-bold text-[#1E2720]">
+              <p className="mt-2 rounded-xl border border-[#D4AF37]/30 bg-slate-50 px-3 py-2 text-xs font-bold text-slate-700">
                 العميل المرتبط بالمسار: {activeClient?.name || `عميل #${selectedClientId}`} — سيظهر
                 زر «الملف الشخصي» في بوابة العميل عند الحفظ.
               </p>
@@ -1089,13 +1298,13 @@ function ItineraryBuilderPageContent() {
         {/* رحلة جماعية: اختيار من القروبات الجاهزة فقط */}
         {isGroup ? (
           <label className="mt-4 block">
-            <span className="mb-1.5 block text-sm font-bold text-gray-700">
-              اختر القروب <span className="text-red-500">*</span>
+            <span className={WL_LABEL}>
+              اختر القروب <span className="text-red-400">*</span>
             </span>
             <select
               value={selectedGroupId}
               onChange={(e) => handleReadyGroupSelect(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 bg-white p-3 text-sm font-bold text-gray-900 outline-none focus:border-[#D4AF37]"
+              className={WL_INPUT}
               required
             >
               <option value="">— اختر قروباً جاهزاً —</option>
@@ -1107,26 +1316,26 @@ function ItineraryBuilderPageContent() {
               ))}
             </select>
             {readyGroups.length === 0 ? (
-              <span className="mt-1 block text-[11px] font-semibold text-amber-800">
+              <span className="mt-1 block text-[11px] font-semibold text-amber-300">
                 لا توجد قروبات نشطة — أضف قروباً من صفحة القروبات السياحية أولاً.
               </span>
             ) : selectedGroupId ? (
-              <span className="mt-1 block text-[11px] font-semibold text-[#0B1511]">
-                القروب المحدد: {groupTourName}
+              <span className="mt-1 block text-[11px] font-semibold text-slate-600">
+                القروب المحدد: {groupTripName}
               </span>
             ) : null}
           </label>
         ) : null}
 
         {!tripKind ? (
-          <p className="mt-4 text-xs font-bold text-amber-800">
+          <p className="mt-4 text-xs font-bold text-amber-300">
             يجب اختيار نوع المسار قبل حفظ الرحلة.
           </p>
         ) : null}
       </section>
 
-      <div className="mb-8 rounded-2xl bg-white p-6 shadow-sm">
-        <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-3">
+      <div className={`mb-8 ${WL_SECTION}`}>
+        <div className="mb-2 grid grid-cols-1 gap-4 md:grid-cols-3">
           <div className="min-w-0 md:col-span-2">
             <TripGeographySelectors
               geoTripType={geoTripType}
@@ -1145,14 +1354,23 @@ function ItineraryBuilderPageContent() {
 
           <div className="flex flex-col gap-4">
             <div className="min-w-0">
-              <label className="mb-2 block text-sm font-bold text-gray-700">
-                خبير الوجهة (مصمم المسار)
-              </label>
+              <label className={WL_LABEL}>خبير الوجهة (مصمم المسار)</label>
               <select
                 name="expert_id"
                 value={expertId || ''}
                 disabled={saving}
-                onChange={(e) => setExpertId(e.target.value)}
+                onChange={(e) => {
+                  const nextId = e.target.value;
+                  setExpertId(nextId);
+                  if (!nextId) {
+                    setExpertName('');
+                    return;
+                  }
+                  const matched = expertsList.find((x) => String(x.id) === String(nextId));
+                  const fromOption =
+                    e.target.selectedOptions?.[0]?.text?.split(' · ')[0]?.trim() || '';
+                  setExpertName(matched?.name?.trim() || fromOption || '');
+                }}
                 className={BUILDER_FIELD}
               >
                 <option value="">-- اختر الخبير الذي صمم المسار --</option>
@@ -1165,7 +1383,7 @@ function ItineraryBuilderPageContent() {
               </select>
               <p
                 className={`mt-1.5 text-[11px] font-bold ${
-                  expertsLoadError ? 'text-rose-600' : 'text-slate-500'
+                  expertsLoadError ? 'text-rose-400' : 'text-slate-500'
                 }`}
               >
                 {expertsLoadError
@@ -1175,30 +1393,26 @@ function ItineraryBuilderPageContent() {
             </div>
 
             <div className="min-w-0">
-              <label className="mb-2 block text-sm font-bold text-gray-700">تاريخ البداية</label>
+              <label className={WL_LABEL}>تاريخ البداية</label>
               <input
                 type="date"
                 value={tripDateFrom}
                 onChange={(e) => setTripDateFrom(e.target.value)}
                 readOnly={quoteFieldsLocked}
                 disabled={quoteFieldsLocked}
-                className={`w-full rounded-lg border border-gray-300 p-3 text-sm text-gray-900 outline-none focus:border-[#D4AF37] [color-scheme:light] ${
-                  quoteFieldsLocked ? LOCKED_FIELD : ''
-                }`}
+                className={`${WL_DATE_INPUT} ${quoteFieldsLocked ? LOCKED_FIELD : ''}`}
               />
             </div>
 
             <div className="min-w-0">
-              <label className="mb-2 block text-sm font-bold text-gray-700">تاريخ النهاية</label>
+              <label className={WL_LABEL}>تاريخ النهاية</label>
               <input
                 type="date"
                 value={tripDateTo}
                 onChange={(e) => setTripDateTo(e.target.value)}
                 readOnly={quoteFieldsLocked}
                 disabled={quoteFieldsLocked}
-                className={`w-full rounded-lg border border-gray-300 p-3 text-sm text-gray-900 outline-none focus:border-[#D4AF37] [color-scheme:light] ${
-                  quoteFieldsLocked ? LOCKED_FIELD : ''
-                }`}
+                className={`${WL_DATE_INPUT} ${quoteFieldsLocked ? LOCKED_FIELD : ''}`}
               />
             </div>
           </div>
@@ -1207,11 +1421,11 @@ function ItineraryBuilderPageContent() {
 
       {/* كود الدخول — للخاصة والجماعية (تسمية مختلفة فقط) */}
       {tripKind ? (
-        <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#D4AF37]/25 bg-[#FEFDF9] px-5 py-3 shadow-sm">
-          <span className="text-sm font-bold text-gray-700">
+        <div className={`mb-6 flex flex-wrap items-center justify-between gap-3 ${WL_SECTION} !py-4`}>
+          <span className="text-sm font-bold text-slate-700">
             {isGroup ? 'كود القروب' : 'كود العميل'}
           </span>
-          <div className="inline-flex w-fit max-w-full items-center gap-2 rounded-full border border-[#D4AF37]/60 bg-white px-4 py-1.5">
+          <div className="inline-flex w-fit max-w-full items-center gap-2 rounded-xl border border-[#D4AF37]/50 bg-slate-50 px-4 py-2">
             <input
               type="text"
               value={accessCode}
@@ -1227,18 +1441,18 @@ function ItineraryBuilderPageContent() {
 
       {/* الملخص المالي — رحلة خاصة فقط */}
       {isPrivate ? (
-        <section className="mb-6 flex flex-col gap-4 rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-          <h3 className="flex items-center gap-2 text-lg font-bold text-[#1E2720]">
+        <section className={`mb-6 ${WL_SECTION}`}>
+          <h3 className={WL_TITLE}>
             <span>💰</span> الملخص المالي للحجز
             {quoteFieldsLocked ? (
-              <span className="rounded-full bg-[#0B1511]/5 px-2 py-0.5 text-[10px] font-black text-[#0B1511]">
+              <span className="rounded-full border border-[#D4AF37]/40 bg-slate-50 px-2 py-0.5 text-[10px] font-black text-[#D4AF37]">
                 من عرض السعر
               </span>
             ) : null}
           </h3>
           <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
             <div className="flex flex-col gap-2">
-              <label className="text-sm font-bold text-gray-600">الميزانية الإجمالية</label>
+              <label className={WL_LABEL}>الميزانية الإجمالية</label>
               <input
                 type="number"
                 value={budget}
@@ -1246,13 +1460,11 @@ function ItineraryBuilderPageContent() {
                 readOnly={quoteFieldsLocked}
                 disabled={quoteFieldsLocked}
                 placeholder="مثال: 50000"
-                className={`rounded-lg border border-gray-300 p-3 font-bold text-gray-900 focus:border-[#D4AF37] ${
-                  quoteFieldsLocked ? LOCKED_FIELD : 'bg-gray-50'
-                }`}
+                className={`${WL_INPUT} font-bold ${quoteFieldsLocked ? LOCKED_FIELD : ''}`}
               />
             </div>
             <div className="flex flex-col gap-2">
-              <label className="text-sm font-bold text-gray-600">المدفوع من العميل</label>
+              <label className={WL_LABEL}>المدفوع من العميل</label>
               <input
                 type="number"
                 value={paid}
@@ -1260,21 +1472,23 @@ function ItineraryBuilderPageContent() {
                 readOnly={quoteFieldsLocked}
                 disabled={quoteFieldsLocked}
                 placeholder="مثال: 20000"
-                className={`rounded-lg border border-gray-300 p-3 font-bold text-emerald-800 focus:border-emerald-500 ${
-                  quoteFieldsLocked ? LOCKED_FIELD : 'bg-gray-50'
-                }`}
+                className={`${WL_INPUT} font-bold text-emerald-300 ${quoteFieldsLocked ? LOCKED_FIELD : ''}`}
               />
             </div>
             <div className="flex flex-col gap-2">
-              <label className="text-sm font-bold text-gray-600">المتبقي</label>
               <div
-                className={`rounded-lg border p-3 text-lg font-bold ${
-                  remaining > 0
-                    ? 'border-red-200 bg-red-50 text-red-700'
-                    : 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                className={`rounded-lg border bg-slate-50 p-3 text-right ${
+                  remaining > 0 ? 'border-red-500/40' : 'border-emerald-500/40'
                 }`}
               >
-                {remaining.toLocaleString('ar-SA')} ر.س
+                <span className="mb-1 block text-xs font-semibold text-slate-500">المتبقي</span>
+                <span
+                  className={`text-lg font-extrabold ${
+                    remaining > 0 ? 'text-red-400' : 'text-emerald-400'
+                  }`}
+                >
+                  SAR {remaining.toLocaleString('ar-SA')}
+                </span>
               </div>
             </div>
           </div>
@@ -1282,21 +1496,21 @@ function ItineraryBuilderPageContent() {
       ) : null}
 
       {/* القوالب الجاهزة — متاحة دائماً قبل الحفظ */}
-      <section className="mb-6 flex flex-col gap-5 rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-        <h3 className="flex items-center gap-2 text-lg font-bold text-[#1E2720]">
+      <section className={`mb-6 ${WL_SECTION}`}>
+        <h3 className={WL_TITLE}>
           <FileStack className="h-5 w-5 text-[#D4AF37]" aria-hidden />
           إدارة القوالب الجاهزة 📁
         </h3>
 
         {templatesNotice ? (
-          <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-900">
+          <p className="rounded-xl border border-amber-500/40 bg-amber-950/30 px-3 py-2 text-xs font-bold text-amber-200">
             {templatesNotice}
           </p>
         ) : null}
 
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          <div className="flex flex-col gap-3 rounded-xl border border-gray-100 bg-gray-50/80 p-4">
-            <p className="text-sm font-bold text-gray-700">استدعاء قالب جاهز</p>
+          <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-5 text-slate-800 shadow-sm">
+            <p className="mb-3 block text-base font-bold text-[#D4AF37]">استدعاء قالب جاهز</p>
             <select
               value={selectedTemplateId}
               onChange={(e) => setSelectedTemplateId(e.target.value)}
@@ -1314,14 +1528,14 @@ function ItineraryBuilderPageContent() {
               type="button"
               onClick={handleLoadTemplate}
               disabled={!selectedTemplateId}
-              className="rounded-lg border border-[#D4AF37]/40 bg-[#FEFDF9] px-4 py-2.5 text-sm font-bold text-[#1E2720] transition hover:bg-[#D4AF37]/10 disabled:opacity-50"
+              className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#D4AF37] px-4 py-3 font-extrabold text-black shadow-md transition-all hover:bg-[#b8952d] disabled:cursor-not-allowed disabled:opacity-50"
             >
               استدعاء القالب إلى المسار
             </button>
           </div>
 
-          <div className="flex flex-col gap-3 rounded-xl border border-gray-100 bg-gray-50/80 p-4">
-            <p className="text-sm font-bold text-gray-700">حفظ كقالب</p>
+          <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-5 text-slate-800 shadow-sm">
+            <p className="mb-3 block text-base font-bold text-[#D4AF37]">حفظ كقالب</p>
             <input
               type="text"
               value={templateSaveTitle}
@@ -1333,181 +1547,69 @@ function ItineraryBuilderPageContent() {
               type="button"
               onClick={() => void handleSaveAsTemplate()}
               disabled={templateBusy}
-              className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#1A2520] px-4 py-2.5 text-sm font-bold text-[#D4AF37] transition hover:bg-black disabled:opacity-60"
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#D4AF37]/40 bg-slate-100 px-4 py-2.5 text-sm font-bold text-[#D4AF37] transition-all hover:bg-slate-200 disabled:opacity-60"
             >
               <Copy className="h-4 w-4" aria-hidden />
               {templateBusy ? 'جاري الحفظ…' : 'حفظ كقالب'}
             </button>
           </div>
         </div>
-
       </section>
 
       {/* الأقسام المشتركة دائماً: بوردينق، أيام، أماكن، موردين، فعاليات، كونسيرج… */}
-      <section className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm mb-6 flex flex-col gap-4">
-        <h3 className="font-bold text-lg text-[#1E2720] flex items-center gap-2">
-          <span>✈️</span> بيانات البوردينق والحجوزات الفندقية
-              </h3>
-
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-          <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-bold text-gray-600">من مدينة (رحلة الطيران)</span>
-                  <input
-                    type="text"
-              value={originCity}
-              onChange={(e) => setOriginCity(e.target.value)}
-              placeholder="مثال: الرياض"
-              className="bg-gray-50 border border-gray-300 rounded-lg p-2.5 text-sm text-gray-900 focus:border-[#D4AF37] outline-none"
-            />
-                </label>
-          <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-bold text-gray-600">دولة المغادرة</span>
-            <input
-              type="text"
-              value={departureCountry}
-              onChange={(e) => setDepartureCountry(e.target.value)}
-              placeholder="السعودية"
-              className="bg-gray-50 border border-gray-300 rounded-lg p-2.5 text-sm text-gray-900 focus:border-[#D4AF37] outline-none"
-            />
-          </label>
-          <label className="flex flex-col gap-1.5 md:col-span-2">
-            <span className="text-sm font-bold text-gray-600">
-              إلى مدينة (رحلة الطيران — مدينة واحدة)
-                        </span>
-                  <input
-              type="text"
-              list="builder-flight-arrival-city-suggestions"
-              value={flightArrivalCity}
-              onChange={(e) => setFlightArrivalCity(e.target.value)}
-              onBlur={(e) =>
-                setFlightArrivalCity(normalizeSingleArrivalCity(e.target.value))
-              }
-              placeholder={tripCities[0] ? `مثال: ${tripCities[0]}` : 'مثال: سيول'}
-              className="bg-gray-50 border border-gray-300 rounded-lg p-2.5 text-sm text-gray-900 focus:border-[#D4AF37] outline-none"
-            />
-            {tripCities.length > 0 ? (
-              <datalist id="builder-flight-arrival-city-suggestions">
-                {tripCities.map((city) => (
-                  <option key={city} value={city} />
-                ))}
-              </datalist>
-            ) : null}
-            <span className="text-xs text-gray-500">
-              مدينة هبوط الطيران فقط — لا تُربط تلقائياً بكل مدن المسار.
-            </span>
-                        </label>
-          <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-bold text-gray-600">دولة الوصول</span>
-            <input
-              type="text"
-              value={arrivalCountry}
-              onChange={(e) => setArrivalCountry(e.target.value)}
-              placeholder="هنغاريا"
-              className="bg-gray-50 border border-gray-300 rounded-lg p-2.5 text-sm text-gray-900 focus:border-[#D4AF37] outline-none"
-            />
-          </label>
-          <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-bold text-gray-600">رقم الرحلة</span>
-            <input
-              type="text"
-              value={flightNumber}
-              onChange={(e) => setFlightNumber(e.target.value)}
-              placeholder="SV130"
-              dir="ltr"
-              className="bg-gray-50 border border-gray-300 rounded-lg p-2.5 text-sm text-gray-900 focus:border-[#D4AF37] outline-none"
-            />
-          </label>
-          <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-bold text-gray-600">المبنى</span>
-            <input
-              type="text"
-              value={terminal}
-              onChange={(e) => setTerminal(e.target.value)}
-              placeholder="T1"
-              dir="ltr"
-              className="bg-gray-50 border border-gray-300 rounded-lg p-2.5 text-sm text-gray-900 focus:border-[#D4AF37] outline-none"
-            />
-          </label>
-          <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-bold text-gray-600">الدرجة</span>
-            <select
-              value={flightClass}
-              onChange={(e) => setFlightClass(e.target.value)}
-              dir="ltr"
-              className="bg-gray-50 border border-gray-300 rounded-lg p-2.5 text-sm text-gray-900 focus:border-[#D4AF37] outline-none"
-            >
-              <option value="">— اختر —</option>
-              {FLIGHT_CLASS_OPTIONS.map((opt) => (
-                <option key={opt} value={opt}>
-                  {opt}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-bold text-gray-600">وقت المغادرة</span>
-            <VipTimeSlotSelect
-              value={departureTime}
-              onChange={setDepartureTime}
-            />
-          </label>
-          <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-bold text-gray-600">وقت الوصول</span>
-            <VipTimeSlotSelect
-              value={arrivalTime}
-              onChange={setArrivalTime}
-            />
-          </label>
-          <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-bold text-gray-600">البوابة</span>
-                            <input
-              type="text"
-              value={gate}
-              onChange={(e) => setGate(e.target.value)}
-              placeholder="A12"
-              className="bg-gray-50 border border-gray-300 rounded-lg p-2.5 text-sm text-gray-900 focus:border-[#D4AF37] outline-none"
-                            />
-                          </label>
-          <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-bold text-gray-600">المقعد</span>
-                            <input
-              type="text"
-              value={seat}
-              onChange={(e) => setSeat(e.target.value)}
-              placeholder="5A"
-              className="bg-gray-50 border border-gray-300 rounded-lg p-2.5 text-sm text-gray-900 focus:border-[#D4AF37] outline-none"
-                            />
-                          </label>
-          </div>
-
-        <label className="flex max-w-md flex-col gap-1.5">
-          <span className="text-sm font-bold text-gray-600">رقم تأكيد الطيران (PNR)</span>
-              <input
-            type="text"
-            value={pnr}
-            onChange={(e) => setPnr(e.target.value)}
-            placeholder="ABC12X"
-            className="bg-gray-50 border border-gray-300 rounded-lg p-2.5 text-sm text-gray-900 focus:border-[#D4AF37] outline-none"
-              />
-            </label>
-
-        <h4 className="text-sm font-bold text-[#1E2720]">🏨 الفنادق والإقامة</h4>
-        <ItineraryHotelsEditor
-          hotels={hotels}
-          onChange={setHotels}
-          supplierBrief={supplierBrief}
-          filteredSuppliers={filteredSuppliers}
-          destinationLabel={geographyDestinationLabel}
-          tripCountries={tripCountries}
+      <section className="mb-6 flex flex-col gap-5">
+        <BoardingFlightFieldsPanel
+          value={{
+            originCity,
+            departureCountry,
+            flightArrivalCity,
+            arrivalCountry,
+            flightNumber,
+            pnr,
+            flightClass,
+            departureTime,
+            arrivalTime,
+            terminal,
+            gate,
+            seat,
+          }}
+          onChange={(patch) => {
+            if (patch.originCity !== undefined) setOriginCity(patch.originCity);
+            if (patch.departureCountry !== undefined) setDepartureCountry(patch.departureCountry);
+            if (patch.flightArrivalCity !== undefined) setFlightArrivalCity(patch.flightArrivalCity);
+            if (patch.arrivalCountry !== undefined) setArrivalCountry(patch.arrivalCountry);
+            if (patch.flightNumber !== undefined) setFlightNumber(patch.flightNumber);
+            if (patch.pnr !== undefined) setPnr(patch.pnr);
+            if (patch.flightClass !== undefined) setFlightClass(patch.flightClass);
+            if (patch.departureTime !== undefined) setDepartureTime(patch.departureTime);
+            if (patch.arrivalTime !== undefined) setArrivalTime(patch.arrivalTime);
+            if (patch.terminal !== undefined) setTerminal(patch.terminal);
+            if (patch.gate !== undefined) setGate(patch.gate);
+            if (patch.seat !== undefined) setSeat(patch.seat);
+          }}
           tripCities={tripCities}
+          datalistId="builder-flight-arrival-city-suggestions"
         />
-        </section>
 
-      <section className="mb-6 rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-        <h3 className="mb-2 flex items-center gap-2 text-lg font-bold text-[#1E2720]">
+        <div className={`${WL_SECTION}`}>
+          <h4 className={WL_TITLE}>🏨 الفنادق والإقامة</h4>
+          <ItineraryHotelsEditor
+            hotels={hotels}
+            onChange={setHotels}
+            supplierBrief={supplierBrief}
+            filteredSuppliers={filteredSuppliers}
+            destinationLabel={geographyDestinationLabel}
+            tripCountries={tripCountries}
+            tripCities={tripCities}
+          />
+        </div>
+      </section>
+
+      <section className={`mb-6 ${WL_SECTION}`}>
+        <h3 className={WL_TITLE}>
           <span>🎟️</span> تذاكر الفعاليات والدخول
         </h3>
-        <p className="mb-4 text-sm text-gray-500">
+        <p className={`mb-4 ${WL_HINT}`}>
           مدن الألعاب، السيرك، المتاحف — تظهر للعميل في تبويب الحجوزات.
         </p>
         <ActivityTicketsEditor tickets={activityTickets} onChange={setActivityTickets} />
@@ -1519,34 +1621,31 @@ function ItineraryBuilderPageContent() {
         onNotice={setSaveNotice}
       />
 
-      <section className="mb-6 rounded-xl border border-[#D4AF37]/30 bg-gradient-to-br from-[#FFFBF0] to-white p-5 shadow-sm">
+      <section className={`mb-6 ${WL_SECTION}`}>
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <h3 className="flex items-center gap-2 text-lg font-bold text-[#1E2720]">
+          <h3 className={`${WL_TITLE} mb-0`}>
             <span>✨</span> خدمات الكونسيرج ما قبل السفر (VIP)
           </h3>
           <button
             type="button"
             onClick={() => setPreTripServices((prev) => [...prev, emptyPreTripService()])}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-[#D4AF37]/40 bg-[#1E2720] px-3 py-2 text-xs font-bold text-[#D4AF37] transition hover:bg-[#2a362c]"
+            className={WL_BTN_PRIMARY}
           >
             <Plus className="h-4 w-4" aria-hidden />
             إضافة خدمة
           </button>
         </div>
-        <p className="mb-4 text-sm text-gray-500">
+        <p className={`mb-4 ${WL_HINT}`}>
           مثل حجز صالون تجميل VIP قبل السفر — تظهر للعميل كقسائم فاخرة مع الموعد والموقع ورقم التواصل.
         </p>
         {preTripServices.length === 0 ? (
-          <p className="rounded-lg border border-dashed border-gray-300 bg-gray-50 px-4 py-6 text-center text-sm text-gray-500">
+          <p className={WL_EMPTY}>
             لا توجد خدمات ما قبل السفر بعد. اضغط «إضافة خدمة».
           </p>
         ) : (
           <div className="space-y-4">
             {preTripServices.map((service, index) => (
-              <div
-                key={`pre-trip-${index}`}
-                className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
-              >
+              <div key={`pre-trip-${index}`} className={WL_CARD}>
                 <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                   <span className="text-xs font-black uppercase tracking-wide text-[#D4AF37]">
                     خدمة #{index + 1}
@@ -1556,7 +1655,7 @@ function ItineraryBuilderPageContent() {
                     onClick={() =>
                       setPreTripServices((prev) => prev.filter((_, i) => i !== index))
                     }
-                    className="inline-flex items-center gap-1 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-bold text-red-700 transition hover:bg-red-100"
+                    className={WL_BTN_DANGER}
                     aria-label="حذف الخدمة"
                   >
                     <Trash2 className="h-3.5 w-3.5" aria-hidden />
@@ -1565,7 +1664,7 @@ function ItineraryBuilderPageContent() {
                 </div>
                 <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                   <label className="flex flex-col gap-1.5 md:col-span-2">
-                    <span className="text-xs font-bold text-gray-600">عنوان الخدمة *</span>
+                    <span className={WL_LABEL}>عنوان الخدمة *</span>
                     <input
                       type="text"
                       value={service?.title ?? ''}
@@ -1577,11 +1676,11 @@ function ItineraryBuilderPageContent() {
                         )
                       }
                       placeholder="مثال: حجز صالون تجميل VIP"
-                      className="rounded-lg border border-gray-300 px-3 py-2.5 text-sm text-gray-900 outline-none focus:border-[#D4AF37]"
+                      className={WL_INPUT}
                     />
                   </label>
                   <label className="flex flex-col gap-1.5">
-                    <span className="text-xs font-bold text-gray-600">موعد الحجز</span>
+                    <span className={WL_LABEL}>موعد الحجز</span>
                     <input
                       type="datetime-local"
                       value={service?.datetime ?? ''}
@@ -1592,11 +1691,11 @@ function ItineraryBuilderPageContent() {
                           ),
                         )
                       }
-                      className="rounded-lg border border-gray-300 px-3 py-2.5 text-sm text-gray-900 outline-none focus:border-[#D4AF37] [color-scheme:light]"
+                      className={WL_INPUT}
                     />
                   </label>
                   <label className="flex flex-col gap-1.5">
-                    <span className="text-xs font-bold text-gray-600">رقم التواصل</span>
+                    <span className={WL_LABEL}>رقم التواصل</span>
                     <input
                       type="tel"
                       value={service?.phone ?? ''}
@@ -1609,11 +1708,11 @@ function ItineraryBuilderPageContent() {
                       }
                       placeholder="+966 5X XXX XXXX"
                       dir="ltr"
-                      className="rounded-lg border border-gray-300 px-3 py-2.5 text-sm text-gray-900 outline-none focus:border-[#D4AF37]"
+                      className={WL_INPUT}
                     />
                   </label>
                   <label className="flex flex-col gap-1.5 md:col-span-2">
-                    <span className="text-xs font-bold text-gray-600">رابط الموقع (Google Maps)</span>
+                    <span className={WL_LABEL}>رابط الموقع (Google Maps)</span>
                     <input
                       type="url"
                       value={service?.location_url ?? ''}
@@ -1626,11 +1725,11 @@ function ItineraryBuilderPageContent() {
                       }
                       placeholder="https://maps.google.com/..."
                       dir="ltr"
-                      className="rounded-lg border border-gray-300 px-3 py-2.5 text-sm text-gray-900 outline-none focus:border-[#D4AF37]"
+                      className={WL_INPUT}
                     />
                   </label>
                   <label className="flex flex-col gap-1.5 md:col-span-2">
-                    <span className="text-xs font-bold text-gray-600">ملاحظة / تفاصيل</span>
+                    <span className={WL_LABEL}>ملاحظة / تفاصيل</span>
                     <textarea
                       value={service?.note ?? ''}
                       onChange={(e) =>
@@ -1642,7 +1741,7 @@ function ItineraryBuilderPageContent() {
                       }
                       rows={2}
                       placeholder="مثال: شعر ومناكير — مدفوع بالكامل من Wanderloom"
-                      className="resize-y rounded-lg border border-gray-300 px-3 py-2.5 text-sm text-gray-900 outline-none focus:border-[#D4AF37]"
+                      className={WL_TEXTAREA}
                     />
                   </label>
                 </div>
@@ -1653,43 +1752,86 @@ function ItineraryBuilderPageContent() {
       </section>
 
       <DragDropContext onDragEnd={handleDragEnd}>
-      <div className="flex gap-6 h-[750px]">
+      <div className="flex h-auto flex-col gap-4 lg:h-[750px] lg:flex-row lg:gap-6">
         {/* بنك الأماكن (اليمين) */}
-        <aside className="w-[35%] bg-white rounded-xl border border-gray-200 shadow-sm flex flex-col overflow-hidden">
-          <div className="p-5 border-b border-gray-100 bg-gray-50 flex flex-col gap-4">
-            <h3 className="font-bold text-lg">بنك الأماكن ({displayedPlaces.length} مكان متاح)</h3>
+        <aside className="flex w-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl lg:w-[35%]">
+          <div className="flex flex-col gap-4 border-b border-slate-200 bg-slate-50 p-4 sm:p-5">
+            <ItineraryPlacesSourceTabs
+              value={placesSourceTab}
+              onChange={setPlacesSourceTab}
+              placesCount={placesTotal}
+            />
+
+            {placesSourceTab === 'bank' ? (
+              <>
+            <h3 className="text-lg font-bold text-[#D4AF37]">
+              بنك الأماكن
+              {placesLoading ? ' · جاري التحميل…' : ''}
+            </h3>
             
             {/* شريط البحث */}
-            <input 
-              type="text" 
-              placeholder="ابحث بالاسم أو الحي..." 
+            <input
+              type="text"
+              placeholder="ابحث بالاسم أو الحي..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="border border-gray-300 p-3 rounded-lg w-full focus:border-[#D4AF37] outline-none"
+              className="w-full rounded-xl border border-slate-300 bg-slate-50 p-3 font-bold text-slate-900 placeholder:text-slate-500 focus:border-[#D4AF37] focus:bg-white outline-none"
             />
-            
             {/* الفلاتر الذكية (تم إصلاح الخلل هنا) */}
             <div className="flex gap-2">
               <select 
                 value={filterCity} 
                 onChange={(e) => { setFilterCity(e.target.value); setFilterCategory(''); }}
-                className="flex-1 bg-white border border-gray-300 text-sm rounded-lg p-2"
+                className={`flex-1 ${WL_SELECT}`}
               >
-                <option value="">كل المدن</option>
-                {uniqueCities.map(c => <option key={c} value={c}>{c}</option>)}
+                <option value="" className={WL_OPTION}>كل المدن</option>
+                {uniqueCities.map(c => <option key={c} value={c} className={WL_OPTION}>{c}</option>)}
               </select>
 
                               <select
                 value={filterCategory} 
                 onChange={(e) => setFilterCategory(e.target.value)}
-                className="flex-1 bg-white border border-gray-300 text-sm rounded-lg p-2"
+                className={`flex-1 ${WL_SELECT}`}
               >
-                <option value="">كل الفئات</option>
-                {uniqueCategories.map(c => <option key={c} value={c}>{c}</option>)}
+                <option value="" className={WL_OPTION}>كل الفئات</option>
+                {PLACE_CATEGORY_OPTIONS.map((c) => (
+                  <option key={c.id} value={c.id} className={WL_OPTION}>
+                    {c.label}
+                  </option>
+                ))}
                               </select>
                             </div>
+            {placesTotal > PLACES_BANK_PAGE_SIZE ? (
+              <div className="flex items-center justify-between gap-2 text-xs font-bold text-slate-600">
+                <button
+                  type="button"
+                  disabled={placesPage <= 0 || placesLoading}
+                  onClick={() => setPlacesPage((p) => Math.max(0, p - 1))}
+                  className={WL_BTN_SECONDARY}
+                >
+                  السابق
+                </button>
+                <span>
+                  {placesPage + 1} / {Math.max(1, Math.ceil(placesTotal / PLACES_BANK_PAGE_SIZE))}
+                </span>
+                <button
+                  type="button"
+                  disabled={
+                    placesLoading ||
+                    placesPage >= Math.ceil(placesTotal / PLACES_BANK_PAGE_SIZE) - 1
+                  }
+                  onClick={() => setPlacesPage((p) => p + 1)}
+                  className={WL_BTN_SECONDARY}
+                >
+                  التالي
+                </button>
+              </div>
+            ) : null}
+              </>
+            ) : null}
                   </div>
           
+          {placesSourceTab === 'bank' ? (
           <SimpleItineraryPlacesBank
             places={displayedPlaces}
             activeDayLabel={activeDayLabel}
@@ -1697,6 +1839,13 @@ function ItineraryBuilderPageContent() {
             onAddPlace={handleAddPlace}
             onQuickAddClick={() => openQuickAddModal(searchQuery)}
           />
+          ) : (
+            <ExperiencesExplorer
+              activeDayLabel={activeDayLabel}
+              defaultDestination={filterCity || tripCities[0] || ''}
+              onAddPlace={handleAddPlace}
+            />
+          )}
         </aside>
 
         <SimpleItineraryDayPlanner
@@ -1720,9 +1869,9 @@ function ItineraryBuilderPageContent() {
               </div>
       </DragDropContext>
 
-      <section className="mb-6 rounded-xl border border-[#D4AF37]/35 bg-gradient-to-br from-[#FEFDF9] to-white p-5 shadow-sm">
-        <h3 className="mb-2 text-lg font-bold text-[#1E2720]">إدارة الموردين والطلبات الخاصة</h3>
-        <p className="mb-4 text-sm text-gray-500">
+      <section className={`mb-6 ${WL_SECTION}`}>
+        <h3 className={WL_TITLE}>إدارة الموردين والطلبات الخاصة</h3>
+        <p className={`mb-4 ${WL_HINT}`}>
           دورة العمل: بانتظار رد المورد ⏳ → تم التأكيد 🔴 → تم الدفع 🟢 — تظهر في الرادار الحي
           تلقائياً.
         </p>

@@ -9,6 +9,7 @@ import {
   ExternalLink,
   FileText,
   Loader2,
+  MessageSquareText,
   Pencil,
   Plus,
   Receipt,
@@ -22,6 +23,8 @@ import {
   approveQuotationAction,
   getQuotationsListAction,
 } from '@/app/actions/quotationActions';
+import { useCrmEmployee } from '@/app/crm/_components/CrmEmployeeProvider';
+import { canEditItineraries } from '@/lib/crm-permissions';
 import {
   fetchPipelineLeadsByStatuses,
   joinDestinations,
@@ -43,10 +46,12 @@ import {
   QUOTATION_STATUS_LABEL,
   quotationClientName,
   quotationClientPhone,
+  quotationStatusBadgeClass,
   quotationTotalPrice,
   type QuotationRow,
   type QuotationStatus,
 } from '@/lib/crm-quotations';
+import { hasClientFeedback } from '@/lib/interactive-quotation';
 import { createItineraryFromApprovedQuotation, revertApprovedQuotation } from '@/lib/quotation-to-itinerary';
 import { buildItineraryBuilderPathFromQuotation } from '@/lib/itinerary-builder-prefill';
 import WhatsAppTemplatePicker from '@/app/crm/_components/WhatsAppTemplatePicker';
@@ -55,11 +60,14 @@ import {
   type QuoteAcceptedIntakePayload,
 } from '@/app/crm/quotations/_components/QuoteAcceptedIntakeModal';
 import { GenerateInvoiceModal } from '@/app/crm/quotations/_components/GenerateInvoiceModal';
+import { ClientFeedbackNotesModal } from '@/app/crm/quotations/_components/ClientFeedbackPanel';
 
 const STATUS_FILTER: { value: 'all' | QuotationStatus; label: string }[] = [
   { value: 'all', label: 'كل الحالات' },
   { value: 'draft', label: QUOTATION_STATUS_LABEL.draft },
   { value: 'pending_client', label: QUOTATION_STATUS_LABEL.pending_client },
+  { value: 'needs_revision', label: QUOTATION_STATUS_LABEL.needs_revision },
+  { value: 'client_responded', label: QUOTATION_STATUS_LABEL.client_responded },
   { value: 'approved', label: QUOTATION_STATUS_LABEL.approved },
 ];
 
@@ -77,6 +85,8 @@ async function loadQuotationsFromServer(): Promise<{ rows: QuotationRow[]; error
 }
 
 export function QuotationsListClient({ initialRows, initialError }: QuotationsListClientProps) {
+  const { profileAccess } = useCrmEmployee();
+  const canEditItinerary = canEditItineraries(profileAccess);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(initialError ?? '');
   const [actionError, setActionError] = useState('');
@@ -88,8 +98,10 @@ export function QuotationsListClient({ initialRows, initialError }: QuotationsLi
   const [deleteBusyId, setDeleteBusyId] = useState<string | null>(null);
   const [revertBusyId, setRevertBusyId] = useState<string | null>(null);
   const [approveBusyId, setApproveBusyId] = useState<string | null>(null);
+  const [convertBusyId, setConvertBusyId] = useState<string | null>(null);
   const [intakeModal, setIntakeModal] = useState<QuoteAcceptedIntakePayload | null>(null);
   const [invoiceQuotation, setInvoiceQuotation] = useState<QuotationRow | null>(null);
+  const [feedbackQuotation, setFeedbackQuotation] = useState<QuotationRow | null>(null);
   const [toast, setToast] = useState<string | null>(null);
 
   const loadPipelineLeads = useCallback(async () => {
@@ -175,16 +187,20 @@ export function QuotationsListClient({ initialRows, initialError }: QuotationsLi
       return;
     }
 
-    const url = `${window.location.origin}/quote/${quoteId}`;
+    const url = `${window.location.origin}/proposal/${quoteId}`;
     try {
       await navigator.clipboard.writeText(url);
-      setToast('تم نسخ رابط العميل ✨');
+      setToast('تم نسخ الرابط! يمكنك الآن إرساله للعميل.');
     } catch {
       setToast(url);
     }
   };
 
   const handleDeleteQuotation = async (row: QuotationRow) => {
+    if (!canEditItinerary) {
+      setActionError('صلاحية القراءة فقط — لا يمكن حذف عروض الأسعار.');
+      return;
+    }
     const quoteId = quotationEditId(row);
     if (!quoteId) {
       setActionError('معرّف العرض غير صالح — لا يمكن الحذف.');
@@ -243,14 +259,19 @@ export function QuotationsListClient({ initialRows, initialError }: QuotationsLi
         ),
       );
 
-      try {
-        await createItineraryFromApprovedQuotation({
-          ...row,
-          ...approvedRow,
-          status: 'approved',
-        });
-      } catch (itineraryErr) {
-        console.error('Itinerary auto-create after approval:', itineraryErr);
+      // Server already creates the active itinerary; client create is idempotent fallback
+      let itineraryId = result.itineraryId;
+      if (itineraryId == null) {
+        try {
+          const created = await createItineraryFromApprovedQuotation({
+            ...row,
+            ...approvedRow,
+            status: 'approved',
+          });
+          itineraryId = created?.itineraryId ?? null;
+        } catch (itineraryErr) {
+          console.error('Itinerary auto-create after approval:', itineraryErr);
+        }
       }
 
       await refreshQuotations();
@@ -261,6 +282,8 @@ export function QuotationsListClient({ initialRows, initialError }: QuotationsLi
           clientName: quotationClientName(approvedRow),
           clientPhone: quotationClientPhone(approvedRow),
         });
+      } else if (itineraryId != null) {
+        setToast(`تم قبول العرض وإضافته للمسارات الفردية (#${itineraryId}) ✨`);
       } else {
         setToast('تم قبول العرض بنجاح ✨');
       }
@@ -268,6 +291,40 @@ export function QuotationsListClient({ initialRows, initialError }: QuotationsLi
       setActionError(e instanceof Error ? e.message : 'تعذر قبول العرض.');
     } finally {
       setApproveBusyId(null);
+    }
+  };
+
+  const handleConvertToItinerary = async (row: QuotationRow) => {
+    const quoteId = quotationEditId(row);
+    if (!quoteId || !isQuotationStatusApproved(row.status)) return;
+    if (
+      !window.confirm(
+        'تحويل هذا العرض المعتمد إلى مسار تشغيلي؟ سيتم إنشاء/تحديث المسار باسم العميل والخبير.',
+      )
+    ) {
+      return;
+    }
+
+    setConvertBusyId(quoteId);
+    setActionError('');
+    try {
+      const created = await createItineraryFromApprovedQuotation({
+        ...row,
+        id: quoteId,
+      });
+      if (!created) {
+        throw new Error('تعذر إنشاء المسار — تحقق من صلاحيات itineraries أو نفّذ SQL الأعمدة الجديدة.');
+      }
+      setToast(`تم التحويل إلى مسار #${created.itineraryId} 🚀`);
+      window.open(
+        `/crm/itineraries/${encodeURIComponent(String(created.itineraryId))}/edit`,
+        '_blank',
+        'noopener,noreferrer',
+      );
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : 'تعذر تحويل العرض إلى مسار.');
+    } finally {
+      setConvertBusyId(null);
     }
   };
 
@@ -328,9 +385,9 @@ export function QuotationsListClient({ initialRows, initialError }: QuotationsLi
 
   if (loading) {
     return (
-      <div className="flex min-h-[70vh] items-center justify-center">
-        <div className="text-center font-black text-slate-500">
-          <Loader2 className="mx-auto mb-2 h-6 w-6 animate-spin" aria-hidden />
+      <div className="flex min-h-[70vh] items-center justify-center bg-[#F9FAFB] dark:bg-[#1A2421]">
+        <div className="text-center text-sm font-medium text-slate-500 dark:text-slate-400">
+          <Loader2 className="mx-auto mb-2 h-6 w-6 animate-spin text-slate-400 dark:text-[#D4AF37]" aria-hidden />
           جارٍ تحميل عروض الأسعار...
         </div>
       </div>
@@ -338,41 +395,51 @@ export function QuotationsListClient({ initialRows, initialError }: QuotationsLi
   }
 
   return (
-    <div dir="rtl" className="mx-auto max-w-5xl">
-      <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+    <div dir="rtl" className="min-h-full bg-[#F9FAFB] p-4 dark:bg-[#1A2421] sm:p-6 lg:p-8">
+      <div className="mx-auto max-w-6xl">
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-2xl font-black text-[#1C4532]">عروض الأسعار 📄</h1>
-          <p className="mt-1 text-xs font-bold text-slate-500">
+          <p className="text-xs font-medium uppercase tracking-wider text-slate-400 dark:text-[#D4AF37]/80">
+            Finance · Sales
+          </p>
+          <h1 className="mt-1 text-2xl font-semibold text-slate-900 dark:text-gray-100">عروض الأسعار</h1>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
             مسار المبيعات: طلبات في مرحلة العرض / بانتظار الدفع + جدول quotations
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
           <button
             type="button"
             onClick={() => void load()}
-            className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50"
+            className="inline-flex min-h-[44px] w-full items-center justify-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600 transition hover:bg-slate-50 active:scale-95 sm:w-auto dark:border-[#2D3F3A] dark:bg-[#22302C] dark:text-gray-300"
           >
             <RefreshCcw size={14} aria-hidden />
             تحديث
           </button>
-          <Link
-            href="/crm/quotations/new"
-            className="inline-flex items-center gap-2 rounded-xl border border-[#C9A84C]/55 bg-gradient-to-l from-[#8A6B2A] to-[#C9A84C] px-4 py-2.5 text-xs font-black text-[#1C4532]"
-          >
-            <Plus size={16} aria-hidden />
-            إنشاء عرض سعر جديد
-          </Link>
+          {canEditItinerary ? (
+            <Link
+              href="/crm/quotations/new"
+              className="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-slate-800 active:scale-[0.98] sm:w-auto dark:border dark:border-[#D4AF37]/50 dark:bg-[#D4AF37]/20 dark:text-[#D4AF37]"
+            >
+              <Plus size={16} aria-hidden />
+              إنشاء عرض سعر جديد
+            </Link>
+          ) : (
+            <span className="inline-flex min-h-[44px] w-full items-center justify-center rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-xs font-bold text-amber-800 sm:w-auto">
+              قراءة فقط
+            </span>
+          )}
         </div>
       </div>
 
       {error ? (
-        <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-xs font-bold text-red-800">
+        <div className="mb-4 rounded-xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-800 ring-1 ring-rose-600/10">
           {error}
         </div>
       ) : null}
 
       {actionError ? (
-        <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-bold text-amber-900">
+        <div className="mb-4 rounded-xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800 ring-1 ring-amber-600/10">
           {actionError}
         </div>
       ) : null}
@@ -380,26 +447,26 @@ export function QuotationsListClient({ initialRows, initialError }: QuotationsLi
       {toast ? (
         <div
           role="status"
-          className="fixed bottom-6 left-1/2 z-[200] w-[min(100%,22rem)] -translate-x-1/2 rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-3 text-center text-sm font-black text-emerald-900 shadow-lg"
+          className="fixed bottom-6 left-1/2 z-[200] w-[min(100%,22rem)] -translate-x-1/2 rounded-2xl border border-emerald-100 bg-emerald-50 px-5 py-3 text-center text-sm font-medium text-emerald-800 shadow-lg ring-1 ring-emerald-600/20"
         >
           {toast}
         </div>
       ) : null}
 
       {pipelineLeads.length > 0 ? (
-        <div className="mb-4 rounded-2xl border border-amber-200/80 bg-amber-50/50 p-4">
-          <p className="text-xs font-black text-amber-900">
+        <div className="mb-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-[#2D3F3A] dark:bg-[#22302C]">
+          <p className="text-sm font-semibold text-slate-900 dark:text-gray-100">
             طابور المسار — عروض الأسعار / بانتظار الدفع ({pipelineLeads.length})
           </p>
-          <ul className="mt-3 space-y-2">
+          <ul className="mt-4 space-y-2">
             {pipelineLeads.map((lead) => (
               <li
                 key={lead.id}
-                className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white bg-white px-3 py-2.5 shadow-sm"
+                className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-100 bg-slate-50/50 px-4 py-3 transition hover:bg-slate-50 dark:border-[#2D3F3A] dark:bg-[#1A2421]/50 dark:hover:bg-[#1A2421]"
               >
                 <div className="min-w-0 text-right">
-                  <p className="truncate text-sm font-black text-[#1C4532]">{lead.full_name}</p>
-                  <p className="text-[10px] font-bold text-slate-500">
+                  <p className="truncate text-sm font-semibold text-slate-800 dark:text-gray-200">{lead.full_name}</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
                     {joinDestinations(lead.destinations)} · {lead.status}
                   </p>
                 </div>
@@ -412,7 +479,7 @@ export function QuotationsListClient({ initialRows, initialError }: QuotationsLi
                     startDate: lead.travel_date,
                     clientName: lead.full_name,
                   })}
-                  className="inline-flex items-center gap-1 rounded-lg border border-[#C9A84C]/50 bg-[#FEFDF9] px-3 py-1.5 text-[10px] font-black text-[#1C4532] hover:bg-amber-50"
+                  className="inline-flex items-center gap-1 rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-slate-800 active:scale-95 dark:border dark:border-[#D4AF37]/50 dark:bg-[#D4AF37]/20 dark:text-[#D4AF37]"
                 >
                   <FileText size={12} aria-hidden />
                   فتح عرض سعر
@@ -423,21 +490,21 @@ export function QuotationsListClient({ initialRows, initialError }: QuotationsLi
         </div>
       ) : null}
 
-      <div className="mb-4 rounded-2xl border border-[#F3F0EB] bg-white p-4 shadow-sm">
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-[1.2fr_0.8fr]">
-          <label className="flex items-center gap-2">
-            <Search size={16} className="shrink-0 text-[#C9A84C]" aria-hidden />
+      <div className="mb-6 rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-[#2D3F3A] dark:bg-[#22302C] sm:p-6">
+        <div className="flex flex-col items-stretch justify-between gap-3 sm:flex-row sm:items-center">
+          <label className="flex min-w-0 flex-1 items-center gap-2">
+            <Search size={16} className="shrink-0 text-slate-400 dark:text-[#D4AF37]" aria-hidden />
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="بحث بالعنوان أو العميل أو الوجهة..."
-              className="w-full rounded-xl border border-gray-300 bg-white p-3 text-sm font-bold text-gray-900 outline-none focus:ring-2 focus:ring-[#C9A84C]/40"
+              className="min-h-[44px] w-full rounded-lg border border-slate-200 bg-white p-3 text-sm font-medium text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-200 dark:border-[#2D3F3A] dark:bg-[#1A2421] dark:text-gray-100 dark:focus:border-[#D4AF37]/40 dark:focus:ring-[#D4AF37]/15"
             />
           </label>
           <select
             value={status}
             onChange={(e) => setStatus(e.target.value as 'all' | QuotationStatus)}
-            className="rounded-xl border border-gray-300 bg-white p-3 text-sm font-bold text-gray-900 outline-none focus:ring-2 focus:ring-[#C9A84C]/40"
+            className="min-h-[44px] w-full rounded-lg border border-slate-200 bg-white p-3 text-sm font-medium text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-200 sm:w-auto sm:min-w-[12rem] dark:border-[#2D3F3A] dark:bg-[#1A2421] dark:text-gray-100 dark:focus:border-[#D4AF37]/40 dark:focus:ring-[#D4AF37]/15"
           >
             {STATUS_FILTER.map((s) => (
               <option key={s.value} value={s.value}>
@@ -446,28 +513,27 @@ export function QuotationsListClient({ initialRows, initialError }: QuotationsLi
             ))}
           </select>
         </div>
-        <p className="mt-2 text-xs font-bold text-slate-500">النتائج: {filtered.length}</p>
+        <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">النتائج: {filtered.length}</p>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-[#F3F0EB] bg-white shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[920px] border-collapse text-sm">
+      <div className="w-full overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-[#2D3F3A] dark:bg-[#1A2421]">
+          <table className="w-full min-w-[650px] border-collapse text-right text-sm">
             <thead>
-              <tr className="bg-[#1C4532] text-[10px] font-black uppercase tracking-wider text-[#C9A84C]">
-                <th className="px-4 py-3 text-start">العميل</th>
-                <th className="px-4 py-3 text-start">العنوان</th>
-                <th className="px-4 py-3 text-start">الوجهات</th>
-                <th className="px-4 py-3 text-start">الحالة</th>
-                <th className="px-4 py-3 text-start">الإجمالي</th>
-                <th className="px-4 py-3 text-center">التواصل</th>
-                <th className="px-4 py-3 text-center">رابط العميل</th>
-                <th className="px-4 py-3 text-center">إجراء</th>
+              <tr className="border-b border-slate-200 bg-slate-50 text-sm font-semibold text-slate-500 dark:border-[#2D3F3A] dark:bg-[#1A2421] dark:text-slate-400">
+                <th className="px-4 py-3.5 text-start">العميل</th>
+                <th className="px-4 py-3.5 text-start">العنوان</th>
+                <th className="px-4 py-3.5 text-start">الوجهات</th>
+                <th className="whitespace-nowrap px-4 py-3.5 text-start">الحالة</th>
+                <th className="px-4 py-3.5 text-start">الإجمالي</th>
+                <th className="px-4 py-3.5 text-center">التواصل</th>
+                <th className="px-4 py-3.5 text-center">رابط العميل</th>
+                <th className="px-4 py-3.5 text-center">إجراء</th>
               </tr>
             </thead>
             <tbody>
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-10 text-center text-xs font-bold text-slate-400">
+                  <td colSpan={8} className="px-4 py-10 text-center text-sm text-slate-400">
                     لا توجد عروض أسعار بعد.
                   </td>
                 </tr>
@@ -482,7 +548,6 @@ export function QuotationsListClient({ initialRows, initialError }: QuotationsLi
                     row.status !== 'draft' &&
                     isQuoteSavedId(invoiceQuoteId || quoteId) &&
                     (isApproved || row.status === 'awaiting_payment' || row.status === 'deposit_paid' || row.status === 'fully_paid');
-                  const isDraft = row.status === 'draft';
                   const cloning = Boolean(quoteId) && cloneBusyId === quoteId;
                   const deleting = Boolean(quoteId) && deleteBusyId === quoteId;
                   const reverting = Boolean(quoteId) && revertBusyId === quoteId;
@@ -490,28 +555,50 @@ export function QuotationsListClient({ initialRows, initialError }: QuotationsLi
                   return (
                     <tr
                       key={quoteId || `quotation-${row.title}-${row.created_at}`}
-                      className="border-t border-slate-100 transition hover:bg-[#FFFBF0]/60"
+                      className="border-t border-slate-100 transition-colors hover:bg-slate-50/60 dark:border-[#2D3F3A] dark:hover:bg-[#1A2421]/40"
                     >
-                      <td className="px-4 py-3 font-bold text-slate-800">
-                        {quotationClientName(row)}
+                      <td className="px-4 py-3">
+                        <p className="font-mono text-sm font-bold text-slate-500 dark:text-[#D4AF37]">
+                          {quoteId
+                            ? /^\d+$/.test(quoteId)
+                              ? `#QT-${quoteId}`
+                              : `#${quoteId.slice(0, 8).toUpperCase()}`
+                            : '—'}
+                        </p>
+                        <p className="mt-0.5 text-sm font-semibold text-slate-800 dark:text-gray-200">
+                          {quotationClientName(row)}
+                        </p>
                       </td>
-                      <td className="px-4 py-3 font-black text-[#1C4532]">{row.title || '—'}</td>
-                      <td className="px-4 py-3 text-xs font-semibold text-slate-600">
+                      <td className="px-4 py-3 font-semibold text-slate-900 dark:text-white">{row.title || '—'}</td>
+                      <td className="px-4 py-3 text-xs text-slate-500 dark:text-slate-400">
                         {formatDestinationsLabel(row.destinations)}
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex flex-col items-start gap-2">
+                        <div className="flex flex-wrap items-center gap-1.5">
                           <span
-                            className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-black ${
-                              isApproved
-                                ? 'bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200'
-                                : isDraft
-                                  ? 'bg-slate-100 text-slate-700 ring-1 ring-slate-200'
-                                  : 'bg-amber-50 text-amber-900 ring-1 ring-amber-200'
-                            }`}
+                            className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium ${quotationStatusBadgeClass(row.status)}`}
                           >
                             {QUOTATION_STATUS_LABEL[row.status]}
                           </span>
+                          {(row.status === 'needs_revision' ||
+                            row.status === 'client_responded' ||
+                            hasClientFeedback(row.client_feedback)) && (
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                event.preventDefault();
+                                event.stopPropagation();
+                                setFeedbackQuotation(row);
+                              }}
+                              title="عرض ملاحظات العميل"
+                              className="inline-flex items-center gap-1 rounded-full bg-white px-2 py-0.5 text-xs font-medium text-amber-700 ring-1 ring-amber-600/20 transition hover:bg-amber-50"
+                            >
+                              <MessageSquareText size={11} aria-hidden />
+                              ملاحظات
+                            </button>
+                          )}
+                        </div>
                           {row.status !== 'draft' && isQuoteSavedId(quoteId) ? (
                             <div className="flex flex-col items-start gap-1.5">
                               <button
@@ -528,32 +615,52 @@ export function QuotationsListClient({ initialRows, initialError }: QuotationsLi
                                     ? 'إصدار فاتورة عربون أو مبلغ كامل'
                                     : 'اعتماد العرض مطلوب قبل إصدار الفاتورة'
                                 }
-                                className="mt-1 flex w-full min-w-[9rem] items-center justify-center gap-2 rounded-lg bg-[#D4AF37] px-4 py-2 text-[10px] font-bold text-black transition-colors hover:bg-yellow-500 disabled:cursor-not-allowed disabled:opacity-50"
+                                className="mt-1 flex w-full min-w-[9rem] items-center justify-center gap-2 rounded-lg bg-slate-900 px-4 py-2 text-xs font-medium text-white transition hover:opacity-90 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
                               >
                                 <Receipt size={10} aria-hidden />
-                                🧾 إدارة الفواتير
+                                إدارة الفواتير
                               </button>
                             </div>
                           ) : null}
                           {isApproved ? (
-                            <button
-                              type="button"
-                              disabled={reverting}
-                              onClick={(event) => {
-                                event.preventDefault();
-                                event.stopPropagation();
-                                void handleRevertApproval(row);
-                              }}
-                              title="إلغاء الاعتماد وإعادة العرض لبانتظار العميل"
-                              className="flex items-center gap-1 rounded border border-orange-200 bg-orange-50 px-2 py-1 text-[10px] font-black text-orange-600 transition hover:bg-orange-100 disabled:opacity-50"
-                            >
-                              {reverting ? (
-                                <Loader2 className="h-3 w-3 animate-spin" aria-hidden />
-                              ) : (
-                                <RefreshCcw size={10} aria-hidden />
-                              )}
-                              إلغاء الاعتماد
-                            </button>
+                            <>
+                              <button
+                                type="button"
+                                disabled={convertBusyId === quoteId || !quoteId}
+                                onClick={(event) => {
+                                  event.preventDefault();
+                                  event.stopPropagation();
+                                  void handleConvertToItinerary(row);
+                                }}
+                                title="إنشاء مسار تشغيلي من العرض المعتمد"
+                                className="mt-1 flex w-full min-w-[9rem] items-center justify-center gap-1.5 rounded-lg bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-700 ring-1 ring-emerald-600/20 transition hover:bg-emerald-100 disabled:opacity-50"
+                              >
+                                {convertBusyId === quoteId ? (
+                                  <Loader2 className="h-3 w-3 animate-spin" aria-hidden />
+                                ) : (
+                                  <Route size={11} aria-hidden />
+                                )}
+                                تحويل إلى مسار
+                              </button>
+                              <button
+                                type="button"
+                                disabled={reverting}
+                                onClick={(event) => {
+                                  event.preventDefault();
+                                  event.stopPropagation();
+                                  void handleRevertApproval(row);
+                                }}
+                                title="إلغاء الاعتماد وإعادة العرض لبانتظار العميل"
+                                className="flex items-center gap-1 rounded-full bg-orange-50 px-2 py-1 text-xs font-medium text-orange-700 ring-1 ring-orange-600/20 transition hover:bg-orange-100 disabled:opacity-50"
+                              >
+                                {reverting ? (
+                                  <Loader2 className="h-3 w-3 animate-spin" aria-hidden />
+                                ) : (
+                                  <RefreshCcw size={10} aria-hidden />
+                                )}
+                                إلغاء الاعتماد
+                              </button>
+                            </>
                           ) : (
                             <button
                               type="button"
@@ -564,7 +671,7 @@ export function QuotationsListClient({ initialRows, initialError }: QuotationsLi
                                 void handleApproveQuote(row);
                               }}
                               title="قبول عرض السعر وإرسال DNA"
-                              className="mt-1 flex items-center gap-1 rounded border border-emerald-300 bg-emerald-50 px-2 py-1 text-[10px] font-black text-emerald-800 transition hover:bg-emerald-100 disabled:opacity-50"
+                              className="mt-1 flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 ring-1 ring-emerald-600/20 transition hover:bg-emerald-100 disabled:opacity-50"
                             >
                               {approving ? (
                                 <Loader2 className="h-3 w-3 animate-spin" aria-hidden />
@@ -576,7 +683,7 @@ export function QuotationsListClient({ initialRows, initialError }: QuotationsLi
                           )}
                         </div>
                       </td>
-                      <td className="px-4 py-3 font-black text-[#1C4532]" dir="ltr">
+                      <td className="px-4 py-3 text-lg font-bold text-slate-900 dark:text-white" dir="ltr">
                         {total > 0 ? `${total.toLocaleString('ar-SA')} ر.س` : '—'}
                       </td>
                       <td className="px-4 py-3 text-center">
@@ -593,7 +700,7 @@ export function QuotationsListClient({ initialRows, initialError }: QuotationsLi
                             onError={(message) => setActionError(message)}
                           />
                           {quotationClientPhone(row) ? (
-                            <span className="text-[10px] font-bold text-slate-500" dir="ltr">
+                            <span className="whitespace-nowrap text-[10px] font-bold text-slate-500" dir="ltr">
                               {quotationClientPhone(row)}
                             </span>
                           ) : (
@@ -607,11 +714,11 @@ export function QuotationsListClient({ initialRows, initialError }: QuotationsLi
                         <div className="inline-flex items-center gap-1">
                           {quoteId ? (
                             <Link
-                              href={`/quote/${quoteId}`}
+                              href={`/proposal/${quoteId}`}
                               target="_blank"
                               rel="noopener noreferrer"
                               title="فتح صفحة العميل"
-                              className="inline-flex items-center justify-center rounded-lg border border-[#C9A84C]/45 bg-[#FEFDF9] p-2 text-[#1C4532] transition hover:bg-amber-50"
+                              className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white p-2 text-slate-600 transition hover:bg-slate-50"
                             >
                               <ExternalLink size={16} aria-hidden />
                               <span className="sr-only">فتح صفحة العميل</span>
@@ -642,7 +749,7 @@ export function QuotationsListClient({ initialRows, initialError }: QuotationsLi
                             <Link
                               href={buildItineraryBuilderPathFromQuotation(row)}
                               title="بناء مسار من العرض"
-                              className="inline-flex items-center justify-center rounded-lg border border-[#1C4532]/20 bg-[#F0F7F2] p-2 text-[#1C4532] transition hover:bg-emerald-50"
+                              className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white p-2 text-slate-600 transition hover:bg-slate-50"
                             >
                               <Route size={16} aria-hidden />
                               <span className="sr-only">بناء مسار</span>
@@ -652,10 +759,10 @@ export function QuotationsListClient({ initialRows, initialError }: QuotationsLi
                             <Link
                               href={buildQuotationEditPath(editId)}
                               title={`تعديل العرض #${editId}`}
-                              className="inline-flex items-center justify-center rounded-lg border border-blue-200 bg-blue-50 p-2 text-blue-600 transition hover:bg-blue-100"
+                              className="inline-flex items-center justify-center gap-1 rounded-lg bg-slate-900 px-3 py-1.5 text-sm font-medium text-white transition-all hover:bg-slate-800 dark:border dark:border-[#D4AF37]/50 dark:bg-[#D4AF37]/20 dark:text-[#D4AF37]"
                             >
-                              <Pencil size={16} aria-hidden />
-                              <span className="sr-only">تعديل</span>
+                              <Pencil size={14} aria-hidden />
+                              تعديل
                             </Link>
                           ) : null}
                           <button
@@ -663,7 +770,7 @@ export function QuotationsListClient({ initialRows, initialError }: QuotationsLi
                             disabled={cloning || !quoteId}
                             onClick={() => void handleClone(row)}
                             title="استنساخ العرض"
-                            className="inline-flex items-center justify-center rounded-lg border border-[#C9A84C]/45 bg-[#FEFDF9] p-2 text-[#1C4532] transition hover:bg-amber-50 disabled:opacity-50"
+                            className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white p-2 text-slate-600 transition hover:bg-slate-50 disabled:opacity-50"
                           >
                             {cloning ? (
                               <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
@@ -674,9 +781,9 @@ export function QuotationsListClient({ initialRows, initialError }: QuotationsLi
                           </button>
                           <button
                             type="button"
-                            disabled={deleting || !quoteId}
+                            disabled={deleting || !quoteId || !canEditItinerary}
                             onClick={() => void handleDeleteQuotation(row)}
-                            title="حذف العرض"
+                            title={canEditItinerary ? 'حذف العرض' : 'قراءة فقط'}
                             className="inline-flex items-center justify-center rounded-lg border border-red-200 bg-red-50 p-2 text-red-600 transition hover:bg-red-100 disabled:opacity-50"
                           >
                             {deleting ? (
@@ -695,13 +802,12 @@ export function QuotationsListClient({ initialRows, initialError }: QuotationsLi
             </tbody>
           </table>
         </div>
-      </div>
 
       {rows.length === 0 && !error ? (
-        <div className="mt-6 rounded-2xl border border-dashed border-[#C9A84C]/40 bg-[#FEFDF9] p-8 text-center">
-          <FileText className="mx-auto mb-3 h-10 w-10 text-[#C9A84C]" aria-hidden />
-          <p className="text-sm font-black text-[#1C4532]">ابدأ بأول عرض سعر VIP</p>
-          <p className="mt-1 text-xs font-semibold text-slate-500">
+        <div className="mt-6 rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center shadow-sm dark:border-[#2D3F3A] dark:bg-[#22302C]">
+          <FileText className="mx-auto mb-3 h-10 w-10 text-slate-300 dark:text-[#D4AF37]/50" aria-hidden />
+          <p className="text-sm font-semibold text-slate-900 dark:text-gray-100">ابدأ بأول عرض سعر</p>
+          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
             عروض الأسعار منفصلة عن المسارات المؤكدة — للمبيعات والاعتماد قبل التنفيذ.
           </p>
         </div>
@@ -730,6 +836,18 @@ export function QuotationsListClient({ initialRows, initialError }: QuotationsLi
           }}
         />
       ) : null}
+
+      <ClientFeedbackNotesModal
+        open={Boolean(feedbackQuotation)}
+        onClose={() => setFeedbackQuotation(null)}
+        feedback={feedbackQuotation?.client_feedback}
+        title={
+          feedbackQuotation
+            ? `${quotationClientName(feedbackQuotation)} · ${feedbackQuotation.title || 'عرض سعر'}`
+            : undefined
+        }
+      />
+      </div>
     </div>
   );
 }

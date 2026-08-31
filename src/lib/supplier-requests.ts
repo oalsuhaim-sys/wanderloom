@@ -88,30 +88,30 @@ export function parseSupplierRequests(raw: unknown): SupplierRequest[] {
 
   if (!Array.isArray(data)) return [];
 
-  return data
-    .map((item, index) => {
-      if (!item || typeof item !== 'object') return null;
-      const row = item as Record<string, unknown>;
-      const supplier_name = String(row.supplier_name ?? row.title ?? '').trim();
-      if (!supplier_name) return null;
+  const requests: SupplierRequest[] = [];
+  data.forEach((item, index) => {
+    if (!item || typeof item !== 'object') return;
+    const row = item as Record<string, unknown>;
+    const supplier_name = String(row.supplier_name ?? row.title ?? '').trim();
+    if (!supplier_name) return;
 
-      const service_type = normalizeServiceType(row.service_type ?? row.serviceType);
-      const service_date = String(row.service_date ?? row.date ?? '').trim().slice(0, 10);
+    const service_type = normalizeServiceType(row.service_type ?? row.serviceType);
+    const service_date = String(row.service_date ?? row.date ?? '').trim().slice(0, 10);
 
-      return {
-        id: String(row.id ?? `sr-${index}`),
-        supplier_id: String(row.supplier_id ?? row.supplierId ?? '').trim() || undefined,
-        supplier_name,
-        title: supplier_name,
-        service_type,
-        service_date,
-        details: String(row.details ?? row.note ?? '').trim(),
-        status: normalizeStatus(row.status),
-        supplierPhone: String(row.supplier_phone ?? row.supplierPhone ?? '').trim() || undefined,
-        preferred_app: String(row.preferred_app ?? row.preferredApp ?? '').trim() || undefined,
-      } satisfies SupplierRequest;
-    })
-    .filter((r): r is SupplierRequest => r != null);
+    requests.push({
+      id: String(row.id ?? `sr-${index}`),
+      supplier_id: String(row.supplier_id ?? row.supplierId ?? '').trim() || undefined,
+      supplier_name,
+      title: supplier_name,
+      service_type,
+      service_date,
+      details: String(row.details ?? row.note ?? '').trim(),
+      status: normalizeStatus(row.status),
+      supplierPhone: String(row.supplier_phone ?? row.supplierPhone ?? '').trim() || undefined,
+      preferred_app: String(row.preferred_app ?? row.preferredApp ?? '').trim() || undefined,
+    });
+  });
+  return requests;
 }
 
 export function serializeSupplierRequests(requests: SupplierRequest[]): Record<string, unknown>[] {

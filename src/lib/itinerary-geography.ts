@@ -86,7 +86,7 @@ export function parseItineraryGeography(
 
 export function inferGeographyFromLabel(label: string): { countries: string[]; cities: string[] } {
   const parts = label
-    .split(/[,،|/·]+/)
+    .split(/[-–—|/·,،]+/)
     .map((p) => p.trim())
     .filter(Boolean);
 

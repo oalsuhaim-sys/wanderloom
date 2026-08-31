@@ -3,6 +3,7 @@
 export const SALES_STAGE_NEW = 'طلب انضمام جديد' as const
 export const SALES_STAGE_INTERVIEW = 'تم تحديد مقابلة' as const
 export const SALES_STAGE_PENDING_PAYMENT = 'بانتظار الدفع (ساعتين)' as const
+export const SALES_STAGE_PAYMENT_VERIFYING = 'جاري التحقق من السداد' as const
 export const SALES_STAGE_CONFIRMED = 'عميل مؤكد' as const
 export const SALES_STAGE_ACTIVE_TRAVELER = 'مسافر نشط' as const
 
@@ -10,6 +11,7 @@ export type ClientSalesStage =
   | typeof SALES_STAGE_NEW
   | typeof SALES_STAGE_INTERVIEW
   | typeof SALES_STAGE_PENDING_PAYMENT
+  | typeof SALES_STAGE_PAYMENT_VERIFYING
   | typeof SALES_STAGE_CONFIRMED
   | typeof SALES_STAGE_ACTIVE_TRAVELER
 
@@ -26,6 +28,12 @@ export const CLIENT_SALES_STAGES: {
     label: SALES_STAGE_PENDING_PAYMENT,
     shortLabel: 'بانتظار الدفع',
     emoji: '⏳',
+  },
+  {
+    value: SALES_STAGE_PAYMENT_VERIFYING,
+    label: SALES_STAGE_PAYMENT_VERIFYING,
+    shortLabel: 'تحقق من السداد',
+    emoji: '🔎',
   },
   { value: SALES_STAGE_CONFIRMED, label: SALES_STAGE_CONFIRMED, shortLabel: 'مؤكد', emoji: '✅' },
   {
@@ -53,6 +61,8 @@ export function salesStageBadgeClass(stage: string): string {
       return 'border-sky-300/70 bg-sky-50 text-sky-950 ring-1 ring-sky-200/80'
     case SALES_STAGE_PENDING_PAYMENT:
       return 'border-orange-400/70 bg-orange-50 text-orange-950 ring-1 ring-orange-300/80'
+    case SALES_STAGE_PAYMENT_VERIFYING:
+      return 'border-amber-400/70 bg-amber-50 text-amber-950 ring-1 ring-amber-300/80'
     case SALES_STAGE_CONFIRMED:
       return 'border-emerald-300/70 bg-emerald-50 text-emerald-950 ring-1 ring-emerald-200/80'
     case SALES_STAGE_ACTIVE_TRAVELER:
@@ -64,7 +74,7 @@ export function salesStageBadgeClass(stage: string): string {
 
 export function salesStageSelectClass(stage: string, variant: 'light' | 'luxury' = 'light'): string {
   if (variant === 'luxury') {
-    return `h-8 min-w-0 max-w-[11.5rem] shrink rounded-full border border-gray-700/90 bg-[#001f3f] px-3 py-0 text-[11px] font-bold text-[#d4af37]/90 outline-none transition focus:border-[#d4af37]/50 focus:ring-2 focus:ring-[#d4af37]/25 [color-scheme:dark] ${stage ? '' : 'text-[#d4af37]/60'}`
+    return `h-8 min-w-0 max-w-[11.5rem] shrink rounded-full border border-white/20 bg-white/10 px-3 py-0 text-[11px] font-medium text-white outline-none backdrop-blur-sm transition focus:border-white/40 focus:ring-2 focus:ring-white/20 [color-scheme:dark] ${stage ? '' : 'text-white/60'}`
   }
 
   const base =
@@ -81,6 +91,8 @@ export function salesStageLuxuryBadgeClass(stage: string): string {
       return 'border-sky-500/40 bg-sky-950/40 text-sky-200/95'
     case SALES_STAGE_PENDING_PAYMENT:
       return 'border-orange-500/45 bg-orange-950/40 text-orange-200/95'
+    case SALES_STAGE_PAYMENT_VERIFYING:
+      return 'border-amber-500/45 bg-amber-950/40 text-amber-200/95'
     case SALES_STAGE_CONFIRMED:
       return 'border-emerald-500/40 bg-emerald-950/40 text-emerald-200/95'
     case SALES_STAGE_ACTIVE_TRAVELER:

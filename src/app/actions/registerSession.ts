@@ -54,7 +54,6 @@ function buildSessionLeadPayload(input: {
 }) {
   const title = input.sessionTitle.trim() || 'جلسة';
   const destinationLabel = 'غير محدد (تسجيل جلسة)';
-  const source = 'Session Registration';
 
   return {
     full_name: input.name,
@@ -67,7 +66,8 @@ function buildSessionLeadPayload(input: {
     travelers_count: 1,
     budget: null as string | null,
     interests: ['تسجيل جلسة'],
-    travel_style: source,
+    travel_style: 'Private' as const,
+    lead_source: 'other' as const,
     daily_pace: null as string | null,
     walking_readiness: null as string | null,
     day_start_time: null as string | null,
@@ -76,7 +76,7 @@ function buildSessionLeadPayload(input: {
     final_thoughts: `تسجيل من جلسة: ${title}`,
     form_type: 'contact' as const,
     status: 'radar_pending' as const,
-    source,
+    source: 'Session Registration',
     destination_dream: `اهتمام بالجلسة: ${title}`,
     city: null as string | null,
     travel_window: null as string | null,
@@ -86,10 +86,10 @@ function buildSessionLeadPayload(input: {
     dream_closing: null as string | null,
     travel_start_date: null as string | null,
     trip_form: {
-      lead_source: 'session_registration',
+      lead_source: 'other',
       session_id: input.session_id,
       session_title: title,
-      source,
+      source: 'Session Registration',
     },
   };
 }
@@ -125,6 +125,7 @@ async function insertCrmInterestProfile(input: {
       budget: payload.budget,
       interests: payload.interests,
       travel_style: payload.travel_style,
+      lead_source: payload.lead_source,
       daily_pace: payload.daily_pace,
       walking_readiness: payload.walking_readiness,
       day_start_time: payload.day_start_time,
@@ -149,6 +150,7 @@ async function insertCrmInterestProfile(input: {
         travel_days: 7,
         travelers_count: 1,
         interests: [],
+        travel_style: 'Private',
         food_preferences: [],
         accommodation_type: [],
         final_thoughts: payload.final_thoughts,

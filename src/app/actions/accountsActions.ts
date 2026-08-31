@@ -2,6 +2,22 @@
 
 import { revalidatePath } from 'next/cache';
 
+import {
+  DEFAULT_CRM_PERMISSIONS,
+  FULL_CRM_PERMISSIONS,
+  accessFromEmployeeRow,
+  defaultPermissionsForAccountRole,
+  employeePatchFromAccess,
+  normalizeCrmPermissions,
+  permissionsToDbArray,
+  type CrmPermissions,
+  type EmployeeRbacRow,
+} from '@/lib/crm-permissions';
+import {
+  insertEmployeeWithRbacFallback,
+  selectEmployeesWithFallback,
+  updateEmployeeWithRbacFallback,
+} from '@/lib/employees-rbac-db';
 import { EXPERT_DEFAULT_PASSWORD } from '@/lib/expert-auth-constants';
 import { provisionExpertAuthAccount } from '@/lib/expert-auth-provision';
 import { isEmployeeAdminRole, isEmployeeExpertRole } from '@/lib/crm-roles';
@@ -11,15 +27,21 @@ import {
   requireAdminServerAction,
 } from '@/lib/supabase/server-action-auth';
 
+/** أدوار إنشاء الحساب من شاشة إدارة الحسابات */
+export type AccountCreateRole = 'employee' | 'expert' | 'admin';
+
 export type AccountRow = {
   id: string;
   user_id: string;
   full_name: string;
   email: string | null;
   role: string;
+  /** Normalized UI role key */
+  role_key: AccountCreateRole;
   is_admin: boolean;
   is_expert: boolean;
   is_suspended: boolean;
+  permissions: CrmPermissions;
   created_at: string | null;
 };
 
@@ -34,6 +56,17 @@ function revalidateAccounts() {
   revalidatePath('/crm', 'layout');
 }
 
+function resolveCreatePermissions(
+  role: AccountCreateRole,
+  raw: Partial<CrmPermissions> | null | undefined,
+): CrmPermissions {
+  if (role === 'admin') return { ...FULL_CRM_PERMISSIONS };
+  if (raw && typeof raw === 'object') {
+    return normalizeCrmPermissions({ ...DEFAULT_CRM_PERMISSIONS, ...raw });
+  }
+  return defaultPermissionsForAccountRole(role);
+}
+
 export async function listAccountsAction(
   accessToken?: string | null,
 ): Promise<AccountsActionResult<AccountRow[]>> {
@@ -44,41 +77,81 @@ export async function listAccountsAction(
   if (serviceKeyError) return { ok: false, error: serviceKeyError };
 
   const admin = createSupabaseAdminClient();
-  const { data, error } = await admin
-    .from('employees')
-    .select('id, user_id, full_name, email, role, is_admin, is_suspended, created_at')
-    .order('created_at', { ascending: false });
-
-  if (error) {
-    return { ok: false, error: error.message || 'تعذر تحميل الحسابات.' };
+  const listed = await selectEmployeesWithFallback(admin, { orderByCreatedAt: true });
+  if (listed.error) {
+    return { ok: false, error: listed.error };
   }
 
-  const rows: AccountRow[] = (data ?? []).map((row) => {
-    const role = String(row.role ?? '').trim() || 'Advisor';
-    const isAdmin = Boolean(row.is_admin) || isEmployeeAdminRole(role);
-    return {
-      id: String(row.id),
-      user_id: String(row.user_id ?? '').trim(),
-      full_name: String(row.full_name ?? '').trim() || '—',
-      email: row.email ? String(row.email) : null,
-      role,
-      is_admin: isAdmin,
-      is_expert: !isAdmin && isEmployeeExpertRole(role),
-      is_suspended: Boolean(row.is_suspended),
-      created_at: row.created_at ? String(row.created_at) : null,
-    };
-  });
+  const rawRows = Array.isArray(listed.data) ? listed.data : listed.data ? [listed.data] : [];
+  const rows: AccountRow[] = rawRows.map((row) => mapEmployeeToAccountRow(row));
 
   return { ok: true, data: rows };
 }
 
-/** إضافة خبير — Auth عبر service_role + employees.role=Expert */
-export async function createExpertAccountAction(input: {
+function mapEmployeeToAccountRow(row: EmployeeRbacRow & { id?: string }): AccountRow {
+  const access = accessFromEmployeeRow(row, row.email);
+  const role = String(row.role ?? '').trim() || 'Advisor';
+  const role_key: AccountCreateRole = access.is_admin
+    ? 'admin'
+    : access.is_expert
+      ? 'expert'
+      : 'employee';
+  return {
+    id: String(row.id ?? ''),
+    user_id: String(row.user_id ?? '').trim(),
+    full_name: String(row.full_name ?? '').trim() || '—',
+    email: row.email ? String(row.email) : null,
+    role,
+    role_key,
+    is_admin: access.is_admin,
+    is_expert: access.is_expert,
+    is_suspended: access.is_suspended,
+    permissions: access.permissions,
+    created_at: row.created_at ? String(row.created_at) : null,
+  };
+}
+
+function normalizeCreateRole(raw: unknown): AccountCreateRole {
+  const t = String(raw ?? '').trim().toLowerCase();
+  if (t === 'admin') return 'admin';
+  if (t === 'expert') return 'expert';
+  return 'employee';
+}
+
+function isDuplicateEmailError(message: string | undefined): boolean {
+  const msg = String(message ?? '').toLowerCase();
+  return (
+    msg.includes('already') ||
+    msg.includes('registered') ||
+    msg.includes('exists') ||
+    msg.includes('duplicate') ||
+    msg.includes('unique')
+  );
+}
+
+async function insertEmployeeWithFallback(
+  admin: ReturnType<typeof createSupabaseAdminClient>,
+  payload: Record<string, unknown>,
+) {
+  const result = await insertEmployeeWithRbacFallback(admin, payload);
+  if (result.error) {
+    return { data: null, error: { message: result.error } };
+  }
+  return { data: result.data, error: null };
+}
+
+/**
+ * إنشاء حساب فريق (موظف / خبير / مدير) — Auth عبر service_role + صف في employees.
+ */
+export async function createAccountAction(input: {
   full_name: string;
   email: string;
+  role: AccountCreateRole;
   phone?: string | null;
+  /** Fine-grained CRM access; ignored for admin (full access). */
+  permissions?: Partial<CrmPermissions> | null;
   access_token?: string | null;
-}): Promise<AccountsActionResult<{ userId: string; defaultPassword: string }>> {
+}): Promise<AccountsActionResult<{ userId: string; defaultPassword: string; role: AccountCreateRole }>> {
   const auth = await requireAdminServerAction(input.access_token);
   if (!auth.ok) return { ok: false, error: auth.error };
 
@@ -87,49 +160,143 @@ export async function createExpertAccountAction(input: {
 
   const fullName = String(input.full_name ?? '').trim();
   const email = String(input.email ?? '').trim().toLowerCase();
-  if (!fullName) return { ok: false, error: 'اسم الخبير مطلوب.' };
+  const role = normalizeCreateRole(input.role);
+  const permissions = resolveCreatePermissions(role, input.permissions);
+  const enabledPermissionIds = permissionsToDbArray(permissions);
+
+  if (!fullName) return { ok: false, error: 'الاسم مطلوب.' };
   if (!email || !email.includes('@')) {
     return { ok: false, error: 'بريد إلكتروني صالح مطلوب.' };
   }
 
   const admin = createSupabaseAdminClient();
-  const provision = await provisionExpertAuthAccount(admin, {
-    email,
-    fullName,
-    phone: input.phone,
-  });
 
-  if (!provision.ok) {
-    return { ok: false, error: provision.error };
+  // Experts keep the dedicated provisioner (also syncs experts table)
+  if (role === 'expert') {
+    const provision = await provisionExpertAuthAccount(admin, {
+      email,
+      fullName,
+      phone: input.phone,
+      permissions,
+    });
+    if (!provision.ok) return { ok: false, error: provision.error };
+
+    const existingExpert = await admin
+      .from('experts')
+      .select('id')
+      .eq('email', email)
+      .maybeSingle();
+    if (!existingExpert.data) {
+      await admin
+        .from('experts')
+        .insert({
+          name: fullName,
+          email,
+          phone: input.phone?.trim() || null,
+          status: 'active',
+        })
+        .then(({ error }) => {
+          if (error) console.warn('[createAccount] experts insert:', error.message);
+        });
+    }
+
+    revalidateAccounts();
+    return {
+      ok: true,
+      message: `تم إنشاء حساب الخبير. كلمة المرور الافتراضية: ${EXPERT_DEFAULT_PASSWORD}`,
+      data: {
+        userId: provision.userId,
+        defaultPassword: EXPERT_DEFAULT_PASSWORD,
+        role: 'expert',
+      },
+    };
   }
 
-  // Best-effort: keep partners directory in sync when email is new
-  const existingExpert = await admin
-    .from('experts')
+  const existingEmployee = await admin
+    .from('employees')
     .select('id')
     .eq('email', email)
     .maybeSingle();
-  if (!existingExpert.data) {
-    await admin
-      .from('experts')
-      .insert({
-        name: fullName,
-        email,
-        phone: input.phone?.trim() || null,
-        status: 'active',
-      })
-      .then(({ error }) => {
-        if (error) console.warn('[createExpertAccount] experts insert:', error.message);
-      });
+  if (existingEmployee.data) {
+    return { ok: false, error: 'هذا البريد الإلكتروني مسجل مسبقاً.' };
+  }
+
+  const isAdmin = role === 'admin';
+
+  const { data: created, error: createErr } = await admin.auth.admin.createUser({
+    email,
+    password: EXPERT_DEFAULT_PASSWORD,
+    email_confirm: true,
+    user_metadata: {
+      full_name: fullName,
+      role,
+      permissions: enabledPermissionIds,
+    },
+  });
+
+  if (createErr || !created.user) {
+    if (isDuplicateEmailError(createErr?.message)) {
+      return { ok: false, error: 'هذا البريد الإلكتروني مسجل مسبقاً.' };
+    }
+    return { ok: false, error: createErr?.message ?? 'تعذر إنشاء المستخدم.' };
+  }
+
+  const userId = created.user.id;
+  const employeePatch = employeePatchFromAccess({
+    is_admin: isAdmin,
+    is_expert: false,
+    is_suspended: false,
+    permissions,
+    full_name: fullName,
+  });
+
+  const { error: employeeErr } = await insertEmployeeWithFallback(admin, {
+    user_id: userId,
+    full_name: fullName,
+    email,
+    phone_wa: input.phone?.trim() || null,
+    ...employeePatch,
+  });
+
+  if (employeeErr) {
+    await admin.auth.admin.deleteUser(userId);
+    if (isDuplicateEmailError(employeeErr.message)) {
+      return { ok: false, error: 'هذا البريد الإلكتروني مسجل مسبقاً.' };
+    }
+    return { ok: false, error: employeeErr.message || 'تعذر حفظ بيانات المستخدم.' };
   }
 
   revalidateAccounts();
+  const roleLabel = isAdmin ? 'المدير' : 'الموظف';
   return {
     ok: true,
-    message: `تم إنشاء حساب الخبير. كلمة المرور الافتراضية: ${EXPERT_DEFAULT_PASSWORD}`,
+    message: `تم إنشاء حساب ${roleLabel}. كلمة المرور الافتراضية: ${EXPERT_DEFAULT_PASSWORD}`,
     data: {
-      userId: provision.userId,
+      userId,
       defaultPassword: EXPERT_DEFAULT_PASSWORD,
+      role,
+    },
+  };
+}
+
+/** إضافة خبير — توافق خلفي مع الاستدعاءات القديمة */
+export async function createExpertAccountAction(input: {
+  full_name: string;
+  email: string;
+  phone?: string | null;
+  access_token?: string | null;
+}): Promise<AccountsActionResult<{ userId: string; defaultPassword: string }>> {
+  const result = await createAccountAction({
+    ...input,
+    role: 'expert',
+  });
+  if (!result.ok) return result;
+  return {
+    ok: true,
+    message: result.message,
+    data: {
+      userId: result.data!.userId,
+      defaultPassword: result.data!.defaultPassword,
     },
   };
 }
@@ -328,4 +495,102 @@ export async function deleteAccountAction(
 
   revalidateAccounts();
   return { ok: true, message: 'تم حذف الحساب نهائياً من النظام وAuth.' };
+}
+
+/**
+ * تحديث اسم / دور / صلاحيات / حالة حساب موجود في employees.
+ */
+export async function updateAccountAction(input: {
+  user_id: string;
+  full_name: string;
+  role: AccountCreateRole;
+  permissions?: Partial<CrmPermissions> | null;
+  is_suspended?: boolean;
+  access_token?: string | null;
+}): Promise<AccountsActionResult> {
+  const auth = await requireAdminServerAction(input.access_token);
+  if (!auth.ok) return { ok: false, error: auth.error };
+
+  const userId = String(input.user_id ?? '').trim();
+  if (!userId) return { ok: false, error: 'معرّف المستخدم غير صالح.' };
+
+  const fullName = String(input.full_name ?? '').trim();
+  if (!fullName) return { ok: false, error: 'الاسم مطلوب.' };
+
+  const role = normalizeCreateRole(input.role);
+  const isAdmin = role === 'admin';
+  const isExpert = role === 'expert';
+  const permissions = resolveCreatePermissions(role, input.permissions);
+  const isSuspended = Boolean(input.is_suspended);
+
+  if (userId === auth.userId) {
+    if (!isAdmin) {
+      return { ok: false, error: 'لا يمكنك إزالة صلاحيات المدير من حسابك الحالي.' };
+    }
+    if (isSuspended) {
+      return { ok: false, error: 'لا يمكنك إيقاف حسابك الحالي.' };
+    }
+  }
+
+  const serviceKeyError = assertServiceRoleKeyConfigured();
+  if (serviceKeyError) return { ok: false, error: serviceKeyError };
+
+  const admin = createSupabaseAdminClient();
+  const { data: existing, error: fetchErr } = await admin
+    .from('employees')
+    .select('id, user_id, is_admin, role, is_suspended, email')
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (fetchErr) return { ok: false, error: fetchErr.message };
+  if (!existing) return { ok: false, error: 'الحساب غير موجود.' };
+
+  const wasAdmin =
+    Boolean(existing.is_admin) || isEmployeeAdminRole(String(existing.role ?? ''));
+  if (wasAdmin && !isAdmin) {
+    const { data: admins } = await admin
+      .from('employees')
+      .select('user_id')
+      .eq('is_admin', true)
+      .eq('is_suspended', false);
+    const otherAdmins = (admins ?? []).filter((a) => String(a.user_id) !== userId);
+    if (otherAdmins.length === 0) {
+      return { ok: false, error: 'لا يمكن إزالة آخر مدير في النظام.' };
+    }
+  }
+
+  const employeePatch = employeePatchFromAccess({
+    is_admin: isAdmin,
+    is_expert: isExpert,
+    is_suspended: isSuspended,
+    permissions,
+    full_name: fullName,
+  });
+
+  const updated = await updateEmployeeWithRbacFallback(
+    admin,
+    { column: 'user_id', value: userId },
+    employeePatch,
+  );
+
+  if (updated.error) {
+    return { ok: false, error: updated.error || 'تعذر تحديث الحساب.' };
+  }
+
+  // Sync Auth metadata + ban status
+  try {
+    await admin.auth.admin.updateUserById(userId, {
+      user_metadata: {
+        full_name: fullName,
+        role,
+        permissions: permissionsToDbArray(permissions),
+      },
+      ban_duration: isSuspended ? '876000h' : 'none',
+    });
+  } catch (err) {
+    console.warn('[updateAccountAction] auth metadata sync failed:', err);
+  }
+
+  revalidateAccounts();
+  return { ok: true, message: 'تم تحديث بيانات وصلاحيات المستخدم بنجاح!' };
 }

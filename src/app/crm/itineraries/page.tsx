@@ -13,6 +13,7 @@ import { setLeadPipelineStatus } from '@/lib/lead-pipeline-automation'
 import {
   Award,
   Copy,
+  CopyPlus,
   ExternalLink,
   Filter,
   Link2,
@@ -36,6 +37,15 @@ import {
 import { FeaturesAchievementsModal } from '@/app/crm/itineraries/_components/FeaturesAchievementsModal'
 import { parseBypass24hLock } from '@/lib/vip-vault-reveal'
 import { buildItineraryPortalPath, copyItineraryPortalUrl } from '@/lib/itinerary-client-crm'
+import {
+  readItineraryExpertDisplayName,
+  readItineraryExpertId,
+} from '@/lib/itinerary-builder-model'
+import { duplicateItineraryAction } from '@/app/actions/itineraryDuplicateActions'
+import { getClientAccessToken } from '@/lib/crm-session-token'
+import { CRM_CARD_GRID, CRM_FILTER_BAR, CRM_INPUT, crmStatusBadgeClass } from '@/lib/crm-luxury-ui'
+import { subscribeCrmRealtimeRefresh } from '@/lib/crm-realtime-events'
+import { useRouter } from 'next/navigation'
 
 const STATUS_FILTER = [
   { value: 'all', label: 'كل الحالات' },
@@ -45,23 +55,27 @@ const STATUS_FILTER = [
   { value: 'archived', label: 'archived' },
 ] as const
 
-const BTN_BASE =
-  'inline-flex h-8 items-center justify-center gap-1.5 rounded-md px-2.5 text-[11px] font-semibold leading-none transition whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-50 sm:px-3 sm:text-xs'
-const BTN_WHITE = `${BTN_BASE} border border-gray-200 bg-white text-gray-700 hover:bg-gray-50`
-const BTN_GOLD = `${BTN_BASE} border border-[#cda04c] bg-[#cda04c] font-bold text-white hover:bg-[#b3893d]`
-const BTN_PORTAL = `${BTN_BASE} border border-[#1C4532] bg-[#1C4532] font-bold text-white hover:bg-[#163828]`
-const BTN_DELETE = `${BTN_BASE} border border-red-200 bg-red-50 text-red-700 hover:bg-red-100`
+/** Card / toolbar secondary — light theme (no dark olive) */
+const BTN_SECONDARY =
+  'flex min-h-[40px] items-center justify-center gap-1.5 rounded-xl border border-slate-200/80 bg-slate-100 px-3 py-2 text-xs font-bold text-slate-700 shadow-sm transition-all hover:bg-slate-200 active:bg-slate-300 disabled:cursor-not-allowed disabled:opacity-50'
+const BTN_PRIMARY =
+  'flex min-h-[40px] items-center justify-center gap-1.5 rounded-xl bg-[#D4AF37] px-3 py-2 text-xs font-bold text-black shadow-sm transition-all hover:bg-[#B8952B] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50'
+const BTN_DELETE =
+  'flex min-h-[40px] items-center justify-center gap-1.5 rounded-xl border border-rose-100 bg-rose-50 px-3 py-2 text-xs font-bold text-rose-600 shadow-sm transition-all hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-50'
 
-function statusBadgeClass(st: string): string {
-  const s = st.trim().toLowerCase()
-  if (s === 'archived' || s === 'cancelled') return 'bg-red-100 text-red-800 px-3 py-1 rounded-full text-xs font-bold'
-  if (s === 'draft' || s === 'pending' || s === 'sent') {
-    return 'bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-xs font-bold'
-  }
-  if (s === 'confirmed' || s === 'active' || s === 'completed' || s === 'approved') {
-    return 'bg-green-100 text-green-800 px-3 py-1 rounded-full text-xs font-bold'
-  }
-  return 'bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-xs font-bold'
+function itineraryThemeTags(r: {
+  title: string | null
+  status: string | null
+}): string[] {
+  const title = String(r.title ?? '')
+  const tags: string[] = []
+  if (/vip|في\s*آي\s*بي|في\s*اي\s*بي/i.test(title)) tags.push('VIP')
+  if (/عائلي|عائلة|family/i.test(title)) tags.push('عائلي')
+  if (/honeymoon|شهر\s*عسل|رومان/i.test(title)) tags.push('رومانسي')
+  if (/group|مجموعة|جماع/i.test(title)) tags.push('جماعي')
+  const st = String(r.status ?? '').trim()
+  if (st) tags.push(st)
+  return [...new Set(tags)].slice(0, 4)
 }
 
 type Row = {
@@ -73,11 +87,19 @@ type Row = {
   magic_link_id?: string | null
   status: string | null
   bypass_24h_lock?: boolean | null
+  customer_name?: string | null
+  expert_name?: string | null
+  expert_id?: string | null
+  quote_id?: string | null
+  days_data?: unknown
+  flight_details?: unknown
   clients?: { name?: string | null; phone_wa?: string | null } | null
+  experts?: { name?: string | null; full_name?: string | null } | null
   itinerary_days?: { id: number }[] | null
 }
 
 export default function CRMItinerariesPage() {
+  const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [rows, setRows] = useState<Row[]>([])
@@ -86,6 +108,7 @@ export default function CRMItinerariesPage() {
   const [q, setQ] = useState('')
   const [status, setStatus] = useState('all')
   const [busyId, setBusyId] = useState<number | null>(null)
+  const [duplicatingId, setDuplicatingId] = useState<number | null>(null)
   const [bypassBusyId, setBypassBusyId] = useState<number | null>(null)
   const [showAchievementsModal, setShowAchievementsModal] = useState(false)
   const [magicToast, setMagicToast] = useState<string | null>(null)
@@ -99,31 +122,141 @@ export default function CRMItinerariesPage() {
     }
 
     setLoading(true)
-    const [itinerariesRes, pipeline] = await Promise.all([
-      supabase
+    const pipelinePromise = fetchPipelineLeadsByStatuses(
+      supabase,
+      ITINERARY_PIPELINE_STATUSES,
+    )
+
+    // Force-fetch expert fields: * includes expert_name, expert_id, days_data, flight_details.
+    // Avoid experts(...) embed as primary — broken FK/relationship kills the whole query.
+    const selectAttempts = [
+      '*, clients(name, phone_wa), itinerary_days(id)',
+      '*, itinerary_days(id)',
+      '*',
+    ] as const
+
+    let data: Row[] | null = null
+    let err: { message?: string } | null = null
+    for (const cols of selectAttempts) {
+      const res = await supabase
         .from('itineraries')
-        .select(
-          'id, client_id, title, dates, passcode, magic_link_id, status, bypass_24h_lock, created_at, clients(name, phone_wa), itinerary_days(id)',
+        .select(cols)
+        .order('created_at', { ascending: false })
+      if (!res.error) {
+        data = (res.data as Row[]) ?? []
+        err = null
+        break
+      }
+      err = res.error
+      // Keep trying if join/column shape fails
+      if (
+        !/relationship|embed|clients|itinerary_days|column|schema cache|does not exist|expert/i.test(
+          res.error.message ?? '',
         )
-        .order('created_at', { ascending: false }),
-      fetchPipelineLeadsByStatuses(supabase, ITINERARY_PIPELINE_STATUSES),
-    ])
-
-    setPipelineLeads(pipeline)
-
-    const { data, error: err } = itinerariesRes
-
-    if (err) {
-      setError(err.message || 'تعذر تحميل المسارات.')
-      setRows([])
-    } else {
-      setRows((data as Row[]) || [])
+      ) {
+        break
+      }
     }
+
+    setPipelineLeads(await pipelinePromise)
+
+    if (err || !data) {
+      setError(err?.message || 'تعذر تحميل المسارات.')
+      setRows([])
+      setLoading(false)
+      return
+    }
+
+    let mapped: Row[] = data.map((row) => {
+      const resolvedName = readItineraryExpertDisplayName(row)
+      const resolvedId = readItineraryExpertId(row)
+      return {
+        ...row,
+        expert_id: resolvedId || row.expert_id || null,
+        expert_name: resolvedName || row.expert_name || null,
+      }
+    })
+
+    const needNames = mapped.filter(
+      (r) =>
+        Boolean(String(r.expert_id ?? '').trim()) &&
+        !String(r.expert_name ?? '').trim(),
+    )
+
+    if (needNames.length) {
+      const nameById = new Map<string, string>()
+
+      // 1) Browser RLS may block experts — try direct first
+      const ids = [
+        ...new Set(
+          needNames
+            .map((r) => String(r.expert_id ?? '').trim())
+            .filter(Boolean),
+        ),
+      ]
+      const expertsRes = await supabase
+        .from('experts')
+        .select('id, name, full_name')
+        .in('id', ids)
+      if (!expertsRes.error && expertsRes.data?.length) {
+        for (const ex of expertsRes.data as Array<Record<string, unknown>>) {
+          const id = String(ex.id ?? '').trim()
+          const name =
+            String(ex.name ?? '').trim() || String(ex.full_name ?? '').trim()
+          if (id && name) nameById.set(id, name)
+        }
+      }
+
+      // 2) Service-role API (same source as builder dropdown)
+      if ([...needNames].some((r) => !nameById.has(String(r.expert_id)))) {
+        try {
+          const token = await getClientAccessToken()
+          const apiRes = await fetch('/api/crm/experts', {
+            cache: 'no-store',
+            headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+          })
+          const payload = (await apiRes.json()) as {
+            ok?: boolean
+            rows?: Array<{ id?: string; name?: string }>
+          }
+          if (payload.ok && Array.isArray(payload.rows)) {
+            for (const ex of payload.rows) {
+              const id = String(ex.id ?? '').trim()
+              const name = String(ex.name ?? '').trim()
+              if (id && name) nameById.set(id, name)
+            }
+          }
+        } catch {
+          /* optional enrich */
+        }
+      }
+
+      mapped = mapped.map((r) => {
+        if (String(r.expert_name ?? '').trim()) return r
+        const n = r.expert_id ? nameById.get(String(r.expert_id)) : ''
+        return n ? { ...r, expert_name: n } : r
+      })
+    }
+
+    setRows(mapped)
     setLoading(false)
   }, [])
 
   useEffect(() => {
     void load()
+  }, [load])
+
+  useEffect(() => {
+    return subscribeCrmRealtimeRefresh((detail) => {
+      if (
+        detail.source === 'itineraries' ||
+        detail.source === 'quotations' ||
+        detail.reason === 'approved' ||
+        detail.reason === 'from_quote_approval'
+      ) {
+        void load()
+      }
+    })
   }, [load])
 
   const filtered = useMemo(() => {
@@ -132,8 +265,9 @@ export default function CRMItinerariesPage() {
       const okStatus = status === 'all' ? true : String(r?.status || '') === status
       if (!okStatus) return false
       if (!query) return true
-      const clientName = r?.clients?.name || ''
-      const blob = `${r?.title || ''} ${r?.passcode || ''} ${clientName}`.toLowerCase()
+      const clientName = String(r.customer_name ?? '').trim() || r?.clients?.name || ''
+      const expertName = readItineraryExpertDisplayName(r)
+      const blob = `${r?.title || ''} ${r?.passcode || ''} ${clientName} ${expertName}`.toLowerCase()
       return blob.includes(query)
     })
   }, [rows, q, status])
@@ -261,51 +395,88 @@ export default function CRMItinerariesPage() {
     setBusyId(null)
   }
 
+  const duplicateItinerary = async (row: Row) => {
+    if (!row.id) return
+    if (
+      !window.confirm(
+        `إنشاء نسخة جديدة من «${row.title || row.id}»؟\nالمسار الأصلي لن يتأثر.`,
+      )
+    ) {
+      return
+    }
+    setDuplicatingId(row.id)
+    setError('')
+    setMagicToast('جاري استنساخ الرحلة بكل تفاصيلها...')
+    try {
+      const token = await getClientAccessToken()
+      const result = await duplicateItineraryAction(row.id, token)
+      if (!result.ok) {
+        setError(result.error)
+        setMagicToast(null)
+        return
+      }
+      setMagicToast(`تم إنشاء النسخة: ${result.title}`)
+      router.push(`/crm/itineraries/${result.newId}/edit`)
+    } catch (err) {
+      console.error(err)
+      setError('تعذر استنساخ المسار.')
+      setMagicToast(null)
+    } finally {
+      setDuplicatingId(null)
+    }
+  }
+
   if (loading) {
     return (
-      <div style={{ minHeight: '70vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ textAlign: 'center', color: '#6B7280', fontWeight: 900 }}>
-          <Loader2 size={22} style={{ marginBottom: 10, animation: 'spin 1s linear infinite' }} />
+      <div
+        dir="rtl"
+        className="flex min-h-[70vh] items-center justify-center bg-[#F9FAFB] dark:bg-slate-50"
+      >
+        <div className="text-center text-sm font-semibold text-slate-500">
+          <Loader2 className="mx-auto mb-3 h-6 w-6 animate-spin text-[#D4AF37]" aria-hidden />
           جارٍ تحميل المسارات...
         </div>
-        <style>{`@keyframes spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }`}</style>
       </div>
     )
   }
 
   return (
-    <div dir="rtl" className="mx-auto max-w-[1100px]">
+    <div dir="rtl" className="mx-auto max-w-7xl bg-[#F9FAFB] dark:bg-slate-50">
       <FeaturesAchievementsModal open={showAchievementsModal} onClose={() => setShowAchievementsModal(false)} />
 
       {magicToast ? (
         <div
           role="status"
           aria-live="polite"
-          className="fixed bottom-6 left-1/2 z-[200] w-[min(100%,22rem)] -translate-x-1/2 rounded-2xl border border-[#C5A059]/45 bg-[#1A3B2A] px-5 py-4 text-center shadow-2xl wl-magic-toast-in"
+          className="fixed bottom-6 left-1/2 z-[200] w-[min(100%,22rem)] -translate-x-1/2 rounded-2xl border border-slate-200 bg-slate-900 px-5 py-4 text-center shadow-2xl dark:border-[#D4AF37]/40 dark:bg-slate-50"
         >
-          <p className="text-sm font-black leading-relaxed text-[#F9F9F6]">{magicToast}</p>
+          <p className="text-sm font-semibold leading-relaxed text-white dark:text-[#D4AF37]">
+            {magicToast}
+          </p>
         </div>
       ) : null}
 
       {pipelineLeads.length > 0 ? (
-        <div className="mb-4 rounded-2xl border border-violet-200 bg-violet-50/60 p-4">
-          <p className="text-xs font-black text-violet-900">
+        <div className="mb-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-200 dark:bg-slate-50">
+          <p className="text-xs font-semibold text-slate-500 dark:text-slate-500">
             طابور المسار — تجهيز المسار / تم التسليم ({pipelineLeads.length})
           </p>
           <ul className="mt-3 grid gap-2 sm:grid-cols-2">
             {pipelineLeads.map((lead) => (
               <li
                 key={lead.id}
-                className="rounded-xl border border-white bg-white px-3 py-2.5 text-right shadow-sm"
+                className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-2.5 text-right dark:border-slate-200 dark:bg-slate-50"
               >
-                <p className="truncate text-sm font-black text-[#1C4532]">{lead.full_name}</p>
-                <p className="text-[10px] font-bold text-slate-500">
+                <p className="truncate text-sm font-bold text-slate-900 dark:text-slate-800">
+                  {lead.full_name}
+                </p>
+                <p className="text-[10px] font-medium text-slate-500">
                   {joinDestinations(lead.destinations)} · {lead.status}
                 </p>
                 {lead.client_id != null ? (
                   <Link
                     href={`/crm/itineraries/builder?clientId=${lead.client_id}`}
-                    className="mt-2 inline-flex text-[10px] font-black text-violet-800 underline"
+                    className="mt-2 inline-flex text-[10px] font-semibold text-slate-700 underline dark:text-[#D4AF37]"
                   >
                     بناء مسار للعميل
                   </Link>
@@ -316,65 +487,56 @@ export default function CRMItinerariesPage() {
         </div>
       ) : null}
 
-      <style>{`
-        @keyframes wl-magic-toast-in {
-          from { opacity: 0; transform: translate(-50%, 12px); }
-          to { opacity: 1; transform: translate(-50%, 0); }
-        }
-        .wl-magic-toast-in {
-          animation: wl-magic-toast-in 0.35s ease-out forwards;
-        }
-      `}</style>
-
-      <div className="mb-3 flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between md:mb-4">
+      <header className="mb-6 flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
         <div className="min-w-0">
-          <p className="text-[10px] font-black uppercase tracking-[0.28em] text-[#C5A059]">Routes</p>
-          <div className="text-lg font-black text-[#1A3B2A] sm:text-xl md:text-[22px]">مركز قيادة المسارات</div>
-          <div className="mt-1 text-xs font-extrabold text-gray-500 sm:text-sm">إدارة المسارات والرابط السحري VIP</div>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-500 dark:text-[#D4AF37]/80">
+            Routes
+          </p>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-800">المسارات</h1>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-500">
+            كتالوج مسارات السفر الفاخرة والبوابة VIP
+          </p>
         </div>
-        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
           <button
             type="button"
             onClick={() => setShowAchievementsModal(true)}
-            className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-xl border border-[#C5A059]/35 bg-white px-4 py-2.5 text-xs font-black text-[#1A3B2A] transition hover:bg-[#F9F9F6] sm:w-auto sm:text-sm"
+            className={BTN_SECONDARY + ' px-4'}
           >
-            <Award size={16} color="#C5A059" />
+            <Award className="h-4 w-4 text-[#b8952d]" aria-hidden />
             دليل ميزات النظام
           </button>
-          <Link
-            href="/crm/itineraries/builder"
-            className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-xl bg-[#1A3B2A] px-4 py-2.5 text-xs font-black text-white no-underline transition hover:bg-[#152e21] sm:w-auto sm:text-sm"
-          >
-            <Plus size={16} className="text-[#C5A059]" /> مسار جديد +
+          <Link href="/crm/itineraries/builder" className={BTN_PRIMARY + ' no-underline px-4'}>
+            <Plus className="h-4 w-4" aria-hidden /> مسار جديد
           </Link>
         </div>
-      </div>
+      </header>
 
-      {error && (
-        <div className="mb-3 rounded-2xl border border-red-200 bg-red-50 p-3 text-xs font-black text-red-800 sm:mb-4 sm:p-4 sm:text-sm">
+      {error ? (
+        <div className="mb-4 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm font-medium text-rose-800 dark:border-rose-900/40 dark:bg-rose-950/30 dark:text-rose-300">
           {error}
         </div>
-      )}
+      ) : null}
 
-      <div className="mb-3.5 rounded-2xl border border-[#F3F0EB] bg-white p-4 shadow-sm sm:mb-4">
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-[1.2fr_0.8fr] md:gap-4">
-          <div className="flex items-center gap-2.5 sm:gap-3">
-            <Search size={16} color="#C9A84C" className="shrink-0" aria-hidden />
+      <div className="mb-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-200 dark:bg-slate-50">
+        <div className={CRM_FILTER_BAR}>
+          <div className="flex min-w-0 flex-1 items-center gap-2.5">
+            <Search className="h-4 w-4 shrink-0 text-slate-500 dark:text-[#D4AF37]/80" aria-hidden />
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="بحث بالعنوان أو passcode أو اسم العميل..."
-              className="w-full rounded-lg border border-gray-200 bg-white p-3 text-[13px] font-semibold text-[#1A3B2A] outline-none transition-all [direction:rtl] placeholder:text-gray-400 focus:border-[#C5A059] focus:ring-2 focus:ring-[#C5A059]/50"
+              placeholder="بحث بالعنوان أو passcode أو اسم العميل أو الخبير..."
+              className={CRM_INPUT}
             />
           </div>
-          <div>
-            <div className="mb-1.5 flex items-center gap-2 text-[10px] font-bold text-slate-600 sm:text-xs">
-              <Filter size={14} aria-hidden /> الحالة
+          <div className="w-full sm:w-auto sm:min-w-[12rem]">
+            <div className="mb-1.5 flex items-center gap-2 text-xs font-semibold text-slate-500">
+              <Filter className="h-3.5 w-3.5" aria-hidden /> الحالة
             </div>
             <select
               value={status}
               onChange={(e) => setStatus(e.target.value)}
-              className="w-full rounded-lg border border-gray-200 bg-white p-3 text-xs font-semibold text-[#1A3B2A] outline-none transition-all focus:border-[#C5A059] focus:ring-2 focus:ring-[#C5A059]/50 sm:text-sm"
+              className={CRM_INPUT}
             >
               {STATUS_FILTER.map((s) => (
                 <option key={s.value} value={s.value}>
@@ -384,17 +546,22 @@ export default function CRMItinerariesPage() {
             </select>
           </div>
         </div>
-        <div className="mt-2.5 text-xs font-black text-gray-500 sm:mt-3 sm:text-sm">النتائج: {filtered.length}</div>
+        <p className="mt-3 text-xs font-medium text-slate-500">النتائج: {filtered.length}</p>
       </div>
 
-      <div className="flex flex-col gap-3">
-        {filtered.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-gray-200 bg-white p-4 text-xs font-bold text-gray-400">
-            لا توجد مسارات.
-          </div>
-        ) : (
-          filtered.map((r) => {
-            const clientName = r?.clients?.name || '—'
+      {filtered.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-slate-200 bg-white p-10 text-center text-sm font-medium text-slate-500 dark:border-slate-200 dark:bg-slate-50">
+          لا توجد مسارات.
+        </div>
+      ) : (
+        <div className={`crm-stagger ${CRM_CARD_GRID}`}>
+          {filtered.map((r) => {
+            const clientName =
+              String(r.customer_name ?? '').trim() || r?.clients?.name || '—'
+            const expertName =
+              readItineraryExpertDisplayName(r) ||
+              String(r.expert_name ?? '').trim() ||
+              '—'
             const dayCount = Array.isArray(r.itinerary_days) ? r.itinerary_days.length : 0
             const pc = resolveItineraryPortalPin(r) || r.passcode || ''
             const portalSlug = r.id != null ? String(r.id) : ''
@@ -402,148 +569,157 @@ export default function CRMItinerariesPage() {
             const busy = busyId === r.id
             const bypassBusy = bypassBusyId === r.id
             const bypassUnlocked = parseBypass24hLock(r.bypass_24h_lock)
+            const tags = itineraryThemeTags(r)
 
             return (
-              <div
+              <article
                 key={r.id}
-                className="flex flex-col gap-4 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_10px_20px_rgba(0,0,0,0.05)] sm:p-5 xl:flex-row xl:items-center xl:justify-between"
+                className="flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg dark:border-slate-200 dark:bg-slate-50"
               >
-                <div className="flex w-full min-w-0 flex-col gap-2 xl:w-auto">
-                  <div className="flex flex-wrap items-center gap-2 text-lg font-bold text-[#1A3B2A]">
-                    <Route className="h-5 w-5 shrink-0 text-[#C5A059]" aria-hidden />
-                    <span className="truncate">{r.title || 'بدون عنوان'}</span>
-                  </div>
-
-                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500">
-                    <span>👤 {clientName}</span>
-                    <span>📅 {r.dates || '—'}</span>
-                    <span>🗓️ {dayCount} يوم</span>
-                  </div>
-
-                  <div className="mt-1 flex flex-wrap items-center gap-2">
-                    <span
-                      className={statusBadgeClass(st)}
-                    >
+                <div className="flex h-32 items-end rounded-t-xl bg-gradient-to-r from-slate-800 to-slate-900 p-4 dark:from-[#1A2421] dark:to-[#22302C]">
+                  <div className="flex items-center gap-2 text-slate-800">
+                    <Route className="h-5 w-5 text-[#D4AF37]" aria-hidden />
+                    <span className={`rounded-full px-3 py-1 text-xs font-medium ${crmStatusBadgeClass(st)}`}>
                       {st || 'active'}
                     </span>
-                    {pc ? (
-                      <span className="rounded bg-gray-100 px-2 py-1 font-mono text-[10px] font-bold tracking-wider text-gray-700">
-                        {pc}
-                      </span>
-                    ) : (
-                      <span className="rounded bg-gray-50 px-2 py-1 text-[10px] font-bold text-gray-400">
-                        بدون passcode
-                      </span>
-                    )}
                   </div>
                 </div>
 
-                <div className="flex w-full flex-wrap items-center gap-1.5 sm:justify-end xl:w-auto">
-                  <button
-                    type="button"
-                    onClick={() => shareWhatsApp(r)}
-                    disabled={busy || !pc}
-                    title="مشاركة البوابة الآمنة عبر واتساب"
-                    className={BTN_GOLD}
-                  >
-                    <MessageCircle className="h-3 w-3 shrink-0" aria-hidden />
-                    مشاركة واتساب
-                  </button>
+                <div className="flex flex-1 flex-col gap-3 p-5">
+                  <h2 className="line-clamp-2 text-lg font-bold text-slate-900 dark:text-slate-800">
+                    {r.title || 'بدون عنوان'}
+                  </h2>
+                  <p className="text-sm text-slate-500 dark:text-slate-500">
+                    {dayCount > 0 ? `${dayCount} يوم` : 'المدة غير محددة'}
+                    {' · '}
+                    {r.dates || 'بدون تواريخ'}
+                  </p>
+                  <p className="text-xs font-medium text-slate-500">
+                    {clientName} · خبير: {expertName}
+                  </p>
 
-                  <button
-                    type="button"
-                    onClick={() => toggleStatus(r)}
-                    disabled={busy}
-                    className={BTN_WHITE}
-                  >
-                    <Power className="h-3 w-3 shrink-0" aria-hidden />
-                    {st === 'archived' ? 'تفعيل' : 'إيقاف'}
-                  </button>
+                  <div className="flex flex-wrap gap-1.5">
+                    {tags.map((tag) => (
+                      <span
+                        key={tag}
+                        className="rounded-md bg-slate-50 px-2 py-1 text-xs text-slate-700 dark:bg-slate-50 dark:text-slate-600"
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                    {pc ? (
+                      <span className="rounded-md bg-slate-50 px-2 py-1 font-mono text-xs text-slate-600 dark:bg-slate-50 dark:text-slate-600">
+                        PIN {pc}
+                      </span>
+                    ) : null}
+                  </div>
 
-                  <button
-                    type="button"
-                    onClick={() => void toggleBypassLock(r)}
-                    disabled={busy || bypassBusy}
-                    title={
-                      bypassUnlocked
-                        ? 'إعادة قفل 24 ساعة للعميل'
-                        : 'فتح المسار للعميل فوراً (تجاوز القفل)'
-                    }
-                    className={`${BTN_WHITE}${bypassUnlocked ? ' border-[#1C4532] text-[#1C4532]' : ''}`}
-                  >
-                    {bypassBusy ? (
-                      <Loader2 className="h-3 w-3 shrink-0 animate-spin" aria-hidden />
-                    ) : bypassUnlocked ? (
-                      <Lock className="h-3 w-3 shrink-0" aria-hidden />
-                    ) : (
-                      <Unlock className="h-3 w-3 shrink-0" aria-hidden />
-                    )}
-                    {bypassUnlocked ? 'قفل المسار' : 'فتح المسار'}
-                  </button>
-
-                  <Link href={`/crm/itineraries/${r.id}/edit`} className={BTN_WHITE}>
-                    <Pencil className="h-3 w-3 shrink-0" aria-hidden />
-                    تعديل
-                  </Link>
-
-                  <button
-                    type="button"
-                    onClick={() => void deleteItinerary(r)}
-                    disabled={busy}
-                    className={BTN_DELETE}
-                  >
-                    <Trash2 className="h-3 w-3 shrink-0" aria-hidden />
-                    حذف
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => void copyPortalLink(r)}
-                    disabled={busy || !portalSlug}
-                    title="نسخ رابط المسار للعميل (مع trip_id)"
-                    className={BTN_GOLD}
-                  >
-                    <Copy className="h-3 w-3 shrink-0" aria-hidden />
-                    نسخ الرابط
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => void copyPasscode(pc)}
-                    disabled={!pc}
-                    className={BTN_WHITE}
-                  >
-                    <Copy className="h-3 w-3 shrink-0" aria-hidden />
-                    نسخ PIN
-                  </button>
-
-                  <a href="/portal" target="_blank" rel="noreferrer" className={BTN_PORTAL}>
-                    <ExternalLink className="h-3 w-3 shrink-0" aria-hidden />
-                    البوابة
-                  </a>
-
-                  {portalSlug ? (
-                    <a
-                      href={buildItineraryPortalPath({
-                        itinerarySlug: portalSlug,
-                        clientId: r.client_id,
-                        itineraryId: r.id,
-                      })}
-                      target="_blank"
-                      rel="noreferrer"
-                      title="معاينة داخلية للموظفين فقط"
-                      className={BTN_WHITE}
+                  <div className="mt-4 grid grid-cols-2 gap-2 border-t border-slate-100 pt-3 sm:grid-cols-3">
+                    <Link href={`/crm/itineraries/${r.id}/edit`} className={BTN_PRIMARY}>
+                      <Pencil className="h-3.5 w-3.5" aria-hidden />
+                      تعديل
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={() => shareWhatsApp(r)}
+                      disabled={busy || !pc}
+                      className={BTN_SECONDARY}
+                      title="مشاركة واتساب"
                     >
-                      <Link2 className="h-3 w-3 shrink-0" aria-hidden />
-                      معاينة
+                      <MessageCircle className="h-3.5 w-3.5" aria-hidden />
+                      واتساب
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void copyPortalLink(r)}
+                      disabled={busy || !portalSlug}
+                      className={BTN_SECONDARY}
+                    >
+                      <Copy className="h-3.5 w-3.5" aria-hidden />
+                      رابط
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => toggleStatus(r)}
+                      disabled={busy}
+                      className={BTN_SECONDARY}
+                    >
+                      <Power className="h-3.5 w-3.5" aria-hidden />
+                      {st === 'archived' ? 'تفعيل' : 'إيقاف'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void toggleBypassLock(r)}
+                      disabled={busy || bypassBusy}
+                      className={BTN_SECONDARY}
+                      title={bypassUnlocked ? 'قفل المسار' : 'فتح المسار'}
+                    >
+                      {bypassBusy ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+                      ) : bypassUnlocked ? (
+                        <Lock className="h-3.5 w-3.5" aria-hidden />
+                      ) : (
+                        <Unlock className="h-3.5 w-3.5" aria-hidden />
+                      )}
+                      {bypassUnlocked ? 'قفل' : 'فتح'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void duplicateItinerary(r)}
+                      disabled={busy || duplicatingId === r.id}
+                      className={BTN_SECONDARY}
+                    >
+                      {duplicatingId === r.id ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+                      ) : (
+                        <CopyPlus className="h-3.5 w-3.5" aria-hidden />
+                      )}
+                      نسخ
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void copyPasscode(pc)}
+                      disabled={!pc}
+                      className={BTN_SECONDARY}
+                    >
+                      <Copy className="h-3.5 w-3.5" aria-hidden />
+                      PIN
+                    </button>
+                    <a href="/portal" target="_blank" rel="noreferrer" className={BTN_SECONDARY}>
+                      <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+                      بوابة
                     </a>
-                  ) : null}
+                    {portalSlug ? (
+                      <a
+                        href={buildItineraryPortalPath({
+                          itinerarySlug: portalSlug,
+                          clientId: r.client_id,
+                          itineraryId: r.id,
+                        })}
+                        target="_blank"
+                        rel="noreferrer"
+                        className={BTN_SECONDARY}
+                      >
+                        <Link2 className="h-3.5 w-3.5" aria-hidden />
+                        معاينة
+                      </a>
+                    ) : null}
+                    <button
+                      type="button"
+                      onClick={() => void deleteItinerary(r)}
+                      disabled={busy}
+                      className={BTN_DELETE}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" aria-hidden />
+                      حذف
+                    </button>
+                  </div>
                 </div>
-              </div>
+              </article>
             )
-          })
-        )}
-      </div>
+          })}
+        </div>
+      )}
     </div>
   )
 }

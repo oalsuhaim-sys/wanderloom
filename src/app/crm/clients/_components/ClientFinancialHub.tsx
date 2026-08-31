@@ -25,7 +25,7 @@ import type { ClientFinancialHubData } from '@/lib/client-financial-hub';
 import { salesStageBadgeClass } from '@/lib/client-sales-stage';
 
 const PANEL =
-  'rounded-2xl border border-[#C9A84C]/30 bg-gradient-to-br from-[#1C4532] via-[#163528] to-[#0f241c] p-5 text-white shadow-lg';
+  'rounded-xl border border-slate-200 bg-slate-50 p-5 text-slate-900 shadow-sm dark:border-[#2D3F3A] dark:!bg-[#22302C] dark:text-gray-100';
 
 type ClientFinancialHubProps = {
   clientId: string;
@@ -69,9 +69,9 @@ export default function ClientFinancialHub({ clientId, refreshKey = 0 }: ClientF
 
   if (loading) {
     return (
-      <section className={`${PANEL} flex items-center justify-center gap-2 py-10`}>
-        <Loader2 className="h-5 w-5 animate-spin text-[#C9A84C]" aria-hidden />
-        <span className="text-sm font-bold text-white/60">جارٍ تحميل الملخص المالي…</span>
+      <section className={`${PANEL} flex items-center justify-center gap-2 py-8`}>
+        <Loader2 className="h-5 w-5 animate-spin text-slate-400 dark:text-[#D4AF37]" aria-hidden />
+        <span className="text-sm font-medium text-slate-500 dark:text-gray-400">جارٍ تحميل الملخص المالي…</span>
       </section>
     );
   }
@@ -89,17 +89,17 @@ export default function ClientFinancialHub({ clientId, refreshKey = 0 }: ClientF
       <div className={PANEL}>
         <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
           <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-[#C9A84C]/75">
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-slate-400 dark:text-[#D4AF37]/70">
               Unified Client Ledger
             </p>
-            <h2 className="mt-1 flex items-center gap-2 text-base font-black text-white">
-              <Wallet className="h-5 w-5 text-[#C9A84C]" aria-hidden />
+            <h2 className="mt-1 flex items-center gap-2 text-base font-semibold text-slate-900 dark:text-gray-100">
+              <Wallet className="h-5 w-5 text-slate-400 dark:text-[#D4AF37]" aria-hidden />
               الملخص المالي الموحّد
             </h2>
           </div>
           {data.salesStage ? (
             <span
-              className={`rounded-full border px-3 py-1 text-[10px] font-black ${salesStageBadgeClass(data.salesStage)}`}
+              className={`rounded-full border px-3 py-1 text-[10px] font-medium ${salesStageBadgeClass(data.salesStage)}`}
             >
               {data.salesStage}
             </span>
@@ -114,45 +114,45 @@ export default function ClientFinancialHub({ clientId, refreshKey = 0 }: ClientF
       </div>
 
       {data.quotations.length > 0 ? (
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <h3 className="mb-3 flex items-center gap-2 text-sm font-black text-[#1C4532]">
-            <FileText className="h-4 w-4 text-[#C9A84C]" aria-hidden />
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-[#2D3F3A] dark:!bg-[#22302C]">
+          <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-gray-100">
+            <FileText className="h-4 w-4 text-slate-400 dark:text-[#D4AF37]" aria-hidden />
             عروض الأسعار
           </h3>
           <div className="space-y-3">
             {data.quotations.map((q) => (
               <div
                 key={q.id}
-                className="rounded-xl border border-slate-100 bg-slate-50/80 px-4 py-3"
+                className="rounded-xl border border-slate-100 bg-slate-50/80 px-4 py-3 dark:border-[#2D3F3A] dark:!bg-[#1A2421]/70"
               >
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div>
-                    <p className="text-sm font-black text-[#1C4532]">{q.title}</p>
-                    <p className="mt-0.5 text-[10px] font-bold text-slate-500">{q.statusLabel}</p>
+                    <p className="text-sm font-semibold text-slate-900 dark:text-gray-100">{q.title}</p>
+                    <p className="mt-0.5 text-[10px] font-medium text-slate-500 dark:text-slate-400">{q.statusLabel}</p>
                   </div>
                   <Link
                     href={q.editUrl}
-                    className="text-[10px] font-black text-[#C9A84C] hover:underline"
+                    className="text-[10px] font-medium text-slate-600 hover:underline dark:text-[#D4AF37]"
                   >
                     تعديل العرض
                   </Link>
                 </div>
-                <div className="mt-2 grid grid-cols-3 gap-2 text-center text-[10px] font-bold">
+                <div className="mt-2 grid grid-cols-1 gap-2 text-center text-[10px] font-medium sm:grid-cols-3">
                   <div>
                     <p className="text-slate-400">الإجمالي</p>
-                    <p className="mt-0.5 text-[#1C4532]" dir="ltr">
+                    <p className="mt-0.5 text-slate-900 dark:text-gray-100" dir="ltr">
                       {formatInvoiceAmount(q.totalBudget)}
                     </p>
                   </div>
                   <div>
                     <p className="text-slate-400">مدفوع</p>
-                    <p className="mt-0.5 text-emerald-700" dir="ltr">
+                    <p className="mt-0.5 text-emerald-700 dark:text-emerald-400" dir="ltr">
                       {formatInvoiceAmount(q.paidAmount)}
                     </p>
                   </div>
                   <div>
                     <p className="text-slate-400">متبقي</p>
-                    <p className="mt-0.5 text-amber-700" dir="ltr">
+                    <p className="mt-0.5 text-amber-700 dark:text-[#D4AF37]" dir="ltr">
                       {formatInvoiceAmount(q.remainingAmount)}
                     </p>
                   </div>
@@ -164,9 +164,9 @@ export default function ClientFinancialHub({ clientId, refreshKey = 0 }: ClientF
       ) : null}
 
       {data.invoices.length > 0 ? (
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <h3 className="mb-3 flex items-center gap-2 text-sm font-black text-[#1C4532]">
-            <Receipt className="h-4 w-4 text-[#C9A84C]" aria-hidden />
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-[#2D3F3A] dark:!bg-[#22302C]">
+          <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-gray-100">
+            <Receipt className="h-4 w-4 text-slate-400 dark:text-[#D4AF37]" aria-hidden />
             سجل الفواتير
           </h3>
           <div className="overflow-x-auto">
@@ -186,7 +186,7 @@ export default function ClientFinancialHub({ clientId, refreshKey = 0 }: ClientF
                     <td className="px-2 py-2.5 font-bold text-slate-700">
                       {inv.trip_title || '—'}
                     </td>
-                    <td className="px-2 py-2.5 font-black text-[#1C4532]" dir="ltr">
+                    <td className="px-2 py-2.5 font-semibold text-slate-700 dark:text-gray-200" dir="ltr">
                       {formatInvoiceAmount(inv.amount)}
                     </td>
                     <td className="px-2 py-2.5 text-slate-600">
@@ -245,27 +245,27 @@ export default function ClientFinancialHub({ clientId, refreshKey = 0 }: ClientF
       ) : null}
 
       {data.itineraries.length > 0 ? (
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <h3 className="mb-3 flex items-center gap-2 text-sm font-black text-[#1C4532]">
-            <Map className="h-4 w-4 text-[#C9A84C]" aria-hidden />
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-[#2D3F3A] dark:!bg-[#22302C]">
+          <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-gray-100">
+            <Map className="h-4 w-4 text-slate-400 dark:text-[#D4AF37]" aria-hidden />
             المسارات المرتبطة
           </h3>
           <ul className="space-y-2">
             {data.itineraries.map((it) => (
               <li
                 key={it.id}
-                className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-100 bg-slate-50/80 px-4 py-3"
+                className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-100 bg-slate-50/80 px-4 py-3 dark:border-[#2D3F3A] dark:!bg-[#1A2421]/70"
               >
                 <div>
-                  <p className="text-sm font-black text-[#1C4532]">{it.title}</p>
-                  <p className="text-[10px] font-semibold text-slate-500">
+                  <p className="text-sm font-semibold text-slate-900 dark:text-gray-100">{it.title}</p>
+                  <p className="text-[10px] font-medium text-slate-500 dark:text-slate-400">
                     {it.tripType} · {it.slug}
                   </p>
                 </div>
                 <Link
                   href={it.viewUrl}
                   target="_blank"
-                  className="text-[10px] font-black text-[#C9A84C] hover:underline"
+                  className="text-[10px] font-medium text-slate-600 hover:underline dark:text-[#D4AF37]"
                 >
                   فتح المسار
                 </Link>
@@ -288,14 +288,14 @@ function MiniStat({
   tone: 'gold' | 'emerald' | 'amber';
 }) {
   const tones = {
-    gold: 'border-[#C9A84C]/25 bg-[#C9A84C]/10 text-[#C9A84C]',
-    emerald: 'border-emerald-400/25 bg-emerald-500/10 text-emerald-300',
-    amber: 'border-amber-400/25 bg-amber-500/10 text-amber-200',
+    gold: 'border-[#D4AF37]/30 bg-[#D4AF37]/10 text-[#8a6f1a] dark:text-[#D4AF37]',
+    emerald: 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-800/40 dark:bg-emerald-950/30 dark:text-emerald-300',
+    amber: 'border-amber-200 bg-amber-50 text-amber-800 dark:border-[#D4AF37]/25 dark:bg-[#D4AF37]/10 dark:text-[#D4AF37]',
   };
   return (
     <div className={`rounded-xl border px-4 py-3 ${tones[tone]}`}>
-      <p className="text-[10px] font-bold opacity-75">{label}</p>
-      <p className="mt-1 text-lg font-black" dir="ltr">
+      <p className="text-[10px] font-medium opacity-80">{label}</p>
+      <p className="mt-1 text-lg font-semibold" dir="ltr">
         {formatInvoiceAmount(value)}
       </p>
     </div>

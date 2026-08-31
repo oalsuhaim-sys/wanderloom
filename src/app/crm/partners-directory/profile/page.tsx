@@ -3,14 +3,16 @@
 import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import toast, { Toaster } from 'react-hot-toast';
+import toast from 'react-hot-toast';
 import {
   ArrowRight,
   Check,
   CircleDollarSign,
+  Compass,
   Copy,
   Crown,
   Languages,
+  Link2,
   Loader2,
   Mail,
   MapPin,
@@ -20,7 +22,6 @@ import {
   Sparkles,
   Star,
   Trash2,
-  UserRound,
   X,
 } from 'lucide-react';
 
@@ -38,13 +39,25 @@ import {
   type PartnerDnaType,
 } from '@/lib/partner-dna';
 import { whatsAppHrefWithText } from '@/lib/client-intake-pipeline';
-import { CRM_DESTINATIONS_GUIDE } from '@/lib/crm-destinations-guide-data';
+import { getClientAccessToken } from '@/lib/crm-session-token';
+import { useCountries } from '@/hooks/useCountries';
+import {
+  CRM_BTN_PRIMARY,
+  CRM_INPUT,
+  partnerInitials,
+} from '@/lib/crm-luxury-ui';
 import { LeaderAvailability } from '@/components/LeaderAvailability';
 import { SmartWallet } from '@/components/SmartWallet';
 import {
   ExpertAssignmentsPanel,
   type ExpertAssignedQuotation,
 } from '@/components/ExpertAssignmentsPanel';
+import EditExpertModal from '@/app/crm/partners-directory/_components/EditExpertModal';
+import EditLeaderModal from '@/app/crm/partners-directory/_components/EditLeaderModal';
+import {
+  DEFAULT_PARTNER_COMMISSION_RATE,
+  resolveCommissionRate,
+} from '@/lib/partner-commission';
 
 type ProfileState = {
   id: string;
@@ -59,6 +72,8 @@ type ProfileState = {
   platforms: string | null;
   contentFocus: string | null;
   profileUrl: string | null;
+  referralCode: string | null;
+  commissionRate: number;
   dna: PartnerDnaProfile;
 };
 
@@ -68,10 +83,33 @@ type MatchingGroupTrip = {
   destination: string | null;
   dates: string | null;
   assignedExpertId: string | null;
+  source?: 'group_trip' | 'itinerary';
 };
 
-const FIELD =
-  'w-full rounded-xl border border-[#D4AF37]/25 bg-white px-4 py-3 text-sm font-semibold text-gray-900 outline-none focus:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37]/25';
+const FIELD = CRM_INPUT;
+
+const CARD =
+  'mb-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-[#2D3F3A] dark:bg-[#22302C]';
+
+const CARD_TITLE =
+  'mb-4 border-b border-slate-100 pb-3 text-lg font-bold text-slate-800 dark:border-[#2D3F3A] dark:text-gray-100';
+
+const TAG =
+  'rounded-md border border-slate-200 bg-slate-50 px-3 py-1 text-sm text-slate-700 dark:border-[#D4AF37]/30 dark:bg-[#1A2421] dark:text-[#D4AF37]';
+
+const BTN_PRIMARY =
+  'inline-flex items-center justify-center gap-2 rounded-lg bg-slate-900 px-5 py-2.5 font-medium text-white shadow-sm transition-all hover:bg-slate-800 dark:border dark:border-[#D4AF37]/50 dark:bg-[#D4AF37]/20 dark:text-[#D4AF37] hover:dark:bg-[#D4AF37]/30';
+
+const BTN_SECONDARY =
+  'inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-5 py-2.5 text-sm font-medium text-slate-700 shadow-sm transition-all hover:bg-slate-50 dark:border-[#2D3F3A] dark:bg-[#1A2421] dark:text-slate-200 dark:hover:bg-[#2A3834]';
+
+const KV_LABEL = 'text-sm text-slate-500 dark:text-slate-400';
+const KV_VALUE = 'text-base font-medium text-slate-900 dark:text-white';
+
+const CHIP_IDLE =
+  'rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 transition dark:border-[#2D3F3A] dark:bg-[#1A2421] dark:text-slate-300';
+const CHIP_ACTIVE =
+  'rounded-full border border-slate-900 bg-slate-900 px-3 py-1.5 text-xs font-medium text-white transition dark:border-[#D4AF37]/50 dark:bg-[#D4AF37]/20 dark:text-[#D4AF37]';
 
 function parseType(raw: string | null): PartnerDnaType | null {
   if (raw === 'leaders' || raw === 'experts' || raw === 'celebrities') return raw;
@@ -88,9 +126,18 @@ function splitTags(raw: string | null): string[] {
     .filter(Boolean);
 }
 
+function sanitizeReferralCode(raw: string): string {
+  return raw
+    .trim()
+    .toUpperCase()
+    .replace(/\s+/g, '-')
+    .replace(/[^A-Z0-9_-]/g, '');
+}
+
 function PartnerProfileInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { countries: destinationCountries } = useCountries();
   const id = searchParams.get('id')?.trim() ?? '';
   const type = parseType(searchParams.get('type'));
 
@@ -114,8 +161,11 @@ function PartnerProfileInner() {
   const [notice, setNotice] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [commissionOpen, setCommissionOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [isEditingReferral, setIsEditingReferral] = useState(false);
+  const [customReferralCode, setCustomReferralCode] = useState('');
 
   const [editName, setEditName] = useState('');
   const [editPhone, setEditPhone] = useState('');
@@ -127,6 +177,10 @@ function PartnerProfileInner() {
   const [editPlatforms, setEditPlatforms] = useState('');
   const [editContentFocus, setEditContentFocus] = useState('');
   const [editProfileUrl, setEditProfileUrl] = useState('');
+  const [editReferralCode, setEditReferralCode] = useState('');
+  const [editCommissionRate, setEditCommissionRate] = useState(
+    DEFAULT_PARTNER_COMMISSION_RATE,
+  );
   const [editTripStyle, setEditTripStyle] = useState('');
   const [editStrengths, setEditStrengths] = useState('');
   const [editCompetitiveAdvantage, setEditCompetitiveAdvantage] = useState('');
@@ -243,10 +297,21 @@ function PartnerProfileInner() {
         platforms: row.platforms != null ? String(row.platforms) : null,
         contentFocus: row.contentFocus != null ? String(row.contentFocus) : null,
         profileUrl: row.profileUrl != null ? String(row.profileUrl) : null,
+        referralCode:
+          row.referralCode != null
+            ? String(row.referralCode)
+            : row.referral_code != null
+              ? String(row.referral_code)
+              : null,
+        commissionRate: resolveCommissionRate(
+          row.commissionRate ?? row.commission_rate,
+        ),
         dna,
       };
 
       setProfile(next);
+      setCustomReferralCode(next.referralCode ?? '');
+      setIsEditingReferral(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'تعذر التحميل');
       setProfile(null);
@@ -277,6 +342,8 @@ function PartnerProfileInner() {
     setEditPlatforms(profile.platforms ?? '');
     setEditContentFocus(profile.contentFocus ?? '');
     setEditProfileUrl(profile.profileUrl ?? '');
+    setEditReferralCode(profile.referralCode ?? '');
+    setEditCommissionRate(resolveCommissionRate(profile.commissionRate));
     setEditTripStyle(profile.dna.tripStyle ?? '');
     setEditStrengths(profile.dna.strengths ?? '');
     setEditCompetitiveAdvantage(profile.dna.competitiveAdvantage ?? '');
@@ -330,9 +397,13 @@ function PartnerProfileInner() {
           ? Number(editExperience)
           : null;
         body.destinations = editDestinations.trim();
+        body.referral_code = editReferralCode.trim() || null;
+        body.commission_rate = resolveCommissionRate(editCommissionRate);
       } else if (type === 'experts') {
         body.specialtyRegions = editSpecialty.trim();
         body.specialty_regions = editSpecialty.trim();
+        body.referral_code = editReferralCode.trim() || null;
+        body.commission_rate = resolveCommissionRate(editCommissionRate);
       } else {
         body.platforms = editPlatforms.trim();
         body.contentFocus = editContentFocus.trim();
@@ -427,6 +498,93 @@ function PartnerProfileInner() {
     }
   };
 
+  const handleCopyReferralCode = async () => {
+    const code = String(profile?.referralCode ?? '').trim();
+    if (!code) return;
+    try {
+      await navigator.clipboard.writeText(code);
+      toast.success('تم نسخ الكود!');
+    } catch {
+      toast.error('تعذر نسخ كود الإحالة');
+    }
+  };
+
+  const openReferralEditor = () => {
+    setCustomReferralCode(profile?.referralCode ?? '');
+    setIsEditingReferral(true);
+  };
+
+  const cancelReferralEditor = () => {
+    setCustomReferralCode(profile?.referralCode ?? '');
+    setIsEditingReferral(false);
+  };
+
+  const handleSaveCustomCode = async () => {
+    if (!apiBase || !type || (type !== 'leaders' && type !== 'experts')) return;
+    const cleanCode = sanitizeReferralCode(customReferralCode);
+    if (!cleanCode) {
+      toast.error('يرجى إدخال كود إحالة صالح');
+      return;
+    }
+
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await fetch(apiBase, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          referral_code: cleanCode,
+          commission_rate: resolveCommissionRate(
+            profile?.commissionRate ?? DEFAULT_PARTNER_COMMISSION_RATE,
+          ),
+        }),
+      });
+      const payload = (await res.json()) as {
+        ok?: boolean;
+        error?: string;
+        leader?: { referralCode?: string | null; commissionRate?: number };
+        expert?: { referralCode?: string | null; commissionRate?: number };
+      };
+      if (!res.ok || !payload.ok) {
+        throw new Error(
+          payload.error || 'الكود مستخدم بالفعل أو حدث خطأ أثناء الحفظ',
+        );
+      }
+
+      const updated =
+        type === 'leaders'
+          ? payload.leader
+          : type === 'experts'
+            ? payload.expert
+            : null;
+      const nextCode =
+        String(updated?.referralCode ?? cleanCode).trim() || cleanCode;
+      const nextRate = resolveCommissionRate(
+        updated?.commissionRate ??
+          profile?.commissionRate ??
+          DEFAULT_PARTNER_COMMISSION_RATE,
+      );
+
+      setProfile((current) =>
+        current
+          ? { ...current, referralCode: nextCode, commissionRate: nextRate }
+          : current,
+      );
+      setCustomReferralCode(nextCode);
+      setIsEditingReferral(false);
+      toast.success('تم تحديث كود الإحالة بنجاح!');
+    } catch (err) {
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : 'الكود مستخدم بالفعل أو حدث خطأ أثناء الحفظ',
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleAssignExpert = async (tripId: string) => {
     if (!id) return;
     setAssigningTripId(tripId);
@@ -484,8 +642,8 @@ function PartnerProfileInner() {
 
   if (loading) {
     return (
-      <div className="flex min-h-[40vh] items-center justify-center gap-2 text-sm font-bold text-slate-500">
-        <Loader2 className="h-5 w-5 animate-spin" />
+      <div className="flex min-h-[40vh] items-center justify-center gap-2 bg-[#F9FAFB] text-sm font-medium text-slate-500 dark:bg-[#1A2421] dark:text-slate-400">
+        <Loader2 className="h-5 w-5 animate-spin text-slate-400 dark:text-[#D4AF37]" />
         جاري تحميل الملف…
       </div>
     );
@@ -493,11 +651,16 @@ function PartnerProfileInner() {
 
   if (!profile || !type) {
     return (
-      <div className="mx-auto max-w-lg p-8 text-center" dir="rtl">
-        <p className="font-bold text-rose-800">{error || 'غير موجود'}</p>
+      <div
+        className="mx-auto min-h-[40vh] max-w-lg bg-[#F9FAFB] p-8 text-center dark:bg-[#1A2421]"
+        dir="rtl"
+      >
+        <p className="font-bold text-rose-700 dark:text-rose-400">
+          {error || 'غير موجود'}
+        </p>
         <Link
           href="/crm/partners-directory"
-          className="mt-4 inline-flex items-center gap-2 text-sm font-bold text-[#1E2720]"
+          className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-[#D4AF37]"
         >
           <ArrowRight className="h-4 w-4" />
           دليل الشركاء
@@ -515,133 +678,226 @@ function PartnerProfileInner() {
       ),
     ]),
   );
+  const headerTags =
+    approvedDestinations.length > 0
+      ? approvedDestinations
+      : type === 'celebrities'
+        ? splitTags(profile.platforms || profile.contentFocus)
+        : type === 'leaders'
+          ? profile.languages
+          : [];
   const dnaEntries = partnerDnaDisplayEntries(profile.dna);
-  const cardClass =
-    'rounded-2xl border border-slate-100 bg-white p-6 shadow-sm';
+  const statusText =
+    profile.status === 'active' || profile.status === 'approved'
+      ? 'نشط'
+      : profile.status || '—';
 
   return (
-    <div className="min-h-screen bg-[#F7F8F6] p-4 sm:p-6 lg:p-8" dir="rtl">
-      <Toaster position="top-center" />
+    <div
+      className="min-h-full bg-[#F9FAFB] p-4 font-sans dark:bg-[#1A2421] sm:p-6 lg:p-8"
+      dir="rtl"
+    >
       <Link
         href={`/crm/partners-directory?tab=${type}`}
-        className="mb-5 inline-flex items-center gap-2 text-sm font-bold text-slate-600 transition hover:text-slate-900"
+        className="mb-4 inline-flex items-center gap-2 text-sm font-medium text-slate-600 transition hover:text-slate-900 dark:text-gray-300 dark:hover:text-[#D4AF37]"
       >
         <ArrowRight className="h-4 w-4" />
         دليل الشركاء
       </Link>
 
       {notice ? (
-        <p className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-bold text-emerald-800">
+        <p className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-800 dark:border-emerald-900/40 dark:bg-emerald-950/30 dark:text-emerald-300">
           {notice}
         </p>
       ) : null}
       {error ? (
-        <p className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-bold text-rose-800">
+        <p className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-medium text-rose-800 dark:border-rose-900/40 dark:bg-rose-950/30 dark:text-rose-300">
           {error}
         </p>
       ) : null}
 
-      <div className="flex flex-col gap-6 lg:flex-row">
-        <main className="min-w-0 flex-1 space-y-6">
-          <section className={cardClass}>
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#153326] text-[#D4AF37]">
-                    <UserRound className="h-6 w-6" />
-                  </div>
-                  <div>
-                    <h1 className="text-2xl font-black text-slate-900">
-                      {profile.name}
-                    </h1>
-                    <div className="mt-2 flex flex-wrap items-center gap-2">
-                      <span className="rounded-full bg-amber-50 px-3 py-1 text-[11px] font-black text-amber-800 ring-1 ring-amber-200">
-                        {roleLabel}
-                      </span>
-                      <span className="rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-black text-emerald-800 ring-1 ring-emerald-200">
-                        {profile.status === 'active' ? 'نشط' : profile.status || '—'}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                <div className="mt-4 flex flex-wrap gap-3 text-xs font-semibold text-slate-600">
-                  {profile.phone ? (
+      {/* VIP Cover + Profile Header */}
+      <div className="mb-6 overflow-hidden rounded-2xl">
+        <div className="relative h-48 w-full rounded-t-2xl bg-gradient-to-r from-slate-900 to-slate-800 dark:from-[#22302C] dark:to-[#1A2421]">
+          <div className="absolute left-6 top-6 flex flex-wrap gap-2 sm:left-8">
+            <button type="button" onClick={openEdit} className={BTN_PRIMARY}>
+              <Pencil className="h-4 w-4" />
+              تعديل الملف
+            </button>
+            {type === 'leaders' ? (
+              <button
+                type="button"
+                onClick={() => {
+                  void (async () => {
+                    try {
+                      const accessToken = await getClientAccessToken();
+                      const res = await fetch('/api/crm/leaders/calendar-link', {
+                        method: 'POST',
+                        headers: {
+                          'Content-Type': 'application/json',
+                          Authorization: `Bearer ${accessToken}`,
+                        },
+                        body: JSON.stringify({ leader_id: profile.id }),
+                      });
+                      const payload = (await res.json()) as {
+                        ok?: boolean;
+                        url?: string;
+                        error?: string;
+                      };
+                      if (!res.ok || !payload.ok || !payload.url) {
+                        throw new Error(payload.error || 'تعذر إنشاء الرابط');
+                      }
+                      await navigator.clipboard.writeText(payload.url);
+                      toast.success('تم نسخ رابط التفرغ 🔗');
+                    } catch (err) {
+                      toast.error(
+                        err instanceof Error ? err.message : 'تعذر نسخ الرابط',
+                      );
+                    }
+                  })();
+                }}
+                className="inline-flex h-10 items-center justify-center gap-1.5 rounded-lg border border-white/15 bg-white/10 px-3 text-xs font-semibold text-white/90 transition hover:bg-white/20"
+              >
+                <Link2 className="h-3.5 w-3.5" />
+                نسخ رابط التفرغ
+              </button>
+            ) : null}
+            <button
+              type="button"
+              onClick={() => void handleDelete()}
+              disabled={deleting}
+              className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-white/15 bg-white/10 text-white/90 transition hover:bg-rose-500/20 hover:text-rose-200 disabled:opacity-50"
+              aria-label="حذف الشريك"
+            >
+              {deleting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Trash2 className="h-4 w-4" />
+              )}
+            </button>
+          </div>
+
+          <div className="absolute -bottom-12 right-6 sm:right-8">
+            <div
+              className="flex h-24 w-24 items-center justify-center rounded-full border-4 border-[#F9FAFB] bg-white text-2xl font-bold text-slate-800 shadow-lg dark:border-[#1A2421] dark:bg-[#22302C] dark:text-[#D4AF37]"
+              aria-hidden
+            >
+              {partnerInitials(profile.name)}
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-b-2xl border-x border-b border-slate-200 bg-white px-6 pb-6 pt-16 shadow-sm dark:border-[#2D3F3A] dark:bg-[#22302C] sm:px-8">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="min-w-0">
+              <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+                {profile.name}
+              </h1>
+              <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-slate-500 dark:text-slate-400">
+                <span>{roleLabel}</span>
+                <span className="text-slate-300 dark:text-slate-600">·</span>
+                <span
+                  className={
+                    statusText === 'نشط'
+                      ? 'font-medium text-emerald-600 dark:text-emerald-400'
+                      : undefined
+                  }
+                >
+                  {statusText}
+                </span>
+                {profile.phone ? (
+                  <>
+                    <span className="text-slate-300 dark:text-slate-600">·</span>
                     <span className="inline-flex items-center gap-1.5" dir="ltr">
                       <Phone className="h-3.5 w-3.5" />
                       {profile.phone}
                     </span>
-                  ) : null}
-                  {profile.email ? (
+                  </>
+                ) : null}
+                {profile.email ? (
+                  <>
+                    <span className="text-slate-300 dark:text-slate-600">·</span>
                     <span className="inline-flex items-center gap-1.5" dir="ltr">
                       <Mail className="h-3.5 w-3.5" />
                       {profile.email}
                     </span>
-                  ) : null}
+                  </>
+                ) : null}
+              </p>
+
+              {headerTags.length > 0 ? (
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {headerTags.map((tag) => (
+                    <span key={tag} className={TAG}>
+                      {tag}
+                    </span>
+                  ))}
                 </div>
-              </div>
-              <div className="flex gap-2">
+              ) : null}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-0 lg:flex-row lg:gap-6">
+        <main className="min-w-0 flex-1">
+          {type === 'leaders' ? <LeaderAvailability leaderId={profile.id} /> : null}
+
+          {type === 'leaders' || type === 'experts' ? (
+            <div className="mb-6 space-y-3">
+              <SmartWallet
+                partnerId={profile.id}
+                partnerType={type === 'leaders' ? 'leader' : 'expert'}
+              />
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-[#2D3F3A] dark:bg-[#22302C]">
+                <div>
+                  <p className="text-sm font-bold text-slate-800 dark:text-gray-100">
+                    نسبة العمولة من هامش الربح
+                  </p>
+                  <p className="mt-0.5 text-xs font-medium text-slate-500">
+                    {resolveCommissionRate(profile.commissionRate)}% · الافتراضي{' '}
+                    {DEFAULT_PARTNER_COMMISSION_RATE}%
+                    {profile.referralCode ? ` · كود: ${profile.referralCode}` : ''}
+                  </p>
+                </div>
                 <button
                   type="button"
-                  onClick={openEdit}
-                  className="inline-flex h-10 items-center gap-2 rounded-xl bg-slate-100 px-4 text-sm font-bold text-slate-700 transition hover:bg-slate-200"
+                  onClick={() => setCommissionOpen(true)}
+                  className={BTN_SECONDARY}
                 >
-                  <Pencil className="h-4 w-4" />
-                  تعديل
-                </button>
-                <button
-                  type="button"
-                  onClick={() => void handleDelete()}
-                  disabled={deleting}
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-full text-rose-500 ring-1 ring-rose-100 transition hover:bg-rose-50 disabled:opacity-50"
-                  aria-label="حذف الشريك"
-                >
-                  {deleting ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Trash2 className="h-4 w-4" />
-                  )}
+                  <CircleDollarSign className="h-4 w-4 text-[#D4AF37]" aria-hidden />
+                  تعديل العمولة
                 </button>
               </div>
             </div>
-          </section>
-
-          {type === 'leaders' ? (
-            <LeaderAvailability leaderId={profile.id} />
           ) : null}
 
-          {type === 'leaders' || type === 'experts' ? (
-            <SmartWallet
-              partnerId={profile.id}
-              partnerType={type === 'leaders' ? 'leader' : 'expert'}
-            />
-          ) : null}
-
-          {(type === 'leaders' || type === 'celebrities') ? (
-            <section className={cardClass}>
-              <h2 className="mb-5 text-base font-black text-slate-900">
-                تفاصيل الشريك
-              </h2>
-              <div className="grid gap-4 sm:grid-cols-2">
+          {type === 'leaders' || type === 'celebrities' ? (
+            <section className={CARD}>
+              <h2 className={CARD_TITLE}>تفاصيل الشريك</h2>
+              <div className="grid gap-6 sm:grid-cols-2">
                 {type === 'leaders' ? (
                   <>
-                    <div className="rounded-xl bg-slate-50 p-4">
-                      <p className="inline-flex items-center gap-2 text-xs font-bold text-slate-500">
-                        <Languages className="h-4 w-4 text-amber-600" />
+                    <div>
+                      <p className={`mb-2 inline-flex items-center gap-2 ${KV_LABEL}`}>
+                        <Languages className="h-4 w-4" />
                         اللغات
                       </p>
-                      <div className="mt-3 flex flex-wrap gap-2">
+                      <div className="flex flex-wrap gap-2">
                         {profile.languages.length ? (
                           profile.languages.map((language) => (
-                            <span key={language} className="rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-700 ring-1 ring-slate-200">
+                            <span key={language} className={TAG}>
                               {language}
                             </span>
                           ))
-                        ) : <span className="text-sm text-slate-400">—</span>}
+                        ) : (
+                          <span className={KV_VALUE}>—</span>
+                        )}
                       </div>
                     </div>
-                    <div className="rounded-xl bg-slate-50 p-4">
-                      <p className="text-xs font-bold text-slate-500">سنوات الخبرة</p>
-                      <p className="mt-3 text-xl font-black text-slate-900">
+                    <div>
+                      <p className={`mb-1 ${KV_LABEL}`}>سنوات الخبرة</p>
+                      <p className={KV_VALUE}>
                         {profile.experienceYears != null
                           ? `${profile.experienceYears} سنوات`
                           : '—'}
@@ -651,38 +907,56 @@ function PartnerProfileInner() {
                 ) : null}
                 {type === 'celebrities' ? (
                   <>
-                    <div className="rounded-xl bg-slate-50 p-4">
-                      <p className="text-xs font-bold text-slate-500">المنصات</p>
-                      <p className="mt-2 text-sm font-bold text-slate-900">{profile.platforms || '—'}</p>
+                    <div>
+                      <p className={`mb-1 ${KV_LABEL}`}>المنصات</p>
+                      <p className={KV_VALUE}>{profile.platforms || '—'}</p>
                     </div>
-                    <div className="rounded-xl bg-slate-50 p-4">
-                      <p className="text-xs font-bold text-slate-500">تركيز المحتوى</p>
-                      <p className="mt-2 text-sm font-bold text-slate-900">{profile.contentFocus || '—'}</p>
+                    <div>
+                      <p className={`mb-1 ${KV_LABEL}`}>تركيز المحتوى</p>
+                      <p className={KV_VALUE}>{profile.contentFocus || '—'}</p>
                     </div>
+                    {profile.profileUrl ? (
+                      <div className="sm:col-span-2">
+                        <p className={`mb-1 ${KV_LABEL}`}>رابط الملف</p>
+                        <a
+                          href={profile.profileUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className={`${KV_VALUE} break-all text-[#D4AF37] hover:underline`}
+                          dir="ltr"
+                        >
+                          {profile.profileUrl}
+                        </a>
+                      </div>
+                    ) : null}
                   </>
                 ) : null}
               </div>
             </section>
           ) : null}
 
-          <section className={cardClass}>
-            <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+          <section className={CARD}>
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3 dark:border-[#2D3F3A]">
               <div>
-                <h2 className="inline-flex items-center gap-2 text-base font-black text-slate-900">
-                  <Sparkles className="h-5 w-5 text-amber-600" />
+                <h2 className="inline-flex items-center gap-2 text-lg font-bold text-slate-800 dark:text-gray-100">
+                  <Sparkles className="h-5 w-5 text-slate-400 dark:text-[#D4AF37]" />
                   بصمة الشريك
                 </h2>
-                <p className="mt-1 text-xs font-bold text-slate-500">
+                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                   أسلوب العمل والتخصص والميزة التنافسية
                 </p>
               </div>
-              <div className="flex flex-wrap items-center gap-3">
+              <div className="flex flex-wrap items-center gap-2">
                 <button
                   type="button"
                   onClick={() => void handleCopyDna()}
-                  className="inline-flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-xs font-black text-amber-900 transition hover:bg-amber-100"
+                  className={BTN_SECONDARY}
                 >
-                  {copied ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />}
+                  {copied ? (
+                    <Check className="h-4 w-4 text-emerald-600" />
+                  ) : (
+                    <Copy className="h-4 w-4" />
+                  )}
                   {copied
                     ? 'تم النسخ'
                     : isPartnerDnaRawFilled(profile.dna)
@@ -692,7 +966,7 @@ function PartnerProfileInner() {
                 <button
                   type="button"
                   onClick={handleSendWhatsApp}
-                  className="inline-flex items-center gap-2 rounded-xl border border-[#25D366] bg-white px-4 py-2.5 text-xs font-black text-[#25D366] transition hover:bg-[#25D366] hover:text-white"
+                  className={BTN_PRIMARY}
                 >
                   <svg
                     viewBox="0 0 24 24"
@@ -709,27 +983,21 @@ function PartnerProfileInner() {
             {dnaEntries.length ? (
               <div className="grid gap-4 sm:grid-cols-2">
                 {dnaEntries.map((entry) => (
-                  <div key={entry.key} className="rounded-xl border border-slate-100 bg-slate-50 p-4">
-                    <strong className="block text-xs font-black text-slate-600">
-                      {entry.label}
-                    </strong>
+                  <div
+                    key={entry.key}
+                    className="rounded-xl border border-slate-100 bg-slate-50/80 p-4 dark:border-[#2D3F3A] dark:bg-[#1A2421]/60"
+                  >
+                    <strong className={KV_LABEL}>{entry.label}</strong>
                     {Array.isArray(entry.value) ? (
                       <div className="mt-3 flex flex-wrap gap-2">
                         {entry.value.map((value) => (
-                          <span
-                            key={value}
-                            className={`rounded-full border px-3 py-1.5 text-xs font-bold ${
-                              type === 'experts'
-                                ? 'border-sky-200 bg-sky-50 text-sky-700'
-                                : 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                            }`}
-                          >
+                          <span key={value} className={TAG}>
                             {value}
                           </span>
                         ))}
                       </div>
                     ) : (
-                      <p className="mt-2 whitespace-pre-wrap text-sm font-semibold leading-7 text-slate-800">
+                      <p className={`mt-2 whitespace-pre-wrap leading-7 ${KV_VALUE}`}>
                         {entry.value}
                       </p>
                     )}
@@ -737,15 +1005,18 @@ function PartnerProfileInner() {
                 ))}
               </div>
             ) : (
-              <div className="rounded-xl border border-dashed border-amber-300 bg-amber-50/60 p-5 text-center">
-                <p className="text-sm font-bold text-slate-700">
+              <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/60 p-5 text-center dark:border-[#2D3F3A] dark:bg-[#1A2421]/40">
+                <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
                   لم تُعبَّأ البصمة بعد
                 </p>
-                <p className="mt-1 text-xs font-semibold text-slate-500">
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                   انسخ الرابط أو أرسله مباشرة عبر واتساب ليحدد أسلوبه ووجهاته ونقاط قوته.
                 </p>
                 {dnaLink ? (
-                  <p className="mt-3 break-all rounded-lg bg-white px-3 py-2 text-[10px] text-slate-500" dir="ltr">
+                  <p
+                    className="mt-3 break-all rounded-lg border border-slate-100 bg-white px-3 py-2 text-[10px] text-slate-500 dark:border-[#2D3F3A] dark:bg-[#22302C] dark:text-slate-400"
+                    dir="ltr"
+                  >
                     {dnaLink}
                   </p>
                 ) : null}
@@ -754,77 +1025,108 @@ function PartnerProfileInner() {
           </section>
 
           {type === 'experts' ? (
-            <section className={cardClass}>
-              <div className="mb-4">
-                <h2 className="inline-flex items-center gap-2 text-base font-black text-slate-900">
-                  <Sparkles className="h-5 w-5 text-amber-600" />
+            <section className={CARD}>
+              <div className="mb-4 border-b border-slate-100 pb-3 dark:border-[#2D3F3A]">
+                <h2 className="inline-flex items-center gap-2 text-lg font-bold text-slate-800 dark:text-gray-100">
+                  <Compass className="h-5 w-5 text-slate-400 dark:text-[#D4AF37]" />
                   الرحلات الجماعية المتوافقة
                 </h2>
-                <p className="mt-1 text-xs font-bold text-slate-500">
+                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                   مطابقة ذكية بين وجهات بصمة الخبير والرحلات الجماعية النشطة
                 </p>
               </div>
               {matchingGroupTrips.length ? (
-                <div className="grid gap-3 sm:grid-cols-2">
+                <div className="flex flex-col gap-3">
                   {matchingGroupTrips.map((trip) => {
+                    const isCatalogue = trip.source === 'group_trip';
                     const assignedToCurrentExpert =
-                      trip.assignedExpertId === profile.id;
+                      !isCatalogue && trip.assignedExpertId === profile.id;
                     const assignedElsewhere =
-                      Boolean(trip.assignedExpertId) && !assignedToCurrentExpert;
+                      !isCatalogue &&
+                      Boolean(trip.assignedExpertId) &&
+                      !assignedToCurrentExpert;
+                    const detailsHref = isCatalogue
+                      ? `/crm/groups/${encodeURIComponent(trip.id)}`
+                      : `/crm/itineraries/${encodeURIComponent(trip.id)}/edit`;
+
                     return (
                       <article
-                        key={trip.id}
-                        className="rounded-xl border border-emerald-100 bg-emerald-50/50 p-4"
+                        key={`${trip.source ?? 'trip'}-${trip.id}`}
+                        className="mb-0 flex items-center justify-between gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all hover:shadow-md dark:border-[#2D3F3A] dark:bg-[#22302C]"
                       >
-                        <Link
-                          href={`/crm/itineraries/${encodeURIComponent(trip.id)}/edit`}
-                          className="font-black text-slate-900 transition hover:text-emerald-800"
-                        >
-                          {trip.title}
-                        </Link>
-                        <p className="mt-2 inline-flex items-center gap-1.5 text-xs font-bold text-slate-600">
-                          <MapPin className="h-3.5 w-3.5 text-emerald-600" />
-                          {trip.destination || 'وجهة غير محددة'}
-                        </p>
-                        {trip.dates ? (
-                          <p className="mt-1 text-xs font-semibold text-slate-500">
-                            {trip.dates}
+                        <div className="flex min-w-0 flex-col gap-1">
+                          <Link
+                            href={detailsHref}
+                            className="truncate text-sm font-bold text-slate-900 transition hover:text-slate-700 dark:text-white dark:hover:text-[#D4AF37]"
+                          >
+                            {trip.title}
+                          </Link>
+                          <p className="inline-flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+                            <MapPin className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                            <span className="truncate">
+                              {trip.destination || 'وجهة غير محددة'}
+                            </span>
                           </p>
-                        ) : null}
-                        <button
-                          type="button"
-                          onClick={() => void handleAssignExpert(trip.id)}
-                          disabled={
-                            assigningTripId === trip.id ||
-                            assignedToCurrentExpert
-                          }
-                          className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#153326] px-3 py-2.5 text-xs font-black text-white transition hover:bg-[#204834] disabled:cursor-not-allowed disabled:opacity-60"
-                        >
-                          {assigningTripId === trip.id ? (
-                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          {trip.dates ? (
+                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                              {trip.dates}
+                            </p>
+                          ) : null}
+                        </div>
+
+                        <div className="flex shrink-0 flex-col items-end gap-2">
+                          {isCatalogue ? (
+                            <Link
+                              href={detailsHref}
+                              className="rounded-lg bg-slate-900 px-4 py-2 text-xs font-semibold text-white transition-transform hover:-translate-y-0.5 dark:border dark:border-[#D4AF37]/50 dark:bg-[#D4AF37]/20 dark:text-[#D4AF37]"
+                            >
+                              التفاصيل
+                            </Link>
                           ) : (
-                            <UserRound className="h-3.5 w-3.5" />
+                            <button
+                              type="button"
+                              onClick={() => void handleAssignExpert(trip.id)}
+                              disabled={
+                                assigningTripId === trip.id ||
+                                assignedToCurrentExpert
+                              }
+                              className="rounded-lg bg-slate-900 px-4 py-2 text-xs font-semibold text-white transition-transform hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0 dark:border dark:border-[#D4AF37]/50 dark:bg-[#D4AF37]/20 dark:text-[#D4AF37]"
+                            >
+                              {assigningTripId === trip.id ? (
+                                <span className="inline-flex items-center gap-1.5">
+                                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                  جاري التعيين…
+                                </span>
+                              ) : assignedToCurrentExpert ? (
+                                'مكلّف بهذه الرحلة'
+                              ) : assignedElsewhere ? (
+                                'إعادة تكليف لهذا الخبير'
+                              ) : (
+                                'تعيين الخبير'
+                              )}
+                            </button>
                           )}
-                          {assignedToCurrentExpert
-                            ? 'مكلّف بهذه الرحلة'
-                            : assignedElsewhere
-                              ? 'إعادة تكليف لهذا الخبير'
-                              : 'تكليف الخبير'}
-                        </button>
+                        </div>
                       </article>
                     );
                   })}
                 </div>
               ) : (
-                <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-5 text-center text-sm font-bold text-slate-500">
-                  لا توجد رحلات جماعية نشطة متوافقة مع وجهات الخبير حالياً.
+                <div className="flex flex-col items-center justify-center rounded-xl border border-slate-100 bg-slate-50 p-8 text-center dark:border-[#2D3F3A] dark:bg-[#1A2421]/50">
+                  <Compass
+                    className="mb-3 h-10 w-10 text-slate-300 dark:text-slate-600"
+                    aria-hidden
+                  />
+                  <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
+                    لا توجد رحلات جماعية نشطة متوافقة مع وجهات الخبير حالياً.
+                  </p>
                 </div>
               )}
             </section>
           ) : null}
 
           {type === 'experts' ? (
-            <section className={cardClass}>
+            <section className={CARD}>
               <ExpertAssignmentsPanel
                 itineraries={itineraries}
                 quotations={quotations}
@@ -833,46 +1135,133 @@ function PartnerProfileInner() {
           ) : null}
         </main>
 
-        <aside className="space-y-6 lg:w-80 lg:shrink-0">
-          <div className="space-y-6 lg:sticky lg:top-6">
-            <section className={cardClass}>
-              <h2 className="mb-4 text-base font-black text-slate-900">
-                إحصائيات سريعة
-              </h2>
-              <div className="space-y-2 text-sm">
-                <div className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-3">
-                  <span className="inline-flex items-center gap-2 text-slate-600">
-                    <CircleDollarSign className="h-4 w-4 text-amber-600" />
+        <aside className="lg:w-80 lg:shrink-0">
+          <div className="space-y-0 lg:sticky lg:top-6">
+            <section className={CARD}>
+              <h2 className={CARD_TITLE}>إحصائيات سريعة</h2>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-3 py-3 dark:border-[#2D3F3A] dark:bg-[#1A2421]/60">
+                  <span className={`inline-flex items-center gap-2 ${KV_LABEL}`}>
+                    <CircleDollarSign className="h-4 w-4" />
                     إجمالي العمولات
                   </span>
-                  <span className="font-black text-emerald-700" dir="ltr">0 ر.س</span>
+                  <span className={KV_VALUE} dir="ltr">
+                    0 ر.س
+                  </span>
                 </div>
-                <div className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-3">
-                  <span className="inline-flex items-center gap-2 text-slate-600">
-                    <Star className="h-4 w-4 text-amber-500" />
+                <div className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-3 py-3 dark:border-[#2D3F3A] dark:bg-[#1A2421]/60">
+                  <span className={`inline-flex items-center gap-2 ${KV_LABEL}`}>
+                    <Star className="h-4 w-4" />
                     تقييم الشريك
                   </span>
-                  <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-black text-amber-800 ring-1 ring-amber-200">
+                  <span className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-bold text-slate-800 dark:border-[#D4AF37]/30 dark:bg-[#1A2421] dark:text-[#D4AF37]">
                     <Crown className="h-3 w-3" />
                     VIP
                   </span>
                 </div>
-                <div className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-3">
-                  <span className="inline-flex items-center gap-2 text-slate-600">
-                    <Plane className="h-4 w-4 text-amber-600" />
+                <div className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-3 py-3 dark:border-[#2D3F3A] dark:bg-[#1A2421]/60">
+                  <span className={`inline-flex items-center gap-2 ${KV_LABEL}`}>
+                    <Plane className="h-4 w-4" />
                     الرحلات المستلمة
                   </span>
-                  <span className="font-black text-slate-900">{itineraries.length}</span>
+                  <span className={KV_VALUE}>{itineraries.length}</span>
                 </div>
               </div>
             </section>
-            <section className="overflow-hidden rounded-2xl bg-gradient-to-bl from-[#132C21] to-[#0D1E17] p-6 text-white shadow-lg">
-              <p className="text-[10px] font-black uppercase tracking-[0.28em] text-[#D4AF37]">
+
+            {(type === 'leaders' || type === 'experts') ? (
+              <section className="mb-6 space-y-2 rounded-2xl border border-slate-200/80 bg-white p-3.5 text-right shadow-[0_1px_0_rgba(15,23,42,0.04)]">
+                <div className="flex items-center justify-between">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      isEditingReferral ? cancelReferralEditor() : openReferralEditor()
+                    }
+                    className="inline-flex cursor-pointer items-center gap-1 text-[11px] font-bold text-slate-400 transition-all hover:text-amber-600"
+                  >
+                    <span>✏️</span>
+                    <span>{isEditingReferral ? 'إلغاء' : 'تعديل الكود'}</span>
+                  </button>
+
+                  <h4 className="inline-flex items-center gap-1 text-xs font-extrabold text-slate-800">
+                    <span>🎁</span>
+                    <span>كود الإحالة الخاص بك</span>
+                  </h4>
+                </div>
+
+                {isEditingReferral ? (
+                  <div className="space-y-2 pt-1">
+                    <div className="flex items-center gap-1.5" dir="ltr">
+                      <input
+                        type="text"
+                        value={customReferralCode}
+                        onChange={(e) => setCustomReferralCode(e.target.value)}
+                        placeholder="أدخل الكود الخاص بك"
+                        className="w-full rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-center font-mono text-xs font-bold uppercase text-slate-900 outline-none focus:border-amber-500"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => void handleSaveCustomCode()}
+                        disabled={saving}
+                        className="flex-shrink-0 cursor-pointer rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white transition-all hover:bg-emerald-700 disabled:opacity-60"
+                      >
+                        {saving ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+                        ) : (
+                          'حفظ'
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-1.5">
+                    {profile.referralCode ? (
+                      <div
+                        className="flex items-center justify-between rounded-xl border border-amber-200/70 bg-amber-50/60 px-3 py-2 font-mono text-xs font-bold text-amber-950"
+                        dir="ltr"
+                      >
+                        <button
+                          type="button"
+                          onClick={() => void handleCopyReferralCode()}
+                          className="inline-flex cursor-pointer items-center gap-1 rounded-md bg-amber-500 px-2.5 py-1 font-sans text-[11px] font-bold text-white shadow-[0_1px_0_rgba(15,23,42,0.04)] transition-all hover:bg-amber-600"
+                        >
+                          <span>📋</span>
+                          <span>نسخ</span>
+                        </button>
+                        <span className="tracking-wide text-xs">
+                          {profile.referralCode}
+                        </span>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={openReferralEditor}
+                        className="flex w-full cursor-pointer items-center justify-center gap-1 rounded-xl bg-amber-500 py-2 text-xs font-bold text-white transition-all hover:bg-amber-600"
+                      >
+                        <span>➕</span>
+                        <span>إضافة كود إحالة</span>
+                      </button>
+                    )}
+
+                    <p className="text-center text-[10px] font-medium text-slate-400">
+                      احصل على {resolveCommissionRate(profile.commissionRate)}% عمولة من
+                      الفائدة لكل حجز عبر هذا الكود
+                    </p>
+                  </div>
+                )}
+              </section>
+            ) : null}
+
+            <section className="mb-6 overflow-hidden rounded-2xl border border-slate-200 bg-slate-900 p-6 text-white shadow-sm dark:border-[#D4AF37]/30 dark:bg-[#22302C]">
+              <p className="text-[10px] font-medium uppercase tracking-[0.28em] text-white/50 dark:text-[#D4AF37]/80">
                 Partner Status
               </p>
-              <h3 className="mt-2 text-lg font-black">{roleLabel}</h3>
-              <p className="mt-2 text-xs font-semibold leading-6 text-white/60">
-                {approvedDestinations.length} وجهات معتمدة · {dnaEntries.length ? 'البصمة مكتملة' : 'بانتظار البصمة'}
+              <h3 className="mt-2 text-lg font-semibold dark:text-gray-100">
+                {roleLabel}
+              </h3>
+              <p className="mt-2 text-xs font-medium leading-6 text-white/60 dark:text-gray-300">
+                {approvedDestinations.length} وجهات معتمدة ·{' '}
+                {dnaEntries.length ? 'البصمة مكتملة' : 'بانتظار البصمة'}
               </p>
             </section>
           </div>
@@ -880,26 +1269,38 @@ function PartnerProfileInner() {
       </div>
 
       {editOpen ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-900/60 p-4 backdrop-blur-sm [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden dark:bg-black/70"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="partner-edit-title"
+          onClick={() => setEditOpen(false)}
+        >
           <div
-            className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl"
+            className="relative my-auto flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-[#2D3F3A] dark:bg-[#1A2421]"
             dir="rtl"
+            onClick={(e) => e.stopPropagation()}
           >
-            <div className="mb-5 flex items-center justify-between sticky top-0 z-10 -mx-6 -mt-6 border-b border-slate-100 bg-white px-6 py-4">
-              <h3 className="text-lg font-black text-[#1E2720]">تعديل بيانات الشريك</h3>
+            <div className="sticky top-0 z-10 flex shrink-0 items-center justify-between border-b border-slate-100 bg-white px-6 py-4 dark:border-[#2D3F3A] dark:bg-[#1A2421]">
+              <h3
+                id="partner-edit-title"
+                className="text-lg font-semibold text-slate-900 dark:text-gray-100"
+              >
+                تعديل بيانات الشريك
+              </h3>
               <button
                 type="button"
                 onClick={() => setEditOpen(false)}
-                className="rounded-lg p-2 text-slate-500 hover:bg-slate-100"
+                className="rounded-lg p-2 text-slate-500 transition hover:bg-slate-100 dark:hover:bg-[#22302C]"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
-            <div className="space-y-5">
+            <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-6 py-5 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
               <div className="grid gap-4 sm:grid-cols-2">
                 <label className="block space-y-1.5 sm:col-span-2">
-                  <span className="text-xs font-bold text-slate-600">الاسم</span>
+                  <span className={KV_LABEL}>الاسم</span>
                   <input
                     className={FIELD}
                     value={editName}
@@ -907,7 +1308,7 @@ function PartnerProfileInner() {
                   />
                 </label>
                 <label className="block space-y-1.5">
-                  <span className="text-xs font-bold text-slate-600">الهاتف</span>
+                  <span className={KV_LABEL}>الهاتف</span>
                   <input
                     className={FIELD}
                     dir="ltr"
@@ -916,7 +1317,7 @@ function PartnerProfileInner() {
                   />
                 </label>
                 <label className="block space-y-1.5">
-                  <span className="text-xs font-bold text-slate-600">البريد</span>
+                  <span className={KV_LABEL}>البريد</span>
                   <input
                     className={FIELD}
                     dir="ltr"
@@ -929,9 +1330,7 @@ function PartnerProfileInner() {
               {type === 'leaders' ? (
                 <div className="grid gap-4 sm:grid-cols-2">
                   <label className="block space-y-1.5">
-                    <span className="text-xs font-bold text-slate-600">
-                      اللغات (مفصولة بفاصلة)
-                    </span>
+                    <span className={KV_LABEL}>اللغات (مفصولة بفاصلة)</span>
                     <input
                       className={FIELD}
                       value={editLanguages}
@@ -940,7 +1339,7 @@ function PartnerProfileInner() {
                     />
                   </label>
                   <label className="block space-y-1.5">
-                    <span className="text-xs font-bold text-slate-600">سنوات الخبرة</span>
+                    <span className={KV_LABEL}>سنوات الخبرة</span>
                     <input
                       className={FIELD}
                       type="number"
@@ -955,7 +1354,7 @@ function PartnerProfileInner() {
               {type === 'leaders' ? (
                 <>
                   <label className="block space-y-1.5">
-                    <span className="text-xs font-bold text-slate-600">الوجهات</span>
+                    <span className={KV_LABEL}>الوجهات</span>
                     <input
                       className={FIELD}
                       value={editDestinations}
@@ -964,9 +1363,7 @@ function PartnerProfileInner() {
                     />
                   </label>
                   <fieldset className="space-y-2">
-                    <legend className="text-xs font-bold text-slate-600">
-                      المهارات الخاصة
-                    </legend>
+                    <legend className={KV_LABEL}>المهارات الخاصة</legend>
                     <div className="flex flex-wrap gap-2">
                       {LEADER_SPECIAL_SKILL_OPTIONS.map((skill) => {
                         const selected = editSpecialSkills.includes(skill);
@@ -982,11 +1379,7 @@ function PartnerProfileInner() {
                                 setEditSpecialSkills,
                               )
                             }
-                            className={`rounded-full border px-3 py-1.5 text-xs font-bold transition ${
-                              selected
-                                ? 'border-emerald-300 bg-emerald-50 text-emerald-800'
-                                : 'border-slate-200 bg-white text-slate-600'
-                            }`}
+                            className={selected ? CHIP_ACTIVE : CHIP_IDLE}
                           >
                             {skill}
                           </button>
@@ -995,9 +1388,7 @@ function PartnerProfileInner() {
                     </div>
                   </fieldset>
                   <fieldset className="space-y-2">
-                    <legend className="text-xs font-bold text-slate-600">
-                      أنماط الرحلات المفضلة
-                    </legend>
+                    <legend className={KV_LABEL}>أنماط الرحلات المفضلة</legend>
                     <div className="flex flex-wrap gap-2">
                       {LEADER_PREFERRED_STYLE_OPTIONS.map((style) => {
                         const selected = editPreferredStyles.includes(style);
@@ -1013,11 +1404,7 @@ function PartnerProfileInner() {
                                 setEditPreferredStyles,
                               )
                             }
-                            className={`rounded-full border px-3 py-1.5 text-xs font-bold transition ${
-                              selected
-                                ? 'border-amber-300 bg-amber-50 text-amber-900'
-                                : 'border-slate-200 bg-white text-slate-600'
-                            }`}
+                            className={selected ? CHIP_ACTIVE : CHIP_IDLE}
                           >
                             {style}
                           </button>
@@ -1031,37 +1418,34 @@ function PartnerProfileInner() {
               {type === 'experts' ? (
                 <>
                   <fieldset className="space-y-2">
-                    <legend className="text-xs font-bold text-slate-600">
-                      الوجهات المعتمدة
-                    </legend>
-                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                      {CRM_DESTINATIONS_GUIDE.map((country) => {
+                    <legend className={KV_LABEL}>الوجهات المعتمدة</legend>
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-3">
+                      {destinationCountries.map((country) => {
                         const selected = splitTags(editSpecialty).includes(
-                          country.labelAr,
+                          country.name,
                         );
                         return (
                           <button
                             key={country.id}
                             type="button"
                             aria-pressed={selected}
-                            onClick={() => toggleEditSpecialty(country.labelAr)}
-                            className={`rounded-xl border px-3 py-2 text-xs font-bold transition ${
+                            onClick={() => toggleEditSpecialty(country.name)}
+                            className={`rounded-xl border px-3 py-2 text-xs font-medium transition ${
                               selected
-                                ? 'border-emerald-300 bg-emerald-50 text-emerald-800'
-                                : 'border-slate-200 bg-white text-slate-600 hover:border-amber-300'
+                                ? 'border-slate-900 bg-slate-900 text-white dark:border-[#D4AF37]/50 dark:bg-[#D4AF37]/20 dark:text-[#D4AF37]'
+                                : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 dark:border-[#2D3F3A] dark:bg-[#1A2421] dark:text-slate-300'
                             }`}
                           >
                             {selected ? '✓ ' : ''}
-                            {country.labelAr}
+                            {country.flag ? `${country.flag} ` : ''}
+                            {country.name}
                           </button>
                         );
                       })}
                     </div>
                   </fieldset>
                   <fieldset className="space-y-2">
-                    <legend className="text-xs font-bold text-slate-600">
-                      أسلوب تصميم المسارات
-                    </legend>
+                    <legend className={KV_LABEL}>أسلوب تصميم المسارات</legend>
                     <div className="flex flex-wrap gap-2">
                       {EXPERT_ROUTING_STYLE_OPTIONS.map((style) => {
                         const selected = editRoutingStyles.includes(style);
@@ -1077,11 +1461,7 @@ function PartnerProfileInner() {
                                 setEditRoutingStyles,
                               )
                             }
-                            className={`rounded-full border px-3 py-1.5 text-xs font-bold transition ${
-                              selected
-                                ? 'border-[#D4AF37]/50 bg-[#D4AF37]/10 text-[#725A2D]'
-                                : 'border-slate-200 bg-white text-slate-600'
-                            }`}
+                            className={selected ? CHIP_ACTIVE : CHIP_IDLE}
                           >
                             {style}
                           </button>
@@ -1090,9 +1470,7 @@ function PartnerProfileInner() {
                     </div>
                   </fieldset>
                   <fieldset className="space-y-2">
-                    <legend className="text-xs font-bold text-slate-600">
-                      نقاط قوة الفعاليات
-                    </legend>
+                    <legend className={KV_LABEL}>نقاط قوة الفعاليات</legend>
                     <div className="flex flex-wrap gap-2">
                       {EXPERT_ACTIVITY_STRENGTH_OPTIONS.map((item) => {
                         const selected = editActivityStrengths.includes(item);
@@ -1108,11 +1486,7 @@ function PartnerProfileInner() {
                                 setEditActivityStrengths,
                               )
                             }
-                            className={`rounded-full border px-3 py-1.5 text-xs font-bold transition ${
-                              selected
-                                ? 'border-sky-300 bg-sky-50 text-sky-900'
-                                : 'border-slate-200 bg-white text-slate-600'
-                            }`}
+                            className={selected ? CHIP_ACTIVE : CHIP_IDLE}
                           >
                             {item}
                           </button>
@@ -1126,7 +1500,7 @@ function PartnerProfileInner() {
               {type === 'celebrities' ? (
                 <>
                   <label className="block space-y-1.5">
-                    <span className="text-xs font-bold text-slate-600">المنصات</span>
+                    <span className={KV_LABEL}>المنصات</span>
                     <input
                       className={FIELD}
                       value={editPlatforms}
@@ -1134,7 +1508,7 @@ function PartnerProfileInner() {
                     />
                   </label>
                   <label className="block space-y-1.5">
-                    <span className="text-xs font-bold text-slate-600">تركيز المحتوى</span>
+                    <span className={KV_LABEL}>تركيز المحتوى</span>
                     <input
                       className={FIELD}
                       value={editContentFocus}
@@ -1142,7 +1516,7 @@ function PartnerProfileInner() {
                     />
                   </label>
                   <label className="block space-y-1.5">
-                    <span className="text-xs font-bold text-slate-600">رابط الملف</span>
+                    <span className={KV_LABEL}>رابط الملف</span>
                     <input
                       className={FIELD}
                       dir="ltr"
@@ -1153,13 +1527,61 @@ function PartnerProfileInner() {
                 </>
               ) : null}
 
-              {(type === 'leaders' || type === 'experts') ? (
-                <div className="space-y-4 rounded-2xl border border-slate-100 bg-slate-50/80 p-4">
-                  <p className="text-xs font-black text-slate-700">بصمة الشريك</p>
+              {type === 'leaders' || type === 'experts' ? (
+                <div className="space-y-4 rounded-2xl border border-amber-100 bg-amber-50/50 p-4 dark:border-[#D4AF37]/25 dark:bg-[#D4AF37]/5">
+                  <p className="text-sm font-bold text-slate-800 dark:text-gray-100">
+                    العمولة والإحالة
+                  </p>
+                  <div className="space-y-1 text-right">
+                    <label className="block text-xs font-bold text-slate-600 dark:text-slate-400">
+                      كود الإحالة{' '}
+                      <span className="font-normal text-slate-400">(اختياري)</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={editReferralCode}
+                      onChange={(e) => setEditReferralCode(e.target.value)}
+                      className={`${FIELD} text-left`}
+                      dir="ltr"
+                      placeholder="REF-CODE"
+                    />
+                  </div>
+                  <div className="space-y-1 text-right">
+                    <label className="block text-xs font-bold text-slate-600 dark:text-slate-400">
+                      نسبة العمولة (من الفائدة/الربح)
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        min={0}
+                        max={100}
+                        step={0.5}
+                        value={editCommissionRate}
+                        onChange={(e) =>
+                          setEditCommissionRate(Number(e.target.value))
+                        }
+                        className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-right text-sm font-bold text-slate-800 outline-none transition focus:border-amber-500 dark:border-[#2D3F3A] dark:bg-[#1A2421] dark:text-gray-100"
+                        dir="rtl"
+                      />
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
+                        % من الفائدة
+                      </span>
+                    </div>
+                    <p className="text-[11px] font-medium text-slate-500">
+                      الافتراضي {DEFAULT_PARTNER_COMMISSION_RATE}% من هامش الربح (السعر −
+                      التكلفة)
+                    </p>
+                  </div>
+                </div>
+              ) : null}
+
+              {type === 'leaders' || type === 'experts' ? (
+                <div className="space-y-4 rounded-2xl border border-slate-100 bg-slate-50/80 p-4 dark:border-[#2D3F3A] dark:bg-[#1A2421]/50">
+                  <p className="text-sm font-bold text-slate-800 dark:text-gray-100">
+                    بصمة الشريك
+                  </p>
                   <label className="block space-y-1.5">
-                    <span className="text-xs font-bold text-slate-600">
-                      أسلوب إدارة / تصميم الرحلات
-                    </span>
+                    <span className={KV_LABEL}>أسلوب إدارة / تصميم الرحلات</span>
                     <textarea
                       className={`${FIELD} min-h-20`}
                       value={editTripStyle}
@@ -1167,7 +1589,7 @@ function PartnerProfileInner() {
                     />
                   </label>
                   <label className="block space-y-1.5">
-                    <span className="text-xs font-bold text-slate-600">نقاط القوة</span>
+                    <span className={KV_LABEL}>نقاط القوة</span>
                     <textarea
                       className={`${FIELD} min-h-20`}
                       value={editStrengths}
@@ -1175,9 +1597,7 @@ function PartnerProfileInner() {
                     />
                   </label>
                   <label className="block space-y-1.5">
-                    <span className="text-xs font-bold text-slate-600">
-                      الميزة التنافسية
-                    </span>
+                    <span className={KV_LABEL}>الميزة التنافسية</span>
                     <textarea
                       className={`${FIELD} min-h-20`}
                       value={editCompetitiveAdvantage}
@@ -1185,9 +1605,7 @@ function PartnerProfileInner() {
                     />
                   </label>
                   <label className="block space-y-1.5">
-                    <span className="text-xs font-bold text-slate-600">
-                      متطلبات من الشركة
-                    </span>
+                    <span className={KV_LABEL}>متطلبات من الشركة</span>
                     <textarea
                       className={`${FIELD} min-h-20`}
                       value={editAgencyRequirements}
@@ -1198,12 +1616,12 @@ function PartnerProfileInner() {
               ) : null}
             </div>
 
-            <div className="mt-6 flex gap-2 sticky bottom-0 -mx-6 -mb-6 border-t border-slate-100 bg-white px-6 py-4">
+            <div className="sticky bottom-0 flex shrink-0 gap-2 border-t border-slate-100 bg-white px-6 py-4 dark:border-[#2D3F3A] dark:bg-[#1A2421]">
               <button
                 type="button"
                 onClick={() => void handleSaveEdit()}
                 disabled={saving || !editName.trim()}
-                className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-[#1E2720] px-4 py-3 text-sm font-bold text-white disabled:opacity-60"
+                className={`${CRM_BTN_PRIMARY} flex-1 disabled:opacity-60`}
               >
                 {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                 حفظ التعديلات
@@ -1211,13 +1629,33 @@ function PartnerProfileInner() {
               <button
                 type="button"
                 onClick={() => setEditOpen(false)}
-                className="rounded-xl border border-slate-200 px-4 py-3 text-sm font-bold text-slate-700"
+                className={BTN_SECONDARY}
               >
                 إلغاء
               </button>
             </div>
           </div>
         </div>
+      ) : null}
+
+      {type === 'experts' && apiBase ? (
+        <EditExpertModal
+          open={commissionOpen}
+          profile={profile}
+          apiBase={apiBase}
+          onClose={() => setCommissionOpen(false)}
+          onSaved={() => void load()}
+        />
+      ) : null}
+
+      {type === 'leaders' && apiBase ? (
+        <EditLeaderModal
+          open={commissionOpen}
+          profile={profile}
+          apiBase={apiBase}
+          onClose={() => setCommissionOpen(false)}
+          onSaved={() => void load()}
+        />
       ) : null}
     </div>
   );
@@ -1228,7 +1666,7 @@ export default function PartnerProfilePage() {
     <Suspense
       fallback={
         <div className="flex min-h-[40vh] items-center justify-center">
-          <Loader2 className="h-6 w-6 animate-spin text-[#B5914F]" />
+          <Loader2 className="h-6 w-6 animate-spin text-slate-400 dark:text-[#D4AF37]" />
         </div>
       }
     >

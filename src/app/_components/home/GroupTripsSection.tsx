@@ -1,11 +1,22 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { Loader2, Users, X } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { useRouter } from 'next/navigation';
+import { Loader2, Users } from 'lucide-react';
 
-import { submitGroupTripLead } from '@/app/actions/submitGroupTripLead';
+import { submitGroupTripLead } from '@/app/actions/groupOnboardingActions';
+import { GroupOnboardingStepNav } from '@/app/group-onboarding/_components/GroupOnboardingStepNav';
 import GroupTripLeaderBadge from '@/app/crm/groups/_components/GroupTripLeaderBadge';
+import { ReferralCodeField } from '@/components/ReferralCodeField';
 import { useLanguage } from '@/context/LanguageContext';
+import {
+  brandGoldBadgeStyle,
+  brandGoldButtonStyle,
+  brandOliveHeadingStyle,
+  brandOliveLabelStyle,
+} from '@/lib/brand-gold';
+import { normalizeAffiliateRef, persistAffiliateRef } from '@/lib/referral-url';
 import { supabaseClient } from '@/lib/supabaseClient';
 import type { GroupTripRow } from '@/types/group-trip';
 
@@ -30,11 +41,14 @@ const INITIAL_REG_FORM = {
   fullName: '',
   whatsapp: '',
   email: '',
-  age: '',
+  birth_date: '',
+  referral_code: '',
 };
 
 const REG_FIELD_CLASS =
-  'w-full rounded-lg border border-[#1e3f20]/20 bg-[#FDFBF7] p-3 text-sm font-bold text-[#111111] outline-none transition-colors placeholder:text-gray-400 focus:border-[#cda04c]';
+  'w-full rounded-xl border border-slate-200 bg-white p-3 text-xs font-bold text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#C5A059] focus:ring-2 focus:ring-[#C5A059]/40 disabled:cursor-text disabled:bg-white disabled:text-slate-900 disabled:opacity-100';
+
+const REG_LABEL_CLASS = 'mb-1 block text-xs font-extrabold';
 
 function GroupTripCardSkeleton() {
   return (
@@ -51,6 +65,7 @@ function GroupTripCardSkeleton() {
 }
 
 export function GroupTripsSection() {
+  const router = useRouter();
   const { locale, dir, t } = useLanguage();
   const g = t.groups;
 
@@ -62,6 +77,20 @@ export function GroupTripsSection() {
   const [formData, setFormData] = useState(INITIAL_REG_FORM);
   const [submitting, setSubmitting] = useState(false);
   const [msg, setMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
+  const [portalReady, setPortalReady] = useState(false);
+
+  useEffect(() => {
+    setPortalReady(true);
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [open]);
 
   useEffect(() => {
     let cancelled = false;
@@ -94,7 +123,11 @@ export function GroupTripsSection() {
           .select('id, title_ar, title_en, description_ar, description_en, badge_ar, badge_en, sort_order')
           .eq('is_active', true)
           .order('sort_order', { ascending: true });
-        rows = fallback.data;
+        rows = (fallback.data ?? []).map((row) => ({
+          ...row,
+          leader_id: null,
+          leader_name: null,
+        })) as typeof data;
         fetchErr = fallback.error;
       }
 
@@ -147,51 +180,68 @@ export function GroupTripsSection() {
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!open) return;
-    const ageNum = parseInt(formData.age, 10);
+    const emailTrimmed = formData.email.trim();
+    const birthDate = formData.birth_date.trim().slice(0, 10);
+    const referralCode = normalizeAffiliateRef(formData.referral_code);
 
     if (!formData.fullName.trim() || !formData.whatsapp.trim()) {
       setMsg({ type: 'err', text: g.errors.namePhone });
       return;
     }
-    if (!formData.email.trim()) {
-      setMsg({ type: 'err', text: g.errors.emailRequired });
-      return;
-    }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
+    if (emailTrimmed && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailTrimmed)) {
       setMsg({ type: 'err', text: g.errors.invalidEmail });
       return;
     }
-    if (!formData.age.trim()) {
-      setMsg({ type: 'err', text: g.errors.ageRequired });
+    if (!birthDate) {
+      setMsg({ type: 'err', text: g.errors.birthDateRequired });
       return;
     }
-    if (!Number.isFinite(ageNum) || ageNum < 1 || ageNum > 120) {
-      setMsg({ type: 'err', text: g.errors.invalidAge });
+    const birthMs = Date.parse(birthDate);
+    if (!Number.isFinite(birthMs) || birthMs > Date.now()) {
+      setMsg({ type: 'err', text: g.errors.invalidBirthDate });
       return;
     }
 
     setSubmitting(true);
     setMsg(null);
-    const res = await submitGroupTripLead({
-      full_name: formData.fullName.trim(),
-      phone_wa: formData.whatsapp.trim(),
-      email: formData.email.trim(),
-      age: ageNum,
-      trip_label: open.title,
-    });
-    setSubmitting(false);
+    try {
+      if (referralCode) persistAffiliateRef(referralCode);
+      const res = await submitGroupTripLead({
+        full_name: formData.fullName.trim(),
+        phone_wa: formData.whatsapp.trim(),
+        email: emailTrimmed || null,
+        birth_date: birthDate,
+        trip_label: open.title,
+        preferred_trip_id: open.id,
+        referral_code: referralCode,
+      });
 
-    if (!res.ok) {
-      setMsg({ type: 'err', text: res.error ?? g.errors.generic });
-      return;
+      if (!res.ok) {
+        setMsg({ type: 'err', text: res.error ?? g.errors.generic });
+        return;
+      }
+
+      if (res.placement === 'pipeline' && res.leadId) {
+        closeModal();
+        resetRegForm();
+        router.push(`/dna/${res.leadId}?flow=group_onboarding`);
+        return;
+      }
+
+      setMsg({ type: 'ok', text: res.message ?? g.success });
+      setTimeout(() => {
+        closeModal();
+        resetRegForm();
+        setMsg(null);
+      }, res.placement === 'waitlisted' ? 4000 : 2200);
+    } catch (err) {
+      setMsg({
+        type: 'err',
+        text: err instanceof Error ? err.message : g.errors.generic,
+      });
+    } finally {
+      setSubmitting(false);
     }
-
-    setMsg({ type: 'ok', text: res.message ?? g.success });
-    setTimeout(() => {
-      closeModal();
-      resetRegForm();
-      setMsg(null);
-    }, 2200);
   }
 
   return (
@@ -260,121 +310,170 @@ export function GroupTripsSection() {
         </div>
       )}
 
-      {open ? (
-        <div
-          className="fixed inset-0 z-[340] flex items-end justify-center bg-black/60 p-0 backdrop-blur-sm sm:items-center sm:p-4"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="group-trip-modal-title"
-          onClick={() => closeModal()}
-        >
-          <div
-            className="max-h-[92dvh] w-[95%] max-w-md overflow-y-auto rounded-t-3xl border border-[#1e3f20]/15 bg-white p-4 shadow-2xl sm:max-h-[min(90vh,720px)] sm:w-full sm:rounded-3xl sm:p-6 md:w-3/4 md:max-w-lg lg:w-1/2 lg:max-w-xl"
-            onClick={(e) => e.stopPropagation()}
-            dir={dir}
-          >
-            <div className="flex items-start justify-between gap-2">
-              <div>
-                <h3 id="group-trip-modal-title" className="text-sm font-black text-[#1e3f20]">
-                  {g.modal.title}
-                </h3>
-                <p className="mt-1 text-xs font-bold text-gray-500">
-                  {g.modal.tripLabel}: {open.title}
-                </p>
-              </div>
-              <button
-                type="button"
-                disabled={submitting}
-                onClick={closeModal}
-                className="rounded-full bg-gray-100 p-2 text-gray-700 hover:bg-gray-200 disabled:opacity-50"
-                aria-label={g.modal.close}
+      {open && portalReady
+        ? createPortal(
+            <div
+              className="pointer-events-auto fixed inset-0 z-[9999] flex items-center justify-center overflow-y-auto bg-slate-950/70 p-4 backdrop-blur-md"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="group-trip-modal-title"
+              onClick={() => closeModal()}
+            >
+              <div
+                className="relative my-auto max-h-[min(92dvh,720px)] w-full max-w-lg space-y-5 overflow-y-auto rounded-3xl border border-slate-200/80 bg-white p-6 text-right shadow-2xl sm:p-8"
+                onClick={(e) => e.stopPropagation()}
+                dir={dir}
               >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
+                <GroupOnboardingStepNav
+                  currentStep={1}
+                  onBack={closeModal}
+                  backDisabled={submitting}
+                />
 
-            <form onSubmit={onSubmit} className="mt-5">
-              <div className="space-y-4">
-                <div>
-                  <label className="mb-2 block text-sm font-bold text-gray-800">{g.modal.nameLabel}</label>
-                  <input
-                    type="text"
-                    required
-                    className={REG_FIELD_CLASS}
-                    placeholder={g.modal.namePlaceholder}
-                    value={formData.fullName}
-                    onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-                  />
+                <div className="space-y-1.5">
+                  <span
+                    style={brandGoldBadgeStyle}
+                    className="mb-1 inline-block rounded-md border px-2.5 py-0.5 text-[11px] font-extrabold"
+                  >
+                    {g.modal.title}
+                  </span>
+                  <h3
+                    id="group-trip-modal-title"
+                    style={brandOliveHeadingStyle}
+                    className="text-lg font-extrabold leading-snug sm:text-xl"
+                  >
+                    {open.title}
+                  </h3>
+                  {open.description ? (
+                    <p className="pt-1 text-xs font-semibold leading-relaxed text-slate-600">
+                      {open.description}
+                    </p>
+                  ) : (
+                    <p className="pt-1 text-xs font-semibold text-slate-600">
+                      {g.modal.tripLabel}: {open.title}
+                    </p>
+                  )}
                 </div>
 
-                <div>
-                  <label className="mb-2 block text-sm font-bold text-gray-800">{g.modal.emailLabel}</label>
-                  <input
-                    type="email"
-                    required
-                    dir="ltr"
-                    className={REG_FIELD_CLASS}
-                    placeholder={g.modal.emailPlaceholder}
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    autoComplete="email"
-                  />
-                </div>
+                <form onSubmit={onSubmit} className="space-y-4">
+                  <div className="space-y-4">
+                    <div>
+                      <label className={REG_LABEL_CLASS} style={brandOliveLabelStyle}>
+                        {g.modal.nameLabel}
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        autoComplete="name"
+                        className={REG_FIELD_CLASS}
+                        placeholder={g.modal.namePlaceholder}
+                        value={formData.fullName || ''}
+                        onChange={(e) =>
+                          setFormData((prev) => ({ ...prev, fullName: e.target.value }))
+                        }
+                      />
+                    </div>
 
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <div>
-                    <label className="mb-2 block text-sm font-bold text-gray-800">{g.modal.waLabel}</label>
-                    <input
-                      type="tel"
-                      required
-                      dir="ltr"
-                      className={REG_FIELD_CLASS}
-                      placeholder={g.modal.waPlaceholder}
-                      value={formData.whatsapp}
-                      onChange={(e) => setFormData({ ...formData, whatsapp: e.target.value })}
-                      autoComplete="tel"
+                    <div className="space-y-1 text-right">
+                      <label className={REG_LABEL_CLASS} style={brandOliveLabelStyle}>
+                        {g.modal.emailLabel}{' '}
+                        <span className="font-normal text-slate-500">({g.modal.optionalHint})</span>
+                      </label>
+                      <input
+                        type="email"
+                        dir="ltr"
+                        className={`${REG_FIELD_CLASS} text-left`}
+                        placeholder={g.modal.emailPlaceholder}
+                        value={formData.email || ''}
+                        onChange={(e) =>
+                          setFormData((prev) => ({ ...prev, email: e.target.value }))
+                        }
+                        autoComplete="email"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-3 text-right sm:grid-cols-2">
+                      <div className="space-y-1">
+                        <label className={REG_LABEL_CLASS} style={brandOliveLabelStyle}>
+                          {g.modal.waLabel.replace(/\s*\*$/, '')}{' '}
+                          <span className="text-rose-500">*</span>
+                        </label>
+                        <input
+                          type="tel"
+                          required
+                          dir="ltr"
+                          className={`${REG_FIELD_CLASS} text-right`}
+                          placeholder={g.modal.waPlaceholder}
+                          value={formData.whatsapp || ''}
+                          onChange={(e) =>
+                            setFormData((prev) => ({ ...prev, whatsapp: e.target.value }))
+                          }
+                          autoComplete="tel"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className={REG_LABEL_CLASS} style={brandOliveLabelStyle}>
+                          {g.modal.birthDateLabel}{' '}
+                          <span className="text-rose-500">*</span>
+                        </label>
+                        <input
+                          type="date"
+                          required
+                          value={formData.birth_date || ''}
+                          onChange={(e) =>
+                            setFormData((prev) => ({ ...prev, birth_date: e.target.value }))
+                          }
+                          onClick={(e) => {
+                            try {
+                              e.currentTarget.showPicker?.();
+                            } catch {
+                              /* showPicker unsupported — native date input still works */
+                            }
+                          }}
+                          className={`${REG_FIELD_CLASS} cursor-pointer text-right`}
+                          dir="rtl"
+                        />
+                      </div>
+                    </div>
+
+                    <ReferralCodeField
+                      value={formData.referral_code}
+                      onChange={(referral_code) =>
+                        setFormData((prev) => ({ ...prev, referral_code }))
+                      }
+                      labelClassName={REG_LABEL_CLASS}
+                      labelStyle={brandOliveLabelStyle}
                     />
                   </div>
-                  <div>
-                    <label className="mb-2 block text-sm font-bold text-gray-800">{g.modal.ageLabel}</label>
-                    <input
-                      type="number"
-                      required
-                      min={1}
-                      max={120}
-                      className={REG_FIELD_CLASS}
-                      placeholder={g.modal.agePlaceholder}
-                      value={formData.age}
-                      onChange={(e) => setFormData({ ...formData, age: e.target.value })}
-                    />
-                  </div>
-                </div>
+
+                  {msg ? (
+                    <div
+                      className={`mt-4 whitespace-pre-wrap rounded-xl border px-3 py-2 text-xs font-black ${
+                        msg.type === 'ok'
+                          ? 'border-emerald-200 bg-emerald-50 text-emerald-900'
+                          : 'border-red-200 bg-red-50 text-red-800'
+                      }`}
+                    >
+                      {msg.text}
+                    </div>
+                  ) : null}
+
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    style={brandGoldButtonStyle}
+                    className="mt-4 flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl py-3.5 text-xs font-extrabold shadow-sm transition-all hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {submitting ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : null}
+                    <span>{g.modal.submit}</span>
+                    <span aria-hidden>➔</span>
+                  </button>
+                </form>
               </div>
-
-              {msg ? (
-                <div
-                  className={`mt-4 rounded-xl border px-3 py-2 text-xs font-black ${
-                    msg.type === 'ok'
-                      ? 'border-emerald-400/40 bg-emerald-950/50 text-emerald-100'
-                      : 'border-red-400/40 bg-red-950/50 text-red-100'
-                  }`}
-                >
-                  {msg.text}
-                </div>
-              ) : null}
-
-              <button
-                type="submit"
-                disabled={submitting}
-                className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-[#cda04c] py-3 text-sm font-black text-white transition hover:bg-[#b3893d] disabled:opacity-60"
-              >
-                {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                {g.modal.submit}
-              </button>
-            </form>
-          </div>
-        </div>
-      ) : null}
+            </div>,
+            document.body,
+          )
+        : null}
     </>
   );
 }

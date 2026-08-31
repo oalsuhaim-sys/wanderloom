@@ -251,7 +251,7 @@ export async function POST(request: NextRequest) {
   const email = user.email?.trim().toLowerCase() ?? null;
   const employee = await resolveEmployee(admin, user.id, email, auth.employeeRow);
 
-  let mentions: CrmCommentMention[] = Array.isArray(body.mentions)
+  const mentions: CrmCommentMention[] = Array.isArray(body.mentions)
     ? body.mentions.filter(
         (m) =>
           m &&

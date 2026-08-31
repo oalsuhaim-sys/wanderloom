@@ -22,21 +22,21 @@ export function parseItineraryDocuments(raw: unknown): ItineraryDocument[] {
 
   if (!Array.isArray(data)) return [];
 
-  return data
-    .map((item, index) => {
-      if (!item || typeof item !== 'object') return null;
-      const row = item as Record<string, unknown>;
-      const url = String(row.url ?? '').trim();
-      if (!url) return null;
-      return {
-        id: String(row.id ?? `doc-${index}`),
-        name: String(row.name ?? 'مستند').trim() || 'مستند',
-        url,
-        uploadedAt: String(row.uploaded_at ?? row.uploadedAt ?? '').trim(),
-        mimeType: String(row.mime_type ?? row.mimeType ?? '').trim() || undefined,
-      } satisfies ItineraryDocument;
-    })
-    .filter((d): d is ItineraryDocument => d != null);
+  const docs: ItineraryDocument[] = [];
+  data.forEach((item, index) => {
+    if (!item || typeof item !== 'object') return;
+    const row = item as Record<string, unknown>;
+    const url = String(row.url ?? '').trim();
+    if (!url) return;
+    docs.push({
+      id: String(row.id ?? `doc-${index}`),
+      name: String(row.name ?? 'مستند').trim() || 'مستند',
+      url,
+      uploadedAt: String(row.uploaded_at ?? row.uploadedAt ?? '').trim(),
+      mimeType: String(row.mime_type ?? row.mimeType ?? '').trim() || undefined,
+    });
+  });
+  return docs;
 }
 
 export function serializeItineraryDocuments(docs: ItineraryDocument[]): Record<string, unknown>[] {

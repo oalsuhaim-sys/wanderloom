@@ -29,11 +29,49 @@ export type ItineraryBuilderPrefill = {
   from: string;
 };
 
+export type ParsedDestination = {
+  country: string;
+  city: string;
+  cities: string[];
+  raw: string;
+};
+
+/** Split combined destination strings like "كوريا الجنوبية – سيول" or "فرنسا - باريس - نيس". */
+export function parseDestination(rawDest: string): ParsedDestination {
+  const raw = String(rawDest ?? '').trim();
+  if (!raw) return { country: '', city: '', cities: [], raw: '' };
+
+  const parts = raw
+    .split(/[-–—|/·,،]+/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  if (!parts.length) return { country: '', city: '', cities: [], raw };
+
+  // Prefer catalog inference when possible (maps city → country)
+  const inferred = inferGeographyFromLabel(parts.join('، '));
+  if (inferred.countries.length || inferred.cities.length) {
+    return {
+      country: inferred.countries[0] || parts[0] || '',
+      city: inferred.cities[0] || parts[1] || parts[0] || '',
+      cities: inferred.cities.length ? inferred.cities : parts.slice(1).length ? parts.slice(1) : [parts[0]],
+      raw,
+    };
+  }
+
+  return {
+    country: parts[0] || '',
+    city: parts[1] || parts[0] || '',
+    cities: parts.slice(1).length ? parts.slice(1) : parts[0] ? [parts[0]] : [],
+    raw,
+  };
+}
+
 export function parseDestinationPrefill(raw: string): string[] {
   const trimmed = String(raw ?? '').trim();
   if (!trimmed || trimmed === '—') return [];
   return trimmed
-    .split(/\s·\s|,|،/)
+    .split(/[-–—|/·,،]+|\s·\s/)
     .map((part) => part.trim())
     .filter(Boolean);
 }
@@ -46,9 +84,29 @@ export function geographyFromDestinationLabels(labels: string[]): {
   if (!labels.length) {
     return { geoTripType: 'single', countries: [], cities: [] };
   }
-  const inferred = inferGeographyFromLabel(labels.join('، '));
-  const countries = inferred.countries;
-  const cities = inferred.cities.length ? inferred.cities : labels;
+
+  // Expand dash-combined labels first, then infer from catalog
+  const expanded = labels.flatMap((label) => {
+    const parsed = parseDestination(label);
+    if (parsed.country || parsed.cities.length) {
+      return [parsed.country, ...parsed.cities].filter(Boolean);
+    }
+    return parseDestinationPrefill(label);
+  });
+
+  const unique = [...new Set(expanded.map((x) => x.trim()).filter(Boolean))];
+  const inferred = inferGeographyFromLabel(unique.join('، '));
+  const countries = inferred.countries.length
+    ? inferred.countries
+    : unique.length
+      ? [unique[0]]
+      : [];
+  const cities = inferred.cities.length
+    ? inferred.cities
+    : unique.length > 1
+      ? unique.slice(1)
+      : unique;
+
   return {
     geoTripType: countries.length > 1 ? 'multi' : 'single',
     countries,

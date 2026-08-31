@@ -1,4 +1,8 @@
 -- صفحة السداد البنكي العامة + إيصال التحويل
+-- التطبيق يستخدم Server Actions + select/update قياسي (بدون الاعتماد على RPC).
+-- شغّل هذا الملف مرة واحدة لإضافة عمود receipt_url إن لم يكن موجوداً.
+-- الدوال أدناه اختيارية فقط كاحتياط.
+
 alter table if exists public.clients
   add column if not exists receipt_url text;
 
@@ -9,7 +13,6 @@ create index if not exists clients_receipt_url_idx
   on public.clients (receipt_url)
   where receipt_url is not null and receipt_url <> '';
 
--- قراءة محدودة للصفحة العامة
 create or replace function public.get_client_checkout_by_id(p_client_id text)
 returns json
 language plpgsql
@@ -42,7 +45,6 @@ begin
 end;
 $$;
 
--- حفظ إيصال التحويل من الصفحة العامة
 create or replace function public.submit_client_bank_receipt(
   p_client_id text,
   p_receipt_url text

@@ -65,55 +65,57 @@ export function QuoteFinancialSummaryCard({
 
   return (
     <section
-      className="mb-5 overflow-hidden rounded-2xl border border-[#C9A84C]/35 bg-gradient-to-br from-[#1C4532] via-[#163528] to-[#0f241c] p-5 text-white shadow-lg shadow-[#1C4532]/15"
+      className="mb-6 overflow-hidden rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
       aria-label="الملخص المالي"
       dir="rtl"
     >
-      <div className="mb-4 flex items-center justify-between gap-3">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#C9A84C]/20 ring-1 ring-[#C9A84C]/40">
-            <Wallet className="h-4 w-4 text-[#C9A84C]" aria-hidden />
+          <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-[#D4AF37]/35 bg-[#D4AF37]/10">
+            <Wallet className="h-4 w-4 text-[#b8952d]" aria-hidden />
           </span>
-          <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.25em] text-[#C9A84C]/80">
+          <div className="text-right">
+            <p className="text-xs font-bold uppercase tracking-widest text-[#b8952d]">
               Financial Ledger
             </p>
-            <h2 className="text-sm font-black text-white">الملخص المالي للرحلة</h2>
+            <h2 className="text-lg font-extrabold text-slate-900">الملخص المالي للرحلة</h2>
           </div>
         </div>
-        {loading ? <Loader2 className="h-4 w-4 animate-spin text-[#C9A84C]" aria-hidden /> : null}
+        {loading ? <Loader2 className="h-4 w-4 animate-spin text-[#b8952d]" aria-hidden /> : null}
       </div>
 
       {error ? (
-        <p className="text-xs font-bold text-amber-200/90">{error}</p>
+        <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-800">
+          {error}
+        </p>
       ) : (
         <>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3">
-              <p className="text-[10px] font-bold text-white/50">إجمالي تكلفة الرحلة</p>
-              <p className="mt-1 text-lg font-black text-[#C9A84C]" dir="ltr">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-center">
+              <span className="mb-1 block text-xs font-bold text-slate-500">إجمالي تكلفة الرحلة</span>
+              <span className="text-xl font-black text-slate-900" dir="ltr">
                 {formatInvoiceAmount(totalCost)}
-              </p>
+              </span>
             </div>
-            <div className="rounded-xl border border-emerald-400/20 bg-emerald-500/10 px-4 py-3">
-              <p className="text-[10px] font-bold text-emerald-200/70">المدفوع</p>
-              <p className="mt-1 text-lg font-black text-emerald-300" dir="ltr">
+            <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-4 text-center">
+              <span className="mb-1 block text-xs font-bold text-emerald-700">المدفوع</span>
+              <span className="text-xl font-black text-emerald-700" dir="ltr">
                 {formatInvoiceAmount(paidAmount)}
-              </p>
+              </span>
             </div>
-            <div className="rounded-xl border border-amber-400/20 bg-amber-500/10 px-4 py-3">
-              <p className="text-[10px] font-bold text-amber-200/70">المتبقي</p>
-              <p className="mt-1 text-lg font-black text-amber-200" dir="ltr">
+            <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-4 text-center">
+              <span className="mb-1 block text-xs font-bold text-amber-700">المتبقي</span>
+              <span className="text-xl font-black text-amber-700" dir="ltr">
                 {formatInvoiceAmount(remaining)}
-              </p>
+              </span>
             </div>
           </div>
 
-          <p className="mt-4 text-center text-[11px] font-bold leading-relaxed text-white/55">
+          <p className="mt-4 text-center text-[11px] font-medium leading-relaxed text-slate-500">
             إجمالي تكلفة الرحلة: {formatInvoiceAmount(totalCost)}
-            <span className="mx-2 text-white/25">|</span>
+            <span className="mx-2 text-slate-300">|</span>
             المدفوع: {formatInvoiceAmount(paidAmount)}
-            <span className="mx-2 text-white/25">|</span>
+            <span className="mx-2 text-slate-300">|</span>
             المتبقي: {formatInvoiceAmount(remaining)}
           </p>
         </>

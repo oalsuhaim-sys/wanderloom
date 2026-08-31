@@ -1,11 +1,12 @@
-import { CRM_DESTINATIONS_GUIDE } from '@/lib/crm-destinations-guide-data'
+import { DEFAULT_COUNTRIES } from '@/lib/countries';
 
 export type VipCountry = {
-  readonly id: string
-  readonly labelAr: string
-}
+  readonly id: string;
+  readonly labelAr: string;
+};
 
-/** دول VIP للمرشّحات في CRM — متزامنة مع `CRM_DESTINATIONS_GUIDE`. */
-export const VIP_COUNTRIES: readonly VipCountry[] = [...CRM_DESTINATIONS_GUIDE]
-  .map(({ id, labelAr }) => ({ id, labelAr }))
-  .sort((a, b) => a.labelAr.localeCompare(b.labelAr, 'ar'))
+/** دول VIP للمرشّحات في CRM — متزامنة مع القائمة المركزية للدول */
+export const VIP_COUNTRIES: readonly VipCountry[] = DEFAULT_COUNTRIES.map(({ id, name }) => ({
+  id,
+  labelAr: name,
+})).sort((a, b) => a.labelAr.localeCompare(b.labelAr, 'ar'));

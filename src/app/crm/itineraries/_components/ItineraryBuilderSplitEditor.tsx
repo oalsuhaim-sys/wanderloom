@@ -215,7 +215,7 @@ export default function ItineraryBuilderSplitEditor({ itineraryId }: Props) {
               type="button"
               onClick={() => void saveItinerary()}
               disabled={saving}
-              className="inline-flex items-center gap-2 rounded-xl bg-[#1E2720] px-4 py-2.5 text-sm font-black text-[#F9F9F6] disabled:opacity-60"
+              className="inline-flex items-center gap-2 rounded-xl bg-slate-100 px-4 py-2.5 text-sm font-black text-[#F9F9F6] disabled:opacity-60"
             >
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
               حفظ المسار

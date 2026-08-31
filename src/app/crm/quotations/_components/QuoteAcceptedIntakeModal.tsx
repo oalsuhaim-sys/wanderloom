@@ -62,14 +62,14 @@ export function QuoteAcceptedIntakeModal({ payload, onClose }: QuoteAcceptedInta
 
   return (
     <div
-      className="fixed inset-0 z-[70] flex items-end justify-center bg-black/50 p-0 backdrop-blur-sm sm:items-center sm:p-4"
+      className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-0 backdrop-blur-sm sm:p-4"
       role="dialog"
       aria-modal="true"
       dir="rtl"
       onClick={onClose}
     >
       <div
-        className="flex max-h-[92dvh] w-full max-w-lg flex-col overflow-hidden rounded-t-3xl border border-[#cda04c]/35 bg-gradient-to-b from-[#0a1410] to-[#0f1e16] shadow-2xl sm:rounded-3xl"
+        className="flex max-h-[90vh] w-[95%] max-w-lg flex-col overflow-hidden rounded-t-3xl border border-[#cda04c]/35 bg-gradient-to-b from-[#0a1410] to-[#0f1e16] shadow-2xl sm:rounded-3xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-3 border-b border-[#cda04c]/20 px-5 py-4">

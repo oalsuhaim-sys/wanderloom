@@ -1,20 +1,29 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { useParams } from 'next/navigation';
-import { Loader2, MessageCircle, Plus, Trash2, Copy, FileStack, Camera } from 'lucide-react';
+import Link from 'next/link';
+import { useParams, useRouter } from 'next/navigation';
+import { ArrowRight, Loader2, MessageCircle, Plus, Trash2, Copy, CopyPlus, FileStack, Camera } from 'lucide-react';
 import { DragDropContext } from '@hello-pangea/dnd';
 
 import {
   fetchItineraryClientIdAction,
   saveItineraryClientLinkAction,
 } from '@/app/actions/itineraryClientActions';
+import { duplicateItineraryAction } from '@/app/actions/itineraryDuplicateActions';
+import { toast } from '@/lib/crm-toast';
+import { useCrmEmployee } from '@/app/crm/_components/CrmEmployeeProvider';
+import { canEditItineraries } from '@/lib/crm-permissions';
 import SimpleItineraryDayPlanner from '@/app/crm/itineraries/_components/SimpleItineraryDayPlanner';
 import SupplierRequestsEditor from '@/app/crm/itineraries/_components/SupplierRequestsEditor';
 import SimpleItineraryPlacesBank from '@/app/crm/itineraries/_components/SimpleItineraryPlacesBank';
+import ExperiencesExplorer from '@/app/crm/itineraries/_components/ExperiencesExplorer';
+import ItineraryPlacesSourceTabs, {
+  type ItineraryPlacesSource,
+} from '@/app/crm/itineraries/_components/ItineraryPlacesSourceTabs';
 import TripGeographySelectors from '@/app/crm/itineraries/_components/TripGeographySelectors';
 import ItineraryHotelsEditor from '@/app/crm/itineraries/_components/ItineraryHotelsEditor';
-import { VipTimeSlotSelect } from '@/app/crm/itineraries/_components/VipBookingFields';
+import BoardingFlightFieldsPanel from '@/app/crm/itineraries/_components/BoardingFlightFieldsPanel';
 import ActivityTicketsEditor from '@/app/crm/itineraries/_components/ActivityTicketsEditor';
 import ItineraryDocumentWallet from '@/app/crm/itineraries/_components/ItineraryDocumentWallet';
 import VipSpendingTierBadge from '@/components/VipSpendingTierBadge';
@@ -25,12 +34,25 @@ import {
   createEmptyHotelEntry,
   parseHotelsFromDetailsRaw,
   hotelsToDetailsPayload,
+  sortPlacesByVisitTime,
   type ItineraryHotelEntry,
   type SimpleItineraryDay,
   withTransportDefaults,
 } from '@/app/crm/itineraries/_components/simple-itinerary-day-utils';
 import { useSimpleItineraryDays } from '@/app/crm/itineraries/_components/useSimpleItineraryDays';
-import { buildStrictSimpleItinerarySavePayload, FLIGHT_CLASS_OPTIONS, normalizeItinerarySaveStatus, parseDatesField, stripItineraryPayloadForSchemaError } from '@/lib/itinerary-builder-model';
+import { buildStrictSimpleItinerarySavePayload, normalizeItinerarySaveStatus, readItineraryExpertDisplayName, readItineraryExpertId, resolveTripDatesFromRow, stripItineraryPayloadForSchemaError } from '@/lib/itinerary-builder-model';
+import {
+  WL_BTN_PRIMARY,
+  WL_BTN_SECONDARY,
+  WL_DATE_INPUT,
+  WL_INPUT,
+  WL_LABEL,
+  WL_OPTION,
+  WL_PAGE,
+  WL_SECTION,
+  WL_SELECT,
+  WL_TITLE,
+} from '@/lib/itinerary-builder-ui';
 import {
   applyTemplateToBuilder,
   buildTemplateFlightDetails,
@@ -76,8 +98,12 @@ import {
 } from '@/lib/itinerary-client-crm';
 import { getClientAccessToken } from '@/lib/crm-session-token';
 import { supabase } from '@/lib/supabase';
-import { fetchAllPlacesBank, filterPlacesBankInventory } from '@/lib/places-bank';
-import type { PlaceBankRow } from '@/types/place';
+import {
+  PLACE_CATEGORY_OPTIONS,
+  PLACES_BANK_PAGE_SIZE,
+  fetchPlacesBankCityOptions,
+  fetchPlacesBankPage,
+} from '@/lib/places-bank';
 
 const CLIENT_BRIEF_SELECT =
   'id, name, travel_dna, hotel_preferences, dietary, secret_notes';
@@ -151,22 +177,24 @@ function daysDataToItineraryDays(raw: unknown): SimpleItineraryDay[] {
         title: String(row.title ?? `اليوم ${idx + 1}`),
         city: String(row.city ?? '').trim() || undefined,
         hotelName: String(row.hotelName ?? row.hotel_name ?? '').trim() || undefined,
-        places: (row.places as any[]).map(withTransportDefaults),
+        places: sortPlacesByVisitTime((row.places as any[]).map(withTransportDefaults)),
       };
     }
 
     const stops = (row.itinerary_stops ?? row.stops ?? []) as Array<Record<string, unknown>>;
-    const places = stops.map((s) =>
-      withTransportDefaults({
-        id: s.places_bank_id ?? s.id,
-        name: String(s.place_name ?? s.name ?? 'محطة').trim(),
-        category: s.category,
-        city: row.city ?? s.city,
-        rating: s.rating,
-        transportToNext: transitModeToArabic(s.transit_mode ?? s.transport_type),
-        transportDuration: String(s.transit_duration ?? '').trim(),
-        visit_time: String(s.visit_time ?? s.time_slot ?? s.time ?? '').trim(),
-      }),
+    const places = sortPlacesByVisitTime(
+      stops.map((s) =>
+        withTransportDefaults({
+          id: s.places_bank_id ?? s.id,
+          name: String(s.place_name ?? s.name ?? 'محطة').trim(),
+          category: s.category,
+          city: row.city ?? s.city,
+          rating: s.rating,
+          transportToNext: transitModeToArabic(s.transit_mode ?? s.transport_type),
+          transportDuration: String(s.transit_duration ?? '').trim(),
+          visit_time: String(s.visit_time ?? s.time_slot ?? s.time ?? '').trim(),
+        }),
+      ),
     );
 
     return {
@@ -280,13 +308,22 @@ function detectDaysSource(
 
 export default function EditItineraryPage() {
   const params = useParams();
+  const router = useRouter();
   const id = resolveRouteId(params?.id as string | string[] | undefined);
+  const { profileAccess } = useCrmEmployee();
+  const canEditItinerary = canEditItineraries(profileAccess);
+  const readOnly = !canEditItinerary;
 
-  const [places, setPlaces] = useState<any[]>([]);
+  const [places, setPlaces] = useState<Record<string, unknown>[]>([]);
+  const [placesTotal, setPlacesTotal] = useState(0);
+  const [placesPage, setPlacesPage] = useState(0);
+  const [placesLoading, setPlacesLoading] = useState(false);
+  const [cityOptions, setCityOptions] = useState<string[]>([]);
   const [clientsList, setClientsList] = useState<CrmClientMini[]>([]);
   const [expertsList, setExpertsList] = useState<ExpertMini[]>([]);
   const [expertsLoadError, setExpertsLoadError] = useState<string | null>(null);
   const [expertId, setExpertId] = useState('');
+  const [expertName, setExpertName] = useState('');
   const [clientId, setClientId] = useState('');
   const [clientLinkSaving, setClientLinkSaving] = useState(false);
   const [itineraryShareSlug, setItineraryShareSlug] = useState('');
@@ -305,6 +342,7 @@ export default function EditItineraryPage() {
   const [tripDateTo, setTripDateTo] = useState('');
   const [filterCity, setFilterCity] = useState('');
   const [filterCategory, setFilterCategory] = useState('');
+  const [placesSourceTab, setPlacesSourceTab] = useState<ItineraryPlacesSource>('bank');
 
   const [budget, setBudget] = useState('');
   const [paid, setPaid] = useState('');
@@ -358,6 +396,7 @@ export default function EditItineraryPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [reloadNonce, setReloadNonce] = useState(0);
   const [saving, setSaving] = useState(false);
+  const [duplicating, setDuplicating] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [clientLinkWarning, setClientLinkWarning] = useState<string | null>(null);
   const [memoryUploading, setMemoryUploading] = useState(false);
@@ -422,8 +461,6 @@ export default function EditItineraryPage() {
           !expertsResponse.ok || !expertsPayload.ok
             ? expertsPayload.error || `status_${expertsResponse.status}`
             : null;
-        console.log('FETCHED EXPERTS:', expertsData);
-        console.log('FETCH ERROR:', expertsError);
 
         if (expertsError) {
           console.error('Failed to load experts', expertsError);
@@ -445,18 +482,68 @@ export default function EditItineraryPage() {
   }, []);
 
   useEffect(() => {
-    async function loadPlacesInventory() {
-      if (!supabase) return;
+    setPlacesPage(0);
+  }, [searchQuery, filterCity, filterCategory, tripCountries]);
+
+  useEffect(() => {
+    if (!supabase) return;
+    let cancelled = false;
+    const handle = window.setTimeout(() => {
+      void (async () => {
+        setPlacesLoading(true);
+        try {
+          const { rows, total } = await fetchPlacesBankPage(supabase, {
+            page: placesPage,
+            pageSize: PLACES_BANK_PAGE_SIZE,
+            search: searchQuery.trim() || undefined,
+            category: filterCategory || undefined,
+            countries: tripCountries.length ? tripCountries : undefined,
+            cityFilter: filterCity || undefined,
+          });
+          if (cancelled) return;
+          setPlaces(rows as Record<string, unknown>[]);
+          setPlacesTotal(total);
+        } catch (error) {
+          console.error('[edit] Failed to load places inventory', error);
+          if (!cancelled) {
+            setPlaces([]);
+            setPlacesTotal(0);
+          }
+        } finally {
+          if (!cancelled) setPlacesLoading(false);
+        }
+      })();
+    }, searchQuery.trim() ? 280 : 0);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(handle);
+    };
+  }, [searchQuery, filterCity, filterCategory, tripCountries, placesPage]);
+
+  useEffect(() => {
+    if (!supabase) return;
+    let cancelled = false;
+    void (async () => {
       try {
-        const loaded = await fetchAllPlacesBank(supabase);
-        setPlaces(loaded as Record<string, unknown>[]);
-      } catch (error) {
-        console.error('Failed to load places inventory', error);
-        setPlaces([]);
+        const cities = await fetchPlacesBankCityOptions(
+          supabase,
+          tripCountries.length ? tripCountries : undefined,
+        );
+        if (!cancelled) {
+          setCityOptions(
+            [...new Set([...cities, ...tripCities].filter(Boolean))].sort((a, b) =>
+              a.localeCompare(b, 'ar'),
+            ),
+          );
+        }
+      } catch {
+        if (!cancelled) setCityOptions(tripCities);
       }
-    }
-    void loadPlacesInventory();
-  }, []);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [tripCountries, tripCities]);
 
   useEffect(() => {
     async function loadClientBrief() {
@@ -564,12 +651,6 @@ export default function EditItineraryPage() {
 
         const adminClientLink = await fetchItineraryClientIdAction(queryId);
         if (adminClientLink.ok) {
-          console.log('[edit-itinerary] loaded client_id (admin):', {
-            client_id: adminClientLink.client_id,
-            source: adminClientLink.source,
-            browserResolved: resolvedClientId,
-            rowClientId: safeData?.client_id,
-          });
           if (adminClientLink.client_id) {
             resolvedClientId = adminClientLink.client_id;
           }
@@ -578,13 +659,22 @@ export default function EditItineraryPage() {
           console.error('[edit-itinerary] admin client_id fetch failed:', adminClientLink.error);
           setClientLinkWarning(adminClientLink.error);
           if (adminClientLink.columnMissing) {
-            window.alert(adminClientLink.error);
+            toast.error(adminClientLink.error);
           }
         }
 
         setItineraryShareSlug(resolveItineraryPublicSlug(safeData, id));
         setClientId(resolvedClientId);
-        setExpertId(safeData.expert_id != null ? String(safeData.expert_id) : '');
+        setExpertId(
+          safeData.expert_id != null
+            ? String(safeData.expert_id)
+            : readItineraryExpertId(safeData as Record<string, unknown>),
+        );
+        setExpertName(
+          String(safeData.expert_name ?? '').trim() ||
+            readItineraryExpertDisplayName(safeData as Record<string, unknown>) ||
+            '',
+        );
 
         let clientForList = joinedClient;
         if (!clientForList && resolvedClientId) {
@@ -618,7 +708,7 @@ export default function EditItineraryPage() {
         setFlightArrivalCity(
           normalizeSingleArrivalCity(strField(fd, ['flight_to', 'to_city'])),
         );
-        const parsedTripDates = parseDatesField(safeData.dates);
+        const parsedTripDates = resolveTripDatesFromRow(safeData as Record<string, unknown>);
         setTripDateFrom(parsedTripDates.from);
         setTripDateTo(parsedTripDates.to);
 
@@ -739,15 +829,7 @@ export default function EditItineraryPage() {
     void fetchItinerary();
   }, [id, reloadNonce]);
 
-  const uniqueCities = useMemo(() => {
-    const pool = filterPlacesBankInventory((places ?? []) as PlaceBankRow[], {
-      countries: tripCountries,
-    });
-    return Array.from(new Set(pool.map((p) => p?.city).filter(Boolean)));
-  }, [places, tripCountries]);
-  const uniqueCategories = Array.from(
-    new Set((places ?? []).map((p) => p?.category).filter(Boolean)),
-  );
+  const uniqueCities = cityOptions;
 
   const geographyDestinationLabel =
     buildDestinationSummary(tripCities, tripCountries) || tripTitle;
@@ -764,14 +846,7 @@ export default function EditItineraryPage() {
     [allSuppliers, tripCountries, tripCities, geographyDestinationLabel],
   );
 
-  const displayedPlaces = useMemo(() => {
-    return filterPlacesBankInventory((places ?? []) as PlaceBankRow[], {
-      countries: tripCountries,
-      cityFilter: filterCity || undefined,
-      search: searchQuery,
-      category: filterCategory || undefined,
-    });
-  }, [places, tripCountries, filterCity, searchQuery, filterCategory]);
+  const displayedPlaces = places;
 
   const handleDragEnd = useCallback(
     (result: import('@hello-pangea/dnd').DropResult) => {
@@ -804,6 +879,10 @@ export default function EditItineraryPage() {
   });
 
   const handleSaveAsTemplate = useCallback(async () => {
+    if (readOnly) {
+      setNotice('صلاحية القراءة فقط — لا يمكن حفظ قالب.');
+      return;
+    }
     if (!supabase) return;
 
     const templateName = templateSaveTitle.trim();
@@ -927,12 +1006,12 @@ export default function EditItineraryPage() {
       const resolvedItineraryId = parseCrmClientIdForSave(id);
 
       if (!resolvedClientId) {
-        window.alert('يرجى ربط المسار بعميل أولاً وحفظه قبل رفع الصور.');
+        toast.error('يرجى ربط المسار بعميل أولاً وحفظه قبل رفع الصور.');
         return;
       }
 
       if (!supabase) {
-        window.alert('تعذر الاتصال بقاعدة البيانات.');
+        toast.error('تعذر الاتصال بقاعدة البيانات.');
         return;
       }
 
@@ -968,7 +1047,7 @@ export default function EditItineraryPage() {
 
         if (dbError) throw dbError;
 
-        window.alert('تم رفع الصورة بنجاح وحفظها في ذكريات العميل! 📸');
+        toast.success('تم رفع الصورة بنجاح وحفظها في ذكريات العميل! 📸');
         setNotice('تم رفع الذكرى من لوحة الإدارة بنجاح 📸');
       } catch (error) {
         console.error('[admin-memory-upload]', error);
@@ -978,7 +1057,7 @@ export default function EditItineraryPage() {
             : typeof error === 'object' && error != null
               ? JSON.stringify(error)
               : String(error);
-        window.alert(`فشل الرفع: ${message}`);
+        toast.error(`فشل الرفع: ${message}`);
       } finally {
         setMemoryUploading(false);
       }
@@ -991,20 +1070,13 @@ export default function EditItineraryPage() {
       if (!id) return { ok: false as const, error: 'معرّف المسار غير صالح.' };
 
       const queryId = /^\d+$/.test(id) ? Number(id) : id;
-      const parsed = coerceClientIdForItinerarySave(rawClientId);
-
-      console.log('🔥 FORCE-SAVING client_id:', {
-        itineraryId: queryId,
-        clientId: rawClientId,
-        parsedClientId: parsed,
-      });
 
       const linkResult = await saveItineraryClientLinkAction(queryId, rawClientId || null);
       if (!linkResult.ok) {
-        console.error('🔥 SUPABASE client_id SAVE ERROR:', linkResult.error);
+        console.error('SUPABASE client_id SAVE ERROR:', linkResult.error);
         setClientLinkWarning(linkResult.error);
         if (!silent) {
-          window.alert(
+          toast.error(
             linkResult.columnMissing
               ? linkResult.error
               : `فشل ربط العميل: ${linkResult.error}`,
@@ -1013,7 +1085,6 @@ export default function EditItineraryPage() {
         return linkResult;
       }
 
-      console.log('✅ client_id SAVED:', linkResult.client_id);
       setClientId(linkResult.client_id != null ? String(linkResult.client_id) : '');
       setClientLinkWarning(null);
       return linkResult;
@@ -1036,7 +1107,40 @@ export default function EditItineraryPage() {
     [id, persistClientLink],
   );
 
+  const handleDuplicate = useCallback(async () => {
+    if (!id) return;
+    if (
+      !window.confirm(
+        `إنشاء نسخة جديدة من هذا المسار؟\nسيُنسخ العنوان والأيام والأماكن والإعدادات دون تعديل الأصل.`,
+      )
+    ) {
+      return;
+    }
+    setDuplicating(true);
+    setNotice('جاري استنساخ الرحلة بكل تفاصيلها...');
+    try {
+      const token = await getClientAccessToken();
+      const result = await duplicateItineraryAction(id, token);
+      if (!result.ok) {
+        setNotice(result.error);
+        toast.error(result.error);
+        return;
+      }
+      setNotice(`✅ تم إنشاء النسخة: ${result.title}`);
+      router.push(`/crm/itineraries/${result.newId}/edit`);
+    } catch (err) {
+      console.error(err);
+      setNotice('تعذر استنساخ المسار.');
+    } finally {
+      setDuplicating(false);
+    }
+  }, [id, router]);
+
   const handleSave = useCallback(async () => {
+    if (readOnly) {
+      toast.error('صلاحية القراءة فقط — لا يمكن حفظ المسار.');
+      return;
+    }
     if (!supabase || !id) return;
 
     setSaving(true);
@@ -1084,6 +1188,10 @@ export default function EditItineraryPage() {
       })),
       clientId: parsedClientId,
       expertId: expertId.trim() || null,
+      expertName:
+        expertName.trim() ||
+        expertsList.find((e) => String(e.id) === String(expertId))?.name?.trim() ||
+        null,
       customerName: selectedClient ? clientDisplayName(selectedClient) : '',
       preTripServices,
       includeWardrobe: false,
@@ -1102,6 +1210,10 @@ export default function EditItineraryPage() {
       expected_profit: expectedProfitNum,
       client_id: parsedClientId,
       expert_id: expertId.trim() || null,
+      expert_name:
+        expertName.trim() ||
+        expertsList.find((e) => String(e.id) === String(expertId))?.name?.trim() ||
+        null,
     };
 
     try {
@@ -1110,10 +1222,12 @@ export default function EditItineraryPage() {
         throw new Error(linkResult.error);
       }
 
-      console.log('🔥 SENDING TO SUPABASE:', fullPayload);
-      console.log('[edit-itinerary] client dropdown state:', {
-        clientId,
-        parsedClientId,
+      console.log('[edit-itinerary] save payload expert:', {
+        expert_id: fullPayload.expert_id,
+        expert_name: fullPayload.expert_name,
+        flight_expert: (fullPayload.flight_details as { expert_name?: string } | undefined)
+          ?.expert_name,
+        days_meta: (fullPayload.days_data as { meta?: unknown } | undefined)?.meta,
       });
 
       let res = await supabase
@@ -1121,21 +1235,32 @@ export default function EditItineraryPage() {
         .update(fullPayload)
         .eq('id', queryId)
         .select('id, client_id');
-      if (res.error && /column|schema cache|does not exist/i.test(res.error.message ?? '')) {
-        const stripped = stripItineraryPayloadForSchemaError(res.error.message ?? '', fullPayload);
-        stripped.client_id = parsedClientId;
-        console.warn('[edit-itinerary] retrying without optional columns:', res.error.message);
+      let attemptPayload: Record<string, unknown> = fullPayload;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        if (
+          !res.error ||
+          !/column|schema cache|does not exist|foreign key|expert_id|expert_name/i.test(
+            res.error.message ?? '',
+          )
+        ) {
+          break;
+        }
+        attemptPayload = stripItineraryPayloadForSchemaError(
+          res.error.message ?? '',
+          attemptPayload,
+        );
+        attemptPayload.client_id = parsedClientId;
         res = await supabase
           .from('itineraries')
-          .update(stripped)
+          .update(attemptPayload)
           .eq('id', queryId)
           .select('id, client_id');
       }
 
       if (res.error) {
-        console.error('🔥 SUPABASE SAVE ERROR:', res.error);
+        console.error('SUPABASE SAVE ERROR:', res.error);
         const msg = formatSupabaseSaveError(res.error);
-        window.alert(`فشل الحفظ في قاعدة البيانات: ${msg}`);
+        toast.error(`فشل الحفظ في قاعدة البيانات: ${msg}`);
         throw new Error(msg);
       }
 
@@ -1143,23 +1268,21 @@ export default function EditItineraryPage() {
         const msg =
           'لم يُحدَّث أي صف في itineraries — تحقق من معرّف المسار أو صلاحيات Supabase RLS.';
         console.error('[edit-itinerary]', msg, { queryId });
-        window.alert(`فشل الحفظ في قاعدة البيانات: ${msg}`);
+        toast.error(`فشل الحفظ في قاعدة البيانات: ${msg}`);
         throw new Error(msg);
       }
-
-      console.log('✅ SAVED SUCCESSFULLY:', res.data);
       setClientId(
         res.data[0]?.client_id != null ? String(res.data[0].client_id) : clientId,
       );
       setClientLinkWarning(null);
       setNotice('✅ تم حفظ المسار والتعديلات بنجاح!');
-      window.alert('تم حفظ المسار وربط العميل بنجاح!');
+      toast.success('تم حفظ المسار وربط العميل بنجاح!');
     } catch (e) {
       console.error('Unexpected save error:', e);
       const msg = e instanceof Error ? e.message : 'فشل حفظ التعديلات.';
       setNotice(msg);
       if (!msg.includes('فشل الحفظ في قاعدة البيانات') && !msg.includes('فشل ربط العميل')) {
-        window.alert(`فشل الحفظ: ${msg}`);
+        toast.error(`فشل الحفظ: ${msg}`);
       }
     } finally {
       setSaving(false);
@@ -1191,6 +1314,8 @@ export default function EditItineraryPage() {
     itineraryDays,
     clientId,
     expertId,
+    expertName,
+    expertsList,
     clientsList,
     preTripServices,
     expectedProfit,
@@ -1199,6 +1324,7 @@ export default function EditItineraryPage() {
     activityTickets,
     tripStatus,
     persistClientLink,
+    readOnly,
   ]);
 
   const retryLoad = useCallback(() => {
@@ -1208,11 +1334,11 @@ export default function EditItineraryPage() {
   if (isLoading) {
     return (
       <div
-        className="flex min-h-screen flex-col items-center justify-center gap-3 bg-[#FAFAFA] text-[#1E2720]"
+        className="itinerary-builder-page flex min-h-screen flex-col items-center justify-center gap-3 bg-[#f8fafc] text-slate-800"
         dir="rtl"
       >
         <Loader2 className="h-10 w-10 animate-spin text-[#D4AF37]" aria-hidden />
-        <p className="text-sm font-bold text-gray-600">جاري تحميل المسار...</p>
+        <p className="text-sm font-bold text-slate-600">جاري تحميل المسار...</p>
       </div>
     );
   }
@@ -1220,16 +1346,16 @@ export default function EditItineraryPage() {
   if (!id || loadError || !tripLoaded) {
     return (
       <div
-        className="flex min-h-screen flex-col items-center justify-center gap-4 bg-[#FAFAFA] px-6 text-center text-[#1E2720]"
+        className="itinerary-builder-page flex min-h-screen flex-col items-center justify-center gap-4 bg-[#f8fafc] px-6 text-center text-slate-800"
         dir="rtl"
       >
-        <p className="max-w-md text-base font-bold text-gray-800">
+        <p className="max-w-md text-base font-bold text-slate-700">
           {loadError || 'لم يتم العثور على المسار.'}
         </p>
         <button
           type="button"
           onClick={retryLoad}
-          className="rounded-lg bg-[#1A2520] px-6 py-2.5 text-sm font-bold text-[#D4AF37]"
+          className={WL_BTN_PRIMARY}
         >
           إعادة المحاولة
         </button>
@@ -1242,22 +1368,52 @@ export default function EditItineraryPage() {
     : null;
 
   return (
-    <div className="min-h-screen bg-[#FAFAFA] text-[#1E2720] p-6 font-sans sm:p-8" dir="rtl">
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">مساحة بناء المسار الذكي</h1>
+    <div className={`${WL_PAGE} font-sans`} dir="rtl">
+      {readOnly ? (
+        <div className="mb-4 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-xs font-bold text-amber-900">
+          وضع القراءة فقط — يمكنك مشاهدة المسار دون تعديل أو حفظ.
         </div>
-        <button
-          type="button"
-          onClick={() => void handleSave()}
-          disabled={saving}
-          className="rounded-lg bg-[#1A2520] px-8 py-3 font-bold text-[#D4AF37] disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {saving ? 'جاري الحفظ...' : 'حفظ المسار'}
-        </button>
+      ) : null}
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <Link
+            href="/crm/itineraries"
+            className="mb-2 flex items-center gap-1 text-sm font-medium text-slate-600 transition-colors hover:text-[#D4AF37]"
+          >
+            <ArrowRight className="h-4 w-4" aria-hidden />
+            ← العودة إلى المسارات
+          </Link>
+          <h1 className="text-2xl font-extrabold tracking-wide text-[#D4AF37] sm:text-3xl">
+            مساحة بناء المسار الذكي
+          </h1>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => void handleDuplicate()}
+            disabled={duplicating || saving || !id}
+            title="نسخ كإصدار جديد (V2)"
+            className={`${WL_BTN_SECONDARY} border-[#D4AF37]/40 shadow-md`}
+          >
+            {duplicating ? (
+              <Loader2 className="h-4 w-4 animate-spin text-[#D4AF37]" aria-hidden />
+            ) : (
+              <CopyPlus className="h-4 w-4 text-[#D4AF37]" aria-hidden />
+            )}
+            {duplicating ? 'جاري الاستنساخ...' : 'نسخ كإصدار جديد'}
+          </button>
+          <button
+            type="button"
+            onClick={() => void handleSave()}
+            disabled={saving || duplicating || readOnly}
+            className={WL_BTN_PRIMARY}
+          >
+            {saving ? 'جاري الحفظ...' : readOnly ? 'قراءة فقط' : 'حفظ المسار'}
+          </button>
+        </div>
       </div>
 
-      <div className="mb-8 rounded-2xl bg-white p-6 shadow-sm">
+      <div className={`mb-8 ${WL_SECTION}`}>
         <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-3">
           <div className="min-w-0 md:col-span-2">
             <TripGeographySelectors
@@ -1300,9 +1456,9 @@ export default function EditItineraryPage() {
                 </div>
               ) : null}
               {clientId ? (
-                <p className="mt-1 text-[11px] font-semibold text-gray-500" dir="ltr">
-                  client_id: {clientId}
-                </p>
+                <span className="mt-1 inline-flex rounded bg-black/20 px-2 py-0.5 font-mono text-[10px] text-slate-500" dir="ltr">
+                  ID: {String(clientId).slice(0, 8)}…
+                </span>
               ) : null}
               {clientLinkSaving ? (
                 <p className="mt-1 text-[11px] font-bold text-[#D4AF37]">جاري ربط العميل…</p>
@@ -1313,16 +1469,19 @@ export default function EditItineraryPage() {
                 </p>
               ) : null}
 
-              <div className="mt-3 rounded-xl border border-dashed border-[#D4AF37]/45 bg-[#FFFBF0] p-3">
-                <p className="text-xs font-bold text-gray-800">رفع ذكرى من الإدارة 📸</p>
-                <p className="mt-0.5 text-[10px] font-semibold leading-relaxed text-gray-500">
-                  يُرفع مباشرة إلى ذكريات العميل المرتبط — بدون رابط العميل.
+              <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-5 text-slate-800 shadow-sm">
+                <p className="flex items-center gap-2 text-sm font-bold text-[#D4AF37]">
+                  <Camera className="h-4 w-4 shrink-0" aria-hidden />
+                  رفع ذكرى من الإدارة
                 </p>
+                <span className="mt-1 block text-xs text-slate-600">
+                  يُرفع مباشرة إلى ذكريات العميل المرتبط — بدون رابط العميل.
+                </span>
                 <button
                   type="button"
                   onClick={() => adminMemoryInputRef.current?.click()}
                   disabled={!clientId || memoryUploading || clientLinkSaving || saving}
-                  className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-[#D4AF37]/50 bg-white px-3 py-2.5 text-xs font-black text-[#1E2720] transition hover:bg-[#D4AF37]/10 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-slate-100 px-4 py-2.5 text-xs font-bold text-slate-700 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {memoryUploading ? (
                     <>
@@ -1354,7 +1513,18 @@ export default function EditItineraryPage() {
                 name="expert_id"
                 value={expertId || ''}
                 disabled={saving}
-                onChange={(e) => setExpertId(e.target.value)}
+                onChange={(e) => {
+                  const nextId = e.target.value;
+                  setExpertId(nextId);
+                  if (!nextId) {
+                    setExpertName('');
+                    return;
+                  }
+                  const matched = expertsList.find((x) => String(x.id) === String(nextId));
+                  const fromOption =
+                    e.target.selectedOptions?.[0]?.text?.split(' · ')[0]?.trim() || '';
+                  setExpertName(matched?.name?.trim() || fromOption || '');
+                }}
                 className={EDIT_HEADER_FIELD}
               >
                 <option value="">-- اختر الخبير الذي صمم المسار --</option>
@@ -1382,7 +1552,7 @@ export default function EditItineraryPage() {
                 type="date"
                 value={tripDateFrom}
                 onChange={(e) => setTripDateFrom(e.target.value)}
-                className={`${EDIT_HEADER_FIELD} [color-scheme:light]`}
+                className={WL_DATE_INPUT}
               />
             </div>
 
@@ -1392,7 +1562,7 @@ export default function EditItineraryPage() {
                 type="date"
                 value={tripDateTo}
                 onChange={(e) => setTripDateTo(e.target.value)}
-                className={`${EDIT_HEADER_FIELD} [color-scheme:light]`}
+                className={WL_DATE_INPUT}
               />
             </div>
           </div>
@@ -1431,7 +1601,7 @@ export default function EditItineraryPage() {
             type="button"
             onClick={handleShareWhatsApp}
             disabled={!clientId}
-            className="inline-flex items-center gap-2 rounded-full border-2 border-[#25D366]/40 bg-[#25D366] px-4 py-2 text-xs font-black text-white shadow-sm transition hover:bg-[#1ebe5d] disabled:cursor-not-allowed disabled:opacity-45"
+            className="inline-flex items-center gap-2 rounded-full border-2 border-[#25D366]/40 bg-[#25D366] px-4 py-2 text-xs font-black text-slate-900 shadow-sm transition hover:bg-[#1ebe5d] disabled:cursor-not-allowed disabled:opacity-45"
           >
             <MessageCircle className="h-4 w-4 shrink-0" aria-hidden />
             مشاركة عبر واتساب
@@ -1452,25 +1622,25 @@ export default function EditItineraryPage() {
         </p>
       ) : null}
 
-      <section className="mb-6 flex flex-col gap-5 rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-        <h3 className="flex items-center gap-2 text-lg font-bold text-[#1E2720]">
+      <section className={`mb-6 ${WL_SECTION}`}>
+        <h3 className="mb-4 flex items-center gap-2 text-lg font-bold text-[#D4AF37]">
           <FileStack className="h-5 w-5 text-[#D4AF37]" aria-hidden />
           إدارة القوالب الجاهزة 📁
         </h3>
 
         {templatesNotice ? (
-          <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-900">
+          <p className="rounded-xl border border-amber-500/40 bg-amber-950/30 px-3 py-2 text-xs font-bold text-amber-200">
             {templatesNotice}
           </p>
         ) : null}
 
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          <div className="flex flex-col gap-3 rounded-xl border border-gray-100 bg-gray-50/80 p-4">
-            <p className="text-sm font-bold text-gray-700">استدعاء قالب جاهز</p>
+          <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-5 text-slate-800 shadow-sm">
+            <p className="mb-3 block text-base font-bold text-[#D4AF37]">استدعاء قالب جاهز</p>
             <select
               value={selectedTemplateId}
               onChange={(e) => setSelectedTemplateId(e.target.value)}
-              className={EDIT_HEADER_FIELD}
+              className={WL_INPUT}
             >
               <option value="">— اختر قالباً —</option>
               {templates.map((t) => (
@@ -1484,76 +1654,79 @@ export default function EditItineraryPage() {
               type="button"
               onClick={handleLoadTemplate}
               disabled={!selectedTemplateId}
-              className="rounded-lg border border-[#D4AF37]/40 bg-[#FEFDF9] px-4 py-2.5 text-sm font-bold text-[#1E2720] transition hover:bg-[#D4AF37]/10 disabled:opacity-50"
+              className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#D4AF37] px-4 py-3 font-extrabold text-black shadow-md transition-all hover:bg-[#b8952d] disabled:cursor-not-allowed disabled:opacity-50"
             >
               استدعاء القالب إلى المسار
             </button>
           </div>
 
-          <div className="flex flex-col gap-3 rounded-xl border border-gray-100 bg-gray-50/80 p-4">
-            <p className="text-sm font-bold text-gray-700">حفظ كقالب</p>
+          <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-5 text-slate-800 shadow-sm">
+            <p className="mb-3 block text-base font-bold text-[#D4AF37]">حفظ كقالب</p>
             <input
               type="text"
               value={templateSaveTitle}
               onChange={(e) => setTemplateSaveTitle(e.target.value)}
               placeholder="اسم القالب — مثال: باريس 5 أيام"
-              className={EDIT_HEADER_FIELD}
+              className={WL_INPUT}
             />
             <button
               type="button"
               onClick={() => void handleSaveAsTemplate()}
-              disabled={templateBusy}
-              className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#1A2520] px-4 py-2.5 text-sm font-bold text-[#D4AF37] transition hover:bg-black disabled:opacity-60"
+              disabled={templateBusy || readOnly}
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#D4AF37]/40 bg-slate-100 px-4 py-2.5 text-sm font-bold text-[#D4AF37] transition-all hover:bg-slate-200 disabled:opacity-60"
             >
               <Copy className="h-4 w-4" aria-hidden />
-              {templateBusy ? 'جاري الحفظ…' : 'حفظ كقالب'}
+              {templateBusy ? 'جاري الحفظ…' : readOnly ? 'قراءة فقط' : 'حفظ كقالب'}
             </button>
           </div>
         </div>
-
       </section>
 
-      <section className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm mb-6 flex flex-col gap-4">
-        <h3 className="font-bold text-lg text-[#1E2720] flex items-center gap-2">
-          <span>💰</span> الملخص المالي للحجز
+      <section className={`mb-6 flex flex-col gap-4 ${WL_SECTION}`}>
+        <h3 className={WL_TITLE}>
+          <span aria-hidden>💰</span> الملخص المالي للحجز
         </h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
           <div className="flex flex-col gap-2">
-            <label className="text-sm font-bold text-gray-600">الميزانية الإجمالية</label>
+            <label className={WL_LABEL}>الميزانية الإجمالية</label>
             <input
               type="number"
               value={budget}
               onChange={(e) => setBudget(e.target.value)}
               placeholder="مثال: 50000"
-              className="bg-gray-50 border border-gray-300 text-gray-900 rounded-lg p-3 font-bold focus:border-[#D4AF37]"
+              className={`${WL_INPUT} font-bold`}
             />
           </div>
           <div className="flex flex-col gap-2">
-            <label className="text-sm font-bold text-gray-600">المدفوع من العميل</label>
+            <label className={WL_LABEL}>المدفوع من العميل</label>
             <input
               type="number"
               value={paid}
               onChange={(e) => setPaid(e.target.value)}
               placeholder="مثال: 20000"
-              className="bg-gray-50 border border-gray-300 text-green-700 rounded-lg p-3 font-bold focus:border-green-500"
+              className={`${WL_INPUT} font-bold text-emerald-300`}
             />
           </div>
           <div className="flex flex-col gap-2">
-            <label className="text-sm font-bold text-gray-600">المتبقي</label>
             <div
-              className={`p-3 rounded-lg font-bold text-lg border ${
+              className={`rounded-lg border p-3 text-right ${
                 remaining > 0
-                  ? 'bg-red-50 text-red-700 border-red-200'
-                  : 'bg-green-50 text-green-700 border-green-200'
+                  ? 'border-red-500/40 bg-slate-50'
+                  : 'border-emerald-500/40 bg-slate-50'
               }`}
             >
-              {remaining.toLocaleString()} SAR
+              <span className="mb-1 block text-xs font-semibold text-slate-500">المتبقي</span>
+              <span
+                className={`text-lg font-extrabold ${
+                  remaining > 0 ? 'text-red-400' : 'text-emerald-400'
+                }`}
+              >
+                SAR {remaining.toLocaleString('ar-SA')}
+              </span>
             </div>
           </div>
           <div className="flex flex-col gap-2">
-            <label className="text-sm font-bold text-gray-600">
-              رسوم خدمة وإدارة (Wanderloom)
-            </label>
+            <label className={WL_LABEL}>رسوم خدمة وإدارة (Wanderloom)</label>
             <input
               type="number"
               min={0}
@@ -1561,169 +1734,60 @@ export default function EditItineraryPage() {
               value={expectedProfit}
               onChange={(e) => setExpectedProfit(e.target.value)}
               placeholder="0"
-              className="bg-gray-50 border border-gray-300 text-[#1E2720] rounded-lg p-3 font-bold focus:border-[#D4AF37]"
+              className={`${WL_INPUT} font-bold`}
             />
           </div>
         </div>
       </section>
 
-      <section className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm mb-6 flex flex-col gap-4">
-        <h3 className="font-bold text-lg text-[#1E2720] flex items-center gap-2">
-          <span>✈️</span> بيانات البوردينق والحجوزات الفندقية
-        </h3>
-
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-          <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-bold text-gray-600">من مدينة (رحلة الطيران)</span>
-            <input
-              type="text"
-              value={originCity}
-              onChange={(e) => setOriginCity(e.target.value)}
-              placeholder="مثال: الرياض"
-              className="bg-gray-50 border border-gray-300 rounded-lg p-2.5 text-sm text-gray-900 focus:border-[#D4AF37] outline-none"
-            />
-          </label>
-          <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-bold text-gray-600">دولة المغادرة</span>
-            <input
-              type="text"
-              value={departureCountry}
-              onChange={(e) => setDepartureCountry(e.target.value)}
-              placeholder="السعودية"
-              className="bg-gray-50 border border-gray-300 rounded-lg p-2.5 text-sm text-gray-900 focus:border-[#D4AF37] outline-none"
-            />
-          </label>
-          <label className="flex flex-col gap-1.5 md:col-span-2">
-            <span className="text-sm font-bold text-gray-600">
-              إلى مدينة (رحلة الطيران — مدينة واحدة)
-            </span>
-            <input
-              type="text"
-              list="flight-arrival-city-suggestions"
-              value={flightArrivalCity}
-              onChange={(e) => setFlightArrivalCity(e.target.value)}
-              onBlur={(e) =>
-                setFlightArrivalCity(normalizeSingleArrivalCity(e.target.value))
-              }
-              placeholder={tripCities?.[0] ? `مثال: ${tripCities[0]}` : 'مثال: سيول'}
-              className="bg-gray-50 border border-gray-300 rounded-lg p-2.5 text-sm text-gray-900 focus:border-[#D4AF37] outline-none"
-            />
-            {(tripCities ?? []).length > 0 ? (
-              <datalist id="flight-arrival-city-suggestions">
-                {(tripCities ?? []).map((city) => (
-                  <option key={city} value={city} />
-                ))}
-              </datalist>
-            ) : null}
-            <span className="text-xs text-gray-500">
-              مدينة هبوط الطيران فقط — لا تُربط تلقائياً بكل مدن المسار.
-            </span>
-          </label>
-          <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-bold text-gray-600">دولة الوصول</span>
-            <input
-              type="text"
-              value={arrivalCountry}
-              onChange={(e) => setArrivalCountry(e.target.value)}
-              placeholder="هنغاريا"
-              className="bg-gray-50 border border-gray-300 rounded-lg p-2.5 text-sm text-gray-900 focus:border-[#D4AF37] outline-none"
-            />
-          </label>
-          <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-bold text-gray-600">رقم الرحلة</span>
-            <input
-              type="text"
-              value={flightNumber}
-              onChange={(e) => setFlightNumber(e.target.value)}
-              placeholder="SV130"
-              dir="ltr"
-              className="bg-gray-50 border border-gray-300 rounded-lg p-2.5 text-sm text-gray-900 focus:border-[#D4AF37] outline-none"
-            />
-          </label>
-          <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-bold text-gray-600">المبنى</span>
-            <input
-              type="text"
-              value={terminal}
-              onChange={(e) => setTerminal(e.target.value)}
-              placeholder="T1"
-              dir="ltr"
-              className="bg-gray-50 border border-gray-300 rounded-lg p-2.5 text-sm text-gray-900 focus:border-[#D4AF37] outline-none"
-            />
-          </label>
-          <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-bold text-gray-600">الدرجة</span>
-            <select
-              value={flightClass}
-              onChange={(e) => setFlightClass(e.target.value)}
-              dir="ltr"
-              className="bg-gray-50 border border-gray-300 rounded-lg p-2.5 text-sm text-gray-900 focus:border-[#D4AF37] outline-none"
-            >
-              <option value="">— اختر —</option>
-              {FLIGHT_CLASS_OPTIONS.map((opt) => (
-                <option key={opt} value={opt}>
-                  {opt}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-bold text-gray-600">وقت المغادرة</span>
-            <VipTimeSlotSelect
-              value={departureTime}
-              onChange={setDepartureTime}
-            />
-          </label>
-          <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-bold text-gray-600">وقت الوصول</span>
-            <VipTimeSlotSelect
-              value={arrivalTime}
-              onChange={setArrivalTime}
-            />
-          </label>
-          <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-bold text-gray-600">البوابة</span>
-            <input
-              type="text"
-              value={gate}
-              onChange={(e) => setGate(e.target.value)}
-              placeholder="A12"
-              className="bg-gray-50 border border-gray-300 rounded-lg p-2.5 text-sm text-gray-900 focus:border-[#D4AF37] outline-none"
-            />
-          </label>
-          <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-bold text-gray-600">المقعد</span>
-            <input
-              type="text"
-              value={seat}
-              onChange={(e) => setSeat(e.target.value)}
-              placeholder="5A"
-              className="bg-gray-50 border border-gray-300 rounded-lg p-2.5 text-sm text-gray-900 focus:border-[#D4AF37] outline-none"
-            />
-          </label>
-        </div>
-
-        <label className="flex max-w-md flex-col gap-1.5">
-          <span className="text-sm font-bold text-gray-600">رقم تأكيد الطيران (PNR)</span>
-          <input
-            type="text"
-            value={pnr}
-            onChange={(e) => setPnr(e.target.value)}
-            placeholder="ABC12X"
-            className="bg-gray-50 border border-gray-300 rounded-lg p-2.5 text-sm text-gray-900 focus:border-[#D4AF37] outline-none"
-          />
-        </label>
-
-        <h4 className="text-sm font-bold text-[#1E2720]">🏨 الفنادق والإقامة</h4>
-        <ItineraryHotelsEditor
-          hotels={hotels}
-          onChange={setHotels}
-          supplierBrief={supplierBrief}
-          filteredSuppliers={filteredSuppliers}
-          destinationLabel={supplierDestinationLabel}
-          tripCountries={tripCountries}
-          tripCities={tripCities}
+      <section className="mb-6 flex flex-col gap-5">
+        <BoardingFlightFieldsPanel
+          value={{
+            originCity,
+            departureCountry,
+            flightArrivalCity,
+            arrivalCountry,
+            flightNumber,
+            pnr,
+            flightClass,
+            departureTime,
+            arrivalTime,
+            terminal,
+            gate,
+            seat,
+          }}
+          onChange={(patch) => {
+            if (patch.originCity !== undefined) setOriginCity(patch.originCity);
+            if (patch.departureCountry !== undefined) setDepartureCountry(patch.departureCountry);
+            if (patch.flightArrivalCity !== undefined) setFlightArrivalCity(patch.flightArrivalCity);
+            if (patch.arrivalCountry !== undefined) setArrivalCountry(patch.arrivalCountry);
+            if (patch.flightNumber !== undefined) setFlightNumber(patch.flightNumber);
+            if (patch.pnr !== undefined) setPnr(patch.pnr);
+            if (patch.flightClass !== undefined) setFlightClass(patch.flightClass);
+            if (patch.departureTime !== undefined) setDepartureTime(patch.departureTime);
+            if (patch.arrivalTime !== undefined) setArrivalTime(patch.arrivalTime);
+            if (patch.terminal !== undefined) setTerminal(patch.terminal);
+            if (patch.gate !== undefined) setGate(patch.gate);
+            if (patch.seat !== undefined) setSeat(patch.seat);
+          }}
+          tripCities={tripCities ?? []}
+          datalistId="flight-arrival-city-suggestions"
         />
+
+        <div className="w-full max-w-full overflow-hidden rounded-2xl border border-slate-200 bg-white p-6 shadow-xl">
+          <h4 className="mb-4 flex items-center gap-2 text-base font-bold text-[#D4AF37]">
+            🏨 الفنادق والإقامة
+          </h4>
+          <ItineraryHotelsEditor
+            hotels={hotels}
+            onChange={setHotels}
+            supplierBrief={supplierBrief}
+            filteredSuppliers={filteredSuppliers}
+            destinationLabel={supplierDestinationLabel}
+            tripCountries={tripCountries}
+            tripCities={tripCities}
+          />
+        </div>
       </section>
 
       <section className="mb-6 rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
@@ -1751,7 +1815,7 @@ export default function EditItineraryPage() {
           <button
             type="button"
             onClick={() => setPreTripServices((prev) => [...prev, emptyPreTripService()])}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-[#D4AF37]/40 bg-[#1E2720] px-3 py-2 text-xs font-bold text-[#D4AF37] transition hover:bg-[#2a362c]"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-[#D4AF37]/40 bg-slate-100 px-3 py-2 text-xs font-bold text-[#D4AF37] transition hover:bg-slate-200"
           >
             <Plus className="h-4 w-4" aria-hidden />
             إضافة خدمة
@@ -1877,11 +1941,20 @@ export default function EditItineraryPage() {
       </section>
 
       <DragDropContext onDragEnd={handleDragEnd}>
-      <div className="flex gap-6 h-[750px]">
-        <aside className="w-[35%] bg-white rounded-xl border border-gray-200 shadow-sm flex flex-col overflow-hidden">
-          <div className="p-5 border-b border-gray-100 bg-gray-50 flex flex-col gap-4">
+      <div className="flex h-auto flex-col gap-4 lg:h-[750px] lg:flex-row lg:gap-6">
+        <aside className="flex w-full flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm lg:w-[35%]">
+          <div className="flex flex-col gap-4 border-b border-gray-100 bg-gray-50 p-4 sm:p-5">
+            <ItineraryPlacesSourceTabs
+              value={placesSourceTab}
+              onChange={setPlacesSourceTab}
+              placesCount={placesTotal}
+            />
+
+            {placesSourceTab === 'bank' ? (
+              <>
             <h3 className="font-bold text-lg">
-              بنك الأماكن ({displayedPlaces.length} مكان متاح)
+              بنك الأماكن
+              {placesLoading ? ' · جاري التحميل…' : ''}
             </h3>
 
             <input
@@ -1889,7 +1962,7 @@ export default function EditItineraryPage() {
               placeholder="ابحث بالاسم أو الحي..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="border border-gray-300 p-3 rounded-lg w-full focus:border-[#D4AF37] outline-none"
+              className="w-full rounded-xl border border-slate-300 bg-slate-50 p-3 font-bold text-slate-900 placeholder:text-slate-500 focus:border-[#D4AF37] focus:bg-white outline-none"
             />
 
             <div className="flex gap-2">
@@ -1899,11 +1972,13 @@ export default function EditItineraryPage() {
                   setFilterCity(e.target.value);
                   setFilterCategory('');
                 }}
-                className="flex-1 bg-white border border-gray-300 text-sm rounded-lg p-2"
+                className={`flex-1 ${WL_SELECT}`}
               >
-                <option value="">كل المدن</option>
+                <option value="" className={WL_OPTION}>
+                  كل المدن
+                </option>
                 {uniqueCities.map((c) => (
-                  <option key={c} value={c}>
+                  <option key={c} value={c} className={WL_OPTION}>
                     {c}
                   </option>
                 ))}
@@ -1912,18 +1987,49 @@ export default function EditItineraryPage() {
               <select
                 value={filterCategory}
                 onChange={(e) => setFilterCategory(e.target.value)}
-                className="flex-1 bg-white border border-gray-300 text-sm rounded-lg p-2"
+                className={`flex-1 ${WL_SELECT}`}
               >
-                <option value="">كل الفئات</option>
-                {uniqueCategories.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
+                <option value="" className={WL_OPTION}>
+                  كل الفئات
+                </option>
+                {PLACE_CATEGORY_OPTIONS.map((c) => (
+                  <option key={c.id} value={c.id} className={WL_OPTION}>
+                    {c.label}
                   </option>
                 ))}
               </select>
             </div>
+            {placesTotal > PLACES_BANK_PAGE_SIZE ? (
+              <div className="flex items-center justify-between gap-2 text-xs font-bold text-gray-600">
+                <button
+                  type="button"
+                  disabled={placesPage <= 0 || placesLoading}
+                  onClick={() => setPlacesPage((p) => Math.max(0, p - 1))}
+                  className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 disabled:opacity-40"
+                >
+                  السابق
+                </button>
+                <span>
+                  {placesPage + 1} / {Math.max(1, Math.ceil(placesTotal / PLACES_BANK_PAGE_SIZE))}
+                </span>
+                <button
+                  type="button"
+                  disabled={
+                    placesLoading ||
+                    placesPage >= Math.ceil(placesTotal / PLACES_BANK_PAGE_SIZE) - 1
+                  }
+                  onClick={() => setPlacesPage((p) => p + 1)}
+                  className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 disabled:opacity-40"
+                >
+                  التالي
+                </button>
+              </div>
+            ) : null}
+              </>
+            ) : null}
           </div>
 
+          {placesSourceTab === 'bank' ? (
           <SimpleItineraryPlacesBank
             places={displayedPlaces}
             activeDayLabel={activeDayLabel}
@@ -1931,6 +2037,15 @@ export default function EditItineraryPage() {
             onAddPlace={handleAddPlace}
             onQuickAddClick={() => openQuickAddModal(searchQuery)}
           />
+          ) : (
+            <ExperiencesExplorer
+              activeDayLabel={activeDayLabel}
+              defaultDestination={
+                filterCity || supplierBrief?.destination || tripCities[0] || ''
+              }
+              onAddPlace={handleAddPlace}
+            />
+          )}
         </aside>
 
         <SimpleItineraryDayPlanner

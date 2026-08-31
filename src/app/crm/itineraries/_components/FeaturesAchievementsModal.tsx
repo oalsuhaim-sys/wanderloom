@@ -42,7 +42,7 @@ export function FeaturesAchievementsModal({ open, onClose }: Props) {
 
   return (
     <div
-      className="fixed inset-0 z-[200] flex items-end justify-center p-0 sm:items-center sm:p-4"
+      className="fixed inset-0 z-[200] flex items-center justify-center p-0 sm:p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby="achievements-modal-title"
@@ -59,16 +59,16 @@ export function FeaturesAchievementsModal({ open, onClose }: Props) {
         <div className="mb-6 flex items-start justify-between gap-4 border-b border-white/10 pb-5">
           <div>
             <p className="text-[11px] font-black uppercase tracking-[0.35em] text-amber-400/90">System Playbook</p>
-            <h2 id="achievements-modal-title" className="mt-2 flex items-center gap-2 text-xl font-black text-white sm:text-2xl">
+            <h2 id="achievements-modal-title" className="mt-2 flex items-center gap-2 text-xl font-black text-slate-900 sm:text-2xl">
               <Award className="h-6 w-6 text-amber-400" />
               دليل ميزات النظام 🏆
             </h2>
-            <p className="mt-2 text-sm font-medium text-slate-400">دليل الإنجازات — مرجع سريع لا تنساه أثناء بناء الرحلة.</p>
+            <p className="mt-2 text-sm font-medium text-slate-500">دليل الإنجازات — مرجع سريع لا تنساه أثناء بناء الرحلة.</p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="shrink-0 rounded-xl border border-white/10 bg-white/5 p-2 text-slate-300 transition hover:bg-white/10 hover:text-white"
+            className="shrink-0 rounded-xl border border-white/10 bg-white/5 p-2 text-slate-600 transition hover:bg-white/10 hover:text-slate-800"
             aria-label="إغلاق النافذة"
           >
             <X className="h-5 w-5" />
@@ -94,10 +94,10 @@ export function FeaturesAchievementsModal({ open, onClose }: Props) {
                         {item.badge}
                       </span>
                     </div>
-                    <p className="mt-2 text-sm leading-relaxed text-slate-300">{item.description}</p>
+                    <p className="mt-2 text-sm leading-relaxed text-slate-600">{item.description}</p>
                     <ul className="mt-3 space-y-1">
                       {item.tips.map((tip) => (
-                        <li key={tip} className="flex items-start gap-2 text-xs font-medium text-slate-400">
+                        <li key={tip} className="flex items-start gap-2 text-xs font-medium text-slate-500">
                           <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-amber-400/80" aria-hidden />
                           {tip}
                         </li>

@@ -19,14 +19,14 @@ export default function ContactFilterTabs({
   return (
     <div
       dir="rtl"
-      className={`flex flex-wrap items-center gap-2.5 ${className}`}
+      className={`flex flex-wrap items-center gap-2 ${className}`}
       role="tablist"
       aria-label="تصفية العملاء"
     >
       {CONTACT_TABS.map((tab) => {
         const active = activeTab === tab.id
         const count = counts?.[tab.id]
-        const label = tab.emoji ? `${tab.label} ${tab.emoji}` : tab.label
+        const label = tab.label
 
         return (
           <button
@@ -35,17 +35,19 @@ export default function ContactFilterTabs({
             role="tab"
             aria-selected={active}
             onClick={() => onChange(tab.id)}
-            className={`inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-bold transition-all duration-200 sm:px-6 ${
+            className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-all duration-200 ${
               active
-                ? 'bg-[#1c3d27] text-white shadow-md ring-1 ring-[#D4AF37]/25'
-                : 'border border-stone-200/90 bg-white/90 text-[#1c3d27]/80 shadow-sm hover:border-[#D4AF37]/40 hover:bg-white hover:text-[#1c3d27] hover:shadow'
+                ? 'bg-slate-900 text-white shadow-sm dark:border dark:border-[#D4AF37]/50 dark:bg-[#D4AF37]/20 dark:text-[#D4AF37]'
+                : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50 dark:bg-[#22302C] dark:text-gray-300 dark:ring-[#2D3F3A] dark:hover:border-[#D4AF37]/30'
             }`}
           >
             <span>{label}</span>
             {typeof count === 'number' ? (
               <span
-                className={`min-w-[1.25rem] rounded-full px-2 py-0.5 text-center text-[10px] font-black ${
-                  active ? 'bg-white/20 text-white' : 'bg-[#1c3d27]/10 text-[#1c3d27]'
+                className={`min-w-[1.25rem] rounded-full px-2 py-0.5 text-center text-xs font-medium ${
+                  active
+                    ? 'bg-white/15 text-white dark:bg-[#D4AF37]/15 dark:text-[#D4AF37]'
+                    : 'bg-slate-50 text-slate-500 dark:bg-[#1A2421] dark:text-slate-400'
                 }`}
               >
                 {count}

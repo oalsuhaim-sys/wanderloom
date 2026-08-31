@@ -48,12 +48,24 @@ export async function getOnboardingProfileAction(
   }
 }
 
-export type SubmitOnboardingActionResult = { ok: true } | { ok: false; error: string };
+export type SubmitOnboardingActionResult =
+  | {
+      ok: true;
+      leadId?: string | null;
+      quoteId?: string | null;
+      quotationUrl?: string | null;
+      clientName?: string | null;
+      clientPhone?: string | null;
+      tripTitle?: string | null;
+      autoQuoteMessage?: string;
+    }
+  | { ok: false; error: string };
 
 /** حفظ ملف DNA من الصفحة العامة — service_role يتجاوز RLS */
 export async function submitOnboardingProfileAction(
   token: string,
   payload: OnboardingProfilePayload,
+  options?: { origin?: string | null },
 ): Promise<SubmitOnboardingActionResult> {
   const key = String(token ?? '').trim();
   if (!key) {
@@ -71,8 +83,33 @@ export async function submitOnboardingProfileAction(
       return { ok: false, error: 'تعذر حفظ التفضيلات. تحقق من الرابط أو تواصل مع الكونسيرج.' };
     }
     // Explicit pipeline bump: DNA (+ embedded calendar) → meeting column
-    await ensureLeadMeetingAfterDnaAdmin(key);
-    return { ok: true };
+    const meeting = await ensureLeadMeetingAfterDnaAdmin(key);
+
+    // Auto-create / activate quotation with DNA preferences injected
+    const { autoCreateQuotationAfterDnaAdmin } = await import(
+      '@/app/actions/dnaQuotationAutomation'
+    );
+    const autoQuote = await autoCreateQuotationAfterDnaAdmin({
+      clientId: meeting.clientId,
+      leadId: meeting.leadId,
+      origin: options?.origin ?? null,
+    });
+
+    if (!autoQuote.ok) {
+      console.warn('[submitOnboardingProfileAction] auto quotation:', autoQuote.error);
+    }
+
+    return {
+      ok: true,
+      leadId: meeting.leadId,
+      quoteId: autoQuote.quoteId,
+      quotationUrl: autoQuote.quotationUrl ?? null,
+      clientName: autoQuote.clientName ?? null,
+      clientPhone: autoQuote.clientPhone ?? null,
+      tripTitle: autoQuote.tripTitle ?? null,
+      autoQuoteMessage:
+        autoQuote.message || 'تم إكمال الـ DNA بنجاح! عرض السعر جاهز الآن للعميل.',
+    };
   } catch (err) {
     return {
       ok: false,

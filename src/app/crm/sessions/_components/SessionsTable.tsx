@@ -1,9 +1,10 @@
 'use client';
 
 import { useMemo } from 'react';
-import { Calendar, MapPin, Pencil, Trash2, Users } from 'lucide-react';
+import { ExternalLink, MapPin, Pencil, Trash2, Users, Video } from 'lucide-react';
 
 import type { Session, SessionRegistration } from '@/types/session-tables';
+import { CRM_BTN_PRIMARY, partnerInitials } from '@/lib/crm-luxury-ui';
 
 type SessionsTableProps = {
   sessions: Session[];
@@ -13,44 +14,17 @@ type SessionsTableProps = {
   onDelete?: (session: Session) => void;
 };
 
-function formatDate(value: string) {
+function parseSessionDate(value: string): Date | null {
   const day = String(value).slice(0, 10);
-  try {
-    const d = new Date(day + 'T12:00:00');
-    if (Number.isNaN(d.getTime())) return value;
-    return d.toLocaleDateString('ar-SA', {
-      weekday: 'short',
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-    });
-  } catch {
-    return value;
-  }
-}
-
-function formatDateTime(iso?: string) {
-  if (!iso) return '—';
-  try {
-    const d = new Date(iso);
-    if (Number.isNaN(d.getTime())) return '—';
-    return d.toLocaleString('ar-SA', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  } catch {
-    return '—';
-  }
+  const d = new Date(`${day}T12:00:00`);
+  return Number.isNaN(d.getTime()) ? null : d;
 }
 
 function sessionTypeLabel(type: string) {
   const t = String(type).toLowerCase().replace(/-/g, '_');
   if (t === 'online') return 'أونلاين';
   if (t === 'in_person' || t === 'inperson') return 'حضوري';
-  return 'نوع الجلسة';
+  return 'جلسة';
 }
 
 function isInPerson(type: string) {
@@ -73,17 +47,25 @@ export function SessionsTable({ sessions, registrations, loading, onEdit, onDele
     }
     for (const sid of Object.keys(map)) {
       map[sid].sort(
-        (a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
+        (a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime(),
       );
     }
     return map;
   }, [registrations]);
 
+  const sorted = useMemo(() => {
+    return [...sessions].sort((a, b) => {
+      const da = parseSessionDate(String(a.date))?.getTime() ?? 0;
+      const db = parseSessionDate(String(b.date))?.getTime() ?? 0;
+      return da - db;
+    });
+  }, [sessions]);
+
   if (loading) {
     return (
       <div
         dir="rtl"
-        className="flex min-h-[200px] items-center justify-center rounded-2xl border border-dashed border-stone-300 bg-white text-sm font-black text-stone-500"
+        className="flex min-h-[200px] items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-white text-sm font-semibold text-slate-500 dark:border-[#2D3F3A] dark:bg-[#22302C]"
       >
         جارٍ تحميل الجلسات…
       </div>
@@ -94,7 +76,7 @@ export function SessionsTable({ sessions, registrations, loading, onEdit, onDele
     return (
       <div
         dir="rtl"
-        className="rounded-2xl border border-dashed border-stone-300 bg-white px-4 py-12 text-center text-sm font-black text-stone-500"
+        className="rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-12 text-center text-sm font-semibold text-slate-500 dark:border-[#2D3F3A] dark:bg-[#22302C]"
       >
         لا توجد جلسات بعد. أضف أول جلسة من النموذج أعلاه.
       </div>
@@ -103,53 +85,106 @@ export function SessionsTable({ sessions, registrations, loading, onEdit, onDele
 
   return (
     <div dir="rtl" className="w-full space-y-4">
-      <header className="flex flex-wrap items-end justify-between gap-2 border-b border-stone-200 pb-3">
+      <header className="flex flex-wrap items-end justify-between gap-2">
         <div>
-          <h2 className="text-base font-black text-[#1C4532]">الجلسات الحالية</h2>
-          <p className="mt-0.5 text-xs font-bold text-stone-500">{sessions.length} جلسة</p>
+          <h2 className="text-lg font-bold text-slate-900 dark:text-white">الجلسات القادمة</h2>
+          <p className="mt-0.5 text-xs font-medium text-slate-500">{sessions.length} جلسة</p>
         </div>
       </header>
 
-      <ul className="grid list-none gap-4 p-0 sm:grid-cols-1 xl:grid-cols-2">
-        {sessions.map((s) => {
+      <ul className="flex list-none flex-col gap-3 p-0">
+        {sorted.map((s) => {
           const sid = String(s.id ?? '');
           const regs = sid ? bySession[sid] ?? [] : [];
           const rowKey = sid || `${s.title}-${s.date}`;
           const inPerson = isInPerson(String(s.session_type));
+          const d = parseSessionDate(String(s.date));
+          const dayNum = d ? d.getDate() : '—';
+          const month = d
+            ? d.toLocaleDateString('ar-SA', { month: 'short' })
+            : String(s.date).slice(5, 7) || '—';
+          const lead = regs[0];
+          const joinHref = inPerson
+            ? s.location_url || '/portal/sessions'
+            : s.location_url || '/portal/sessions';
 
           return (
             <li
               key={rowKey}
-              className="flex flex-col overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm ring-1 ring-black/[0.03]"
+              className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg dark:border-[#2D3F3A] dark:bg-[#22302C]"
             >
-              <div className="flex flex-col gap-3 border-b border-stone-100 bg-gradient-to-bl from-stone-50/90 to-white p-4 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-                <div className="min-w-0 flex-1 space-y-2">
-                  <h3 className="text-sm font-black leading-snug text-[#1C4532] sm:text-base">{s.title}</h3>
-                  <div className="flex flex-wrap gap-2">
-                    <span
-                      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-black ring-1 ${
-                        inPerson
-                          ? 'bg-emerald-50 text-emerald-800 ring-emerald-200'
-                          : 'bg-sky-50 text-sky-800 ring-sky-200'
-                      }`}
-                    >
-                      {sessionTypeLabel(String(s.session_type))}
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex min-w-0 flex-1 items-center gap-3">
+                  <div className="flex w-16 shrink-0 flex-col items-center justify-center rounded-lg bg-slate-50 p-2 text-center dark:bg-[#1A2421]">
+                    <span className="text-2xl font-bold leading-none text-slate-900 dark:text-white">
+                      {dayNum}
                     </span>
-                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-0.5 text-[11px] font-black text-amber-900 ring-1 ring-amber-200">
-                      {priceLabel(Number(s.price) || 0)}
-                    </span>
-                    <span className="inline-flex items-center gap-1 rounded-full bg-stone-100 px-2.5 py-0.5 text-[11px] font-black text-stone-700 ring-1 ring-stone-200">
-                      <Users className="h-3 w-3 opacity-70" aria-hidden />
-                      {s.spots} مقعد
+                    <span className="mt-1 text-[10px] font-semibold text-slate-500 dark:text-slate-400">
+                      {month}
                     </span>
                   </div>
+
+                  <div className="min-w-0 flex-1">
+                    <h3 className="truncate text-sm font-bold text-slate-900 dark:text-white sm:text-base">
+                      {s.title}
+                    </h3>
+                    <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                      <span className="rounded-md bg-slate-50 px-2 py-1 text-xs text-slate-700 dark:bg-[#1A2421] dark:text-slate-300">
+                        {sessionTypeLabel(String(s.session_type))}
+                      </span>
+                      <span className="rounded-md bg-slate-50 px-2 py-1 text-xs text-slate-700 dark:bg-[#1A2421] dark:text-slate-300">
+                        {priceLabel(Number(s.price) || 0)}
+                      </span>
+                      <span className="inline-flex items-center gap-1 rounded-md bg-slate-50 px-2 py-1 text-xs text-slate-700 dark:bg-[#1A2421] dark:text-slate-300">
+                        <Users className="h-3 w-3" aria-hidden />
+                        {s.spots} مقعد · {regs.length} مسجّل
+                      </span>
+                    </div>
+
+                    {lead ? (
+                      <div className="mt-2 flex items-center gap-2">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-900 text-[10px] font-bold text-white dark:bg-[#D4AF37] dark:text-slate-900">
+                          {partnerInitials(lead.name)}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="truncate text-xs font-semibold text-slate-800 dark:text-slate-200">
+                            {lead.name}
+                          </p>
+                          <p className="text-[10px] text-slate-400" dir="ltr">
+                            {lead.whatsapp}
+                          </p>
+                        </div>
+                        {regs.length > 1 ? (
+                          <span className="text-[10px] font-medium text-slate-400">
+                            +{regs.length - 1}
+                          </span>
+                        ) : null}
+                      </div>
+                    ) : (
+                      <p className="mt-2 text-xs font-medium text-slate-400">لا يوجد مسجّلون بعد</p>
+                    )}
+                  </div>
                 </div>
-                <div className="flex shrink-0 items-center gap-2 sm:flex-col sm:items-end">
+
+                <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+                  <a
+                    href={joinHref}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={CRM_BTN_PRIMARY}
+                  >
+                    {inPerson ? (
+                      <MapPin className="h-3.5 w-3.5" aria-hidden />
+                    ) : (
+                      <Video className="h-3.5 w-3.5" aria-hidden />
+                    )}
+                    دخول الجلسة
+                    <ExternalLink className="h-3 w-3 opacity-70" aria-hidden />
+                  </a>
                   <button
                     type="button"
                     onClick={() => onEdit?.(s)}
-                    className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-stone-200 bg-white px-3 py-2 text-xs font-black text-stone-700 shadow-sm hover:bg-stone-50"
-                    title="تعديل"
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-[#2D3F3A] dark:bg-[#1A2421] dark:text-slate-300"
                   >
                     <Pencil className="h-3.5 w-3.5" aria-hidden />
                     تعديل
@@ -157,8 +192,7 @@ export function SessionsTable({ sessions, registrations, loading, onEdit, onDele
                   <button
                     type="button"
                     onClick={() => onDelete?.(s)}
-                    className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-red-200 bg-white px-3 py-2 text-xs font-black text-red-700 shadow-sm hover:bg-red-50"
-                    title="حذف"
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-white px-3 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-50 dark:border-rose-900/40 dark:bg-transparent dark:text-rose-400"
                   >
                     <Trash2 className="h-3.5 w-3.5" aria-hidden />
                     حذف
@@ -166,56 +200,28 @@ export function SessionsTable({ sessions, registrations, loading, onEdit, onDele
                 </div>
               </div>
 
-              <div className="space-y-3 p-4">
-                <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs font-bold text-stone-600">
-                  <span className="inline-flex items-center gap-1.5">
-                    <Calendar className="h-3.5 w-3.5 text-[#C9A84C]" aria-hidden />
-                    {formatDate(String(s.date))}
-                  </span>
-                  {inPerson && s.location_url ? (
-                    <a
-                      href={s.location_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 font-black text-[#1C4532] underline decoration-[#C9A84C]/50 underline-offset-2 hover:decoration-[#C9A84C]"
-                    >
-                      <MapPin className="h-3.5 w-3.5 shrink-0 text-[#C9A84C]" aria-hidden />
-                      الموقع على الخريطة
-                    </a>
-                  ) : null}
-                </div>
-
-                {s.description ? (
-                  <p className="text-xs font-bold leading-relaxed text-stone-700">{s.description}</p>
-                ) : (
-                  <p className="text-xs font-bold text-stone-400">لا يوجد وصف لهذه الجلسة.</p>
-                )}
-
-                <div className="rounded-xl border border-stone-100 bg-stone-50/60 p-3">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <p className="text-xs font-black text-[#1C4532]">قائمة المسجّلين</p>
-                    <span className="rounded-full bg-white px-2 py-0.5 text-[11px] font-black tabular-nums text-stone-700 ring-1 ring-stone-200">
-                      {regs.length}
-                    </span>
-                  </div>
-                  <p className="mt-1 text-[11px] font-bold text-stone-600">المسجلون: (الأحدث أولاً)</p>
-                  {regs.length === 0 ? (
-                    <p className="mt-2 text-xs font-bold text-stone-500">لا يوجد مسجّلون بعد.</p>
-                  ) : (
-                    <ul className="mt-3 divide-y divide-stone-200/80 rounded-lg border border-stone-200 bg-white">
-                      {regs.map((r) => (
-                        <li key={r.id ?? `${r.session_id}-${r.whatsapp}-${r.created_at}`} className="flex flex-col gap-1 px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
-                          <span className="text-xs font-black text-stone-800">{r.name}</span>
-                          <span className="text-xs font-bold tabular-nums text-stone-600" dir="ltr">
-                            {r.whatsapp}
-                          </span>
-                          <span className="text-[11px] font-bold text-stone-500 sm:text-left">{formatDateTime(r.created_at)}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              </div>
+              {regs.length > 0 ? (
+                <details className="mt-3 border-t border-slate-100 pt-3 dark:border-[#2D3F3A]">
+                  <summary className="cursor-pointer text-xs font-semibold text-slate-500">
+                    عرض كل المسجّلين ({regs.length})
+                  </summary>
+                  <ul className="mt-2 divide-y divide-slate-100 rounded-xl border border-slate-100 dark:divide-[#2D3F3A] dark:border-[#2D3F3A]">
+                    {regs.map((r) => (
+                      <li
+                        key={r.id ?? `${r.session_id}-${r.whatsapp}-${r.created_at}`}
+                        className="flex flex-col gap-1 px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between"
+                      >
+                        <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+                          {r.name}
+                        </span>
+                        <span className="text-xs text-slate-500" dir="ltr">
+                          {r.whatsapp}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              ) : null}
             </li>
           );
         })}

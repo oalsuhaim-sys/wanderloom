@@ -120,7 +120,7 @@ function ItemRow({
     <Command.Item
       value={`${label} ${subtitle ?? ''}`}
       onSelect={onSelect}
-      className="mx-2 flex cursor-pointer items-center gap-3 rounded-lg px-4 py-3 text-[#1A3B2A] outline-none transition-colors aria-selected:bg-[#1A3B2A] aria-selected:text-white data-[selected=true]:bg-[#1A3B2A] data-[selected=true]:text-white"
+      className="mx-2 flex cursor-pointer items-center gap-3 rounded-lg px-4 py-3 text-slate-800 outline-none transition-colors hover:bg-slate-100 aria-selected:bg-slate-900 aria-selected:text-white data-[selected=true]:bg-slate-900 data-[selected=true]:text-white dark:text-gray-200 dark:hover:bg-[#1A2421] dark:aria-selected:bg-[#D4AF37]/20 dark:aria-selected:text-[#D4AF37] dark:data-[selected=true]:bg-[#D4AF37]/20 dark:data-[selected=true]:text-[#D4AF37]"
     >
       {Icon ? (
         <Icon className="h-4 w-4 shrink-0 opacity-70" aria-hidden />
@@ -336,7 +336,7 @@ export default function CommandPalette() {
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[100] flex items-start justify-center bg-black/40 pt-[15vh] backdrop-blur-sm"
+      className="fixed inset-0 z-[100] flex items-start justify-center bg-black/40 px-4 pt-[15vh] backdrop-blur-sm"
       role="presentation"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) close();
@@ -346,7 +346,7 @@ export default function CommandPalette() {
         dir="rtl"
         label="بحث سريع في CRM"
         shouldFilter={false}
-        className="w-full max-w-2xl overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-2xl dark:border-brand-gold/25 dark:bg-brand-surface dark:text-[#E8EDE9]"
+        className="w-[95%] max-w-2xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-[#2D3F3A] dark:bg-[#22302C] dark:text-gray-100"
         onKeyDown={(e) => {
           if (e.key === 'Escape') {
             e.preventDefault();
@@ -354,19 +354,19 @@ export default function CommandPalette() {
           }
         }}
       >
-        <div className="flex items-center gap-2 border-b border-gray-100 px-4">
-          <Search className="h-5 w-5 shrink-0 text-gray-400" aria-hidden />
+        <div className="flex items-center gap-2 border-b border-slate-100 px-4 dark:border-[#2D3F3A]">
+          <Search className="h-5 w-5 shrink-0 text-slate-400 dark:text-[#D4AF37]" aria-hidden />
           <Command.Input
             value={query}
             onValueChange={setQuery}
             placeholder="ابحث عن عميل، رحلة، شريك، أو إجراء…"
-            className="w-full border-0 bg-transparent px-2 py-4 text-xl text-[#1A3B2A] outline-none placeholder:text-gray-400"
+            className="w-full border-0 bg-transparent px-2 py-4 text-xl text-slate-900 outline-none placeholder:text-slate-400 dark:text-gray-100"
             autoFocus
           />
           {loading ? (
-            <Loader2 className="h-4 w-4 shrink-0 animate-spin text-[#C5A059]" aria-hidden />
+            <Loader2 className="h-4 w-4 shrink-0 animate-spin text-slate-400 dark:text-[#D4AF37]" aria-hidden />
           ) : (
-            <kbd className="hidden shrink-0 rounded-md border border-gray-200 bg-gray-50 px-1.5 py-0.5 text-[10px] font-bold text-gray-400 sm:inline">
+            <kbd className="hidden shrink-0 rounded-md border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] font-bold text-slate-400 sm:inline dark:border-[#2D3F3A] dark:bg-[#1A2421]">
               Esc
             </kbd>
           )}

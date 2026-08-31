@@ -14,12 +14,12 @@ export function CrmPwaInstallWidget() {
 
   return (
     <>
-      <div className="mb-3 rounded-xl border border-[#cda04c]/15 bg-[#0B1511]/40 px-3 py-3">
+      <div className="mb-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-3 dark:border-[#2D3F3A] dark:bg-[#2A3834]">
         <button
           type="button"
           onClick={() => void handleInstallClick()}
           disabled={busy}
-          className="flex w-full items-center justify-center gap-2 rounded-lg border border-[#cda04c]/40 bg-[#cda04c]/90 px-3 py-2.5 text-xs font-semibold text-[#0B1511] transition hover:bg-[#cda04c] disabled:opacity-60"
+          className="flex w-full items-center justify-center gap-2 rounded-lg bg-slate-900 px-3 py-2.5 text-xs font-medium text-white transition hover:opacity-90 active:scale-[0.98] disabled:opacity-60 dark:border dark:border-[#D4AF37]/30 dark:bg-[#D4AF37]/10 dark:text-[#D4AF37] dark:hover:bg-[#D4AF37]/20"
         >
           <Download className="h-3.5 w-3.5 shrink-0 opacity-90" aria-hidden />
           <span>{busy ? 'جارٍ الفتح…' : 'تثبيت النظام على الجهاز'}</span>

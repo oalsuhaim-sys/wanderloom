@@ -7,6 +7,13 @@ export type ClientTeaserPendingInvoice = {
   url: string;
 };
 
+export type ClientTeaserGroupMember = {
+  status: 'pending_interview' | 'approved' | 'rejected' | 'confirmed_seat' | 'waitlisted';
+  tripTitle: string | null;
+  /** ISO deadline when scarcity threshold applies; null = indefinite hold */
+  paymentDeadline?: string | null;
+};
+
 export type ClientTeaserPortalData = {
   clientId: string;
   clientName: string;
@@ -24,6 +31,10 @@ export type ClientTeaserPortalData = {
   /** رابط نموذج DNA — /welcome/client/{clients.id} */
   dnaWelcomeUrl: string;
   onboardingCompleted: boolean;
+  /** حالة انضمام رحلة المجموعة عبر group_members */
+  groupMember?: ClientTeaserGroupMember | null;
+  /** بوابة محدودة لحالة المجموعة قبل اكتمال السداد */
+  groupStatusOnly?: boolean;
 };
 
 export type CountdownParts = {

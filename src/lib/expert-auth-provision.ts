@@ -2,8 +2,15 @@ import 'server-only';
 
 import {
   EXPERT_CRM_PERMISSIONS,
-  CRM_PERMISSION_KEYS,
+  LEGACY_ACCESS_KEYS,
+  normalizeCrmPermissions,
+  permissionsToDbArray,
+  type CrmPermissions,
 } from '@/lib/crm-permissions';
+import {
+  insertEmployeeWithRbacFallback,
+  updateEmployeeWithRbacFallback,
+} from '@/lib/employees-rbac-db';
 import { EXPERT_DEFAULT_PASSWORD } from '@/lib/expert-auth-constants';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 
@@ -54,11 +61,15 @@ async function upsertExpertEmployee(
     fullName: string;
     email: string;
     phone?: string | null;
+    permissions?: CrmPermissions;
   },
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  const permissions = { ...EXPERT_CRM_PERMISSIONS };
+  const permissions = input.permissions
+    ? normalizeCrmPermissions(input.permissions)
+    : { ...EXPERT_CRM_PERMISSIONS };
+  const permissionsArray = permissionsToDbArray(permissions);
   const permissionColumns = Object.fromEntries(
-    CRM_PERMISSION_KEYS.map((key) => [key, permissions[key]]),
+    LEGACY_ACCESS_KEYS.map((key) => [key, permissions[key]]),
   );
 
   const payload: Record<string, unknown> = {
@@ -70,7 +81,7 @@ async function upsertExpertEmployee(
     job_title: 'Destination Expert',
     is_admin: false,
     is_suspended: false,
-    permissions,
+    permissions: permissionsArray,
     ...permissionColumns,
   };
 
@@ -81,20 +92,21 @@ async function upsertExpertEmployee(
     .maybeSingle();
 
   if (existing.data?.id) {
-    const { error } = await admin
-      .from('employees')
-      .update({
+    const updated = await updateEmployeeWithRbacFallback(
+      admin,
+      { column: 'id', value: String(existing.data.id) },
+      {
         user_id: input.userId,
         full_name: input.fullName,
         role: 'Expert',
         job_title: 'Destination Expert',
         is_admin: false,
-        permissions,
+        permissions: permissionsArray,
         ...permissionColumns,
         ...(input.phone?.trim() ? { phone_wa: input.phone.trim() } : {}),
-      })
-      .eq('id', existing.data.id);
-    if (error) return { ok: false, error: error.message };
+      },
+    );
+    if (updated.error) return { ok: false, error: updated.error };
     return { ok: true };
   }
 
@@ -105,42 +117,26 @@ async function upsertExpertEmployee(
     .maybeSingle();
 
   if (byUser.data?.id) {
-    const { error } = await admin
-      .from('employees')
-      .update({
+    const updated = await updateEmployeeWithRbacFallback(
+      admin,
+      { column: 'id', value: String(byUser.data.id) },
+      {
         full_name: input.fullName,
         email: input.email,
         role: 'Expert',
         job_title: 'Destination Expert',
         is_admin: false,
-        permissions,
+        permissions: permissionsArray,
         ...permissionColumns,
-      })
-      .eq('id', byUser.data.id);
-    if (error) return { ok: false, error: error.message };
+      },
+    );
+    if (updated.error) return { ok: false, error: updated.error };
     return { ok: true };
   }
 
-  const insert = await admin.from('employees').insert(payload).select('id').single();
-  if (!insert.error) return { ok: true };
-
-  if (/column|schema cache|does not exist/i.test(insert.error.message ?? '')) {
-    const minimal = await admin
-      .from('employees')
-      .insert({
-        user_id: input.userId,
-        full_name: input.fullName,
-        email: input.email,
-        role: 'Expert',
-        job_title: 'Destination Expert',
-      })
-      .select('id')
-      .single();
-    if (minimal.error) return { ok: false, error: minimal.error.message };
-    return { ok: true };
-  }
-
-  return { ok: false, error: insert.error.message || 'تعذر حفظ موظف الخبير.' };
+  const inserted = await insertEmployeeWithRbacFallback(admin, payload);
+  if (inserted.error) return { ok: false, error: inserted.error };
+  return { ok: true };
 }
 
 /**
@@ -153,6 +149,7 @@ export async function provisionExpertAuthAccount(
     email?: string | null;
     fullName?: string | null;
     phone?: string | null;
+    permissions?: CrmPermissions | null;
   },
 ): Promise<ProvisionExpertAuthResult> {
   const email = String(input.email ?? '').trim().toLowerCase();
@@ -160,6 +157,11 @@ export async function provisionExpertAuthAccount(
   if (!email || !email.includes('@')) {
     return { ok: false, error: 'بريد الخبير مطلوب لإنشاء حساب الدخول.' };
   }
+
+  const permissions = input.permissions
+    ? normalizeCrmPermissions(input.permissions)
+    : { ...EXPERT_CRM_PERMISSIONS };
+  const enabledPermissionIds = permissionsToDbArray(permissions);
 
   let userId: string | null = null;
   let createdAuthUser = false;
@@ -171,6 +173,7 @@ export async function provisionExpertAuthAccount(
     user_metadata: {
       full_name: fullName,
       role: 'expert',
+      permissions: enabledPermissionIds,
     },
   });
 
@@ -185,6 +188,15 @@ export async function provisionExpertAuthAccount(
         error: 'البريد مسجّل مسبقاً لكن تعذر استرجاع معرّف المستخدم.',
       };
     }
+    await admin.auth.admin
+      .updateUserById(userId, {
+        user_metadata: {
+          full_name: fullName,
+          role: 'expert',
+          permissions: enabledPermissionIds,
+        },
+      })
+      .catch(() => undefined);
   } else {
     return {
       ok: false,
@@ -197,6 +209,7 @@ export async function provisionExpertAuthAccount(
     fullName,
     email,
     phone: input.phone,
+    permissions,
   });
 
   if (!employee.ok) {
@@ -219,6 +232,7 @@ export async function provisionExpertAuthAccountStandalone(input: {
   email?: string | null;
   fullName?: string | null;
   phone?: string | null;
+  permissions?: CrmPermissions | null;
 }): Promise<ProvisionExpertAuthResult> {
   const admin = createSupabaseAdminClient();
   return provisionExpertAuthAccount(admin, input);

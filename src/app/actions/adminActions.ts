@@ -10,6 +10,11 @@ import {
   normalizeCrmPermissions,
   type CrmPermissions,
 } from '@/lib/crm-permissions';
+import {
+  insertEmployeeWithRbacFallback,
+  selectEmployeesWithFallback,
+  updateEmployeeWithRbacFallback,
+} from '@/lib/employees-rbac-db';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import {
   assertServiceRoleKeyConfigured,
@@ -49,22 +54,11 @@ async function insertEmployeeWithFallback(
   admin: ReturnType<typeof createSupabaseAdminClient>,
   payload: Record<string, unknown>,
 ) {
-  const full = await admin.from('employees').insert(payload).select('id').single();
-  if (!full.error) return full;
-
-  if (/column|schema cache|does not exist/i.test(full.error.message ?? '')) {
-    const minimal: Record<string, unknown> = {
-      user_id: payload.user_id,
-      full_name: payload.full_name,
-      email: payload.email,
-      role: payload.role,
-      job_title: payload.job_title,
-    };
-    if (payload.phone_wa) minimal.phone_wa = payload.phone_wa;
-    return admin.from('employees').insert(minimal).select('id').single();
+  const result = await insertEmployeeWithRbacFallback(admin, payload);
+  if (result.error) {
+    return { data: null, error: { message: result.error } };
   }
-
-  return full;
+  return { data: result.data, error: null };
 }
 
 export async function listTeamMembersAction(
@@ -77,16 +71,13 @@ export async function listTeamMembersAction(
   if (serviceKeyError) return { ok: false, error: serviceKeyError };
 
   const admin = createSupabaseAdminClient();
-  const { data, error } = await admin
-    .from('employees')
-    .select('*')
-    .order('created_at', { ascending: false });
-
-  if (error) {
-    return { ok: false, error: error.message || 'تعذر تحميل الفريق.' };
+  const listed = await selectEmployeesWithFallback(admin, { orderByCreatedAt: true });
+  if (listed.error) {
+    return { ok: false, error: listed.error };
   }
 
-  const members = (data ?? []).map((row) => {
+  const rawRows = Array.isArray(listed.data) ? listed.data : listed.data ? [listed.data] : [];
+  const members = rawRows.map((row) => {
     const mapped = mapEmployeeToAdminUser(row);
     return {
       id: mapped.id,
@@ -95,7 +86,7 @@ export async function listTeamMembersAction(
       is_admin: mapped.is_admin,
       is_suspended: mapped.is_suspended,
       permissions: mapped.permissions,
-      created_at: row.created_at ?? null,
+      created_at: mapped.created_at,
     };
   });
 
@@ -219,13 +210,12 @@ export async function updateTeamMemberAction(
   if (serviceKeyError) return { ok: false, error: serviceKeyError };
 
   const admin = createSupabaseAdminClient();
-  const { data: existing, error: fetchErr } = await admin
-    .from('employees')
-    .select('*')
-    .eq('user_id', userId)
-    .maybeSingle();
-
-  if (fetchErr) return { ok: false, error: fetchErr.message };
+  const existingRes = await selectEmployeesWithFallback(admin, {
+    eq: { column: 'user_id', value: userId },
+    maybeSingle: true,
+  });
+  if (existingRes.error) return { ok: false, error: existingRes.error };
+  const existing = existingRes.data && !Array.isArray(existingRes.data) ? existingRes.data : null;
   if (!existing) return { ok: false, error: 'المستخدم غير موجود.' };
 
   const nextIsAdmin = typeof patch.is_admin === 'boolean' ? patch.is_admin : Boolean(existing.is_admin);
@@ -242,8 +232,12 @@ export async function updateTeamMemberAction(
     permissions: nextPermissions,
   });
 
-  const { error: updateErr } = await admin.from('employees').update(updatePatch).eq('user_id', userId);
-  if (updateErr) return { ok: false, error: updateErr.message };
+  const updated = await updateEmployeeWithRbacFallback(
+    admin,
+    { column: 'user_id', value: userId },
+    updatePatch,
+  );
+  if (updated.error) return { ok: false, error: updated.error };
 
   if (typeof patch.is_suspended === 'boolean') {
     await admin.auth.admin.updateUserById(userId, {

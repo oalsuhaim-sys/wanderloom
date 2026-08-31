@@ -21,6 +21,22 @@ type EventRow = {
 
 type MetaRow = { country: string | null; city: string | null; season: string | null }
 
+const CARD =
+  'bg-white border border-slate-200/90 rounded-2xl p-5 shadow-sm mb-4 hover:border-[#D4AF37]/40 transition-all'
+const INNER = 'bg-slate-50 border border-slate-200 rounded-xl p-4'
+const INPUT =
+  'w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-bold text-slate-800 placeholder:text-slate-400 outline-none focus:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37]/25'
+const TAG = 'bg-slate-100 text-slate-700 border border-slate-200 rounded-lg px-3 py-1 text-xs font-bold'
+const TAG_GO = 'bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg px-3 py-1 text-xs font-bold'
+const TAG_AVOID = 'bg-rose-50 text-rose-700 border border-rose-200 rounded-lg px-3 py-1 text-xs font-bold'
+const BTN_PRIMARY =
+  'bg-[#D4AF37] hover:bg-[#b8952d] text-black font-extrabold py-2.5 px-4 rounded-xl text-sm inline-flex items-center justify-center gap-2 transition-all shadow-sm disabled:cursor-not-allowed disabled:opacity-60'
+const EDIT_LINK = 'text-slate-500 hover:text-[#b8952d] text-xs font-bold cursor-pointer inline-flex items-center gap-1.5 transition-colors'
+const BTN_SECONDARY =
+  'rounded-xl border border-slate-200 bg-slate-100 px-4 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-50'
+const NOTE_BOX =
+  'bg-amber-50/70 text-amber-900 border border-amber-200/80 rounded-xl p-3 text-sm font-semibold leading-relaxed'
+
 const emptyForm = () => ({
   name: '',
   country: '',
@@ -309,93 +325,47 @@ export default function CRMEventsPage() {
     return (
       <div
         dir="rtl"
-        style={{
-          minHeight: '100vh',
-          background: '#F6F4F0',
-          fontFamily: 'sans-serif',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
+        className="mx-auto flex min-h-screen max-w-[1100px] items-center justify-center bg-slate-50 p-6 font-sans text-slate-800"
       >
-        <div style={{ textAlign: 'center', color: '#6B7280' }}>
-          <Loader2 size={22} style={{ marginBottom: 10, animation: 'spin 1s linear infinite' }} />
-          جارٍ تحميل الفعاليات...
+        <div className="text-center text-slate-500">
+          <Loader2 className="mx-auto mb-3 h-8 w-8 animate-spin text-[#b8952d]" />
+          <p className="text-sm">جارٍ تحميل الفعاليات...</p>
         </div>
-        <style>{`@keyframes spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }`}</style>
       </div>
     )
   }
 
   return (
-    <div dir="rtl" style={{ maxWidth: 1100, margin: '0 auto' }}>
-      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12, marginBottom: 12 }}>
+    <div dir="rtl" className="mx-auto min-h-screen max-w-[1100px] bg-slate-50 p-6 pb-14 font-sans text-slate-800">
+      <div className="mb-4 flex items-end justify-between gap-3">
         <div>
-          <div style={{ fontSize: 22, fontWeight: 1000, color: '#1C4532' }}>الفعاليات</div>
-          <div style={{ fontSize: 12, color: '#6B7280', fontWeight: 800, marginTop: 4 }}>
-            فلترة متسلسلة، بطاقات ملونة، إضافة وتعديل
-          </div>
+          <h1 className="text-xl font-black text-slate-900 sm:text-2xl">الفعاليات</h1>
+          <p className="mt-1 text-sm font-medium text-slate-500">فلترة متسلسلة، بطاقات ملونة، إضافة وتعديل</p>
         </div>
-        <button
-          type="button"
-          onClick={openAdd}
-          style={{
-            padding: '10px 14px',
-            borderRadius: 14,
-            background: 'linear-gradient(135deg,#8A6B2A,#C9A84C)',
-            color: '#1C4532',
-            fontSize: 12,
-            fontWeight: 1000,
-            border: '1px solid rgba(201,168,76,.55)',
-            cursor: 'pointer',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 8,
-          }}
-        >
+        <button type="button" onClick={openAdd} className={BTN_PRIMARY}>
           <Plus size={16} /> إضافة فعالية
         </button>
       </div>
 
-      {error && (
-        <div
-          style={{
-            background: '#FEF2F2',
-            border: '1px solid #FECACA',
-            color: '#991B1B',
-            borderRadius: 14,
-            padding: 12,
-            fontSize: 12,
-            fontWeight: 900,
-            marginBottom: 12,
-          }}
-        >
+      {error ? (
+        <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-800">
           {error}
         </div>
-      )}
+      ) : null}
 
       {/* Filters */}
-      <div
-        style={{
-          background: '#fff',
-          border: '1px solid #F3F0EB',
-          borderRadius: 16,
-          padding: 14,
-          boxShadow: '0 1px 6px rgba(0,0,0,.04)',
-          marginBottom: 14,
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-          <Filter size={16} color="#C9A84C" />
-          <div style={{ fontSize: 13, fontWeight: 900, color: '#1C4532' }}>فلترة</div>
-          {listLoading ? <span style={{ fontSize: 11, color: '#9CA3AF' }}>جارٍ التحديث...</span> : null}
+      <div className={`${CARD} mb-4 !p-4 sm:!p-6`}>
+        <div className="mb-4 flex items-center gap-2">
+          <Filter size={16} className="text-[#b8952d]" />
+          <span className="text-lg font-extrabold text-slate-900">فلترة</span>
+          {listLoading ? <span className="text-xs text-slate-500">جارٍ التحديث...</span> : null}
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
-          <div style={{ background: '#F8FAFC', borderRadius: 14, padding: 10, border: '1px solid #EEF2F7' }}>
-            <div style={{ fontSize: 10, color: '#6B7280', fontWeight: 900, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
-              <Globe size={14} /> الدولة
-            </div>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className={INNER}>
+            <label className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-slate-600">
+              <Globe size={14} className="text-[#b8952d]" /> الدولة
+            </label>
             <select
               value={filterCountry}
               onChange={(e) => {
@@ -403,17 +373,7 @@ export default function CRMEventsPage() {
                 setFilterCity('all')
                 setFilterSeason('all')
               }}
-              style={{
-                width: '100%',
-                padding: 10,
-                borderRadius: 12,
-                border: '1.5px solid #E5E0D6',
-                background: '#fff',
-                fontSize: 12,
-                fontWeight: 900,
-                color: '#1C4532',
-                outline: 'none',
-              }}
+              className={INPUT}
             >
               <option value="all">كل الدول</option>
               {countryOptions.map((c) => (
@@ -424,10 +384,10 @@ export default function CRMEventsPage() {
             </select>
           </div>
 
-          <div style={{ background: '#F8FAFC', borderRadius: 14, padding: 10, border: '1px solid #EEF2F7' }}>
-            <div style={{ fontSize: 10, color: '#6B7280', fontWeight: 900, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
-              <MapPin size={14} /> المدينة
-            </div>
+          <div className={INNER}>
+            <label className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-slate-600">
+              <MapPin size={14} className="text-[#b8952d]" /> المدينة
+            </label>
             <select
               value={filterCity}
               onChange={(e) => {
@@ -435,18 +395,7 @@ export default function CRMEventsPage() {
                 setFilterSeason('all')
               }}
               disabled={filterCountry === 'all' || cityOptionsForFilter.length === 0}
-              style={{
-                width: '100%',
-                padding: 10,
-                borderRadius: 12,
-                border: '1.5px solid #E5E0D6',
-                background: '#fff',
-                fontSize: 12,
-                fontWeight: 900,
-                color: '#1C4532',
-                outline: 'none',
-                opacity: filterCountry === 'all' || cityOptionsForFilter.length === 0 ? 0.55 : 1,
-              }}
+              className={`${INPUT} disabled:cursor-not-allowed disabled:opacity-55`}
             >
               <option value="all">{filterCountry === 'all' ? 'اختر الدولة أولاً' : 'كل المدن'}</option>
               {cityOptionsForFilter.map((c) => (
@@ -457,25 +406,11 @@ export default function CRMEventsPage() {
             </select>
           </div>
 
-          <div style={{ background: '#F8FAFC', borderRadius: 14, padding: 10, border: '1px solid #EEF2F7' }}>
-            <div style={{ fontSize: 10, color: '#6B7280', fontWeight: 900, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
-              <CalendarDays size={14} /> الموسم
-            </div>
-            <select
-              value={filterSeason}
-              onChange={(e) => setFilterSeason(e.target.value)}
-              style={{
-                width: '100%',
-                padding: 10,
-                borderRadius: 12,
-                border: '1.5px solid #E5E0D6',
-                background: '#fff',
-                fontSize: 12,
-                fontWeight: 900,
-                color: '#1C4532',
-                outline: 'none',
-              }}
-            >
+          <div className={INNER}>
+            <label className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-slate-600">
+              <CalendarDays size={14} className="text-[#b8952d]" /> الموسم
+            </label>
+            <select value={filterSeason} onChange={(e) => setFilterSeason(e.target.value)} className={INPUT}>
               <option value="all">كل المواسم (حسب الدولة/المدينة)</option>
               {seasonOptionsForFilter.map((s) => (
                 <option key={s} value={s}>
@@ -485,25 +420,11 @@ export default function CRMEventsPage() {
             </select>
           </div>
 
-          <div style={{ background: '#F8FAFC', borderRadius: 14, padding: 10, border: '1px solid #EEF2F7' }}>
-            <div style={{ fontSize: 10, color: '#6B7280', fontWeight: 900, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
-              <Zap size={14} /> التأثير
-            </div>
-            <select
-              value={filterImpact}
-              onChange={(e) => setFilterImpact(e.target.value)}
-              style={{
-                width: '100%',
-                padding: 10,
-                borderRadius: 12,
-                border: '1.5px solid #E5E0D6',
-                background: '#fff',
-                fontSize: 12,
-                fontWeight: 900,
-                color: '#1C4532',
-                outline: 'none',
-              }}
-            >
+          <div className={INNER}>
+            <label className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-slate-600">
+              <Zap size={14} className="text-[#b8952d]" /> التأثير
+            </label>
+            <select value={filterImpact} onChange={(e) => setFilterImpact(e.target.value)} className={INPUT}>
               <option value="all">الكل</option>
               <option value="feature">feature — اذهب</option>
               <option value="obstacle">obstacle — تجنب</option>
@@ -511,25 +432,13 @@ export default function CRMEventsPage() {
           </div>
         </div>
 
-        <div style={{ marginTop: 10, fontSize: 12, fontWeight: 900, color: '#6B7280' }}>
-          النتائج: {events.length}
-        </div>
+        <p className="mt-4 text-sm font-semibold text-slate-500">النتائج: {events.length}</p>
       </div>
 
       {/* Cards */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, paddingBottom: 28 }}>
+      <div className="flex flex-col gap-4">
         {events.length === 0 && !listLoading ? (
-          <div
-            style={{
-              background: '#fff',
-              border: '1px dashed #E5E0D6',
-              borderRadius: 16,
-              padding: 14,
-              color: '#9CA3AF',
-              fontSize: 12,
-              fontWeight: 900,
-            }}
-          >
+          <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 p-10 text-center text-sm font-semibold text-slate-500">
             لا توجد فعاليات مطابقة.
           </div>
         ) : (
@@ -537,105 +446,55 @@ export default function CRMEventsPage() {
             const imp = String(e.impact || '')
             const isFeature = imp === 'feature'
             const isObstacle = imp === 'obstacle'
-            const borderColor = isFeature ? '#059669' : isObstacle ? '#DC2626' : '#9CA3AF'
-            const headerBg = isFeature ? '#ECFDF5' : isObstacle ? '#FEF2F2' : '#F3F4F6'
-            const badgeBg = isFeature ? '#D1FAE5' : isObstacle ? '#FEE2E2' : '#E5E7EB'
-            const badgeColor = isFeature ? '#047857' : isObstacle ? '#B91C1C' : '#4B5563'
+            const badgeClass = isFeature ? TAG_GO : isObstacle ? TAG_AVOID : TAG
             const badgeText = isFeature ? 'اذهب' : isObstacle ? 'تجنب' : imp || '—'
 
             return (
-              <div
-                key={e.id ?? i}
-                style={{
-                  background: '#fff',
-                  borderRadius: 16,
-                  overflow: 'hidden',
-                  border: `2px solid ${borderColor}`,
-                  boxShadow: '0 2px 10px rgba(0,0,0,.06)',
-                  borderRight: `8px solid ${borderColor}`,
-                }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, padding: 14, background: headerBg }}>
-                  <div style={{ minWidth: 0, flex: 1 }}>
-                    <div style={{ fontSize: 15, fontWeight: 1000, color: '#1C4532', marginBottom: 8, lineHeight: 1.35 }}>
+              <article key={e.id ?? i} className={`${CARD} overflow-hidden !p-0`}>
+                <div className="flex items-start justify-between gap-3 border-b border-slate-100 p-4 sm:p-6">
+                  <div className="min-w-0 flex-1">
+                    <h2 className="mb-2 text-xl font-black leading-snug text-slate-900">
                       {e.name || `فعالية #${e.id}`}
-                    </div>
-                    <span
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        padding: '6px 12px',
-                        borderRadius: 999,
-                        fontSize: 11,
-                        fontWeight: 1000,
-                        background: badgeBg,
-                        color: badgeColor,
-                      }}
-                    >
+                    </h2>
+                    <span className={`inline-flex items-center ${badgeClass}`}>
                       {isFeature ? '✓ ' : isObstacle ? '✗ ' : ''}
                       {badgeText}
                     </span>
                   </div>
-                  <button
-                    type="button"
-                    title="تعديل"
-                    onClick={() => openEdit(e)}
-                    style={{
-                      flexShrink: 0,
-                      padding: '10px 12px',
-                      borderRadius: 12,
-                      border: '1px solid #E5E0D6',
-                      background: '#fff',
-                      cursor: 'pointer',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: 6,
-                      fontSize: 12,
-                      fontWeight: 1000,
-                      color: '#1C4532',
-                    }}
-                  >
+                  <button type="button" title="تعديل" onClick={() => openEdit(e)} className={EDIT_LINK}>
                     <Pencil size={14} /> تعديل
                   </button>
                 </div>
 
-                <div style={{ padding: 14, display: 'grid', gap: 10 }}>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                <div className="grid gap-4 p-4 sm:p-6">
+                  <div className="flex flex-wrap gap-2">
                     {e.country ? (
-                      <span style={{ fontSize: 10, padding: '5px 10px', borderRadius: 10, background: '#EDE9FE', color: '#5B21B6', fontWeight: 900 }}>
-                        🌍 {e.country}
-                      </span>
+                      <span className={TAG}>🌍 {e.country}</span>
                     ) : null}
                     {e.city ? (
-                      <span style={{ fontSize: 10, padding: '5px 10px', borderRadius: 10, background: '#DBEAFE', color: '#1E40AF', fontWeight: 900 }}>
-                        📍 {e.city}
-                      </span>
+                      <span className={TAG}>📍 {e.city}</span>
                     ) : null}
                     {e.season != null && String(e.season) !== '' ? (
-                      <span style={{ fontSize: 10, padding: '5px 10px', borderRadius: 10, background: '#FFFBEB', color: '#92400E', fontWeight: 900 }}>
-                        📅 {e.season}
-                      </span>
+                      <span className={TAG}>📅 {e.season}</span>
                     ) : null}
                     {e.category ? (
-                      <span style={{ fontSize: 10, padding: '5px 10px', borderRadius: 10, background: '#F0FDF4', color: '#166534', fontWeight: 900 }}>
-                        <Tags size={12} style={{ verticalAlign: 'middle', marginLeft: 4 }} />
+                      <span className={`${TAG} inline-flex items-center gap-1`}>
+                        <Tags size={12} />
                         {e.category}
                       </span>
                     ) : null}
                     {e.crowd_level ? (
-                      <span style={{ fontSize: 10, padding: '5px 10px', borderRadius: 10, background: '#F3F4F6', color: '#374151', fontWeight: 900 }}>
-                        👥 {e.crowd_level}
-                      </span>
+                      <span className={TAG}>👥 {e.crowd_level}</span>
                     ) : null}
                     {e.is_recurring ? (
-                      <span style={{ fontSize: 10, padding: '5px 10px', borderRadius: 999, background: '#EEF2FF', color: '#4338CA', fontWeight: 900 }}>
-                        <Repeat size={12} style={{ verticalAlign: 'middle', marginLeft: 4 }} />
+                      <span className={`${TAG} inline-flex items-center gap-1`}>
+                        <Repeat size={12} />
                         متكررة
                       </span>
                     ) : null}
                   </div>
 
-                  <div style={{ fontSize: 12, fontWeight: 900, color: '#6B7280' }}>
+                  <p className="text-sm font-semibold text-slate-500">
                     {e.start_date || e.end_date ? (
                       <>
                         📆 {e.start_date ? String(e.start_date).slice(0, 10) : '—'}
@@ -644,92 +503,63 @@ export default function CRMEventsPage() {
                     ) : (
                       '— لا تواريخ'
                     )}
-                  </div>
+                  </p>
 
                   {e.notes ? (
-                    <div style={{ fontSize: 12, color: '#374151', fontWeight: 700, lineHeight: 1.75, background: '#FAFAF8', borderRadius: 12, padding: 12, border: '1px solid #F3F0EB' }}>
-                      {e.notes}
-                    </div>
+                    <div className={NOTE_BOX}>{e.notes}</div>
                   ) : (
-                    <div style={{ fontSize: 11, color: '#9CA3AF', fontWeight: 800 }}>لا ملاحظات</div>
+                    <p className="text-xs font-medium text-slate-500">لا ملاحظات</p>
                   )}
                 </div>
-              </div>
+              </article>
             )
           })
         )}
       </div>
 
       {/* Add / Edit modal */}
-      {showAdd && (
+      {showAdd ? (
         <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 300,
-            display: 'flex',
-            alignItems: 'flex-end',
-            justifyContent: 'center',
-            background: 'rgba(0,0,0,.55)',
-            backdropFilter: 'blur(6px)',
-          }}
+          className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto bg-black/70 p-4 backdrop-blur-sm sm:p-6"
           onClick={closeModal}
         >
           <div
             onClick={(ev) => ev.stopPropagation()}
-            style={{
-              background: '#fff',
-              borderRadius: '24px 24px 0 0',
-              width: '100%',
-              maxWidth: 640,
-              padding: '24px 22px',
-              maxHeight: '92vh',
-              overflowY: 'auto',
-              position: 'relative',
-            }}
+            className="relative my-auto w-full max-w-lg max-h-[85vh] overflow-y-auto rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl sm:max-w-2xl sm:p-8"
+            role="dialog"
+            aria-modal="true"
           >
-            <div style={{ width: 40, height: 4, borderRadius: 2, background: '#DDD', margin: '0 auto 16px' }} />
-            <button
-              type="button"
-              onClick={closeModal}
-              disabled={saving}
-              style={{
-                position: 'absolute',
-                top: 18,
-                left: 18,
-                width: 34,
-                height: 34,
-                borderRadius: '50%',
-                background: 'rgba(0,0,0,.06)',
-                border: 'none',
-                cursor: saving ? 'not-allowed' : 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <X size={14} />
-            </button>
-
-            <div style={{ fontSize: 20, fontWeight: 1000, color: '#1C4532', marginBottom: 16 }}>
-              {editRow ? 'تعديل فعالية' : 'إضافة فعالية جديدة'}
+            <div className="mb-5 flex items-start justify-between gap-3">
+              <h2 className="text-xl font-black text-slate-900 sm:text-2xl">
+                {editRow ? 'تعديل فعالية' : 'إضافة فعالية جديدة'}
+              </h2>
+              <button
+                type="button"
+                onClick={closeModal}
+                disabled={saving}
+                className="rounded-xl border border-slate-200 bg-slate-100 p-2 text-slate-600 transition hover:bg-slate-200 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-50"
+                aria-label="إغلاق"
+              >
+                <X size={16} />
+              </button>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              <div style={{ gridColumn: '1 / -1' }}>
-                <label style={{ fontSize: 11, fontWeight: 900, color: '#6B7280', display: 'block', marginBottom: 4 }}>الاسم *</label>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="sm:col-span-2">
+                <label className="mb-1.5 block text-xs font-semibold text-slate-600">الاسم *</label>
                 <input
                   value={form.name}
                   onChange={(ev) => setForm({ ...form, name: ev.target.value })}
-                  style={{ width: '100%', padding: 12, borderRadius: 12, border: '1.5px solid #E5E0D6', fontSize: 13, fontWeight: 900, direction: 'rtl' }}
+                  className={INPUT}
+                  dir="rtl"
                 />
               </div>
               <div>
-                <label style={{ fontSize: 11, fontWeight: 900, color: '#6B7280', display: 'block', marginBottom: 4 }}>الدولة</label>
+                <label className="mb-1.5 block text-xs font-semibold text-slate-600">الدولة</label>
                 <select
                   value={form.country}
                   onChange={(ev) => setForm({ ...form, country: ev.target.value, city: '' })}
-                  style={{ width: '100%', padding: 12, borderRadius: 12, border: '1.5px solid #E5E0D6', fontSize: 12, fontWeight: 900, color: '#1C4532' }}
+                  className={INPUT}
                 >
                   <option value="">—</option>
                   {countryOptions.map((c) => (
@@ -740,11 +570,11 @@ export default function CRMEventsPage() {
                 </select>
               </div>
               <div>
-                <label style={{ fontSize: 11, fontWeight: 900, color: '#6B7280', display: 'block', marginBottom: 4 }}>المدينة</label>
+                <label className="mb-1.5 block text-xs font-semibold text-slate-600">المدينة</label>
                 <select
                   value={form.city}
                   onChange={(ev) => setForm({ ...form, city: ev.target.value })}
-                  style={{ width: '100%', padding: 12, borderRadius: 12, border: '1.5px solid #E5E0D6', fontSize: 12, fontWeight: 900, color: '#1C4532' }}
+                  className={INPUT}
                 >
                   <option value="">—</option>
                   {cityOptionsForForm.map((c) => (
@@ -755,31 +585,32 @@ export default function CRMEventsPage() {
                 </select>
               </div>
               <div>
-                <label style={{ fontSize: 11, fontWeight: 900, color: '#6B7280', display: 'block', marginBottom: 4 }}>تاريخ البداية</label>
+                <label className="mb-1.5 block text-xs font-semibold text-slate-600">تاريخ البداية</label>
                 <input
                   type="date"
                   value={form.start_date}
                   onChange={(ev) => setForm({ ...form, start_date: ev.target.value })}
-                  style={{ width: '100%', padding: 12, borderRadius: 12, border: '1.5px solid #E5E0D6', fontSize: 13, fontWeight: 900 }}
+                  className={INPUT}
                 />
               </div>
               <div>
-                <label style={{ fontSize: 11, fontWeight: 900, color: '#6B7280', display: 'block', marginBottom: 4 }}>تاريخ النهاية</label>
+                <label className="mb-1.5 block text-xs font-semibold text-slate-600">تاريخ النهاية</label>
                 <input
                   type="date"
                   value={form.end_date}
                   onChange={(ev) => setForm({ ...form, end_date: ev.target.value })}
-                  style={{ width: '100%', padding: 12, borderRadius: 12, border: '1.5px solid #E5E0D6', fontSize: 13, fontWeight: 900 }}
+                  className={INPUT}
                 />
               </div>
               <div>
-                <label style={{ fontSize: 11, fontWeight: 900, color: '#6B7280', display: 'block', marginBottom: 4 }}>الموسم</label>
+                <label className="mb-1.5 block text-xs font-semibold text-slate-600">الموسم</label>
                 <input
                   list="event-seasons-list"
                   value={form.season}
                   onChange={(ev) => setForm({ ...form, season: ev.target.value })}
                   placeholder="أو اختر من القائمة"
-                  style={{ width: '100%', padding: 12, borderRadius: 12, border: '1.5px solid #E5E0D6', fontSize: 13, fontWeight: 900, direction: 'rtl' }}
+                  className={INPUT}
+                  dir="rtl"
                 />
                 <datalist id="event-seasons-list">
                   {seasonOptionsForForm.map((s) => (
@@ -788,95 +619,65 @@ export default function CRMEventsPage() {
                 </datalist>
               </div>
               <div>
-                <label style={{ fontSize: 11, fontWeight: 900, color: '#6B7280', display: 'block', marginBottom: 4 }}>التصنيف</label>
+                <label className="mb-1.5 block text-xs font-semibold text-slate-600">التصنيف</label>
                 <input
                   value={form.category}
                   onChange={(ev) => setForm({ ...form, category: ev.target.value })}
                   placeholder="festival..."
-                  style={{ width: '100%', padding: 12, borderRadius: 12, border: '1.5px solid #E5E0D6', fontSize: 13, fontWeight: 900, direction: 'rtl' }}
+                  className={INPUT}
+                  dir="rtl"
                 />
               </div>
               <div>
-                <label style={{ fontSize: 11, fontWeight: 900, color: '#6B7280', display: 'block', marginBottom: 4 }}>مستوى الازدحام</label>
+                <label className="mb-1.5 block text-xs font-semibold text-slate-600">مستوى الازدحام</label>
                 <input
                   value={form.crowd_level}
                   onChange={(ev) => setForm({ ...form, crowd_level: ev.target.value })}
                   placeholder="low / medium / high"
-                  style={{ width: '100%', padding: 12, borderRadius: 12, border: '1.5px solid #E5E0D6', fontSize: 13, fontWeight: 900, direction: 'rtl' }}
+                  className={INPUT}
+                  dir="rtl"
                 />
               </div>
               <div>
-                <label style={{ fontSize: 11, fontWeight: 900, color: '#6B7280', display: 'block', marginBottom: 4 }}>التأثير</label>
+                <label className="mb-1.5 block text-xs font-semibold text-slate-600">التأثير</label>
                 <select
                   value={form.impact}
                   onChange={(ev) => setForm({ ...form, impact: ev.target.value as 'feature' | 'obstacle' })}
-                  style={{ width: '100%', padding: 12, borderRadius: 12, border: '1.5px solid #E5E0D6', fontSize: 12, fontWeight: 1000, color: '#1C4532' }}
+                  className={INPUT}
                 >
                   <option value="feature">feature — اذهب</option>
                   <option value="obstacle">obstacle — تجنب</option>
                 </select>
               </div>
               <label
-                style={{
-                  gridColumn: '1 / -1',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 10,
-                  background: '#F8FAFC',
-                  border: '1px solid #EEF2F7',
-                  padding: '12px 14px',
-                  borderRadius: 14,
-                }}
+                className={`${INNER} sm:col-span-2 flex cursor-pointer items-center gap-3 !py-3`}
               >
                 <input
                   type="checkbox"
                   checked={form.is_recurring}
                   onChange={(ev) => setForm({ ...form, is_recurring: ev.target.checked })}
-                  style={{ width: 18, height: 18 }}
+                  className="h-4 w-4 rounded border-slate-300 bg-white accent-[#D4AF37]"
                 />
-                <span style={{ fontSize: 12, fontWeight: 1000, color: '#1C4532' }}>فعالية متكررة</span>
+                <span className="text-sm font-semibold text-slate-800">فعالية متكررة</span>
               </label>
-              <div style={{ gridColumn: '1 / -1' }}>
-                <label style={{ fontSize: 11, fontWeight: 900, color: '#6B7280', display: 'block', marginBottom: 4 }}>ملاحظات</label>
+              <div className="sm:col-span-2">
+                <label className="mb-1.5 block text-xs font-semibold text-slate-600">ملاحظات</label>
                 <textarea
                   value={form.notes}
                   onChange={(ev) => setForm({ ...form, notes: ev.target.value })}
                   rows={4}
-                  style={{
-                    width: '100%',
-                    padding: 12,
-                    borderRadius: 14,
-                    border: '1.5px solid #E5E0D6',
-                    fontSize: 13,
-                    fontWeight: 900,
-                    direction: 'rtl',
-                    resize: 'vertical',
-                  }}
+                  className={`${INPUT} resize-y`}
+                  dir="rtl"
                 />
               </div>
             </div>
 
-            <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
+            <div className="mt-5 flex gap-3">
               <button
                 type="button"
                 onClick={saveEvent}
                 disabled={saving || !form.name.trim()}
-                style={{
-                  flex: 1,
-                  padding: 14,
-                  borderRadius: 14,
-                  border: 'none',
-                  background: '#1C4532',
-                  color: '#fff',
-                  fontSize: 12,
-                  fontWeight: 1000,
-                  cursor: saving || !form.name.trim() ? 'not-allowed' : 'pointer',
-                  opacity: saving || !form.name.trim() ? 0.6 : 1,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 8,
-                }}
+                className={`${BTN_PRIMARY} flex-1`}
               >
                 <Save size={16} /> {saving ? 'جارٍ الحفظ...' : editRow ? 'حفظ التعديل' : 'إضافة'}
               </button>
@@ -884,23 +685,14 @@ export default function CRMEventsPage() {
                 type="button"
                 onClick={closeModal}
                 disabled={saving}
-                style={{
-                  padding: '14px 18px',
-                  borderRadius: 14,
-                  border: 'none',
-                  background: '#F3F0EB',
-                  color: '#6B7280',
-                  fontSize: 12,
-                  fontWeight: 900,
-                  cursor: saving ? 'not-allowed' : 'pointer',
-                }}
+                className={BTN_SECONDARY}
               >
                 إلغاء
               </button>
             </div>
           </div>
         </div>
-      )}
+      ) : null}
     </div>
   )
 }

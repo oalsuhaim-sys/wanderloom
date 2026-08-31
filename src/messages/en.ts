@@ -270,6 +270,8 @@ export const en = {
       invalidEmail: 'Please enter a valid email address.',
       ageRequired: 'Please enter your age.',
       invalidAge: 'Please enter a valid age.',
+      birthDateRequired: 'Please enter your date of birth.',
+      invalidBirthDate: 'Please enter a valid date of birth.',
     },
   },
 

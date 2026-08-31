@@ -3,6 +3,7 @@
 import { MessageCircle } from 'lucide-react'
 
 import { buildPaymentWhatsAppUrl, isClientPendingPayment } from '@/lib/bank-checkout'
+import { formatWhatsAppPhone, whatsAppHref } from '@/lib/crm-lead-actions'
 
 type ClientPaymentWhatsAppButtonProps = {
   clientId: string | number
@@ -23,16 +24,22 @@ export default function ClientPaymentWhatsAppButton({
   className = '',
   compact = false,
 }: ClientPaymentWhatsAppButtonProps) {
-  if (!isClientPendingPayment(salesStage)) return null
+  const phoneDigits = formatWhatsAppPhone(String(phone ?? '').trim())
+  if (!phoneDigits) return null
 
-  const waUrl = buildPaymentWhatsAppUrl({
-    phone: phone ?? '',
-    clientName,
-    targetTrip: targetTrip ?? '',
-    clientId,
-  })
+  const pendingPayment = isClientPendingPayment(salesStage)
+  const paymentUrl = pendingPayment
+    ? buildPaymentWhatsAppUrl({
+        phone: phone ?? '',
+        clientName,
+        targetTrip: targetTrip ?? '',
+        clientId,
+      })
+    : null
 
-  if (!waUrl) return null
+  const waUrl = paymentUrl || whatsAppHref(phoneDigits)
+  const title = pendingPayment ? 'إرسال رابط الدفع عبر واتساب' : 'فتح واتساب'
+  const label = pendingPayment ? 'إرسال رابط الدفع (WhatsApp)' : 'تواصل عبر واتساب'
 
   if (compact) {
     return (
@@ -40,23 +47,28 @@ export default function ClientPaymentWhatsAppButton({
         href={waUrl}
         target="_blank"
         rel="noopener noreferrer"
-        className={`inline-flex items-center gap-1.5 rounded-full border border-emerald-500/35 bg-emerald-950/20 px-3 py-1.5 text-[10px] font-black text-emerald-800 transition hover:bg-emerald-50 ${className}`}
+        title={title}
+        aria-label={title}
+        className={`inline-flex h-8 w-8 items-center justify-center rounded-full p-2 text-emerald-500 transition hover:bg-emerald-50 hover:text-emerald-600 dark:text-emerald-400 dark:hover:bg-emerald-900/20 ${className}`}
       >
-        <MessageCircle className="h-3.5 w-3.5 text-emerald-600" aria-hidden />
-        رابط الدفع
+        <MessageCircle className="h-4 w-4" aria-hidden />
       </a>
     )
   }
 
+  // Full button: payment CTA only when stage is pending payment
+  if (!pendingPayment || !paymentUrl) return null
+
   return (
     <a
-      href={waUrl}
+      href={paymentUrl}
       target="_blank"
       rel="noopener noreferrer"
       className={`inline-flex w-full items-center justify-center gap-2 rounded-xl border border-emerald-500/40 bg-gradient-to-l from-emerald-600 to-emerald-700 px-4 py-3 text-sm font-black text-white shadow-[0_8px_24px_rgba(16,185,129,0.28)] transition hover:brightness-105 ${className}`}
+      aria-label={label}
     >
       <MessageCircle className="h-5 w-5 shrink-0" aria-hidden />
-      إرسال رابط الدفع (WhatsApp)
+      {label}
     </a>
   )
 }

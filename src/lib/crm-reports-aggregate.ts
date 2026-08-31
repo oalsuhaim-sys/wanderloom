@@ -23,6 +23,12 @@ import {
   type QuotationRow,
 } from '@/lib/crm-quotations';
 import { joinDestinations } from '@/lib/crm-leads';
+import {
+  LEAD_STATUS_LABEL_AR,
+  isLeadStatus,
+  normalizeLeadStatus,
+  type LeadStatus,
+} from '@/lib/lead-status';
 
 function roundMoney(value: number): number {
   return Math.round(Math.max(0, value) * 100) / 100;
@@ -39,35 +45,82 @@ function tripHistoryToneFromRaw(raw: string): CrmClientTripHistoryRow['statusTon
   if (s.includes('draft') || s === 'مسودة') return 'draft';
   if (
     s.includes('archiv') ||
+    s === 'radar_rejected' ||
+    s === 'postponed' ||
+    s === 'interest_only'
+  ) {
+    return 'archived';
+  }
+  if (
     s.includes('complet') ||
     s === 'fully_paid' ||
     s === 'deposit_paid' ||
-    s === 'completed'
+    s === 'completed' ||
+    s === 'delivered' ||
+    s === 'converted'
   ) {
-    return s.includes('archiv') ? 'archived' : 'completed';
+    return 'completed';
   }
-  if (s.includes('pend') || s.includes('انتظار') || s === 'pending_client') return 'pending';
-  if (s === 'approved' || s === 'awaiting_payment' || s.includes('active') || s.includes('نشط')) {
+  if (
+    s.includes('pend') ||
+    s.includes('انتظار') ||
+    s === 'pending_client' ||
+    s === 'quote_stage' ||
+    s === 'awaiting_dna' ||
+    s === 'awaiting_payment' ||
+    s === 'needs_revision' ||
+    s === 'client_responded' ||
+    s === 'radar_pending'
+  ) {
+    return 'pending';
+  }
+  if (s === 'approved' || s.includes('active') || s.includes('نشط') || s === 'meeting') {
     return 'active';
   }
   return 'active';
 }
 
+/** Arabic badge text for سجل الرحلات — quotations + lead pipeline */
 function tripHistoryStatusLabel(raw: string): string {
   const s = String(raw ?? '').trim();
-  const lower = s.toLowerCase();
   if (!s) return '—';
-  if (lower === 'fully_paid' || lower === 'deposit_paid') return 'مكتملة';
-  if (lower === 'draft') return 'مسودة';
-  if (lower === 'pending_client') return 'بانتظار الاعتماد';
-  if (lower === 'awaiting_payment') return 'نشطة — بانتظار الدفع';
-  if (lower === 'approved') return 'نشطة — معتمدة';
-  if (lower === 'completed' || lower.includes('complet')) return 'مكتملة';
-  if (lower === 'archived' || lower.includes('archiv')) return 'أرشيف';
-  if (lower === 'active' || lower.includes('نشط')) return 'نشطة';
-  if (s in QUOTATION_STATUS_LABEL) {
-    return QUOTATION_STATUS_LABEL[s as keyof typeof QUOTATION_STATUS_LABEL];
+  // Already localized
+  if (/[\u0600-\u06FF]/.test(s)) return s;
+
+  const lower = s.toLowerCase();
+
+  const extras: Record<string, string> = {
+    fully_paid: 'مكتملة',
+    deposit_paid: 'مدفوعة العربون',
+    completed: 'مكتملة',
+    active: 'نشطة',
+    archived: 'أرشيف',
+    new: 'طلب جديد',
+    new_request: 'طلب جديد',
+    new_lead: 'طلب جديد',
+  };
+  if (extras[lower]) return extras[lower];
+
+  if (lower in QUOTATION_STATUS_LABEL) {
+    return QUOTATION_STATUS_LABEL[lower as keyof typeof QUOTATION_STATUS_LABEL];
   }
+
+  if (isLeadStatus(lower)) {
+    return LEAD_STATUS_LABEL_AR[lower];
+  }
+
+  const normalized = normalizeLeadStatus(lower);
+  // Only use normalized label when input was a known alias (not an unknown → radar_pending dump)
+  if (
+    normalized !== 'radar_pending' ||
+    lower === 'radar_pending' ||
+    lower === 'pending' ||
+    lower === 'new_lead' ||
+    lower === 'inbox'
+  ) {
+    return LEAD_STATUS_LABEL_AR[normalized as LeadStatus];
+  }
+
   return s;
 }
 
@@ -131,8 +184,8 @@ function buildLeadTripHistoryRows(leads: Record<string, unknown>[]): CrmClientTr
         destinations,
         dateRange: travelDate || formatLegacyDateRange(null, row.created_at),
         status: rawStatus,
-        statusLabel: rawStatus === 'new' || rawStatus === 'new_request' ? 'طلب جديد' : tripHistoryStatusLabel(rawStatus),
-        statusTone: rawStatus === 'new' || rawStatus === 'new_request' ? 'pending' : tripHistoryToneFromRaw(rawStatus),
+        statusLabel: tripHistoryStatusLabel(rawStatus),
+        statusTone: tripHistoryToneFromRaw(rawStatus),
         tripTitle:
           destinations !== '—'
             ? `طلب رحلة — ${destinations}`
@@ -451,7 +504,7 @@ export function buildCrmReportsSnapshot(input: {
   let invoiceRevenue = 0;
   let monthlyRevenue = 0;
   let privateTrips = 0;
-  let groupTours = 0;
+  let groupTrips = 0;
   const paidQuoteIds = new Set<string>();
 
   for (const inv of paidInvoices) {
@@ -459,7 +512,7 @@ export function buildCrmReportsSnapshot(input: {
     const paidAt = inv.paid_at || inv.created_at;
     if (paidAt && paidAt >= monthStart) monthlyRevenue += inv.amount;
     const meta = quoteMeta.get(inv.quote_id);
-    if (meta?.category === 'group') groupTours += inv.amount;
+    if (meta?.category === 'group') groupTrips += inv.amount;
     else privateTrips += inv.amount;
     if (inv.quote_id) paidQuoteIds.add(String(inv.quote_id));
   }
@@ -492,7 +545,7 @@ export function buildCrmReportsSnapshot(input: {
   }
 
   // When invoice breakdown is empty, attribute legacy+itinerary revenue to private trips
-  if (privateTrips + groupTours <= 0 && totalRevenue > 0) {
+  if (privateTrips + groupTrips <= 0 && totalRevenue > 0) {
     privateTrips = legacy.revenue + itineraryFin.revenue;
   } else {
     privateTrips += legacy.revenue + itineraryFin.revenue;
@@ -623,7 +676,7 @@ export function buildCrmReportsSnapshot(input: {
     },
     revenueBreakdown: {
       privateTrips: roundMoney(privateTrips),
-      groupTours: roundMoney(groupTours),
+      groupTrips: roundMoney(groupTrips),
     },
     recentTransactions,
     recentReceivables,

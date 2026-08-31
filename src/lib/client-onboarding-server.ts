@@ -12,7 +12,7 @@ import {
   type OnboardingProfileRow,
   type WelcomeDnaPageData,
 } from '@/lib/client-onboarding';
-import { setLeadPipelineStatus } from '@/lib/lead-pipeline-automation';
+import { updatePipelineStatus } from '@/lib/lead-pipeline-automation';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 
 /** يضمن onboarding_token لعميل — service_role (للبوابة و /welcome/client/{id}) */
@@ -147,10 +147,13 @@ export async function submitOnboardingProfileAdmin(
 /**
  * بعد نجاح DNA: انقل الطلب إلى meeting (عمود اجتماع العميل).
  * يُستدعى صراحة من Server Action لضمان عدم تفويت التحديث.
+ * @returns leadId of the linked lead when found (for Cal.com booking page).
  */
-export async function ensureLeadMeetingAfterDnaAdmin(tokenOrClientId: string): Promise<void> {
+export async function ensureLeadMeetingAfterDnaAdmin(
+  tokenOrClientId: string,
+): Promise<{ leadId: string | null; clientId: string | number | null }> {
   const key = String(tokenOrClientId ?? '').trim();
-  if (!key) return;
+  if (!key) return { leadId: null, clientId: null };
 
   const admin = createSupabaseAdminClient();
   let clientId: string | number | null = null;
@@ -175,10 +178,10 @@ export async function ensureLeadMeetingAfterDnaAdmin(tokenOrClientId: string): P
 
   if (clientId == null) {
     console.warn('[ensureLeadMeetingAfterDnaAdmin] could not resolve client for', key);
-    return;
+    return { leadId: null, clientId: null };
   }
 
-  await setLeadPipelineStatus(admin, { clientId }, 'meeting').catch((err) => {
+  await updatePipelineStatus(admin, { clientId, force: true }, 'meeting').catch((err) => {
     console.warn('[ensureLeadMeetingAfterDnaAdmin] pipeline:', err);
   });
 
@@ -199,4 +202,56 @@ export async function ensureLeadMeetingAfterDnaAdmin(tokenOrClientId: string): P
   if (error && !/column|schema cache|does not exist|check/i.test(error.message ?? '')) {
     console.warn('[ensureLeadMeetingAfterDnaAdmin] leads update:', error.message);
   }
+
+  // Resolve lead id for interview calendar binding (prefer active meeting-stage row)
+  let { data: leadRows } = await admin
+    .from('leads')
+    .select('id, status, created_at, phone_wa, client_id')
+    .eq('client_id', clientId)
+    .order('created_at', { ascending: false })
+    .limit(10);
+
+  // VIP individuals often lack client_id on the lead — fall back to phone match
+  if (!leadRows?.length) {
+    const { data: clientPhone } = await admin
+      .from('clients')
+      .select('phone_wa, phone_number')
+      .eq('id', clientId)
+      .maybeSingle();
+    const phone = String(
+      (clientPhone as { phone_wa?: string; phone_number?: string } | null)?.phone_wa ??
+        (clientPhone as { phone_wa?: string; phone_number?: string } | null)?.phone_number ??
+        '',
+    ).trim();
+    if (phone) {
+      const byPhone = await admin
+        .from('leads')
+        .select('id, status, created_at, phone_wa, client_id')
+        .eq('phone_wa', phone)
+        .order('created_at', { ascending: false })
+        .limit(10);
+      leadRows = byPhone.data;
+      // Backfill client_id on the matched lead so future updates stick
+      const top = byPhone.data?.[0];
+      if (top?.id != null && (top as { client_id?: unknown }).client_id == null) {
+        await admin
+          .from('leads')
+          .update({ client_id: clientId })
+          .eq('id', top.id)
+          .then(({ error: linkErr }) => {
+            if (linkErr) console.warn('[ensureLeadMeetingAfterDnaAdmin] link client_id:', linkErr.message);
+          });
+      }
+    }
+  }
+
+  const rows = (leadRows ?? []) as Array<{ id?: unknown; status?: unknown }>;
+  const meetingRow =
+    rows.find((r) => {
+      const s = String(r.status ?? '').trim();
+      return s === 'meeting' || s === 'interview_scheduled' || s === 'awaiting_dna';
+    }) ?? rows[0];
+
+  const leadId = meetingRow?.id != null ? String(meetingRow.id).trim() : null;
+  return { leadId: leadId || null, clientId };
 }

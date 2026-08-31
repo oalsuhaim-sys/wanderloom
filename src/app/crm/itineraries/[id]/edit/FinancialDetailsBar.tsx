@@ -26,7 +26,7 @@ export default function FinancialDetailsBar({
       aria-labelledby="financial-bar-title"
     >
       <div className="mb-4 flex flex-wrap items-center gap-3 border-b border-[#1E2720]/8 pb-3">
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#1E2720]">
+        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100">
           <Wallet className="h-4 w-4 text-[#D4AF37]" aria-hidden />
         </div>
         <div>

@@ -19,6 +19,7 @@ import {
   mapableActivities,
   patchDayActivities,
   pickPlaceBankCoordinates,
+  sortActivitiesByVisitTime,
 } from '@/lib/itinerary-day-activities';
 import {
   buildItinerarySupabasePayload,
@@ -51,12 +52,14 @@ import { supabase } from '@/lib/supabase';
 import type { PlaceBankRow } from '@/types/place';
 
 /** VIP Light Theme — Wanderloom CRM */
-const PAGE = 'min-h-screen bg-[#FAFAFA] p-6 text-[#1E2720] flex flex-col gap-6';
+const PAGE = 'min-h-screen bg-[#FAFAFA] p-4 text-[#1E2720] flex flex-col gap-4 sm:p-6 sm:gap-6';
 const CARD = 'rounded-xl border border-gray-200 bg-white shadow-sm';
 const INPUT =
-  'w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-gray-900 placeholder:text-gray-400 outline-none focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37]/40';
+  'w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-gray-900 placeholder:text-slate-500 outline-none focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37]/40';
 const LABEL = 'mb-1 block text-xs font-bold text-[#1E2720]';
-const SELECT = INPUT;
+const SELECT =
+  'w-full cursor-pointer rounded-xl border border-slate-300 bg-slate-50 p-3 text-sm font-extrabold text-slate-900 outline-none transition-all [color-scheme:light] focus:bg-white focus:ring-2 focus:ring-[#D4AF37] disabled:cursor-not-allowed disabled:opacity-50';
+const OPTION = 'bg-white font-bold text-slate-900';
 const BTN_GOLD =
   'rounded-md bg-[#D4AF37] font-bold text-black hover:bg-yellow-500 disabled:opacity-50';
 const BTN_GHOST =
@@ -372,12 +375,14 @@ export default function ItineraryVipLightDualPane() {
     actId: string,
     patch: Partial<ReturnType<typeof mapableActivities>[number]>,
   ) => {
-    patchDay(dayId, (day) =>
-      patchDayActivities(
-        day,
-        dayToActivities(day).map((a) => (a.id === actId ? { ...a, ...patch } : a)),
-      ),
-    );
+    patchDay(dayId, (day) => {
+      const acts = dayToActivities(day).map((a) => (a.id === actId ? { ...a, ...patch } : a));
+      const next =
+        'visit_time' in patch || 'time_slot' in patch
+          ? sortActivitiesByVisitTime(acts)
+          : acts;
+      return patchDayActivities(day, next);
+    });
   };
 
   const handleNearbySearch = useCallback(
@@ -510,8 +515,8 @@ export default function ItineraryVipLightDualPane() {
       {/* TOP SECTION: Flight & Hotel */}
       <section className={`p-6 border-[#D4AF37] ${CARD}`}>
         <h2 className={`${HEADING} mb-4`}>بيانات الطيران والحجوزات</h2>
-        <p className="mb-4 text-sm font-semibold text-[#1E2720]/60">الطيران</p>
-        <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-8">
+        <p className="mb-4 text-sm font-bold text-slate-700">الطيران</p>
+        <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-8">
           <label>
             <span className={LABEL}>رقم الرحلة</span>
             <input
@@ -663,8 +668,8 @@ export default function ItineraryVipLightDualPane() {
             />
           </label>
         </div>
-        <p className="mb-4 text-sm font-semibold text-[#1E2720]/60">الفندق</p>
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-5">
+        <p className="mb-4 text-sm font-bold text-slate-700">الفندق</p>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5">
           <label className="sm:col-span-2">
             <span className={LABEL}>اسم الفندق</span>
             <input
@@ -706,7 +711,6 @@ export default function ItineraryVipLightDualPane() {
           <label>
             <span className={LABEL}>دخول</span>
             <VipDateField
-              className={INPUT}
               value={draft.primaryHotel.check_in}
               onChange={(v) =>
                 patchDraft({
@@ -718,7 +722,6 @@ export default function ItineraryVipLightDualPane() {
           <label>
             <span className={LABEL}>خروج</span>
             <VipDateField
-              className={INPUT}
               value={draft.primaryHotel.check_out}
               onChange={(v) =>
                 patchDraft({
@@ -731,12 +734,12 @@ export default function ItineraryVipLightDualPane() {
       </section>
 
       {/* MAIN WORKSPACE */}
-      <section className="flex h-[800px] gap-6">
+      <section className="flex h-auto flex-col gap-4 lg:h-[800px] lg:flex-row lg:gap-6">
         {/* RIGHT PANE 35% — Places (first in RTL = right) */}
-        <aside className={`flex w-[35%] flex-col overflow-hidden ${CARD}`}>
+        <aside className={`flex w-full min-h-[360px] flex-col overflow-hidden lg:w-[35%] lg:min-h-0 ${CARD}`}>
           <div className="border-b border-gray-200 bg-gray-50 p-4">
             <h3 className={HEADING_GOLD}>مستكشف بنك الأماكن (6400+ مكان)</h3>
-            <p className="mt-1 text-xs font-semibold text-[#1E2720]/60">يُضاف إلى: {activeDayLabel}</p>
+            <p className="mt-1 text-xs font-bold text-slate-700">يُضاف إلى: {activeDayLabel}</p>
             {nearbyDisabled ? (
               <p className="mt-2 rounded-md border border-amber-300 bg-amber-50 px-2 py-1.5 text-xs text-amber-900">
                 الأماكن القريبة معطّلة — لا توجد أعمدة latitude/longitude في Supabase.
@@ -747,7 +750,7 @@ export default function ItineraryVipLightDualPane() {
                 <span className="text-sm font-bold text-[#1E2720]">
                   📍 الأماكن القريبة (نطاق {PROXIMITY_RADIUS_KM} كم)
                   {proximityOrigin?.placeName ? (
-                    <span className="mr-1 font-semibold text-[#1E2720]/60">
+                    <span className="mr-1 font-bold text-slate-700">
                       — من {proximityOrigin.placeName}
                     </span>
                   ) : null}
@@ -771,9 +774,11 @@ export default function ItineraryVipLightDualPane() {
                 setFilterCity('');
               }}
             >
-              <option value="">كل الدول</option>
+              <option value="" className={OPTION}>
+                كل الدول
+              </option>
               {countries.map((c) => (
-                <option key={c} value={c}>
+                <option key={c} value={c} className={OPTION}>
                   {c}
                 </option>
               ))}
@@ -784,9 +789,11 @@ export default function ItineraryVipLightDualPane() {
               disabled={!filterCountry}
               onChange={(e) => setFilterCity(e.target.value)}
             >
-              <option value="">كل المدن</option>
+              <option value="" className={OPTION}>
+                كل المدن
+              </option>
               {cities.map((c) => (
-                <option key={c} value={c}>
+                <option key={c} value={c} className={OPTION}>
                   {c}
                 </option>
               ))}
@@ -796,9 +803,11 @@ export default function ItineraryVipLightDualPane() {
               value={filterCat}
               onChange={(e) => setFilterCat(e.target.value)}
             >
-              <option value="">كل الفئات</option>
+              <option value="" className={OPTION}>
+                كل الفئات
+              </option>
               {Object.entries(PLACES_BANK_CATEGORIES).map(([code, label]) => (
-                <option key={code} value={code}>
+                <option key={code} value={code} className={OPTION}>
                   {label}
                 </option>
               ))}
@@ -812,7 +821,7 @@ export default function ItineraryVipLightDualPane() {
             ) : placesError ? (
               <p className="text-center text-sm font-bold text-red-700">{placesError}</p>
             ) : placesPageSlice.length === 0 ? (
-              <p className="text-center text-sm font-semibold text-[#1E2720]/50">
+              <p className="text-center text-sm font-semibold text-slate-600">
                 {proximityOn
                   ? `لا توجد أماكن ضمن ${PROXIMITY_RADIUS_KM} كم — جرّب مكان أصل آخر أو اضغط إلغاء`
                   : 'لا توجد نتائج'}
@@ -835,10 +844,12 @@ export default function ItineraryVipLightDualPane() {
                           </span>
                         ) : null}
                       </div>
-                      <p className="text-xs text-[#1E2720]/60">
+                      <p className="text-xs font-bold text-slate-700">
                         {placeBankCategoryLabel(p.category)}
-                        {p.city ? ` · ${p.city}` : ''}
                       </p>
+                      {p.city ? (
+                        <span className="mt-0.5 block text-xs font-bold text-slate-700">• {p.city}</span>
+                      ) : null}
                       <button
                         type="button"
                         onClick={() => addPlaceToDay(p)}
@@ -862,7 +873,7 @@ export default function ItineraryVipLightDualPane() {
               >
                 السابق
               </button>
-              <span className="text-xs text-[#1E2720]/50">
+              <span className="text-xs font-semibold text-slate-600">
                 {placesPage + 1}/{placesTotalPages}
               </span>
               <button
@@ -878,14 +889,14 @@ export default function ItineraryVipLightDualPane() {
         </aside>
 
         {/* LEFT PANE 65% — Builder */}
-        <main className={`w-[65%] overflow-y-auto p-6 ${CARD}`}>
-          <div className="mb-6 flex items-center justify-between">
+        <main className={`w-full min-h-[420px] overflow-y-auto p-4 sm:p-6 lg:w-[65%] lg:min-h-0 ${CARD}`}>
+          <div className="mb-4 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:items-center sm:justify-between">
             <h2 className={HEADING}>مخطط المسار اليومي</h2>
             <button
               type="button"
               disabled={saving}
               onClick={() => void saveItinerary()}
-              className={`px-4 py-2 ${BTN_GOLD}`}
+              className={`w-full px-4 py-2 sm:w-auto ${BTN_GOLD}`}
             >
               {saving ? 'جاري الإنشاء…' : 'إنشاء المسار'}
             </button>
@@ -924,7 +935,7 @@ export default function ItineraryVipLightDualPane() {
 
           {activeDay ? (
             <>
-              <div className="mb-4 grid grid-cols-2 gap-3">
+              <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <input
                   className={INPUT}
                   placeholder="عنوان اليوم"
@@ -954,7 +965,7 @@ export default function ItineraryVipLightDualPane() {
 
           <div className="daily-timeline-builder space-y-4">
             {timelineActs.length === 0 ? (
-              <p className="py-16 text-center text-sm font-semibold text-[#1E2720]/50">
+              <p className="py-16 text-center text-sm font-semibold text-slate-600">
                 اضغط «إضافة للمسار ➕» من مستكشف الأماكن (يمين)
               </p>
             ) : (
@@ -977,7 +988,7 @@ export default function ItineraryVipLightDualPane() {
                           className="h-16 w-16 shrink-0 rounded-md border border-gray-200 object-cover"
                         />
                       ) : (
-                        <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-md border border-gray-200 bg-white text-xs font-bold text-[#1E2720]/50">
+                        <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-md border border-gray-200 bg-white text-xs font-bold text-slate-600">
                           {index + 1}
                         </div>
                       )}
@@ -988,9 +999,18 @@ export default function ItineraryVipLightDualPane() {
                               {act.place_name || kindLabel(act.kind)}
                             </h3>
                             {act.kind === 'place' ? (
-                              <p className="text-xs text-[#1E2720]/60">
-                                {placeBankCategoryLabel(act.category)}
-                              </p>
+                              <div className="mt-0.5 space-y-0.5">
+                                {act.category ? (
+                                  <p className="text-xs font-bold text-slate-700">
+                                    {placeBankCategoryLabel(act.category)}
+                                  </p>
+                                ) : null}
+                                {act.city ? (
+                                  <span className="block text-xs font-bold text-slate-700">
+                                    • {act.city}
+                                  </span>
+                                ) : null}
+                              </div>
                             ) : null}
                           </div>
                           <button
@@ -1036,7 +1056,7 @@ export default function ItineraryVipLightDualPane() {
                         ) : null}
 
                         {index > 0 && act.kind !== 'transport' ? (
-                          <div className="mt-3 grid grid-cols-2 gap-2 rounded-lg border border-gray-200 bg-white p-2">
+                          <div className="mt-3 grid grid-cols-1 gap-2 rounded-lg border border-gray-200 bg-white p-2 sm:grid-cols-2">
                             <label>
                               <span className={LABEL}>وسيلة النقل</span>
                               <select

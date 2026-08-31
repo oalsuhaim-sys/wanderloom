@@ -11,7 +11,7 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-tajawal), "Tajawal", sans-serif;
   --font-mono: var(--font-geist-mono);
 
   /* Wanderloom luxury brand palette */
@@ -22,107 +22,219 @@
   --color-brand-charcoal: #0a0f0c;
   --color-brand-offwhite: #f9f9f6;
   --color-brand-muted: #8fa396;
+
+  /* Luxury amber gold — overrides default Tailwind orange drift */
+  --color-amber-50: #fdfbf7;
+  --color-amber-100: #f7f0e1;
+  --color-amber-200: #e8d2a7;
+  --color-amber-300: #dcc18a;
+  --color-amber-400: #d4af37;
+  --color-amber-500: #c5a059;
+  --color-amber-600: #b38e46;
+  --color-amber-700: #8c6d23;
+  --color-amber-800: #6b5419;
+  --color-amber-900: #4a3910;
+  --color-amber-950: #2d2209;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-tajawal), var(--font-geist-sans), system-ui, sans-serif;
+  font-family: var(--font-tajawal), "Tajawal", sans-serif;
 }
 
-/* ——— Phase 4: Luxury custom scrollbar (Off-White · Forest Green · Royal Gold) ——— */
+/* ——— Scrollbars: hidden globally (CRM clean chrome) ——— */
 * {
-  scrollbar-width: thin; /* Firefox */
-  scrollbar-color: #1a3b2a #f9f9f6;
+  -ms-overflow-style: none !important; /* IE and Edge */
+  scrollbar-width: none !important; /* Firefox */
 }
 
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  background: transparent !important;
 }
 
-::-webkit-scrollbar-track {
-  background: #f9f9f6; /* Off-White */
-}
-
-::-webkit-scrollbar-thumb {
-  background: #1a3b2a; /* Forest Green */
-  border-radius: 10px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #c5a059; /* Royal Gold */
-}
-
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-thumb,
 ::-webkit-scrollbar-corner {
-  background: #f9f9f6;
+  display: none !important;
+  background: transparent !important;
 }
 
-/* CRM marketing — gold accent scrollbar for long prompts/captions */
+/* CRM marketing textareas — keep scroll capability, still hide chrome */
 .crm-marketing-textarea {
-  -ms-overflow-style: auto;
-  scrollbar-width: thin;
-  scrollbar-color: rgb(205 160 76 / 0.55) transparent;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
 .crm-marketing-textarea::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
 }
 
-.crm-marketing-textarea::-webkit-scrollbar-thumb {
-  border-radius: 9999px;
-  background: rgb(205 160 76 / 0.55);
-}
-
-/* ——— CRM Command Center (Off-White · Forest · Gold) ——— */
+/* ——— CRM Command Center — Light: Off-White · Navy | Dark: Olive (Zaiti) · Gold ——— */
 .crm-command-center {
-  --crm-forest: #1a3b2a;
-  --crm-gold: #c5a059;
-  --crm-offwhite: #f9f9f6;
-  --crm-bg: #f9f9f6;
+  --crm-navy: #0f172a;
+  --crm-gold: #d4af37;
+  --crm-offwhite: #f9fafb;
+  --crm-bg: #f9fafb;
   --crm-surface: #ffffff;
-  --crm-text: #1a3b2a;
+  --crm-elevated: #f1f5f9;
+  --crm-text: #0f172a;
   --crm-text-muted: #64748b;
-  --crm-border: rgb(197 160 89 / 0.2);
+  --crm-border: #e2e8f0;
   color-scheme: light;
 }
 
-/* Luxury Dark Mode — Midnight Green · Charcoal · Gold */
+/* Luxury Dark Mode — Olive Green (Zaiti) · Gold */
 .crm-command-center.dark {
-  --crm-forest: #1a3b2a;
-  --crm-gold: #c5a059;
-  --crm-offwhite: #0b1912;
-  --crm-bg: #0b1912;
-  --crm-surface: #12261b;
-  --crm-text: #e8ede9;
-  --crm-text-muted: #8fa396;
-  --crm-border: rgb(197 160 89 / 0.28);
+  --crm-navy: #0f172a;
+  --crm-gold: #d4af37;
+  --crm-offwhite: #1a2421;
+  --crm-bg: #1a2421; /* olive main */
+  --crm-surface: #22302c; /* cards / sidebar */
+  --crm-elevated: #2a3834; /* inputs / chips */
+  --crm-text: #f3f4f6; /* gray-100 */
+  --crm-text-muted: #9ca3af; /* gray-400 */
+  --crm-border: #2d3f3a;
   color-scheme: dark;
   background-color: var(--crm-bg);
   color: var(--crm-text);
-  scrollbar-color: #c5a059 #0b1912;
 }
 
-.crm-command-center.dark ::-webkit-scrollbar-track {
-  background: #0b1912;
-}
-
-.crm-command-center.dark ::-webkit-scrollbar-thumb {
-  background: #1a3b2a;
-}
-
-.crm-command-center.dark ::-webkit-scrollbar-thumb:hover {
-  background: #c5a059;
-}
-
-.crm-command-center.dark ::-webkit-scrollbar-corner {
-  background: #0b1912;
-}
-
-/* Remap common light surfaces inside CRM dark mode without rewriting every page */
+/* Remap common light / slate surfaces → olive luxury */
 .crm-command-center.dark main {
   background-color: var(--crm-bg) !important;
+  color: var(--crm-text);
+}
+
+/* Itinerary builder / edit — light system theme (readable selects & inputs) */
+.crm-command-center main:has(.itinerary-builder-page),
+.crm-command-center:not(.dark) main:has(.itinerary-builder-page) {
+  background-color: #f8fafc !important;
+  color: #1e293b !important;
+}
+
+.crm-command-center .itinerary-builder-page,
+.crm-command-center:not(.dark) .itinerary-builder-page {
+  background-color: #f8fafc !important;
+  color: #1e293b !important;
+}
+
+.crm-command-center .itinerary-builder-page h1,
+.crm-command-center:not(.dark) .itinerary-builder-page h1 {
+  color: #d4af37 !important;
+}
+
+.crm-command-center .itinerary-builder-page a[href='/crm/itineraries'],
+.crm-command-center:not(.dark) .itinerary-builder-page a[href='/crm/itineraries'] {
+  color: #475569 !important;
+}
+
+.crm-command-center .itinerary-builder-page a[href='/crm/itineraries']:hover,
+.crm-command-center:not(.dark) .itinerary-builder-page a[href='/crm/itineraries']:hover {
+  color: #d4af37 !important;
+}
+
+.crm-command-center .itinerary-builder-page button.bg-\[\#D4AF37\],
+.crm-command-center .itinerary-builder-page .bg-\[\#D4AF37\] {
+  color: #020617 !important;
+}
+
+/* Force dark text on native selects/options (Places Bank country/city filters) */
+.itinerary-builder-page select,
+.crm-command-center .itinerary-builder-page select,
+.crm-command-center.dark .itinerary-builder-page select {
+  background-color: #f8fafc !important;
+  color: #0f172a !important;
+  -webkit-text-fill-color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+  font-weight: 800 !important;
+  color-scheme: light !important;
+}
+
+.itinerary-builder-page select option,
+.crm-command-center .itinerary-builder-page select option,
+.crm-command-center.dark .itinerary-builder-page select option {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  -webkit-text-fill-color: #0f172a !important;
+  font-weight: 700 !important;
+}
+
+/* Date / datetime-local — light calendar popup, dark value text, gold icon */
+.itinerary-builder-page input[type='date'],
+.itinerary-builder-page input[type='datetime-local'],
+.crm-command-center .itinerary-builder-page input[type='date'],
+.crm-command-center .itinerary-builder-page input[type='datetime-local'],
+.wl-date-input {
+  color-scheme: light !important;
+  color: #0f172a !important;
+  font-weight: 700 !important;
+  -webkit-text-fill-color: #0f172a;
+}
+
+.itinerary-builder-page input[type='date']::-webkit-datetime-edit,
+.itinerary-builder-page input[type='datetime-local']::-webkit-datetime-edit,
+.wl-date-input::-webkit-datetime-edit {
+  color: #0f172a !important;
+  font-weight: 700 !important;
+}
+
+.itinerary-builder-page input[type='date']::-webkit-datetime-edit-fields-wrapper,
+.itinerary-builder-page input[type='datetime-local']::-webkit-datetime-edit-fields-wrapper,
+.wl-date-input::-webkit-datetime-edit-fields-wrapper {
+  color: #0f172a !important;
+}
+
+.itinerary-builder-page input[type='date']::-webkit-datetime-edit-text,
+.itinerary-builder-page input[type='datetime-local']::-webkit-datetime-edit-text,
+.itinerary-builder-page input[type='date']::-webkit-datetime-edit-month-field,
+.itinerary-builder-page input[type='datetime-local']::-webkit-datetime-edit-month-field,
+.itinerary-builder-page input[type='date']::-webkit-datetime-edit-day-field,
+.itinerary-builder-page input[type='datetime-local']::-webkit-datetime-edit-day-field,
+.itinerary-builder-page input[type='date']::-webkit-datetime-edit-year-field,
+.itinerary-builder-page input[type='datetime-local']::-webkit-datetime-edit-year-field,
+.itinerary-builder-page input[type='datetime-local']::-webkit-datetime-edit-hour-field,
+.itinerary-builder-page input[type='datetime-local']::-webkit-datetime-edit-minute-field,
+.itinerary-builder-page input[type='datetime-local']::-webkit-datetime-edit-ampm-field,
+.wl-date-input::-webkit-datetime-edit-text,
+.wl-date-input::-webkit-datetime-edit-month-field,
+.wl-date-input::-webkit-datetime-edit-day-field,
+.wl-date-input::-webkit-datetime-edit-year-field {
+  color: #0f172a !important;
+  font-weight: 700 !important;
+}
+
+.itinerary-builder-page input[type='date']::-webkit-calendar-picker-indicator,
+.itinerary-builder-page input[type='datetime-local']::-webkit-calendar-picker-indicator,
+.crm-command-center .itinerary-builder-page input[type='date']::-webkit-calendar-picker-indicator,
+.crm-command-center .itinerary-builder-page input[type='datetime-local']::-webkit-calendar-picker-indicator,
+.wl-date-input::-webkit-calendar-picker-indicator,
+.crm-command-center .wl-date-input::-webkit-calendar-picker-indicator {
+  filter: invert(75%) sepia(80%) saturate(1000%) hue-rotate(5deg) brightness(110%);
+  cursor: pointer;
+  opacity: 1;
+}
+
+/* Group onboarding — elegant amber calendar trigger */
+.group-onboarding-date-input::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.85;
+  scale: 1.15;
+  filter: invert(55%) sepia(70%) saturate(900%) hue-rotate(5deg) brightness(95%);
+}
+
+.group-onboarding-date-input::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+}
+
+.crm-command-center.dark aside {
+  background-color: var(--crm-surface) !important;
+  border-color: var(--crm-border) !important;
   color: var(--crm-text);
 }
 
@@ -130,44 +242,80 @@ body {
 .crm-command-center.dark .bg-white\/70,
 .crm-command-center.dark .bg-white\/60,
 .crm-command-center.dark .bg-\[\#F9F9F6\],
+.crm-command-center.dark .bg-\[\#F9FAFB\],
+.crm-command-center.dark .bg-\[\#FAFAFA\],
 .crm-command-center.dark .bg-\[\#FEFDF9\],
+.crm-command-center.dark .bg-\[\#FDFBF7\],
 .crm-command-center.dark .bg-slate-50,
 .crm-command-center.dark .bg-slate-50\/80,
-.crm-command-center.dark .bg-gray-50 {
+.crm-command-center.dark .bg-gray-50,
+.crm-command-center.dark .bg-slate-950,
+.crm-command-center.dark .bg-slate-900 {
   background-color: var(--crm-surface) !important;
+  background-image: none !important;
 }
 
 .crm-command-center.dark .bg-slate-100,
-.crm-command-center.dark .bg-gray-100 {
-  background-color: rgb(26 59 42 / 0.65) !important;
+.crm-command-center.dark .bg-gray-100,
+.crm-command-center.dark .bg-slate-800 {
+  background-color: var(--crm-elevated) !important;
+  background-image: none !important;
+}
+
+/* Kill harsh cream/white gradients */
+.crm-command-center.dark [class*='from-\[\#FEF'],
+.crm-command-center.dark [class*='from-\[\#FDF'],
+.crm-command-center.dark [class*='to-white'],
+.crm-command-center.dark [class*='via-white'] {
+  background-image: none !important;
+  background-color: var(--crm-elevated) !important;
 }
 
 .crm-command-center.dark .text-slate-900,
 .crm-command-center.dark .text-gray-900,
 .crm-command-center.dark .text-\[\#1A3B2A\],
+.crm-command-center.dark .text-\[\#1A3B2A\]\/80,
+.crm-command-center.dark .text-\[\#1A3B2A\]\/90,
+.crm-command-center.dark .text-\[\#1A3B2A\]\/70,
 .crm-command-center.dark .text-\[\#1C4532\],
+.crm-command-center.dark .text-\[\#1C4532\]\/80,
 .crm-command-center.dark .text-\[\#1c3d27\],
+.crm-command-center.dark .text-\[\#1E2720\],
 .crm-command-center.dark .text-slate-800,
-.crm-command-center.dark .text-gray-800 {
-  color: #e8ede9 !important;
+.crm-command-center.dark .text-gray-800,
+.crm-command-center.dark .text-slate-100,
+.crm-command-center.dark .text-gray-100,
+.crm-command-center.dark .text-emerald-900,
+.crm-command-center.dark .text-emerald-800,
+.crm-command-center.dark .text-green-900,
+.crm-command-center.dark .text-green-800 {
+  color: #f3f4f6 !important;
 }
 
 .crm-command-center.dark .text-slate-700,
 .crm-command-center.dark .text-gray-700,
 .crm-command-center.dark .text-slate-600,
 .crm-command-center.dark .text-gray-600,
+.crm-command-center.dark .text-slate-300 {
+  color: #d1d5db !important; /* gray-300 */
+}
+
 .crm-command-center.dark .text-slate-500,
 .crm-command-center.dark .text-gray-500,
 .crm-command-center.dark .text-slate-400,
 .crm-command-center.dark .text-gray-400 {
-  color: #8fa396 !important;
+  color: #9ca3af !important; /* gray-400 */
 }
 
 .crm-command-center.dark .border-slate-100,
 .crm-command-center.dark .border-slate-200,
+.crm-command-center.dark .border-slate-700,
+.crm-command-center.dark .border-slate-800,
 .crm-command-center.dark .border-gray-100,
-.crm-command-center.dark .border-gray-200 {
-  border-color: rgb(197 160 89 / 0.22) !important;
+.crm-command-center.dark .border-gray-200,
+.crm-command-center.dark .border-\[\#C9A84C\]\/55,
+.crm-command-center.dark .border-\[\#C9A84C\]\/45 {
+  border-color: #2d3f3a !important;
 }
 
 .crm-command-center.dark .shadow-sm,
@@ -180,36 +328,166 @@ body {
 
 .crm-command-center.dark .crm-kpi-card {
   background: var(--crm-surface);
-  border-color: rgb(197 160 89 / 0.25);
+  border-color: var(--crm-border);
   box-shadow: 0 8px 24px rgb(0 0 0 / 0.3);
 }
 
 .crm-command-center.dark .crm-kpi-card:hover {
-  box-shadow: 0 12px 32px rgb(197 160 89 / 0.12);
+  box-shadow: 0 12px 32px rgb(212 175 55 / 0.12);
 }
 
 .crm-command-center.dark table.crm-data-table thead th {
-  background: rgb(26 59 42 / 0.8);
-  color: #c5a059;
-  border-color: rgb(197 160 89 / 0.2);
+  background: #22302c;
+  color: #d4af37;
+  border-color: #2d3f3a;
 }
 
 .crm-command-center.dark table.crm-data-table tbody td {
-  border-color: rgb(197 160 89 / 0.12);
-  color: #e8ede9;
+  border-color: #2d3f3a;
+  color: #f3f4f6;
 }
 
 .crm-command-center.dark input:not([type='checkbox']):not([type='radio']),
 .crm-command-center.dark textarea,
 .crm-command-center.dark select {
-  background-color: #0b1912;
-  border-color: rgb(197 160 89 / 0.28);
-  color: #e8ede9;
+  background-color: #2a3834 !important;
+  background-image: none !important;
+  border-color: #2d3f3a !important;
+  color: #f3f4f6 !important;
+}
+
+/* Group Pricing — two-tone contrast (screen)
+ * Labels on dark olive cards = bright white (never black).
+ * Values inside dark inputs = Wanderloom gold.
+ */
+.group-pricing-print-root .outside-label,
+.group-pricing-print-root .gp-label,
+.group-pricing-print-root label.gp-label,
+.group-pricing-print-root label:not(.flex),
+.print-container .outside-label,
+.print-container .gp-label,
+.print-container label.gp-label,
+.crm-command-center .group-pricing-print-root .outside-label,
+.crm-command-center .group-pricing-print-root label.gp-label,
+.crm-command-center.dark .group-pricing-print-root .outside-label,
+.crm-command-center.dark .group-pricing-print-root label.gp-label,
+.crm-command-center.dark .group-pricing-print-root label:not(.flex) {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  font-weight: 800 !important;
+  opacity: 1 !important;
+  letter-spacing: 0.02em;
+}
+
+.group-pricing-print-root .subtext-grey,
+.group-pricing-print-root .gp-hint,
+.print-container .subtext-grey,
+.print-container .gp-hint,
+.crm-command-center.dark .group-pricing-print-root .gp-hint {
+  color: #e2e8f0 !important;
+  -webkit-text-fill-color: #e2e8f0 !important;
+  font-weight: 600 !important;
+  opacity: 1 !important;
+}
+
+.crm-command-center .print-container input:not([type='checkbox']):not([type='radio']),
+.crm-command-center .print-container textarea,
+.crm-command-center .print-container select,
+.crm-command-center .group-pricing-print-root input:not([type='checkbox']):not([type='radio']),
+.crm-command-center .group-pricing-print-root textarea,
+.crm-command-center .group-pricing-print-root select,
+.print-container input:not([type='checkbox']):not([type='radio']),
+.print-container textarea,
+.print-container select,
+.group-pricing-print-root input:not([type='checkbox']):not([type='radio']),
+.group-pricing-print-root textarea,
+.group-pricing-print-root select,
+.crm-command-center.dark .group-pricing-print-root input:not([type='checkbox']):not([type='radio']),
+.crm-command-center.dark .group-pricing-print-root textarea,
+.crm-command-center.dark .group-pricing-print-root select {
+  color: #d4af37 !important;
+  -webkit-text-fill-color: #d4af37 !important;
+  font-weight: 800 !important;
+  opacity: 1 !important;
+  caret-color: #d4af37 !important;
+}
+
+.crm-command-center .print-container input::placeholder,
+.crm-command-center .group-pricing-print-root input::placeholder,
+.print-container input::placeholder,
+.group-pricing-print-root input::placeholder {
+  color: #64748b !important;
+  -webkit-text-fill-color: #64748b !important;
+  opacity: 1 !important;
 }
 
 .crm-command-center.dark input::placeholder,
 .crm-command-center.dark textarea::placeholder {
-  color: #6b8576;
+  color: #6b7280 !important;
+}
+
+/* Soft status badges — olive-tinted, gold highlights (no neon) */
+.crm-command-center.dark .bg-emerald-50,
+.crm-command-center.dark .bg-emerald-100 {
+  background-color: rgb(212 175 55 / 0.12) !important;
+  color: #d4af37 !important;
+}
+.crm-command-center.dark .text-emerald-700,
+.crm-command-center.dark .text-emerald-800,
+.crm-command-center.dark .text-emerald-900,
+.crm-command-center.dark .text-emerald-400 {
+  color: #d4af37 !important;
+}
+.crm-command-center.dark .bg-sky-50,
+.crm-command-center.dark .bg-sky-100,
+.crm-command-center.dark .bg-blue-50 {
+  background-color: rgb(212 175 55 / 0.08) !important;
+}
+.crm-command-center.dark .text-sky-700,
+.crm-command-center.dark .text-sky-800,
+.crm-command-center.dark .text-sky-400,
+.crm-command-center.dark .text-blue-600,
+.crm-command-center.dark .text-blue-700 {
+  color: #e8d48b !important; /* soft gold */
+}
+.crm-command-center.dark .bg-rose-50,
+.crm-command-center.dark .bg-red-50,
+.crm-command-center.dark .bg-red-100 {
+  background-color: rgb(127 29 29 / 0.35) !important;
+}
+.crm-command-center.dark .text-rose-700,
+.crm-command-center.dark .text-rose-800,
+.crm-command-center.dark .text-rose-400,
+.crm-command-center.dark .text-red-600,
+.crm-command-center.dark .text-red-700 {
+  color: #fca5a5 !important;
+}
+.crm-command-center.dark .bg-amber-50,
+.crm-command-center.dark .bg-amber-100,
+.crm-command-center.dark .bg-orange-50 {
+  background-color: rgb(212 175 55 / 0.15) !important;
+}
+.crm-command-center.dark .text-amber-700,
+.crm-command-center.dark .text-amber-800,
+.crm-command-center.dark .text-amber-900,
+.crm-command-center.dark .text-amber-400,
+.crm-command-center.dark .text-orange-600,
+.crm-command-center.dark .text-orange-700 {
+  color: #d4af37 !important;
+}
+
+/* Icon / action chips */
+.crm-command-center.dark button.border-slate-200.bg-white,
+.crm-command-center.dark a.border-slate-200.bg-white {
+  background-color: #2a3834 !important;
+  border-color: #2d3f3a !important;
+  color: #d1d5db !important;
+}
+.crm-command-center.dark button.border-slate-200.bg-white:hover,
+.crm-command-center.dark a.border-slate-200.bg-white:hover {
+  background-color: #334540 !important;
+  border-color: rgb(212 175 55 / 0.35) !important;
+  color: #d4af37 !important;
 }
 
 @keyframes wl-chat-slide-in {
@@ -500,48 +778,80 @@ body {
 }
 
 /* Responsive modal shells (RTL-safe) */
-.wanderloom-modal-backdrop {
+.wanderloom-modal-backdrop,
+.crm-modal-overlay,
+.modal-overlay {
   position: fixed;
   inset: 0;
-  z-index: 50;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  padding: 0;
-  background: rgb(0 0 0 / 0.4);
+  z-index: 100;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 1rem;
+  background: rgb(0 0 0 / 0.7);
   backdrop-filter: blur(4px);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 @media (min-width: 640px) {
-  .wanderloom-modal-backdrop {
-    align-items: center;
-    padding: 1rem;
+  .wanderloom-modal-backdrop,
+  .crm-modal-overlay,
+  .modal-overlay {
+    padding: 1.5rem;
   }
+}
+
+/*
+ * GLOBAL CRM MODAL CENTERING
+ * Force full-viewport dialog overlays (inset-0) to center — overrides items-end / flex-end.
+ * Excludes drawers (inset-y-0 / no inset-0) and command palette (role=presentation).
+ */
+.crm-command-center [role='dialog'][aria-modal='true'].inset-0,
+.crm-command-center [role='dialog'][aria-modal='true'].fixed.inset-0,
+body > [role='dialog'][aria-modal='true'].inset-0,
+body > [role='dialog'][aria-modal='true'].fixed.inset-0,
+div[role='dialog'][aria-modal='true'].crm-modal-overlay {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch;
+}
+
+.crm-command-center [role='dialog'][aria-modal='true'].inset-0 > *,
+.crm-command-center [role='dialog'][aria-modal='true'].fixed.inset-0 > *,
+body > [role='dialog'][aria-modal='true'].inset-0 > *,
+body > [role='dialog'][aria-modal='true'].fixed.inset-0 > *,
+div[role='dialog'][aria-modal='true'].crm-modal-overlay > * {
+  margin-block: auto !important;
+  max-height: min(90vh, 90dvh) !important;
 }
 
 .wanderloom-modal-panel {
   display: flex;
-  max-height: 92dvh;
-  width: 95%;
-  max-width: 32rem;
+  max-height: 85vh;
+  width: 100%;
+  max-width: 42rem;
+  margin-block: auto;
   flex-direction: column;
-  overflow: hidden;
-  border-radius: 1rem 1rem 0 0;
-  background: #fff;
+  overflow-y: auto;
+  border-radius: 1rem;
+  border: 1px solid #2d3f3a;
+  background: #1a2421;
+  color: #f3f4f6;
+  padding: 1.5rem;
   box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25);
 }
 
 @media (min-width: 640px) {
   .wanderloom-modal-panel {
-    max-height: 90vh;
-    width: 100%;
-    border-radius: 1rem;
+    padding: 2rem;
   }
 }
 
 @media (min-width: 1024px) {
   .wanderloom-modal-panel {
-    width: 50%;
     max-width: 48rem;
   }
 }
@@ -816,6 +1126,30 @@ input[type='radio'].wanderloom-raw-radio::after {
     background: #fff !important;
   }
 
+  /* Hide toast notifications, alerts, and floating status bars */
+  [role='status'],
+  [role='alert'],
+  .toast,
+  .toaster,
+  .Toaster,
+  .crm-luxury-toaster,
+  #_rht_toaster,
+  div[class*='toast'],
+  div[class*='Toast'],
+  div[class*='Toaster'],
+  div[id*='toast'],
+  div[id*='Toast'],
+  .no-print {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    height: 0 !important;
+    width: 0 !important;
+    overflow: hidden !important;
+    position: absolute !important;
+    pointer-events: none !important;
+  }
+
   .print\:hidden {
     display: none !important;
   }
@@ -847,11 +1181,332 @@ input[type='radio'].wanderloom-raw-radio::after {
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
+
+  /* Force light canvas; keep dark inputs with gold values for contrast */
+  body.group-pricing-printing,
+  body.group-pricing-printing html,
+  body.group-pricing-printing .print-container,
+  body.group-pricing-printing .group-pricing-print-root {
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  body.group-pricing-printing button,
+  body.group-pricing-printing nav,
+  body.group-pricing-printing aside,
+  body.group-pricing-printing .no-print,
+  body.group-pricing-printing header,
+  body.group-pricing-printing footer,
+  body.group-pricing-printing .print\:hidden {
+    display: none !important;
+  }
+
+  body.group-pricing-printing main,
+  body.group-pricing-printing .crm-command-center {
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+
+  body.group-pricing-printing .print-container {
+    background: #ffffff !important;
+    color: #111827 !important;
+    border: none !important;
+    box-shadow: none !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-height: auto !important;
+  }
+
+  /*
+   * Two-tone print contrast:
+   * - Labels/titles on white paper → pitch black
+   * - Values inside dark green inputs → bright gold (never black)
+   */
+  body.group-pricing-printing label,
+  body.group-pricing-printing .outside-label,
+  body.group-pricing-printing .gp-label,
+  body.group-pricing-printing .label-text,
+  body.group-pricing-printing h1,
+  body.group-pricing-printing h2,
+  body.group-pricing-printing h3 {
+    color: #020617 !important;
+    -webkit-text-fill-color: #020617 !important;
+    font-weight: 800 !important;
+    opacity: 1 !important;
+  }
+
+  /* Helper subtexts — pitch black, extrabold, never faded */
+  body.group-pricing-printing .subtext-grey,
+  body.group-pricing-printing .gp-hint,
+  body.group-pricing-printing .print\:text-slate-800,
+  body.group-pricing-printing .print\:text-slate-900,
+  body.group-pricing-printing p.gp-hint,
+  body.group-pricing-printing span.gp-hint {
+    color: #0f172a !important;
+    -webkit-text-fill-color: #0f172a !important;
+    font-weight: 800 !important;
+    opacity: 1 !important;
+  }
+
+  /* Nuke faded slate utilities on white paper (labels, hints, totals) */
+  body.group-pricing-printing .text-slate-100,
+  body.group-pricing-printing .text-slate-200,
+  body.group-pricing-printing .text-slate-300,
+  body.group-pricing-printing .text-slate-400,
+  body.group-pricing-printing .text-slate-500,
+  body.group-pricing-printing .text-white,
+  body.group-pricing-printing .print\:text-slate-950 {
+    color: #0f172a !important;
+    -webkit-text-fill-color: #0f172a !important;
+    opacity: 1 !important;
+    font-weight: 700 !important;
+  }
+
+  body.group-pricing-printing p,
+  body.group-pricing-printing span,
+  body.group-pricing-printing small,
+  body.group-pricing-printing div {
+    opacity: 1 !important;
+  }
+
+  /* Group-pricing: also kill toast hosts scoped to print session */
+  body.group-pricing-printing .crm-luxury-toaster,
+  body.group-pricing-printing #_rht_toaster,
+  body.group-pricing-printing [role='status'],
+  body.group-pricing-printing [role='alert'],
+  body.group-pricing-printing div[class*='toast'],
+  body.group-pricing-printing div[class*='Toast'],
+  body.group-pricing-printing div[class*='Toaster'] {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+  }
+
+  body.group-pricing-printing .print-container svg {
+    color: #d4af37 !important;
+    stroke: #d4af37 !important;
+  }
+
+  body.group-pricing-printing .text-emerald-400,
+  body.group-pricing-printing [class*='text-emerald'] {
+    color: #047857 !important;
+  }
+
+  body.group-pricing-printing .summary-box,
+  body.group-pricing-printing .summary-card,
+  body.group-pricing-printing .bg-gradient-to-br,
+  body.group-pricing-printing [class*='bg-gradient'] {
+    background-color: #f1f5f9 !important;
+    background-image: none !important;
+    border: 2px solid #cbd5e1 !important;
+    color: #020617 !important;
+  }
+
+  body.group-pricing-printing .print-card,
+  body.group-pricing-printing .hotel-card,
+  body.group-pricing-printing .summary-card {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    margin-bottom: 1.5rem !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 12px !important;
+    padding: 1rem !important;
+    background-color: #ffffff !important;
+    color: #020617 !important;
+    box-shadow: none !important;
+  }
+
+  /* Flatten nested dark panels — never paint form controls; avoid
+   * -webkit-text-fill-color here (it inherits and kills gold values). */
+  body.group-pricing-printing .print-card .bg-\[\#1A2421\]:not(input):not(select):not(textarea),
+  body.group-pricing-printing .print-card .bg-\[\#141C19\]:not(input):not(select):not(textarea),
+  body.group-pricing-printing [class*='bg-[#1A2421]']:not(input):not(select):not(textarea),
+  body.group-pricing-printing [class*='bg-[#141C19]']:not(input):not(select):not(textarea) {
+    background-color: #f8fafc !important;
+    color: #020617 !important;
+  }
+
+  /* Keep explicit gold accents readable on print (values/totals, not labels) */
+  body.group-pricing-printing .text-\[\#D4AF37\],
+  body.group-pricing-printing [class*='text-[#D4AF37]'] {
+    color: #8c6d35 !important;
+    -webkit-text-fill-color: #8c6d35 !important;
+    font-weight: 800 !important;
+  }
+
+  body.group-pricing-printing .print-report-header {
+    border-bottom: 2px solid #e2e8f0 !important;
+    margin-bottom: 1rem !important;
+    padding-bottom: 0.75rem !important;
+  }
+
+  body.group-pricing-printing .print\:block {
+    display: block !important;
+  }
+
+  /*
+   * LAST: values inside dark green inputs stay bright gold.
+   * Must win over card/panel black text inheritance.
+   */
+  body.group-pricing-printing input:not([type='checkbox']):not([type='radio']),
+  body.group-pricing-printing select,
+  body.group-pricing-printing textarea,
+  body.group-pricing-printing input.bg-\[\#1A2421\],
+  body.group-pricing-printing select.bg-\[\#1A2421\],
+  body.group-pricing-printing textarea.bg-\[\#1A2421\] {
+    background-color: #1a2421 !important;
+    background-image: none !important;
+    color: #d4af37 !important;
+    -webkit-text-fill-color: #d4af37 !important;
+    font-weight: 800 !important;
+    opacity: 1 !important;
+    border: 1px solid #cbd5e1 !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+    caret-color: #d4af37 !important;
+  }
+
+  body.group-pricing-printing input::placeholder,
+  body.group-pricing-printing textarea::placeholder {
+    color: #94a3b8 !important;
+    -webkit-text-fill-color: #94a3b8 !important;
+    opacity: 1 !important;
+  }
+
+  body.group-pricing-printing input[type='checkbox'] {
+    accent-color: #d4af37 !important;
+    opacity: 1 !important;
+  }
+
+  /* =========================================================
+     OVERRIDE FOR PRINT & PDF EXPORT (FORCE HIGH CONTRAST & HIDE TOASTS)
+     Scoped to group-pricing export so other print docs stay intact.
+     ========================================================= */
+  body.group-pricing-printing [role='status'],
+  body.group-pricing-printing [role='alert'],
+  body.group-pricing-printing div[class*='toast'],
+  body.group-pricing-printing div[class*='Toaster'],
+  body.group-pricing-printing div[data-sonner-toaster],
+  body.group-pricing-printing .crm-luxury-toaster,
+  body.group-pricing-printing #_rht_toaster,
+  body.group-pricing-printing .no-print {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    height: 0 !important;
+  }
+
+  body.group-pricing-printing p,
+  body.group-pricing-printing span,
+  body.group-pricing-printing small,
+  body.group-pricing-printing label,
+  body.group-pricing-printing .subtext,
+  body.group-pricing-printing .subtext-grey,
+  body.group-pricing-printing .gp-hint,
+  body.group-pricing-printing [class*='text-slate-'],
+  body.group-pricing-printing [class*='text-gray-'] {
+    color: #020617 !important;
+    opacity: 1 !important;
+    font-weight: 800 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    -webkit-text-fill-color: #020617 !important;
+  }
+
+  body.group-pricing-printing .text-\[\#D4AF37\],
+  body.group-pricing-printing [class*='text-[#D4AF37]'] {
+    color: #8c6d35 !important;
+    -webkit-text-fill-color: #8c6d35 !important;
+    font-weight: 800 !important;
+  }
+
+  /* Inputs must win after the span/p black nuke */
+  body.group-pricing-printing input:not([type='checkbox']):not([type='radio']),
+  body.group-pricing-printing select,
+  body.group-pricing-printing textarea {
+    color: #d4af37 !important;
+    -webkit-text-fill-color: #d4af37 !important;
+    font-weight: 800 !important;
+    opacity: 1 !important;
+    background-color: #1a2421 !important;
+  }
+}
+
+/* Global toast hide for any print (non–group-pricing pages too) */
+@media print {
+  [role='status'],
+  [role='alert'],
+  div[class*='toast'],
+  div[class*='Toaster'],
+  div[data-sonner-toaster],
+  .crm-luxury-toaster,
+  #_rht_toaster,
+  .no-print {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    height: 0 !important;
+  }
+}
+
+/* Leader availability calendar — force clean 7-col grid, no overlap */
+.leader-availability-calendar .rdp-root {
+  width: 100%;
+  position: relative;
+  z-index: 0;
+}
+
+.leader-availability-calendar .rdp-month_grid,
+.leader-availability-calendar table.rdp-month_grid {
+  width: 100%;
+  table-layout: fixed;
+}
+
+.leader-availability-calendar .rdp-weekdays {
+  display: grid !important;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.25rem;
+  margin-bottom: 0.75rem;
+}
+
+.leader-availability-calendar .rdp-weekdays > * {
+  width: 100% !important;
+}
+
+.leader-availability-calendar .rdp-weeks {
+  display: block;
+}
+
+.leader-availability-calendar .rdp-week {
+  display: grid !important;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.25rem;
+  margin-top: 0.25rem;
+}
+
+.leader-availability-calendar .rdp-week > * {
+  width: 100% !important;
+}
+
+.leader-availability-calendar .rdp-day_button {
+  width: 100%;
+  max-width: none;
 }
 
 /* Hide scrollbar for Chrome, Safari and Opera */
 .no-scrollbar::-webkit-scrollbar {
   display: none;
+  width: 0;
+  height: 0;
+  background: transparent;
 }
 
 /* Hide scrollbar for IE, Edge and Firefox */
@@ -860,30 +1515,136 @@ input[type='radio'].wanderloom-raw-radio::after {
   scrollbar-width: none; /* Firefox */
 }
 
+/* Pipeline board — kill global luxury scrollbar on horizontal column strip */
+.pipeline-columns-scroll {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.pipeline-columns-scroll::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  background: transparent !important;
+}
+
+.pipeline-columns-scroll::-webkit-scrollbar-track,
+.pipeline-columns-scroll::-webkit-scrollbar-thumb,
+.pipeline-columns-scroll::-webkit-scrollbar-corner {
+  display: none !important;
+  background: transparent !important;
+}
+
 /* Dark luxury modal / textarea scrollbars */
 .custom-scrollbar {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
 .custom-scrollbar::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  background: transparent !important;
 }
 
-.custom-scrollbar::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 10px;
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(197, 160, 89, 0.5);
-}
-
+.custom-scrollbar::-webkit-scrollbar-track,
+.custom-scrollbar::-webkit-scrollbar-thumb,
 .custom-scrollbar::-webkit-scrollbar-corner {
-  background: transparent;
+  display: none !important;
+  background: transparent !important;
+}
+
+/* ——— Premium CRM motion: page entrance + staggered cards ——— */
+@keyframes crm-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes crm-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(1rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/*
+ * IMPORTANT: never leave a transform on layout shells (e.g. <main class="crm-animate-in">).
+ * Any transform creates a containing block for position:fixed descendants, which pins
+ * modals to the page bottom instead of the viewport.
+ */
+.crm-animate-in {
+  animation: crm-fade-in 0.45s ease-out both;
+  transform: none !important;
+}
+
+.crm-stagger > * {
+  animation: crm-fade-up 0.5s ease-out both;
+}
+
+.crm-stagger > *:nth-child(1) {
+  animation-delay: 0ms;
+}
+.crm-stagger > *:nth-child(2) {
+  animation-delay: 45ms;
+}
+.crm-stagger > *:nth-child(3) {
+  animation-delay: 90ms;
+}
+.crm-stagger > *:nth-child(4) {
+  animation-delay: 135ms;
+}
+.crm-stagger > *:nth-child(5) {
+  animation-delay: 180ms;
+}
+.crm-stagger > *:nth-child(6) {
+  animation-delay: 225ms;
+}
+.crm-stagger > *:nth-child(7) {
+  animation-delay: 270ms;
+}
+.crm-stagger > *:nth-child(8) {
+  animation-delay: 315ms;
+}
+.crm-stagger > *:nth-child(9) {
+  animation-delay: 360ms;
+}
+.crm-stagger > *:nth-child(10) {
+  animation-delay: 405ms;
+}
+.crm-stagger > *:nth-child(n + 11) {
+  animation-delay: 450ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .crm-animate-in,
+  .crm-stagger > * {
+    animation: none !important;
+  }
+}
+
+/* Selected path-type / trip-kind — high-contrast yellow + dark text (readable in CRM dark mode) */
+.path-type-option.active,
+.path-type-option.active > span {
+  background-color: #d4af37 !important;
+  color: #020617 !important;
+  font-weight: 700 !important;
+}
+
+.crm-command-center.dark .path-type-option.active,
+.crm-command-center.dark .path-type-option.active > span,
+.crm-command-center.dark .path-type-option.active .text-\[\#0F172A\],
+.crm-command-center.dark button.path-type-option.active,
+.crm-command-center.dark button.path-type-option.active span {
+  background-color: #d4af37 !important;
+  color: #020617 !important;
+  background-image: none !important;
 }

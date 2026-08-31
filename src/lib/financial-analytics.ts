@@ -1,4 +1,12 @@
-/** تجميع التحليل المالي — إيرادات، تكاليف، صافي ربح، وجهات، خبراء */
+/** تجميع التحليل المالي — إيرادات، تكاليف، صافي ربح، وجهات، خبراء، فواتير */
+
+import {
+  computeInvoiceFinanceMetrics,
+  isInvoicePaidOrApprovedStatus,
+  mapInvoiceRow,
+  type InvoiceFinanceMetrics,
+  type InvoiceRow,
+} from '@/lib/crm-invoices';
 
 export type DestinationProfitRow = {
   destination: string;
@@ -24,6 +32,10 @@ export type FinancialAnalyticsSnapshot = {
   closedTripCount: number;
   destinations: DestinationProfitRow[];
   experts: ExpertLeaderboardRow[];
+  /** KPIs مباشرة من جدول invoices */
+  invoiceMetrics: InvoiceFinanceMetrics;
+  /** أحدث الفواتير للعرض في اللوحة */
+  recentInvoices: InvoiceRow[];
 };
 
 function roundMoney(value: number): number {
@@ -146,7 +158,10 @@ function pickEmbed(row: Record<string, unknown>, key: string): Record<string, un
 export function buildFinancialAnalyticsSnapshot(input: {
   itineraries: Record<string, unknown>[];
   quotations: Record<string, unknown>[];
-  paidInvoices: Record<string, unknown>[];
+  /** All invoices (paid + pending) — preferred */
+  invoices?: Record<string, unknown>[];
+  /** @deprecated use `invoices` — kept for call-site compatibility */
+  paidInvoices?: Record<string, unknown>[];
   experts: Record<string, unknown>[];
   legacyClientTrips?: Record<string, unknown>[];
 }): FinancialAnalyticsSnapshot {
@@ -163,10 +178,20 @@ export function buildFinancialAnalyticsSnapshot(input: {
     if (id && name) expertNameById.set(id, name);
   }
 
+  const allInvoiceRows = (input.invoices?.length ? input.invoices : input.paidInvoices) ?? [];
+  const mappedInvoices = allInvoiceRows
+    .map((row) => mapInvoiceRow(row))
+    .filter((inv) => inv.id);
+  const invoiceMetrics = computeInvoiceFinanceMetrics(mappedInvoices);
+  const recentInvoices = [...mappedInvoices]
+    .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)))
+    .slice(0, 40);
+
   // Paid invoice totals by quote_id (client payments)
   const paidByQuote = new Map<string, number>();
   let orphanInvoiceRevenue = 0;
-  for (const inv of input.paidInvoices) {
+  for (const inv of mappedInvoices) {
+    if (!isInvoicePaidOrApprovedStatus(inv.status)) continue;
     const amount = money(inv.amount);
     if (amount <= 0) continue;
     const quoteId = inv.quote_id != null ? String(inv.quote_id).trim() : '';
@@ -279,8 +304,8 @@ export function buildFinancialAnalyticsSnapshot(input: {
     });
   }
 
-  let grossRevenue = trips.reduce((s, t) => s + t.revenue, 0) + orphanInvoiceRevenue;
-  let totalCosts = trips.reduce((s, t) => s + t.costs, 0);
+  const grossRevenue = trips.reduce((s, t) => s + t.revenue, 0) + orphanInvoiceRevenue;
+  const totalCosts = trips.reduce((s, t) => s + t.costs, 0);
   let netProfit = trips.reduce((s, t) => s + t.profit, 0);
 
   // If orphan invoices exist without cost attribution, keep them in revenue only
@@ -343,13 +368,21 @@ export function buildFinancialAnalyticsSnapshot(input: {
   const marginPct =
     grossRevenue > 0 ? roundMoney((netProfit / grossRevenue) * 100) : 0;
 
+  // Prefer hard invoice revenue when invoices exist; else trip-derived gross
+  const invoiceBackedRevenue = invoiceMetrics.totalRevenue;
+  const resolvedGross =
+    invoiceBackedRevenue > 0 ? invoiceBackedRevenue : roundMoney(grossRevenue);
+
   return {
-    grossRevenue: roundMoney(grossRevenue),
+    grossRevenue: resolvedGross,
     totalCosts: roundMoney(totalCosts),
     netProfit: roundMoney(netProfit),
-    marginPct,
+    marginPct:
+      resolvedGross > 0 ? roundMoney((netProfit / resolvedGross) * 100) : marginPct,
     closedTripCount: trips.length,
     destinations,
     experts,
+    invoiceMetrics,
+    recentInvoices,
   };
 }

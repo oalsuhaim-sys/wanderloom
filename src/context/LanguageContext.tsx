@@ -15,11 +15,23 @@ import en from '@/locales/en.json';
 
 export type Locale = 'ar' | 'en';
 
-export type Dictionary = typeof ar;
+type DeepStringify<T> = T extends string
+  ? string
+  : T extends ReadonlyArray<infer U>
+    ? ReadonlyArray<DeepStringify<U>>
+    : T extends object
+      ? { [K in keyof T]: DeepStringify<T[K]> }
+      : T;
+
+/** Locale dictionaries share shape; values are plain strings (not JSON string-literal types). */
+export type Dictionary = DeepStringify<typeof ar>;
 
 const STORAGE_KEY = 'wanderloom-locale';
 
-const dictionaries: Record<Locale, Dictionary> = { ar, en };
+const dictionaries: Record<Locale, Dictionary> = {
+  ar: ar as unknown as Dictionary,
+  en: en as unknown as Dictionary,
+};
 
 function isLocale(value: string | null | undefined): value is Locale {
   return value === 'ar' || value === 'en';

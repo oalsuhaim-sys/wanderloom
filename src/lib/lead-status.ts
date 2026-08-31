@@ -9,10 +9,14 @@
 export const LEAD_STATUSES = [
   'radar_pending',
   'radar_rejected',
+  'interest_only',
+  'converted',
   'awaiting_dna',
   'meeting',
+  'interview_scheduled',
   'quote_stage',
   'awaiting_payment',
+  'payment_confirmed',
   'preparing_itinerary',
   'delivered',
   'postponed',
@@ -27,10 +31,14 @@ export type MasterLeadStatus = LeadStatus;
 export const LEAD_STATUS_LABEL_AR: Record<LeadStatus, string> = {
   radar_pending: 'طلب جديد (الرادار)',
   radar_rejected: 'مرفوض',
+  interest_only: 'تسجيل اهتمام فقط',
+  converted: 'محوَّل لقاعدة العملاء',
   awaiting_dna: 'بانتظار DNA',
   meeting: 'اجتماع العميل',
+  interview_scheduled: 'مقابلة مجدولة',
   quote_stage: 'عروض الأسعار',
   awaiting_payment: 'بانتظار الدفع',
+  payment_confirmed: 'تم الدفع / المسارات',
   preparing_itinerary: 'تجهيز المسار',
   delivered: 'تم التسليم',
   postponed: 'مؤجّل / مؤرشف',
@@ -46,6 +54,7 @@ export const LEAD_STATUS_PIPELINE_ORDER: Exclude<
   'meeting',
   'quote_stage',
   'awaiting_payment',
+  'payment_confirmed',
   'preparing_itinerary',
   'delivered',
 ];
@@ -56,9 +65,36 @@ export const CLIENT_DATABASE_LEAD_STATUSES: LeadStatus[] = [
   'meeting',
   'quote_stage',
   'awaiting_payment',
+  'payment_confirmed',
   'preparing_itinerary',
   'delivered',
   'postponed',
+];
+
+/** DB values written for marketing sign-ups (Radar «قائمة الاهتمامات») */
+export const INTEREST_ONLY_DB_VALUES = ['interest_only', 'interest', 'register_interest'] as const;
+
+export const INTEREST_ONLY_STATUS_OR = `status.in.(${INTEREST_ONLY_DB_VALUES.join(',')})`;
+
+/** Lightweight marketing sign-ups — separate from quote pipeline */
+export const INTEREST_ONLY_STATUS = 'interest_only' as const satisfies LeadStatus;
+
+export const INTEREST_ONLY_STATUSES: LeadStatus[] = [INTEREST_ONLY_STATUS];
+
+/** Group onboarding — intro call booked */
+export const INTERVIEW_SCHEDULED_STATUS = 'interview_scheduled' as const satisfies LeadStatus;
+
+/** Post-inbox approval + scheduled interviews (مواعيد المقابلات القادمة). */
+export const INTERVIEW_APPOINTMENT_DB_STATUSES = [
+  'approved',
+  'meeting',
+  'interview_scheduled',
+] as const;
+
+export const GROUP_ONBOARDING_STATUSES: LeadStatus[] = [
+  'awaiting_dna',
+  'meeting',
+  INTERVIEW_SCHEDULED_STATUS,
 ];
 
 /** Radar inbox */
@@ -77,6 +113,13 @@ export const RADAR_INBOX_DB_VALUES = [
   'pending',
 ] as const;
 
+/** True when a lead belongs in صندوق الوارد (not yet admin-approved). */
+export function isInboxPendingLeadStatus(raw: unknown): boolean {
+  const s = String(raw ?? '').trim().toLowerCase();
+  if (!s) return true;
+  return (RADAR_INBOX_DB_VALUES as readonly string[]).includes(s);
+}
+
 /**
  * PostgREST filter matching Radar inbox: known inbox statuses OR null status.
  * Use with `.or(RADAR_INBOX_STATUS_OR)` on `leads`.
@@ -91,6 +134,7 @@ export const QUOTE_PIPELINE_STATUSES: LeadStatus[] = ['quote_stage', 'awaiting_p
 
 /** Itineraries page work queue */
 export const ITINERARY_PIPELINE_STATUSES: LeadStatus[] = [
+  'payment_confirmed',
   'preparing_itinerary',
   'delivered',
 ];
@@ -101,8 +145,7 @@ export const KANBAN_VISIBLE_STATUSES: LeadStatus[] = [
   'meeting',
   'quote_stage',
   'awaiting_payment',
-  'preparing_itinerary',
-  'delivered',
+  'payment_confirmed',
 ];
 
 /**
@@ -128,6 +171,14 @@ export function normalizeLeadStatus(raw: unknown): LeadStatus {
     return 'radar_rejected';
   }
 
+  if (s === 'interest_only' || s === 'interest' || s === 'register_interest') {
+    return 'interest_only';
+  }
+
+  if (s === 'converted' || s === 'interest_converted') {
+    return 'converted';
+  }
+
   if (s === 'postponed' || s === 'archived_lead' || s === 'on_hold' || s === 'paused') {
     return 'postponed';
   }
@@ -137,6 +188,15 @@ export function normalizeLeadStatus(raw: unknown): LeadStatus {
   }
 
   if (s === 'meeting' || s === 'client_meeting') {
+    return 'meeting';
+  }
+
+  if (s === 'interview_scheduled') {
+    return 'interview_scheduled';
+  }
+
+  /** Group inbox approval — interview queue (not quote pipeline). */
+  if (s === 'approved') {
     return 'meeting';
   }
 
@@ -156,16 +216,22 @@ export function normalizeLeadStatus(raw: unknown): LeadStatus {
   }
 
   if (
+    s === 'payment_confirmed' ||
     s === 'preparing_itinerary' ||
     s === 'active' ||
-    s === 'converted' ||
-    s === 'confirmed'
+    s === 'confirmed' ||
+    s === 'deposit_paid' ||
+    s === 'fully_paid'
   ) {
-    return 'preparing_itinerary';
+    // Paid / route stage — prefer payment_confirmed for Kanban SSOT
+    if (s === 'preparing_itinerary' || s === 'active' || s === 'confirmed') {
+      return 'payment_confirmed';
+    }
+    return 'payment_confirmed';
   }
 
   if (s === 'delivered' || s === 'completed' || s === 'done' || s === 'archived') {
-    return 'delivered';
+    return 'payment_confirmed';
   }
 
   return 'radar_pending';
@@ -185,7 +251,12 @@ export const isMasterLeadStatus = isLeadStatus;
 
 export function leadStatusPipelineIndex(status: unknown): number {
   const normalized = normalizeLeadStatus(status);
-  if (normalized === 'radar_rejected' || normalized === 'postponed') return -1;
+  if (normalized === 'radar_rejected' || normalized === 'postponed' || normalized === 'interest_only' || normalized === 'converted') {
+    return -1;
+  }
+  if (normalized === 'interview_scheduled') {
+    return LEAD_STATUS_PIPELINE_ORDER.indexOf('meeting');
+  }
   return LEAD_STATUS_PIPELINE_ORDER.indexOf(normalized);
 }
 

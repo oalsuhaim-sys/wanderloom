@@ -142,7 +142,7 @@ export function QuickAddPlaceModal({
       aria-modal="true"
       aria-labelledby="quick-add-place-title"
     >
-      <div className="w-full max-w-md rounded-2xl border border-[#D4AF37]/30 bg-white shadow-2xl">
+      <div className="w-[95%] max-h-[90vh] max-w-md overflow-y-auto rounded-2xl border border-[#D4AF37]/30 bg-white shadow-2xl">
         <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
           <h2 id="quick-add-place-title" className="text-lg font-bold text-[#1E2720]">
             إضافة معلم جديد
@@ -166,7 +166,7 @@ export function QuickAddPlaceModal({
               value={draft.name}
               onChange={(e) => onChange({ name: e.target.value })}
               placeholder="مثال: برج إيفل"
-              className="rounded-lg border border-gray-300 bg-gray-50 p-3 text-sm text-gray-900 outline-none focus:border-[#D4AF37]"
+              className="rounded-lg border border-slate-300 bg-slate-50 p-3 text-sm font-bold text-slate-900 outline-none placeholder:text-slate-500 focus:border-[#D4AF37] focus:bg-white"
             />
           </label>
 
@@ -177,7 +177,7 @@ export function QuickAddPlaceModal({
               value={draft.city}
               onChange={(e) => onChange({ city: e.target.value })}
               placeholder="مثال: باريس"
-              className="rounded-lg border border-gray-300 bg-gray-50 p-3 text-sm text-gray-900 outline-none focus:border-[#D4AF37]"
+              className="rounded-lg border border-slate-300 bg-slate-50 p-3 text-sm font-bold text-slate-900 outline-none placeholder:text-slate-500 focus:border-[#D4AF37] focus:bg-white"
             />
           </label>
 
@@ -188,7 +188,7 @@ export function QuickAddPlaceModal({
               value={draft.country}
               onChange={(e) => onChange({ country: e.target.value })}
               placeholder="مثال: فرنسا"
-              className="rounded-lg border border-gray-300 bg-gray-50 p-3 text-sm text-gray-900 outline-none focus:border-[#D4AF37]"
+              className="rounded-lg border border-slate-300 bg-slate-50 p-3 text-sm font-bold text-slate-900 outline-none placeholder:text-slate-500 focus:border-[#D4AF37] focus:bg-white"
             />
           </label>
 

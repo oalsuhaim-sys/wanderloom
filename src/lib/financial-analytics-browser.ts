@@ -6,6 +6,13 @@ import {
 
 const PAGE = 5000;
 
+const INVOICE_SELECTS = [
+  'id, client_id, quote_id, trip_title, amount, type, status, created_at, updated_at, paid_at, receipt_url',
+  'id, client_id, quote_id, trip_title, amount, type, status, created_at, updated_at, paid_at',
+  'id, quote_id, amount, type, status, created_at, paid_at',
+  '*',
+] as const;
+
 async function fetchTable(
   table: string,
   select: string,
@@ -19,7 +26,6 @@ async function fetchTable(
 
   if (error) {
     console.warn(`[financial-analytics] ${table}:`, error.message);
-    // Retry without order if column missing
     const fallback = await supabase.from(table).select(select).limit(PAGE);
     if (fallback.error) {
       console.warn(`[financial-analytics] ${table} fallback:`, fallback.error.message);
@@ -28,6 +34,26 @@ async function fetchTable(
     return (fallback.data ?? []) as unknown as Record<string, unknown>[];
   }
   return (data ?? []) as unknown as Record<string, unknown>[];
+}
+
+async function fetchAllInvoicesBrowser(): Promise<Record<string, unknown>[]> {
+  if (!supabase) return [];
+  for (const select of INVOICE_SELECTS) {
+    const { data, error } = await supabase
+      .from('invoices')
+      .select(select)
+      .order('created_at', { ascending: false })
+      .range(0, PAGE - 1);
+
+    if (!error) {
+      return (data ?? []) as unknown as Record<string, unknown>[];
+    }
+    console.warn('[financial-analytics] invoices:', error.message);
+    if (!/column|schema cache|does not exist/i.test(error.message ?? '')) {
+      break;
+    }
+  }
+  return [];
 }
 
 export async function fetchFinancialAnalyticsBrowser(): Promise<FinancialAnalyticsSnapshot | null> {
@@ -42,10 +68,7 @@ export async function fetchFinancialAnalyticsBrowser(): Promise<FinancialAnalyti
       'quotations',
       'id, title, destinations, status, total_estimated_cost, expected_profit, grand_total, paid_amount, created_at',
     ),
-    fetchTable(
-      'invoices',
-      'id, quote_id, amount, status, paid_at, created_at, type',
-    ),
+    fetchAllInvoicesBrowser(),
     fetchTable('experts', 'id, name, status'),
     fetchTable(
       'client_trips',
@@ -53,32 +76,10 @@ export async function fetchFinancialAnalyticsBrowser(): Promise<FinancialAnalyti
     ),
   ]);
 
-  const paidInvoices = invoices.filter((row) => {
-    const s = String(row.status ?? '')
-      .trim()
-      .toLowerCase();
-    return s === 'paid' || s === 'fully_paid' || s.includes('paid') || s.includes('مدفوع');
-  });
-
-  if (
-    !itineraries.length &&
-    !quotations.length &&
-    !paidInvoices.length &&
-    !clientTrips.length
-  ) {
-    return buildFinancialAnalyticsSnapshot({
-      itineraries: [],
-      quotations: [],
-      paidInvoices: [],
-      experts,
-      legacyClientTrips: [],
-    });
-  }
-
   return buildFinancialAnalyticsSnapshot({
     itineraries,
     quotations,
-    paidInvoices,
+    invoices,
     experts,
     legacyClientTrips: clientTrips,
   });

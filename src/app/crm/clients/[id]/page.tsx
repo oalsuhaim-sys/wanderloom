@@ -28,14 +28,16 @@ import {
   formatWalletAmount,
 } from '@/lib/vip-wallet-ledger';
 import DnaInviteTripTypePicker from '@/app/crm/_components/DnaInviteTripTypePicker';
+import ClientGroupTripManagement from '@/app/crm/clients/_components/ClientGroupTripManagement';
+import { tagClientForGroupDna } from '@/app/actions/groupTripAssignmentActions';
+import type { GroupMember } from '@/lib/group-members';
 import {
   buildClientDnaWelcomeUrlByClientId,
-  buildDnaInviteWhatsAppPayload,
   markDnaLinkSent,
   type DnaInviteTripType,
 } from '@/lib/client-intake-pipeline';
-import { ensureClientOnboardingToken } from '@/lib/client-onboarding';
 import { launchClientTrip } from '@/lib/client-trip-launch';
+import { formatWhatsAppPhone, whatsAppHrefWithMessage } from '@/lib/crm-lead-actions';
 import {
   ArrowRight,
   Pencil,
@@ -55,7 +57,7 @@ import {
   Lock,
   PauseCircle,
 } from 'lucide-react'
-import toast, { Toaster } from 'react-hot-toast'
+import toast from 'react-hot-toast'
 import { setLeadPipelineStatus } from '@/lib/lead-pipeline-automation'
 
 type UnifiedTrip = UnifiedTripRow
@@ -225,6 +227,26 @@ export default function ClientDetailPage() {
         setPassportExpiry(formatPassportExpiryForInput(c.passport_expiry))
         setNewCode(c.ref_code || c.referral_code || '')
         setNewProfileCode(String(c.profile_code ?? '').toUpperCase())
+
+        // Default WhatsApp DNA invite to Group when client is a group traveler
+        const tags = Array.isArray(c.tags)
+          ? c.tags.map((v: unknown) => String(v).trim().toLowerCase())
+          : String(c.tags ?? '')
+              .split(',')
+              .map((v: string) => v.trim().toLowerCase())
+              .filter(Boolean)
+        const clientType = String(c.client_type ?? '').trim().toLowerCase()
+        const intakeType = String(c.intake_trip_type ?? '').trim().toLowerCase()
+        if (
+          intakeType === 'group' ||
+          clientType.includes('group') ||
+          tags.includes('group_trip_client') ||
+          tags.includes('group_onboarding_approved')
+        ) {
+          setDnaInviteTripType('group')
+        } else {
+          setDnaInviteTripType('private')
+        }
       } else {
         setClient(null)
         setTravelDnaForm({
@@ -632,8 +654,8 @@ export default function ClientDetailPage() {
         'هل تريد تأجيل طلبات هذا العميل؟ ستختفي من اللوحة النشطة ويمكنك العودة لها لاحقاً عبر الحالة «مؤجّل».',
       )
     ) {
-      return
-    }
+        return
+      }
 
     setLeadPipelineBusy('postpone')
     try {
@@ -670,7 +692,7 @@ export default function ClientDetailPage() {
         const phone = String(client.phone_wa ?? '').trim()
         if (phone) {
           del = await supabase.from('leads').delete().eq('phone_wa', phone)
-        } else {
+      } else {
           throw new Error(
             'عمود leads.client_id غير موجود — نفّذ supabase/sql/clients_intake_pipeline.sql أو احذف الطلب من الكانبان.',
           )
@@ -687,56 +709,109 @@ export default function ClientDetailPage() {
     }
   }
 
-  const copySecretOnboardingLink = async () => {
-    if (!client || !supabase) return
+  const resolveDnaClientId = (): string | number | null => {
+    const id = client?.id ?? clientId
+    if (id == null || String(id).trim() === '') return null
+    return id
+  }
+
+  const buildDnaUrlForClient = (resolvedId: string | number): string => {
+    return buildClientDnaWelcomeUrlByClientId(
+      resolvedId,
+      window.location.origin,
+      dnaInviteTripType,
+    )
+  }
+
+  const copyTextWithFallback = async (text: string): Promise<void> => {
+    try {
+      await navigator.clipboard.writeText(text)
+    } catch {
+      const textArea = document.createElement('textarea')
+      textArea.value = text
+      document.body.appendChild(textArea)
+      textArea.select()
+      document.execCommand('copy')
+      document.body.removeChild(textArea)
+    }
+  }
+
+  const handleCopyDnaLink = async () => {
+    const resolvedClientId = resolveDnaClientId()
+    if (!resolvedClientId) {
+      toast.error('تعذر العثور على معرف العميل لإنشاء الرابط')
+      return
+    }
+
     setCopyingOnboardingLink(true)
     try {
-      await ensureClientOnboardingToken(
-        clientId,
-        (client as { onboarding_token?: string | null }).onboarding_token,
-      )
-      const url = buildClientDnaWelcomeUrlByClientId(clientId, window.location.origin)
-      await navigator.clipboard.writeText(url)
-      setSaveNotice('تم نسخ رابط DNA الموحّد 🔗')
+      if (dnaInviteTripType === 'group') {
+        const tagged = await tagClientForGroupDna(String(resolvedClientId), await getClientAccessToken())
+        if (!tagged.ok) {
+          toast.error(tagged.error)
+          return
+        }
+      }
+
+      const dnaUrl = buildDnaUrlForClient(resolvedClientId)
+      await copyTextWithFallback(dnaUrl)
+      toast.success('تم نسخ رابط الـ DNA بنجاح! 📋')
     } catch (e) {
-      setSaveNotice(e instanceof Error ? e.message : 'تعذر نسخ رابط التعارف.')
+      toast.error(e instanceof Error ? e.message : 'تعذر نسخ رابط التعارف.')
     } finally {
       setCopyingOnboardingLink(false)
     }
   }
 
-  const sendDnaViaWhatsApp = async () => {
-    if (!supabase || !client) return
-    const phone = String(client.phone_wa ?? (client as { phone?: string }).phone ?? '').trim()
-    if (!phone) {
-      setSaveNotice('لا يوجد رقم واتساب للعميل.')
+  const handleSendWhatsappDna = async () => {
+    if (!client) return
+
+    const resolvedClientId = resolveDnaClientId()
+    if (!resolvedClientId) {
+      toast.error('تعذر العثور على معرف العميل لإنشاء الرابط')
       return
     }
+
+    const rawPhone = String(client.phone_wa ?? (client as { phone?: string }).phone ?? '').trim()
+    const cleanPhone = formatWhatsAppPhone(rawPhone)
+    if (!cleanPhone || cleanPhone.length < 8) {
+      toast.error('رقم جوال العميل غير متوفر!')
+      return
+    }
+
     setSendingDnaWhatsApp(true)
     try {
-      await ensureClientOnboardingToken(
-        clientId,
-        (client as { onboarding_token?: string | null }).onboarding_token,
-      )
-      const { whatsAppUrl } = buildDnaInviteWhatsAppPayload(
-        phone,
-        clientId,
-        dnaInviteTripType,
-        window.location.origin,
-      )
-      await markDnaLinkSent(supabase, Number(clientId))
-      window.open(whatsAppUrl, '_blank', 'noopener,noreferrer')
-      setSaveNotice(
-        dnaInviteTripType === 'group'
-          ? 'تم فتح واتساب برسالة الرحلة الجماعية ✨'
-          : 'تم فتح واتساب برسالة الرحلة الخاصة ✨',
-      )
+      if (dnaInviteTripType === 'group') {
+        const tagged = await tagClientForGroupDna(String(resolvedClientId), await getClientAccessToken())
+        if (!tagged.ok) {
+          toast.error(tagged.error)
+          return
+        }
+      }
+
+      const dnaUrl = buildDnaUrlForClient(resolvedClientId)
+      const clientName = String(client.name ?? 'عزيزنا العميل')
+      const message = `مرحباً ${clientName}، يسعدنا البدء في تنظيم رحلتك! نرجو منك إكمال ملف DNA السفر الخاص بك عبر الرابط التالي:\n${dnaUrl}`
+      const waUrl = whatsAppHrefWithMessage(cleanPhone, message)
+
+      if (supabase) {
+        await markDnaLinkSent(supabase, Number(resolvedClientId)).catch(() => {})
+      }
+
+      window.open(waUrl, '_blank', 'noopener,noreferrer')
     } catch (e) {
-      setSaveNotice(e instanceof Error ? e.message : 'تعذر فتح واتساب.')
+      toast.error(e instanceof Error ? e.message : 'تعذر فتح واتساب.')
     } finally {
       setSendingDnaWhatsApp(false)
     }
   }
+
+  const onGroupMembershipLoaded = useCallback((member: GroupMember | null) => {
+    // Any group_members row means this client is in the group funnel → default WhatsApp to Group
+    if (member) {
+      setDnaInviteTripType('group')
+    }
+  }, [])
 
   if (loading)
     return <div dir="rtl" style={{ padding: 40, textAlign: 'center', color: '#9CA3AF' }}>جارٍ التحميل...</div>
@@ -766,9 +841,10 @@ export default function ClientDetailPage() {
     )
   if (!client) return <div dir="rtl" style={{ padding: 40, textAlign: 'center', color: '#DC2626' }}>العميل غير موجود</div>
 
-  const cardClass = 'bg-white rounded-2xl shadow-sm border border-slate-100 p-6'
-  const customerPhone = String((client as { phone?: string }).phone ?? client.phone_wa ?? '').trim()
-  const waUrl = customerPhone ? `https://wa.me/${customerPhone}` : ''
+  const cardClass =
+    'bg-white rounded-xl shadow-sm border border-slate-200 p-5 dark:bg-[#22302C] dark:border-[#2D3F3A]'
+  const customerPhone = formatWhatsAppPhone(String((client as { phone?: string }).phone ?? client.phone_wa ?? '').trim())
+  const waUrl = customerPhone.length >= 8 ? `https://wa.me/${customerPhone}` : ''
   const callUrl = customerPhone ? `tel:${customerPhone}` : ''
   const onboardingDone = client.onboarding_completed === true
   const tripsProfitSum = sumUnifiedTripProfit(trips)
@@ -776,8 +852,7 @@ export default function ClientDetailPage() {
   const showSalesPipeline = true
 
   return (
-    <div dir="rtl" className="mx-auto max-w-7xl p-4 font-[family-name:var(--font-tajawal),system-ui,sans-serif] text-slate-800">
-      <Toaster position="top-center" toastOptions={{ className: 'text-sm font-bold' }} />
+    <div dir="rtl" className="mx-auto max-w-7xl p-4 font-sans text-slate-800 dark:text-gray-100">
       <Link
         href="/crm/clients"
         className="mb-4 inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-sm text-slate-500 hover:bg-slate-100"
@@ -833,16 +908,17 @@ export default function ClientDetailPage() {
         badges={
           <>
             <span
-              className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-black ${
-                onboardingDone
-                  ? 'bg-emerald-400/20 text-emerald-100 ring-1 ring-emerald-300/40'
-                  : 'bg-amber-400/20 text-amber-100 ring-1 ring-amber-300/40'
+              className={`inline-flex shrink-0 items-center gap-1 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-medium text-white backdrop-blur-sm ${
+                onboardingDone ? '' : 'dark:border-[#D4AF37]/30 dark:bg-[#D4AF37]/10 dark:text-[#D4AF37]'
               }`}
             >
               {onboardingDone ? 'اكتمل التعارف' : 'بانتظار العميل'}
-            </span>
+                    </span>
             {targetTripLabel ? (
-              <ClientTargetTripBadge label={targetTripLabel} className="min-w-0 shrink" />
+              <ClientTargetTripBadge
+                label={targetTripLabel}
+                className="min-w-0 shrink !border-white/20 !bg-white/10 !text-white !shadow-none backdrop-blur-sm"
+              />
             ) : null}
             {showSalesPipeline ? (
               <ClientSalesStageControl
@@ -856,32 +932,32 @@ export default function ClientDetailPage() {
             {client.birth_date ? (
               <span className="text-xs font-semibold text-white/65" dir="ltr">
                 🎂 {formatBirthdayDisplayDate(String(client.birth_date).slice(0, 10))}
-              </span>
+                    </span>
             ) : null}
           </>
         }
         actions={
           <>
-            {customerPhone ? (
+              {customerPhone ? (
               <>
-                <a
-                  href={waUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                  <a
+                    href={waUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
                   className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-emerald-300 ring-1 ring-white/15 transition hover:bg-white/20"
-                  aria-label="واتساب"
-                >
-                  <MessageCircle size={16} />
-                </a>
-                <a
-                  href={callUrl}
+                    aria-label="واتساب"
+                  >
+                    <MessageCircle size={16} />
+                  </a>
+                  <a
+                    href={callUrl}
                   className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white ring-1 ring-white/15 transition hover:bg-white/20"
-                  aria-label="اتصال"
-                >
-                  <PhoneCall size={16} />
-                </a>
+                    aria-label="اتصال"
+                  >
+                    <PhoneCall size={16} />
+                  </a>
               </>
-            ) : null}
+              ) : null}
             <button
               type="button"
               onClick={() => void handlePostponeLeads()}
@@ -929,7 +1005,7 @@ export default function ClientDetailPage() {
           </>
         }
         footer={
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-3 sm:flex-row sm:justify-between">
             <ClientPaymentWhatsAppButton
               clientId={clientId}
               clientName={client.name ?? '—'}
@@ -945,24 +1021,30 @@ export default function ClientDetailPage() {
                 setLaunchTripItineraryUrl(null)
                 setShowLaunchTripModal(true)
               }}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-l from-[#D4AF37] via-[#C9A227] to-[#B8941F] px-5 py-3.5 text-sm font-black text-[#0D0F0E] shadow-lg ring-1 ring-[#D4AF37]/40 transition hover:brightness-105 sm:w-auto"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-2xl !bg-white px-5 py-3.5 text-sm font-semibold !text-slate-900 shadow-sm transition hover:!bg-slate-50 sm:w-auto dark:!border dark:!border-[#D4AF37]/50 dark:!bg-[#D4AF37]/20 dark:!text-[#D4AF37] dark:hover:!bg-[#D4AF37]/30"
             >
               <Plane size={18} aria-hidden />
               إطلاق رحلة جديدة ✈️
             </button>
-          </div>
+            </div>
         }
       />
 
-      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <div className="space-y-6 lg:col-span-2">
+      <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <div className="space-y-4 lg:col-span-2">
+          <ClientGroupTripManagement
+            clientId={clientId}
+            className={cardClass}
+            onMembershipLoaded={onGroupMembershipLoaded}
+          />
+
           <section className={cardClass}>
-            <div className="mb-5">
-              <h2 className="inline-flex items-center gap-2 text-base font-black text-gray-900">
-                <Sparkles className="h-5 w-5 text-amber-600" aria-hidden />
-                🧬 تفاصيل الـ DNA السياحي للعميل
+            <div className="mb-4">
+              <h2 className="inline-flex items-center gap-2 text-base font-semibold text-slate-900 dark:text-gray-100">
+                <Sparkles className="h-5 w-5 text-[#D4AF37]" aria-hidden />
+                تفاصيل الـ DNA السياحي للعميل
               </h2>
-              <p className="mt-1 text-xs font-bold text-slate-600">
+              <p className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400">
                 travel_dna · dna_interests · dna_activity_level · dna_special_requests
               </p>
             </div>
@@ -978,7 +1060,7 @@ export default function ClientDetailPage() {
 
             <AiPredictiveWishesCard
               className="mb-5"
-              storageKey={`predictive-wish-client-${clientId}`}
+              storageKey={`predictive-wish-client-v2-${clientId}`}
               builderHref={buildItineraryBuilderPath({
                 from: 'client',
                 clientId,
@@ -1141,11 +1223,11 @@ export default function ClientDetailPage() {
           <section className={cardClass}>
             <div className="mb-4 flex items-center justify-between">
               <div>
-                <h2 className="inline-flex items-center gap-2 text-base font-black text-slate-900">
+                <h2 className="inline-flex items-center gap-2 text-lg font-semibold text-slate-900 dark:text-white">
                   <Plane size={16} />
                   سجل الرحلات
                 </h2>
-                <p className="mt-1 text-xs font-bold text-emerald-700">
+                <p className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400">
                   إجمالي الأرباح (سجل الرحلات): {tripsProfitSum.toLocaleString('ar-SA')} ر.س
                 </p>
               </div>
@@ -1236,20 +1318,20 @@ export default function ClientDetailPage() {
                           </Link>
                         ) : (
                           <>
-                            <button
-                              type="button"
-                              onClick={() => startEditTrip(t)}
-                              className="rounded-lg bg-slate-200 p-2 text-slate-700"
-                            >
-                              <Pencil size={12} />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => void deleteTrip(t)}
-                              className="rounded-lg bg-rose-100 p-2 text-rose-600"
-                            >
-                              <Trash2 size={12} />
-                            </button>
+                        <button
+                          type="button"
+                          onClick={() => startEditTrip(t)}
+                          className="rounded-lg bg-slate-200 p-2 text-slate-700"
+                        >
+                          <Pencil size={12} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void deleteTrip(t)}
+                          className="rounded-lg bg-rose-100 p-2 text-rose-600"
+                        >
+                          <Trash2 size={12} />
+                        </button>
                           </>
                         )}
                       </div>
@@ -1264,9 +1346,9 @@ export default function ClientDetailPage() {
             dnaInterests={dnaAdvancedForm.dna_interests}
             className="mt-2"
           />
-        </div>
+                  </div>
 
-        <aside className="space-y-6 lg:col-span-1">
+        <aside className="space-y-4 lg:col-span-1">
           <section className={cardClass}>
             <h2 className="mb-3 inline-flex items-center gap-2 text-base font-black text-slate-900">
               <Link2 size={16} className="text-[#D4AF37]" />
@@ -1291,25 +1373,28 @@ export default function ClientDetailPage() {
               onChange={setDnaInviteTripType}
               disabled={sendingDnaWhatsApp || copyingOnboardingLink}
               className="mb-3"
-            />
+              />
+              <button
+                type="button"
+                onClick={() => void handleCopyDnaLink()}
+                disabled={copyingOnboardingLink}
+                className="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-slate-100 px-4 py-3 text-sm font-bold text-slate-800 shadow-sm transition-all hover:bg-slate-200 disabled:opacity-60"
+              >
+                {copyingOnboardingLink ? (
+                  <span className="inline-flex items-center justify-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                    جاري التحضير…
+                  </span>
+                ) : (
+                  <>
+                    <span aria-hidden>📋</span>
+                    <span>نسخ رابط التعارف السري (DNA Link)</span>
+                  </>
+                )}
+              </button>
             <button
               type="button"
-              onClick={() => void copySecretOnboardingLink()}
-              disabled={copyingOnboardingLink}
-              className="w-full rounded-xl border border-[#D4AF37]/50 bg-[#1E2720] px-4 py-3 text-sm font-bold text-[#D4AF37] shadow-sm transition hover:bg-[#162019] disabled:opacity-60"
-            >
-              {copyingOnboardingLink ? (
-                <span className="inline-flex items-center justify-center gap-2">
-                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-                  جاري التحضير…
-                </span>
-              ) : (
-                'نسخ رابط DNA (/welcome/{id}) ✨'
-              )}
-            </button>
-            <button
-              type="button"
-              onClick={() => void sendDnaViaWhatsApp()}
+              onClick={() => void handleSendWhatsappDna()}
               disabled={sendingDnaWhatsApp}
               className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-[#25D366] px-4 py-3 text-sm font-black text-white shadow-sm transition hover:brightness-110 disabled:opacity-60"
             >
@@ -1361,8 +1446,13 @@ export default function ClientDetailPage() {
                 </p>
               </div>
             ) : (
-              <button type="button" onClick={() => void generateCode()} className="w-full rounded-xl bg-slate-800 px-4 py-2.5 text-sm font-bold text-white">
-                توليد كود إحالة
+              <button
+                type="button"
+                onClick={() => void generateCode()}
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#D4AF37] px-4 py-3 text-sm font-extrabold text-black shadow-sm transition-all hover:bg-[#b8952d]"
+              >
+                <span aria-hidden>🎁</span>
+                <span>توليد كود إحالة</span>
               </button>
             )}
           </section>
@@ -1493,9 +1583,9 @@ export default function ClientDetailPage() {
       </div>
 
       {showLaunchTripModal ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" dir="rtl">
-          <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
-            <div className="mb-4 flex items-center justify-between">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-0 sm:p-4" dir="rtl">
+          <div className="max-h-[90vh] w-[95%] max-w-md overflow-y-auto rounded-t-2xl border border-slate-200 bg-white p-4 shadow-2xl sm:rounded-2xl sm:p-6">
+            <div className="mb-4 flex items-center justify-between gap-3">
               <h3 className="text-lg font-black text-slate-900">إطلاق رحلة جديدة ✈️</h3>
               <button
                 type="button"

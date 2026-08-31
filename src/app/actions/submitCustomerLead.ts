@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { runWebsiteLeadIntakeAutomation, canonicalizePhoneWa } from '@/lib/client-intake-pipeline';
 import { ensureLeadClientIntakeAdmin, ensureClientFromDirectoryFieldsAdmin } from '@/lib/client-intake-pipeline-server';
 import { escapeEmailHtml, sendEmailAlert } from '@/lib/emailAlert';
+import { mapTripFormSourceToLeadSource } from '@/lib/lead-source';
 import { normalizeLeadStatus, CLIENT_DATABASE_LEAD_STATUSES } from '@/lib/lead-status';
 import { labelForCityComposite, labelForCountryId } from '@/lib/trip-destination-data';
 import { normalizeAffiliateRef } from '@/lib/referral-url';
@@ -12,6 +13,7 @@ import { runRegistrationAutomationPipeline } from '@/lib/registration-automation
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { assertServiceRoleKeyConfigured } from '@/lib/supabase/server-action-auth';
 import { ar } from '@/messages/ar';
+import type { LeadTravelStyle } from '@/lib/lead-travel-style';
 
 export type CustomerLeadState = {
   ok: boolean;
@@ -59,7 +61,8 @@ type LeadsInsertRow = {
   travelers_count: number;
   budget: string | null;
   interests: string[];
-  travel_style: string | null;
+  travel_style: LeadTravelStyle;
+  lead_source?: string | null;
   daily_pace: string | null;
   walking_readiness: string | null;
   day_start_time: string | null;
@@ -243,7 +246,8 @@ export async function submitCustomerLead(formData: FormData): Promise<CustomerLe
     const full_name = s(formData.get('full_name'));
     const phone_wa_raw = s(formData.get('phone_wa'));
     const phone_wa = canonicalizePhoneWa(phone_wa_raw) || phone_wa_raw;
-    const source = s(formData.get('source')) || null;
+    const sourceRaw = s(formData.get('source')) || null;
+    const lead_source = mapTripFormSourceToLeadSource(sourceRaw);
     const referral_code = normalizeAffiliateRef(s(formData.get('referral_code')));
     const dream_feeling = s(formData.get('dream_feeling'));
 
@@ -352,7 +356,8 @@ export async function submitCustomerLead(formData: FormData): Promise<CustomerLe
       travelers_count,
       budget,
       interests,
-      travel_style: source,
+      // Design-your-trip = private VIP path (never Group)
+      travel_style: 'Private',
       daily_pace,
       walking_readiness,
       day_start_time,
@@ -362,6 +367,10 @@ export async function submitCustomerLead(formData: FormData): Promise<CustomerLe
       form_type: 'trip_log',
       status: 'radar_pending',
     };
+
+    if (lead_source) {
+      row.lead_source = lead_source;
+    }
 
     if (referral_code) {
       row.referral_code = referral_code;
@@ -374,6 +383,15 @@ export async function submitCustomerLead(formData: FormData): Promise<CustomerLe
       .insert(row as never)
       .select('id, full_name, phone_wa, email, referral_code')
       .single();
+
+    if (error && /lead_source|column|schema cache|does not exist/i.test(error.message ?? '')) {
+      const { lead_source: _dropSource, ...withoutSource } = row;
+      ({ data: inserted, error } = await supabase
+        .from('leads')
+        .insert(withoutSource as never)
+        .select('id, full_name, phone_wa, email, referral_code')
+        .single());
+    }
 
     if (error && referral_code && (error.message ?? '').toLowerCase().includes('referral_code')) {
       const { referral_code: _drop, ...withoutRef } = row;

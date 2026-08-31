@@ -49,7 +49,7 @@ export default function FlightAndBookingDetailsBar({
         Flight &amp; Hotel Details — بيانات الطيران والحجز
       </h2>
 
-      <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
+      <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-7">
         <label>
           <span className={VIP_LABEL}>رقم الرحلة</span>
           <input
@@ -202,7 +202,6 @@ export default function FlightAndBookingDetailsBar({
         <label>
           <span className={VIP_LABEL}>دخول</span>
           <VipDateField
-            className={VIP_INPUT}
             value={hotel.check_in}
             onChange={(v) => onHotelChange(ph(hotel, 'check_in', v))}
           />
@@ -210,7 +209,6 @@ export default function FlightAndBookingDetailsBar({
         <label>
           <span className={VIP_LABEL}>خروج</span>
           <VipDateField
-            className={VIP_INPUT}
             value={hotel.check_out}
             onChange={(v) => onHotelChange(ph(hotel, 'check_out', v))}
           />

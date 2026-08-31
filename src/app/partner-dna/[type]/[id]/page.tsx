@@ -16,7 +16,7 @@ import {
   type PartnerDnaProfile,
   type PartnerDnaType,
 } from '@/lib/partner-dna';
-import { CRM_DESTINATIONS_GUIDE } from '@/lib/crm-destinations-guide-data';
+import { useCountries } from '@/hooks/useCountries';
 
 const FIELD =
   'w-full rounded-xl border border-[#D4AF37]/30 bg-[#0D0F0E] px-4 py-3 text-sm font-semibold text-white placeholder:text-white/35 outline-none focus:border-[#D4AF37]/70 focus:ring-2 focus:ring-[#D4AF37]/20';
@@ -26,6 +26,7 @@ export default function PartnerDnaPublicPage() {
   const rawType = typeof params?.type === 'string' ? params.type : '';
   const id = typeof params?.id === 'string' ? params.id : '';
   const type = parsePartnerDnaType(rawType);
+  const { countries: destinationCountries } = useCountries();
 
   const [name, setName] = useState('');
   const [dna, setDna] = useState<PartnerDnaProfile>(EMPTY_PARTNER_DNA);
@@ -300,17 +301,17 @@ export default function PartnerDnaPublicPage() {
             <>
               <fieldset className="space-y-3">
                 <legend className="text-xs font-bold text-[#D4AF37]">
-                  الوجهات المختص بها — اختر من 21 دولة
+                  الوجهات المختص بها
                 </legend>
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                  {CRM_DESTINATIONS_GUIDE.map((country) => {
-                    const selected = dna.approvedDestinations.includes(country.labelAr);
+                  {destinationCountries.map((country) => {
+                    const selected = dna.approvedDestinations.includes(country.name);
                     return (
                       <button
                         key={country.id}
                         type="button"
                         aria-pressed={selected}
-                        onClick={() => toggleDestination(country.labelAr)}
+                        onClick={() => toggleDestination(country.name)}
                         className={`rounded-xl border px-3 py-2.5 text-xs font-bold transition ${
                           selected
                             ? 'border-[#D4AF37] bg-[#D4AF37]/20 text-[#F5D978]'
@@ -318,7 +319,8 @@ export default function PartnerDnaPublicPage() {
                         }`}
                       >
                         {selected ? '✓ ' : ''}
-                        {country.labelAr}
+                        {country.flag ? `${country.flag} ` : ''}
+                        {country.name}
                       </button>
                     );
                   })}

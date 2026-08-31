@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { ArrowRight, ExternalLink, Loader2, MapPin, Plus, Sparkles } from 'lucide-react';
+import { ArrowRight, ExternalLink, Loader2, MapPin, Plus, Sparkles, X } from 'lucide-react';
 
+import { toast } from '@/lib/crm-toast';
 import { supabase } from '@/lib/supabase';
 import {
   VIP_EXPERIENCE_CATEGORIES,
@@ -13,6 +14,19 @@ import {
 } from '@/types/experience';
 
 const DEFAULT_CATEGORY = VIP_EXPERIENCE_CATEGORIES[0];
+
+const CARD =
+  'bg-white border border-slate-200/90 rounded-2xl p-5 shadow-sm transition-all hover:border-[#D4AF37]/40';
+const INNER =
+  'bg-white border border-slate-200/90 rounded-2xl p-5 shadow-sm';
+const INPUT =
+  'w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-bold text-slate-800 placeholder:text-slate-400 outline-none transition focus:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37]/25';
+const TAG =
+  'bg-slate-100 text-slate-700 border border-slate-200 px-3 py-1 rounded-lg text-xs font-bold';
+const BTN_PRIMARY =
+  'bg-[#D4AF37] hover:bg-[#b8952d] text-black font-extrabold py-2.5 px-4 rounded-xl text-sm transition-all shadow-sm w-full inline-flex items-center justify-center gap-2';
+const BTN_WA =
+  'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 font-bold py-2.5 px-4 rounded-xl text-sm transition-all w-full inline-flex items-center justify-center gap-2';
 
 function formatExperienceWhatsApp(e: ExperienceRow): string {
   const loc = e.city ? `${e.country} · ${e.city}` : e.country;
@@ -211,7 +225,7 @@ export default function ExperiencesCRMPage() {
   function reportSaveError(error: unknown) {
     console.error('Supabase Save Error:', error);
     const msg = formatSupabaseError(error);
-    alert(`فشل الحفظ: ${msg}`);
+    toast.error(`فشل الحفظ: ${msg}`);
     setBanner({ type: 'err', text: `فشل الحفظ: ${msg}` });
   }
 
@@ -277,89 +291,32 @@ export default function ExperiencesCRMPage() {
     setSaving(false);
   }
 
-  const inputStyle = useMemo(
-    () =>
-      ({
-        width: '100%',
-        padding: 10,
-        border: '1.5px solid #E5E0D6',
-        borderRadius: 10,
-        fontSize: 13,
-        direction: 'rtl' as const,
-        outline: 'none',
-      }) as const,
-    [],
-  );
-
   return (
-    <div
-      dir="rtl"
-      className="min-h-screen bg-[#eef0ec] font-[family-name:var(--font-tajawal),system-ui,sans-serif]"
-      style={{ maxWidth: 1100, margin: '0 auto' }}
-    >
-      <div
-        style={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 12,
-          marginBottom: 16,
-        }}
-      >
+    <div dir="rtl" className="mx-auto min-h-screen max-w-[1100px] bg-slate-50 p-6 pb-14 font-sans text-slate-800">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <Link
           href="/crm"
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 8,
-            color: '#6B7280',
-            fontSize: 12,
-            fontWeight: 700,
-          }}
+          className="inline-flex items-center gap-2 text-xs font-bold text-slate-500 transition hover:text-[#b8952d]"
         >
           <ArrowRight size={14} /> لوحة التحكم
         </Link>
         <button
           type="button"
           onClick={openCreateModal}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 8,
-            padding: '10px 18px',
-            borderRadius: 999,
-            border: 'none',
-            background: 'linear-gradient(135deg,#1C4532,#163a30)',
-            color: '#f0e4c4',
-            fontSize: 12,
-            fontWeight: 900,
-            cursor: 'pointer',
-            boxShadow: '0 8px 24px rgba(28,69,50,0.25)',
-          }}
+          className="inline-flex items-center gap-2 rounded-xl bg-[#D4AF37] px-5 py-2.5 text-sm font-extrabold text-black shadow-sm transition hover:bg-[#b8952d]"
         >
           <Plus size={16} strokeWidth={2.5} />
           إضافة تجربة
         </button>
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
-        <div
-          style={{
-            width: 48,
-            height: 48,
-            borderRadius: 14,
-            background: 'linear-gradient(135deg,#C9A84C,#8A6B2A)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <Sparkles size={24} color="#1C4532" />
+      <div className="mb-6 flex items-center gap-3">
+        <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-[#D4AF37]/35 bg-[#D4AF37]/10 text-[#b8952d]">
+          <Sparkles size={24} />
         </div>
         <div>
-          <h1 style={{ fontSize: 22, fontWeight: 900, color: '#1C4532', margin: 0 }}>التجارب الاستثنائية</h1>
-          <p style={{ fontSize: 11, color: '#6B7280', margin: '4px 0 0', fontWeight: 700 }}>
+          <h1 className="text-xl font-extrabold text-slate-900 sm:text-2xl">التجارب الاستثنائية</h1>
+          <p className="mt-1 text-xs font-medium text-slate-500">
             اقتراحات مُنتقاة للعميل — حجز مباشر أو مشاركة عبر واتساب
           </p>
         </div>
@@ -367,35 +324,18 @@ export default function ExperiencesCRMPage() {
 
       {banner ? (
         <div
-          style={{
-            marginBottom: 14,
-            padding: '12px 14px',
-            borderRadius: 12,
-            fontSize: 13,
-            fontWeight: 700,
-            background: banner.type === 'ok' ? '#D1FAE5' : '#FEE2E2',
-            color: banner.type === 'ok' ? '#065F46' : '#991B1B',
-            border: `1px solid ${banner.type === 'ok' ? '#6EE7B7' : '#FECACA'}`,
-          }}
+          className={`mb-4 rounded-xl border px-4 py-3 text-sm font-bold ${
+            banner.type === 'ok'
+              ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+              : 'border-rose-200 bg-rose-50 text-rose-800'
+          }`}
         >
           {banner.text}
         </div>
       ) : null}
 
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
-          gap: 10,
-          marginBottom: 20,
-          background: '#fff',
-          padding: 14,
-          borderRadius: 14,
-          border: '1px solid #E8E4DC',
-          boxShadow: '0 4px 20px rgba(28,69,50,0.06)',
-        }}
-      >
-        <select value={filterCountry} onChange={(e) => setFilterCountry(e.target.value)} style={inputStyle}>
+      <div className={`${INNER} mb-5 grid grid-cols-1 gap-3 sm:grid-cols-2`}>
+        <select value={filterCountry} onChange={(e) => setFilterCountry(e.target.value)} className={INPUT}>
           <option value="">كل الدول</option>
           {countries.map((c) => (
             <option key={c} value={c}>
@@ -403,7 +343,7 @@ export default function ExperiencesCRMPage() {
             </option>
           ))}
         </select>
-        <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} style={inputStyle}>
+        <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} className={INPUT}>
           <option value="">كل التصنيفات</option>
           {VIP_EXPERIENCE_CATEGORIES.map((c) => (
             <option key={c} value={c}>
@@ -414,146 +354,65 @@ export default function ExperiencesCRMPage() {
       </div>
 
       {loading ? (
-        <div style={{ display: 'flex', justifyContent: 'center', padding: 48 }}>
-          <Loader2 className="animate-spin text-[#1C4532]" size={40} />
+        <div className="flex justify-center py-16">
+          <Loader2 className="h-10 w-10 animate-spin text-[#b8952d]" />
         </div>
       ) : rows.length === 0 ? (
-        <div
-          style={{
-            textAlign: 'center',
-            padding: 40,
-            color: '#6B7280',
-            background: '#FAFAF8',
-            borderRadius: 14,
-            border: '1px dashed #E5E0D6',
-            fontWeight: 700,
-          }}
-        >
+        <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 p-10 text-center text-sm font-semibold text-slate-500">
           لا توجد تجارب أو لا نتائج للتصفية. نفّذ البذور في Supabase أو غيّر الفلاتر.
         </div>
       ) : (
-        <div style={{ display: 'grid', gap: 14, gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))' }}>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {rows.map((e) => (
-            <article
-              key={e.id}
-              style={{
-                background: '#fff',
-                borderRadius: 18,
-                border: '1px solid rgba(201,168,76,0.28)',
-                padding: '18px 18px 16px',
-                boxShadow: '0 8px 28px rgba(20,34,28,0.07)',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 10,
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
-                <h2 style={{ fontSize: 16, fontWeight: 900, color: '#0f1e16', margin: 0, lineHeight: 1.4 }}>
-                  {e.title}
-                </h2>
-                <span
-                  style={{
-                    flexShrink: 0,
-                    fontSize: 10,
-                    fontWeight: 800,
-                    padding: '4px 10px',
-                    borderRadius: 999,
-                    background: '#FEF3C7',
-                    color: '#92400E',
-                  }}
-                >
-                  {experienceCategoryLabel(e.category)}
-                </span>
+            <article key={e.id} className={`${CARD} flex flex-col gap-3`}>
+              <div className="flex items-start justify-between gap-2">
+                <h2 className="text-lg font-extrabold text-slate-900 leading-snug">{e.title}</h2>
+                <span className={`${TAG} shrink-0`}>{experienceCategoryLabel(e.category)}</span>
               </div>
+
               {e.description?.trim() ? (
-                <p className="mt-3 line-clamp-2 whitespace-pre-wrap text-sm text-[#1E2720]/70">
-                  {e.description.trim()}
-                </p>
+                <p className="line-clamp-2 whitespace-pre-wrap text-sm text-slate-600">{e.description.trim()}</p>
               ) : null}
-              <div
-                style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, color: '#4B5563' }}
-              >
-                <MapPin size={14} className="text-[#C9A84C]" />
+
+              <div className="flex items-center gap-1 text-xs font-bold text-slate-500">
+                <MapPin size={14} className="text-[#b8952d]" />
                 {e.city ? `${e.country} · ${e.city}` : e.country}
               </div>
 
-              <div style={{ display: 'flex', gap: 8 }}>
+              <div className="flex gap-3">
                 <button
                   type="button"
                   onClick={() => openEditModal(e)}
-                  className="text-sm font-bold text-[#1C4532] transition hover:text-[#163a30]"
+                  className="cursor-pointer text-xs font-bold text-slate-500 transition hover:text-[#b8952d]"
                 >
                   تعديل
                 </button>
                 <button
                   type="button"
                   onClick={() => void handleDelete(e.id)}
-                  className="text-sm font-bold text-red-600 transition hover:text-red-800"
+                  className="cursor-pointer text-xs font-bold text-slate-500 transition hover:text-rose-600"
                 >
                   حذف
                 </button>
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 4 }}>
+              <div className="mt-1 flex flex-col gap-2">
                 {e.booking_url ? (
                   <a
                     href={e.booking_url.startsWith('http') ? e.booking_url : `https://${e.booking_url}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    style={{
-                      width: '100%',
-                      padding: '10px 14px',
-                      borderRadius: 12,
-                      border: 'none',
-                      background: 'linear-gradient(135deg,#2563EB,#1D4ED8)',
-                      color: '#fff',
-                      fontSize: 12,
-                      fontWeight: 800,
-                      textDecoration: 'none',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: 8,
-                    }}
+                    className={BTN_PRIMARY}
                   >
                     <ExternalLink size={14} /> حجز التجربة للعميل
                   </a>
                 ) : (
-                  <div
-                    style={{
-                      width: '100%',
-                      padding: '10px 14px',
-                      borderRadius: 12,
-                      background: '#F3F4F6',
-                      color: '#9CA3AF',
-                      fontSize: 12,
-                      fontWeight: 800,
-                      textAlign: 'center',
-                    }}
-                  >
+                  <div className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 text-center text-sm font-bold text-slate-500">
                     رابط الحجز غير متوفر
                   </div>
                 )}
 
-                <button
-                  type="button"
-                  onClick={() => openWhatsAppShare(e)}
-                  style={{
-                    width: '100%',
-                    padding: '10px 14px',
-                    borderRadius: 12,
-                    border: 'none',
-                    background: 'linear-gradient(135deg,#25D366,#128C7E)',
-                    color: '#fff',
-                    fontSize: 12,
-                    fontWeight: 800,
-                    cursor: 'pointer',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 8,
-                  }}
-                >
+                <button type="button" onClick={() => openWhatsAppShare(e)} className={BTN_WA}>
                   مشاركة واتساب
                 </button>
               </div>
@@ -563,63 +422,55 @@ export default function ExperiencesCRMPage() {
       )}
 
       {isModalOpen ? (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(0,0,0,0.45)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 50,
-            padding: 16,
-          }}
-        >
+        <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto bg-black/70 p-4 backdrop-blur-sm sm:p-6">
           <div
-            style={{
-              background: '#fff',
-              borderRadius: 20,
-              padding: 24,
-              width: '100%',
-              maxWidth: 440,
-              maxHeight: '90vh',
-              overflowY: 'auto',
-              boxShadow: '0 20px 50px rgba(0,0,0,0.2)',
-              border: '1px solid #E8E4DC',
-            }}
+            className="relative my-auto w-full max-w-lg max-h-[85vh] overflow-y-auto rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl sm:p-8"
+            role="dialog"
+            aria-modal="true"
           >
-            <h2 style={{ fontSize: 20, fontWeight: 900, color: '#1C4532', margin: '0 0 16px' }}>
-              {isEditing ? 'تعديل التجربة' : 'إضافة تجربة جديدة'}
-            </h2>
-            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div className="mb-5 flex items-start justify-between gap-3">
+              <h2 className="text-xl font-extrabold text-slate-900">
+                {isEditing ? 'تعديل التجربة' : 'إضافة تجربة جديدة'}
+              </h2>
+              <button
+                type="button"
+                onClick={closeModal}
+                disabled={saving}
+                className="rounded-xl border border-slate-200 bg-slate-100 p-2 text-slate-600 transition hover:bg-slate-200 hover:text-slate-900 disabled:opacity-50"
+                aria-label="إغلاق"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <form onSubmit={handleSubmit} className="flex flex-col gap-3">
               <input
                 required
                 placeholder="عنوان التجربة"
                 value={formData.title}
                 onChange={(ev) => setFormData({ ...formData, title: ev.target.value })}
-                style={inputStyle}
+                className={INPUT}
               />
               <input
                 required
                 placeholder="الدولة"
                 value={formData.country}
                 onChange={(ev) => setFormData({ ...formData, country: ev.target.value })}
-                style={inputStyle}
+                className={INPUT}
               />
               <input
                 required
                 placeholder="المدينة"
                 value={formData.city}
                 onChange={(ev) => setFormData({ ...formData, city: ev.target.value })}
-                style={inputStyle}
+                className={INPUT}
               />
-              <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <span style={{ fontSize: 11, fontWeight: 800, color: '#6B7280' }}>التصنيف (VIP)</span>
+              <label className="flex flex-col gap-1.5">
+                <span className="text-xs font-semibold text-slate-600">التصنيف (VIP)</span>
                 <select
                   required
                   value={category}
                   onChange={(ev) => setCategory(ev.target.value)}
-                  style={inputStyle}
+                  className={INPUT}
                 >
                   {categorySelectOptions.map((c) => (
                     <option key={c} value={c}>
@@ -634,54 +485,31 @@ export default function ExperiencesCRMPage() {
                 rows={4}
                 value={formData.description}
                 onChange={(ev) => setFormData({ ...formData, description: ev.target.value })}
-                style={{ ...inputStyle, resize: 'vertical' as const }}
+                className={`${INPUT} resize-y`}
               />
               <input
                 type="url"
                 placeholder="رابط تفاصيل (اختياري)"
                 value={formData.detail_url}
                 onChange={(ev) => setFormData({ ...formData, detail_url: ev.target.value })}
-                style={inputStyle}
+                className={INPUT}
               />
               <input
                 type="url"
                 placeholder="رابط الحجز للعميل (booking_url)"
                 value={formData.booking_url}
                 onChange={(ev) => setFormData({ ...formData, booking_url: ev.target.value })}
-                style={{ ...inputStyle, border: '1.5px solid #BFDBFE', background: '#EFF6FF' }}
+                className={INPUT}
               />
-              <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
-                <button
-                  type="submit"
-                  disabled={saving}
-                  style={{
-                    flex: 1,
-                    padding: '12px 14px',
-                    borderRadius: 12,
-                    border: 'none',
-                    background: 'linear-gradient(135deg,#1C4532,#163a30)',
-                    color: '#f0e4c4',
-                    fontWeight: 900,
-                    cursor: saving ? 'wait' : 'pointer',
-                    opacity: saving ? 0.7 : 1,
-                  }}
-                >
+              <div className="mt-2 flex gap-3">
+                <button type="submit" disabled={saving} className={`${BTN_PRIMARY} disabled:opacity-60`}>
                   {saving ? 'جاري الحفظ…' : isEditing ? 'تحديث' : 'حفظ'}
                 </button>
                 <button
                   type="button"
                   onClick={closeModal}
                   disabled={saving}
-                  style={{
-                    flex: 1,
-                    padding: '12px 14px',
-                    borderRadius: 12,
-                    border: '1px solid #E5E0D6',
-                    background: '#F9FAFB',
-                    color: '#4B5563',
-                    fontWeight: 800,
-                    cursor: 'pointer',
-                  }}
+                  className="w-full rounded-xl border border-slate-200 bg-slate-100 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-slate-200 disabled:opacity-50"
                 >
                   إلغاء
                 </button>

@@ -9,6 +9,7 @@ import {
   parseDayDroppableId,
   PLACES_BANK_DROPPABLE_ID,
   bankPlaceDraggableId,
+  sortPlacesByVisitTime,
   type SimpleItineraryDay,
   withTransportDefaults,
 } from '@/app/crm/itineraries/_components/simple-itinerary-day-utils';
@@ -88,7 +89,10 @@ export function useSimpleItineraryDays(initialDays?: SimpleItineraryDay[]) {
         const index = targetIndex >= 0 ? targetIndex : 0;
         return prev.map((day, i) =>
           i === index
-            ? { ...day, places: [...day.places, withTransportDefaults(place)] }
+            ? {
+                ...day,
+                places: sortPlacesByVisitTime([...day.places, withTransportDefaults(place)]),
+              }
             : day,
         );
       });
@@ -130,16 +134,19 @@ export function useSimpleItineraryDays(initialDays?: SimpleItineraryDay[]) {
 
   const updateVisitTime = useCallback(
     (dayId: number, placeIndex: number, visit_time: string) => {
+      const normalized = String(visit_time || '').trim();
       setItineraryDays((prev) =>
         prev.map((day) => {
           if (day.id !== dayId) return day;
+          const updatedPlaces = day.places.map((p, index) =>
+            index === placeIndex
+              ? { ...p, visit_time: normalized, time_slot: normalized }
+              : p,
+          );
+          // Immediate chronological reorder so 09:00 rises above 20:30
           return {
             ...day,
-            places: day.places.map((p, index) =>
-              index === placeIndex
-                ? { ...p, visit_time, time_slot: visit_time }
-                : p,
-            ),
+            places: sortPlacesByVisitTime(updatedPlaces),
           };
         }),
       );
@@ -210,6 +217,7 @@ export function useSimpleItineraryDays(initialDays?: SimpleItineraryDay[]) {
             const destDay = next.find((d) => d.id === destDayId);
             if (!destDay) return prev;
             destDay.places.splice(destination.index, 0, withTransportDefaults(place));
+            destDay.places = sortPlacesByVisitTime(destDay.places);
             return next;
           });
           return;

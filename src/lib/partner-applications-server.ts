@@ -245,16 +245,46 @@ export async function approvePartnerApplicationAdmin(
       console.warn('[approvePartner] legacy expert auth:', authProvision.error);
     }
   } else {
-    const { error } = await admin.from('celebrities').insert({
-      name: app.name,
-      email: app.email,
-      phone: app.phone,
-      status: 'active',
-      platforms: app.platforms,
-      content_focus: app.bio,
-      profile_url: null,
-    });
-    if (error) return { ok: false, error: error.message };
+    const influencerPayloads: Record<string, unknown>[] = [
+      {
+        name: app.name,
+        email: app.email || null,
+        phone: app.phone,
+        status: 'active',
+        platforms: app.platforms,
+        content_type: app.bio,
+        content_focus: app.bio,
+        profile_url: null,
+      },
+      {
+        name: app.name,
+        email: app.email || null,
+        phone: app.phone,
+        status: 'active',
+        platforms: app.platforms,
+        content_type: app.bio,
+      },
+      {
+        name: app.name,
+        email: app.email || null,
+        phone: app.phone,
+        status: 'active',
+        platforms: app.platforms,
+        content_focus: app.bio,
+      },
+    ];
+
+    let insertError: string | null = null;
+    for (const payload of influencerPayloads) {
+      const { error } = await admin.from('influencers').insert(payload);
+      if (!error) {
+        insertError = null;
+        break;
+      }
+      insertError = error.message;
+      if (!/column|schema cache|does not exist/i.test(error.message)) break;
+    }
+    if (insertError) return { ok: false, error: insertError };
   }
 
   const { error: updateError } = await admin

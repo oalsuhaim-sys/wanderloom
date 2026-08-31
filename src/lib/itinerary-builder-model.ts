@@ -24,6 +24,7 @@ import { serializeSupplierRequests, type SupplierRequest } from '@/lib/supplier-
 import { serializeActivityTickets } from '@/lib/itinerary-tickets';
 import { coerceClientIdForItinerarySave } from '@/lib/itinerary-client-crm';
 import { normalizeSingleArrivalCity } from '@/lib/vip-flight-voucher';
+import { isTripFinished } from '@/lib/client-portal-trip-phase';
 import type { ExperienceRow } from '@/types/experience';
 import type { HotelRow } from '@/types/hotel';
 
@@ -369,6 +370,8 @@ export type StrictSimpleItinerarySaveInput = {
   clientId?: number | string | null;
   /** خبير الوجهة — يُحفظ في expert_id */
   expertId?: string | null;
+  /** اسم الخبير للعرض في مركز قيادة المسارات */
+  expertName?: string | null;
   customerName?: string;
   preTripServices?: PreTripService[];
   includeWardrobe?: boolean;
@@ -400,6 +403,48 @@ export function buildDatesFieldFromParts(from: string, to: string): string | nul
   if (f && t) return `${f} → ${t}`;
   if (f) return f;
   return null;
+}
+
+/** ISO YYYY-MM-DD only — empty string if invalid */
+export function normalizeIsoDateOnly(raw: string | null | undefined): string {
+  const s = String(raw ?? '').trim().slice(0, 10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : '';
+}
+
+/**
+ * Mirrors trip dates onto `dates` + `start_date`/`end_date` so the client app
+ * (which prefers end_date) stays in sync with admin edits.
+ * When end_date is still in the future, re-opens status to `active`.
+ */
+export function applyItineraryTripDatesToPayload(
+  payload: Record<string, unknown>,
+  datesFrom: string | null | undefined,
+  datesTo: string | null | undefined,
+  options?: { resetStatusWhenFuture?: boolean },
+): Record<string, unknown> {
+  const from = normalizeIsoDateOnly(datesFrom);
+  const to = normalizeIsoDateOnly(datesTo);
+  const dates = buildDatesFieldFromParts(from, to);
+  if (dates) payload.dates = dates;
+  if (from) {
+    payload.start_date = from;
+    payload.end_date = to || from;
+  } else if (to) {
+    payload.end_date = to;
+  }
+
+  const endForStatus = normalizeIsoDateOnly(
+    payload.end_date != null ? String(payload.end_date) : to || from,
+  );
+  if (
+    options?.resetStatusWhenFuture !== false &&
+    endForStatus &&
+    !isTripFinished(endForStatus)
+  ) {
+    payload.status = 'active';
+  }
+
+  return payload;
 }
 
 /**
@@ -435,8 +480,10 @@ export function buildStrictSimpleItinerarySavePayload(
   if (title) payload.title = title;
   if (destination || title) payload.destination = destination || title;
 
-  const dates = buildDatesFieldFromParts(input.datesFrom ?? '', input.datesTo ?? '');
-  if (dates) payload.dates = dates;
+  applyItineraryTripDatesToPayload(payload, input.datesFrom, input.datesTo, {
+    // Status is applied below from input; still re-open when end is future.
+    resetStatusWhenFuture: true,
+  });
 
   if (input.clientId !== undefined) {
     // يسمح بـ null لمسح الربط (مسار جماعي مستقل)
@@ -446,9 +493,20 @@ export function buildStrictSimpleItinerarySavePayload(
     const expertId = String(input.expertId ?? '').trim();
     payload.expert_id = expertId || null;
   }
+  if (input.expertName !== undefined) {
+    payload.expert_name = String(input.expertName ?? '').trim() || null;
+  }
   if (input.customerName !== undefined) {
     payload.customer_name = input.customerName.trim() || null;
   }
+
+  // Always mirror expert into days_data.meta so dashboard can read it even if
+  // expert_name / expert_id columns are missing or blocked by FK/RLS.
+  payload.days_data = withItineraryExpertMeta(
+    payload.days_data,
+    input.expertId,
+    input.expertName,
+  );
 
   payload.flight_details = {
     flight_from: origin,
@@ -469,6 +527,13 @@ export function buildStrictSimpleItinerarySavePayload(
     destination_trip_type: geoTripType,
     countries,
     cities,
+    // Durable expert mirror (flight_details JSONB exists in production)
+    ...(String(input.expertId ?? '').trim()
+      ? { expert_id: String(input.expertId).trim() }
+      : {}),
+    ...(String(input.expertName ?? '').trim()
+      ? { expert_name: String(input.expertName).trim() }
+      : {}),
     ...(bookingRef ? { booking_reference: bookingRef, pnr: bookingRef } : {}),
   };
 
@@ -505,7 +570,9 @@ export function buildStrictSimpleItinerarySavePayload(
   }
 
   if (input.quotationDetails !== undefined) {
-    payload.quotation_details = serializeQuotationDetails(input.quotationDetails);
+    payload.quotation_details = input.quotationDetails
+      ? serializeQuotationDetails(input.quotationDetails)
+      : null;
   }
 
   if (input.documents !== undefined) {
@@ -530,7 +597,10 @@ export function buildStrictSimpleItinerarySavePayload(
     payload.show_fashion_services = input.showFashionServices;
   }
 
-  payload.status = normalizeItinerarySaveStatus(input.status);
+  // Future end_date already forced `active` in applyItineraryTripDatesToPayload.
+  if (payload.status !== 'active') {
+    payload.status = normalizeItinerarySaveStatus(input.status);
+  }
 
   return payload;
 }
@@ -698,6 +768,7 @@ export function buildDaysDataPayloadForSave(
 
 const SCHEMA_OPTIONAL_ITINERARY_COLUMNS = [
   'expert_id',
+  'expert_name',
   'trip_type',
   'group_name',
   'total_price',
@@ -720,6 +791,8 @@ const SCHEMA_OPTIONAL_ITINERARY_COLUMNS = [
   'documents',
   'is_template',
   'status',
+  'start_date',
+  'end_date',
 ] as const;
 
 /** يزيل من الحمولة الأعمدة المذكورة صراحةً في رسالة خطأ Supabase فقط */
@@ -733,7 +806,123 @@ export function stripItineraryPayloadForSchemaError(
       delete next[col];
     }
   }
+  const expertId =
+    payload.expert_id != null ? String(payload.expert_id).trim() : '';
+  const expertName =
+    payload.expert_name != null ? String(payload.expert_name).trim() : '';
+  // Keep expert identity inside JSONB even when column write fails
+  if (
+    (/expert_id|expert_name/i.test(errMsg) || next.expert_id == null) &&
+    (expertId || expertName)
+  ) {
+    next.days_data = withItineraryExpertMeta(
+      next.days_data ?? payload.days_data,
+      expertId || null,
+      expertName || null,
+    );
+    const prevFlight =
+      next.flight_details &&
+      typeof next.flight_details === 'object' &&
+      !Array.isArray(next.flight_details)
+        ? { ...(next.flight_details as Record<string, unknown>) }
+        : {};
+    if (expertId) prevFlight.expert_id = expertId;
+    if (expertName) prevFlight.expert_name = expertName;
+    next.flight_details = prevFlight;
+  }
   return next;
+}
+
+/** Embed expert id/name into days_data JSONB (survives missing expert_* columns). */
+export function withItineraryExpertMeta(
+  daysData: unknown,
+  expertId?: string | null,
+  expertName?: string | null,
+): unknown {
+  const id = String(expertId ?? '').trim();
+  const name = String(expertName ?? '').trim();
+  if (!id && !name) return daysData;
+
+  const metaPatch: Record<string, string> = {};
+  if (id) metaPatch.expert_id = id;
+  if (name) metaPatch.expert_name = name;
+
+  if (Array.isArray(daysData)) {
+    return { days: daysData, meta: metaPatch };
+  }
+  if (daysData && typeof daysData === 'object') {
+    const obj = daysData as Record<string, unknown>;
+    const prevMeta =
+      obj.meta && typeof obj.meta === 'object' && !Array.isArray(obj.meta)
+        ? { ...(obj.meta as Record<string, unknown>) }
+        : {};
+    return { ...obj, meta: { ...prevMeta, ...metaPatch } };
+  }
+  return { days: [], meta: metaPatch };
+}
+
+/** Resolve display name for Routes Command Center cards */
+export function readItineraryExpertDisplayName(row: {
+  expert_name?: unknown;
+  expert_id?: unknown;
+  days_data?: unknown;
+  flight_details?: unknown;
+  experts?: unknown;
+  expert?: unknown;
+}): string {
+  const direct = String(row.expert_name ?? '').trim();
+  if (direct) return direct;
+
+  for (const embedRaw of [row.experts, row.expert]) {
+    const embed = Array.isArray(embedRaw) ? embedRaw[0] : embedRaw;
+    if (embed && typeof embed === 'object') {
+      const embedName =
+        String((embed as { name?: unknown }).name ?? '').trim() ||
+        String((embed as { full_name?: unknown }).full_name ?? '').trim();
+      if (embedName) return embedName;
+    }
+  }
+
+  const flight = row.flight_details;
+  if (flight && typeof flight === 'object' && !Array.isArray(flight)) {
+    const fromFlight = String((flight as { expert_name?: unknown }).expert_name ?? '').trim();
+    if (fromFlight) return fromFlight;
+  }
+
+  const daysData = row.days_data;
+  if (daysData && typeof daysData === 'object' && !Array.isArray(daysData)) {
+    const meta = (daysData as { meta?: unknown }).meta;
+    if (meta && typeof meta === 'object' && !Array.isArray(meta)) {
+      const metaName = String((meta as { expert_name?: unknown }).expert_name ?? '').trim();
+      if (metaName) return metaName;
+    }
+  }
+
+  return '';
+}
+
+export function readItineraryExpertId(row: {
+  expert_id?: unknown;
+  days_data?: unknown;
+  flight_details?: unknown;
+}): string {
+  const direct = String(row.expert_id ?? '').trim();
+  if (direct) return direct;
+
+  const flight = row.flight_details;
+  if (flight && typeof flight === 'object' && !Array.isArray(flight)) {
+    const fromFlight = String((flight as { expert_id?: unknown }).expert_id ?? '').trim();
+    if (fromFlight) return fromFlight;
+  }
+
+  const daysData = row.days_data;
+  if (daysData && typeof daysData === 'object' && !Array.isArray(daysData)) {
+    const meta = (daysData as { meta?: unknown }).meta;
+    if (meta && typeof meta === 'object' && !Array.isArray(meta)) {
+      return String((meta as { expert_id?: unknown }).expert_id ?? '').trim();
+    }
+  }
+  return '';
 }
 
 export function deriveHotelDetailsFromDays(days: ItineraryDayDraft[]) {
@@ -877,14 +1066,14 @@ export function buildItinerarySupabasePayload(
       ? generatePasscode(draft.customerName, destination || draft.title)
       : '');
 
-  const isGroupTour = draft.tripMode === 'Group';
+  const isGroupTrip = draft.tripMode === 'Group';
   // رحلة خاصة: client_id إلزامي · رحلة جماعية: قالب مستقل بلا client_id
-  const organizerId = isGroupTour
+  const organizerId = isGroupTrip
     ? null
     : coerceClientIdForItinerarySave(draft.linkedClientId);
 
   const payload: Record<string, unknown> = {
-    customer_name: isGroupTour
+    customer_name: isGroupTrip
       ? draft.groupName.trim() || draft.customerName.trim() || 'رحلة جماعية'
       : draft.customerName.trim() || (options.isTemplate ? 'قالب جاهز' : ''),
     title: draft.title.trim(),
@@ -900,14 +1089,13 @@ export function buildItinerarySupabasePayload(
       }))
       .filter((r) => r.arabic_word || r.local_word),
     ...(destination ? { destination } : {}),
-    ...(buildDatesField(draft) ? { dates: buildDatesField(draft) } : {}),
     ...(passcode ? { passcode } : {}),
     ...(hotel_details.length > 0 ? { hotel_details } : {}),
     ...(experiences_details.length > 0 ? { experiences_details } : {}),
     include_wardrobe: draft.includeWardrobe,
     unlock_secret_guide: draft.unlockSecretGuide,
     trip_type: draft.tripMode,
-    group_name: isGroupTour ? draft.groupName.trim() : null,
+    group_name: isGroupTrip ? draft.groupName.trim() : null,
     client_id: organizerId,
     quote_id: null,
     ...(parsedTotalPrice != null ? { total_price: parsedTotalPrice } : {}),
@@ -919,6 +1107,10 @@ export function buildItinerarySupabasePayload(
     ...vipSummaries,
     ...(options.employeeId ? { created_by_employee_id: options.employeeId } : {}),
   };
+
+  applyItineraryTripDatesToPayload(payload, draft.datesFrom, draft.datesTo, {
+    resetStatusWhenFuture: !options.isTemplate,
+  });
 
   if (options.isTemplate) {
     payload.is_template = true;
@@ -937,6 +1129,21 @@ export function parseDatesField(dates: unknown): { from: string; to: string } {
     return { from: parts[0].slice(0, 10), to: parts[1].slice(0, 10) };
   }
   return { from: raw.slice(0, 10), to: '' };
+}
+
+/** Prefer start_date/end_date columns, fall back to legacy `dates` text. */
+export function resolveTripDatesFromRow(row: Record<string, unknown>): {
+  from: string;
+  to: string;
+} {
+  const fromCol = normalizeIsoDateOnly(
+    row.start_date != null ? String(row.start_date) : '',
+  );
+  const toCol = normalizeIsoDateOnly(row.end_date != null ? String(row.end_date) : '');
+  if (fromCol || toCol) {
+    return { from: fromCol, to: toCol || fromCol };
+  }
+  return parseDatesField(row.dates);
 }
 
 export function importDaysFromTemplate(templateDaysRaw: unknown): ItineraryDayDraft[] {

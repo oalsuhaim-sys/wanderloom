@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Loader2 } from 'lucide-react'
+import { ChevronDown, Loader2 } from 'lucide-react'
 
 import {
   CLIENT_SALES_STAGES,
@@ -12,6 +12,10 @@ import {
   type ClientSalesStage,
 } from '@/lib/client-sales-stage'
 import { supabase } from '@/lib/supabase'
+
+/** Navy badge select for Clients table «المرحلة» column */
+const TABLE_STAGE_SELECT =
+  'appearance-none min-w-[100px] max-w-[11.5rem] cursor-pointer rounded-full bg-slate-900 px-3 py-1.5 pe-8 ps-3 text-xs font-medium text-white shadow-sm outline-none transition focus:ring-2 focus:ring-slate-900/30 disabled:opacity-60 dark:border dark:border-[#D4AF37]/30 dark:bg-[#D4AF37]/20 dark:text-[#D4AF37] dark:focus:ring-[#D4AF37]/25'
 
 type ClientSalesStageControlProps = {
   clientId: string
@@ -81,20 +85,17 @@ export default function ClientSalesStageControl({
 
   if (compact) {
     return (
-      <div dir="rtl" className={`relative inline-flex min-w-0 max-w-full items-center ${className}`}>
+      <div
+        dir="rtl"
+        className={`relative inline-flex min-w-0 max-w-full items-center justify-between gap-2 ${className}`}
+      >
         <select
           value={stage}
           onChange={(e) => void handleChange(e.target.value)}
           disabled={saving}
           aria-label="مرحلة البيع"
           title="مرحلة البيع"
-          className={`${salesStageSelectClass(stage || value, 'luxury')} appearance-none pe-8 ps-3`}
-          style={{
-            backgroundImage:
-              "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23d4af37' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E\")",
-            backgroundRepeat: 'no-repeat',
-            backgroundPosition: 'left 0.65rem center',
-          }}
+          className={TABLE_STAGE_SELECT}
         >
           <option value="">— مرحلة البيع —</option>
           {CLIENT_SALES_STAGES.map((opt) => (
@@ -105,10 +106,15 @@ export default function ClientSalesStageControl({
         </select>
         {saving ? (
           <Loader2
-            className="pointer-events-none absolute left-2 h-3 w-3 animate-spin text-[#d4af37]/80"
+            className="pointer-events-none absolute left-2.5 h-3 w-3 animate-spin text-white/80 dark:text-[#D4AF37]/80"
             aria-hidden
           />
-        ) : null}
+        ) : (
+          <ChevronDown
+            className="pointer-events-none absolute left-2.5 h-3.5 w-3.5 text-white/80 dark:text-[#D4AF37]/80"
+            aria-hidden
+          />
+        )}
         {error ? (
           <span role="alert" className="sr-only">
             {error}
@@ -121,7 +127,12 @@ export default function ClientSalesStageControl({
   return (
     <div dir="rtl" className={`space-y-2 ${className}`}>
       <div className="flex items-center justify-between gap-2">
-        <span className="text-[11px] font-black text-[#001f3f]">🎯 مرحلة البيع</span>
+        <span className="flex items-center gap-1.5 text-[11px] font-bold text-slate-900 dark:text-[#D4AF37]">
+          <span className="inline-block select-none fill-none" aria-hidden>
+            🎯
+          </span>
+          مرحلة البيع
+        </span>
         {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin text-[#d4af37]" aria-hidden /> : null}
       </div>
 

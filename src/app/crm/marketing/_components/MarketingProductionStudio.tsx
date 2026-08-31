@@ -24,19 +24,35 @@ import {
 } from '@/lib/marketing-content';
 
 const OUTER_CARD =
-  'flex min-h-0 flex-col rounded-[1.75rem] border border-[#1e3f20]/10 bg-white shadow-[0_12px_40px_rgba(30,63,32,0.06)]';
+  'bg-white dark:bg-[#22302C] border border-slate-200 dark:border-[#2D3F3A] rounded-2xl p-5 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300 flex flex-col min-h-0';
+
+const TAG_BASE =
+  'bg-slate-100 text-slate-700 dark:bg-[#1A2421] dark:text-slate-300 px-2.5 py-1 rounded-md text-xs font-medium border border-slate-200 dark:border-[#2D3F3A]';
+
+const TAG_READY =
+  'bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800/50 px-2.5 py-1 rounded-md text-xs font-medium';
 
 const DARK_STUDIO =
-  'shrink-0 rounded-2xl border border-white/10 bg-[#111111] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]';
-
-const PROMPT_TEXTAREA =
-  'crm-marketing-textarea min-h-[200px] w-full shrink-0 resize-y overflow-y-auto rounded-xl border border-white/10 bg-[#0a0a0a] px-4 py-3 font-mono text-xs leading-relaxed text-gray-200 outline-none transition placeholder:text-gray-600 focus:border-[#cda04c]/50 focus:ring-1 focus:ring-[#cda04c]/30';
-
-const CAPTION_TEXTAREA =
-  'crm-marketing-textarea min-h-[180px] w-full shrink-0 resize-y overflow-y-auto rounded-xl border border-[#cda04c]/25 bg-[#FFFBF0] px-4 py-3 text-sm font-bold leading-relaxed text-[#2d3a33] outline-none transition placeholder:text-[#2d3a33]/40 focus:border-[#cda04c]/50 focus:ring-1 focus:ring-[#cda04c]/30';
+  'shrink-0 rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-[#2D3F3A] dark:bg-[#1A2421]';
 
 const FIELD =
-  'w-full rounded-lg border border-gray-300 bg-[#FDFBF7] p-3 text-sm font-bold text-[#111111] outline-none transition focus:border-[#cda04c] focus:ring-1 focus:ring-[#cda04c]';
+  'w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-medium text-slate-900 outline-none transition focus:border-slate-300 focus:ring-2 focus:ring-slate-900 dark:border-[#2D3F3A] dark:bg-[#22302C] dark:text-white dark:focus:ring-[#D4AF37]/50';
+
+const TEXTAREA =
+  'w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-relaxed text-slate-700 outline-none transition focus:ring-2 focus:ring-slate-900 dark:border-[#2D3F3A] dark:bg-[#22302C] dark:text-slate-300 dark:focus:ring-[#D4AF37]/50';
+
+const STATUS_OPTIONS = [
+  'جاهز للتوليد',
+  'تم النسخ',
+  'تم التوليد',
+  'بانتظار التصوير',
+  'تم الرفع',
+] as const;
+
+function isReadyStatus(status: string): boolean {
+  const s = String(status ?? '').trim();
+  return s === 'جاهز للتوليد' || s.includes('جاهز') || s.toLowerCase().includes('ready');
+}
 
 function ProductionVideoPlayer({ url }: { url: string }) {
   return (
@@ -55,8 +71,8 @@ function ProductionVideoPlayer({ url }: { url: string }) {
 function VideoPlaceholder({ label }: { label: string }) {
   return (
     <div className={`${DARK_STUDIO} flex aspect-video flex-col items-center justify-center gap-2 text-center`}>
-      <Upload className="h-8 w-8 text-white/20" aria-hidden />
-      <p className="text-xs font-bold text-white/35">{label}</p>
+      <Upload className="h-8 w-8 text-slate-300 dark:text-slate-600" aria-hidden />
+      <p className="text-xs font-medium text-slate-400 dark:text-slate-500">{label}</p>
     </div>
   );
 }
@@ -93,7 +109,7 @@ const AI_CONFIG: ProductionCardConfig = {
   productionType: 'ai',
   header: 'الذكاء الاصطناعي',
   headerIcon: Sparkles,
-  accentClass: 'text-[#cda04c]',
+  accentClass: 'text-[#D4AF37]',
   fieldLabel: 'البرومبت',
   fieldPlaceholder: 'اكتب البرومبت البصري لـ Midjourney / Sora…',
   actionLabel: 'نسخ البرومبت',
@@ -110,7 +126,7 @@ const AI_CONFIG: ProductionCardConfig = {
 
     try {
       await navigator.clipboard.writeText(promptText);
-      toast.success('✅ تم نسخ البرومبت بنجاح!');
+      toast.success('تم نسخ البرومبت بنجاح');
     } catch {
       toast.error('تعذّر النسخ إلى الحافظة');
       return;
@@ -132,7 +148,7 @@ const HUMAN_CONFIG: ProductionCardConfig = {
   productionType: 'human',
   header: 'الإنتاج البشري',
   headerIcon: Clapperboard,
-  accentClass: 'text-[#cda04c]',
+  accentClass: 'text-[#D4AF37]',
   fieldLabel: 'السكريبت',
   fieldPlaceholder: 'اكتب سكريبت التصوير والـ voiceover…',
   actionLabel: 'رفع الفيديو النهائي',
@@ -152,21 +168,45 @@ function configForItem(item: MarketingContentItem): ProductionCardConfig {
 function MediaBadge({ mediaType }: { mediaType: string }) {
   const Icon = mediaType === 'صورة' ? ImageIcon : Video;
   return (
-    <span className="inline-flex items-center gap-1 rounded-full border border-[#1e3f20]/20 bg-[#f4f0e6]/80 px-3 py-1 text-[10px] font-black text-[#1e3f20]">
-      <Icon className="h-3 w-3 text-[#cda04c]" aria-hidden />
+    <span className={`inline-flex items-center gap-1 ${TAG_BASE}`}>
+      <Icon className="h-3 w-3 text-[#D4AF37]" aria-hidden />
       {mediaType}
     </span>
   );
 }
 
 function CategoryBadge({ category }: { category: string }) {
-  return (
-    <span className="rounded-full border border-[#cda04c]/40 bg-[#cda04c]/10 px-3 py-1 text-[10px] font-black text-[#7a5f28]">
-      {category}
-    </span>
-  );
+  return <span className={TAG_BASE}>{category}</span>;
 }
 
+function StatusBadge({
+  status,
+  onClick,
+}: {
+  status: string;
+  onClick?: () => void;
+}) {
+  const label = String(status ?? '').trim() || '—';
+  const ready = isReadyStatus(label);
+  const className = ready ? TAG_READY : TAG_BASE;
+
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        className={`${className} cursor-pointer transition hover:brightness-95 active:scale-[0.98]`}
+        title="تعديل / توليد المحتوى"
+      >
+        {label}
+      </button>
+    );
+  }
+
+  return <span className={className}>{label}</span>;
+}
+
+/** Premium in-studio editor — no route change */
 function EditContentModal({
   item,
   onClose,
@@ -176,31 +216,62 @@ function EditContentModal({
   onClose: () => void;
   onSaved: (updated: MarketingContentItem) => void;
 }) {
+  const [title, setTitle] = useState(
+    () => item.title || configForItem(item).header,
+  );
   const [category, setCategory] = useState<MarketingContentCategory>(() =>
     normalizeContentCategory(item.contentCategory),
   );
   const [mediaType, setMediaType] = useState<MarketingMediaType>(() =>
     normalizeMediaType(item.mediaType),
   );
-  const [prompt, setPrompt] = useState(item.prompt_text || item.prompt || '');
+  const [status, setStatus] = useState(() => String(item.status ?? '').trim() || 'جاهز للتوليد');
+  const [bodyText, setBodyText] = useState(() =>
+    item.productionType === 'ai'
+      ? item.prompt_text || item.prompt || ''
+      : item.script || '',
+  );
   const [caption, setCaption] = useState(item.caption || '');
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
+    setTitle(item.title || configForItem(item).header);
     setCategory(normalizeContentCategory(item.contentCategory));
     setMediaType(normalizeMediaType(item.mediaType));
-    setPrompt(item.prompt_text || item.prompt || '');
+    setStatus(String(item.status ?? '').trim() || 'جاهز للتوليد');
+    setBodyText(
+      item.productionType === 'ai'
+        ? item.prompt_text || item.prompt || ''
+        : item.script || '',
+    );
     setCaption(item.caption || '');
   }, [item]);
+
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => {
+      document.body.style.overflow = prev;
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [onClose]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
     const res = await updateCard(item, {
+      title: title.trim() || configForItem(item).header,
       media_type: mediaType,
       content_category: category,
-      prompt,
+      status: status.trim() || item.status,
       caption,
+      ...(item.productionType === 'ai'
+        ? { prompt: bodyText }
+        : { script: bodyText }),
     });
     setSaving(false);
     if (!res.ok || !res.item) {
@@ -208,107 +279,180 @@ function EditContentModal({
       return;
     }
     onSaved(res.item);
-    toast.success('تم تحديث المحتوى', { style: { background: '#1e3f20', color: '#fff' } });
+    toast.success('تم حفظ واعتماد المحتوى');
     onClose();
   };
 
+  const statusChoices = useMemo(() => {
+    const base = [...STATUS_OPTIONS];
+    if (status && !base.includes(status as (typeof STATUS_OPTIONS)[number])) {
+      base.unshift(status as (typeof STATUS_OPTIONS)[number]);
+    }
+    return base;
+  }, [status]);
+
   return (
     <div
-      className="fixed inset-0 z-[200] flex items-end justify-center bg-black/60 p-0 backdrop-blur-sm sm:items-center sm:p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm transition-all dark:bg-black/60"
       dir="rtl"
       lang="ar"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="content-editor-title"
       onClick={onClose}
     >
       <div
-        className="max-h-[92dvh] w-[95%] max-w-lg overflow-y-auto rounded-t-2xl border border-[#cda04c]/30 bg-[#FDFBF7] p-4 shadow-2xl sm:max-h-[90vh] sm:w-full sm:rounded-2xl sm:p-6 md:max-w-2xl"
+        className="flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-[#2D3F3A] dark:bg-[#1A2421]"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="mb-5 flex items-center justify-between gap-3">
-          <div>
-            <p className="text-[10px] font-black text-[#cda04c]">تعديل المحتوى</p>
-            <h2 className="text-lg font-black text-[#1e3f20]">{item.title || configForItem(item).header}</h2>
+        <header className="flex items-center justify-between gap-3 border-b border-slate-100 px-5 py-4 dark:border-[#2D3F3A]">
+          <div className="min-w-0">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#D4AF37]">
+              Content Editor
+            </p>
+            <h2
+              id="content-editor-title"
+              className="mt-0.5 text-lg font-bold text-slate-900 dark:text-white"
+            >
+              تعديل المحتوى
+            </h2>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-full border border-gray-200 p-2 hover:bg-white"
+            className="rounded-lg p-2 text-slate-400 transition-colors hover:text-rose-500 active:scale-[0.98]"
             aria-label="إغلاق"
           >
-            <X className="h-4 w-4" />
+            <X className="h-5 w-5" />
           </button>
-        </div>
+        </header>
 
-        <form className="space-y-4" onSubmit={(e) => void handleSubmit(e)}>
-          <div>
-            <label className="mb-2 block text-xs font-black text-[#1e3f20]">نوع الوسائط</label>
-            <select
-              value={mediaType}
-              onChange={(e) => setMediaType(e.target.value as MarketingMediaType)}
-              className={FIELD}
-            >
-              {EDIT_MEDIA_TYPE_OPTIONS.map((type) => (
-                <option key={type} value={type}>
-                  {type}
-                </option>
-              ))}
-            </select>
+        <form
+          className="flex min-h-0 flex-1 flex-col"
+          onSubmit={(e) => void handleSubmit(e)}
+        >
+          <div className="flex-1 space-y-5 overflow-y-auto px-5 py-5">
+            <div>
+              <label className="mb-2 block text-sm font-semibold text-slate-500 dark:text-[#D4AF37]">
+                العنوان
+              </label>
+              <input
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                className={FIELD}
+                placeholder="عنوان المحتوى…"
+              />
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-semibold text-slate-500 dark:text-[#D4AF37]">
+                الوسوم
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {EDIT_MEDIA_TYPE_OPTIONS.map((type) => {
+                  const active = mediaType === type;
+                  return (
+                    <button
+                      key={type}
+                      type="button"
+                      onClick={() => setMediaType(type)}
+                      className={`rounded-md px-2.5 py-1 text-xs font-medium transition-all active:scale-[0.98] ${
+                        active
+                          ? 'bg-slate-900 text-white shadow-sm dark:bg-[#D4AF37]/20 dark:text-[#D4AF37]'
+                          : TAG_BASE
+                      }`}
+                    >
+                      {type}
+                    </button>
+                  );
+                })}
+                {statusChoices.map((opt) => {
+                  const active = status === opt;
+                  const ready = isReadyStatus(opt);
+                  return (
+                    <button
+                      key={opt}
+                      type="button"
+                      onClick={() => setStatus(opt)}
+                      className={`rounded-md px-2.5 py-1 text-xs font-medium transition-all active:scale-[0.98] ${
+                        active
+                          ? ready
+                            ? TAG_READY + ' ring-2 ring-emerald-300/60 dark:ring-emerald-700/50'
+                            : 'bg-slate-900 text-white shadow-sm dark:bg-[#D4AF37]/20 dark:text-[#D4AF37]'
+                          : ready
+                            ? TAG_READY + ' opacity-70'
+                            : TAG_BASE
+                      }`}
+                    >
+                      {opt}
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="mt-3">
+                <select
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value as MarketingContentCategory)}
+                  className={FIELD}
+                  aria-label="تصنيف المحتوى"
+                >
+                  {EDIT_CATEGORY_OPTIONS.map((cat) => (
+                    <option key={cat} value={cat}>
+                      {cat}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-bold text-slate-700 dark:text-slate-300">
+                Caption
+              </label>
+              <textarea
+                value={caption}
+                onChange={(e) => setCaption(e.target.value)}
+                className={`${TEXTAREA} h-40`}
+                placeholder="النص التسويقي للمنشور…"
+              />
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-bold text-slate-700 dark:text-slate-300">
+                {item.productionType === 'ai' ? 'البرومبت (AI Prompt)' : 'السكريبت'}
+              </label>
+              <textarea
+                value={bodyText}
+                onChange={(e) => setBodyText(e.target.value)}
+                dir={item.productionType === 'ai' ? 'ltr' : 'rtl'}
+                className={`${TEXTAREA} h-36 ${item.productionType === 'ai' ? 'font-mono text-xs' : ''}`}
+                placeholder={
+                  item.productionType === 'ai'
+                    ? 'Visual prompt for Midjourney / Sora…'
+                    : 'اكتب سكريبت التصوير…'
+                }
+              />
+            </div>
           </div>
 
-          <div>
-            <label className="mb-2 block text-xs font-black text-[#1e3f20]">التصنيف</label>
-            <select
-              value={category}
-              onChange={(e) => setCategory(e.target.value as MarketingContentCategory)}
-              className={FIELD}
-            >
-              {EDIT_CATEGORY_OPTIONS.map((cat) => (
-                <option key={cat} value={cat}>
-                  {cat}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="mb-2 block text-xs font-black text-[#1e3f20]">البرومبت (AI Prompt)</label>
-            <textarea
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              rows={6}
-              dir="ltr"
-              className={`${FIELD} min-h-[150px] resize-y overflow-y-auto font-mono text-xs`}
-              placeholder="Visual prompt for Midjourney / Sora…"
-            />
-          </div>
-
-          <div>
-            <label className="mb-2 block text-xs font-black text-[#1e3f20]">الكابشن (Caption)</label>
-            <textarea
-              value={caption}
-              onChange={(e) => setCaption(e.target.value)}
-              rows={6}
-              className={`${FIELD} min-h-[150px] resize-y overflow-y-auto`}
-              placeholder="النص التسويقي للمنشور…"
-            />
-          </div>
-
-          <div className="flex gap-3 pt-2">
-            <button
-              type="submit"
-              disabled={saving}
-              className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-[#1e3f20] py-3 text-sm font-black text-white transition hover:bg-[#163018] disabled:opacity-60"
-            >
-              {saving ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : null}
-              حفظ التعديلات
-            </button>
+          <footer className="flex justify-end gap-3 border-t border-slate-100 bg-slate-50/50 p-4 dark:border-[#2D3F3A] dark:bg-[#1A2421]/50">
             <button
               type="button"
               onClick={onClose}
-              className="rounded-xl border border-gray-300 px-5 py-3 text-sm font-bold text-gray-700"
+              disabled={saving}
+              className="rounded-xl px-5 py-2 font-medium text-slate-600 transition-colors hover:bg-slate-100 active:scale-[0.98] dark:text-slate-400 dark:hover:bg-[#22302C]"
             >
               إلغاء
             </button>
-          </div>
+            <button
+              type="submit"
+              disabled={saving}
+              className="inline-flex items-center gap-2 rounded-xl border border-transparent bg-slate-900 px-5 py-2 font-medium text-white shadow-sm transition-all hover:bg-slate-800 active:scale-[0.98] disabled:opacity-50 dark:border-[#D4AF37]/50 dark:bg-[#D4AF37]/20 dark:text-[#D4AF37] dark:hover:bg-[#D4AF37]/30"
+            >
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : null}
+              حفظ واعتماد
+            </button>
+          </footer>
         </form>
       </div>
     </div>
@@ -444,78 +588,86 @@ function ProductionStudioCard({
       }
 
       syncItem(save.item);
-      toast.success('تم رفع الفيديو بنجاح', { style: { background: '#1e3f20', color: '#fff' } });
+      toast.success('تم رفع الفيديو بنجاح');
     },
     [config, item, persistField, syncItem],
   );
 
   return (
     <article className={OUTER_CARD} dir="rtl">
-      <div className="border-b border-[#1e3f20]/8 bg-gradient-to-l from-[#1e3f20]/[0.04] to-transparent px-6 py-5">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className={`flex items-center gap-2 text-xs font-black ${config.accentClass}`}>
-              <HeaderIcon className="h-4 w-4" aria-hidden />
-              Production Studio
-            </p>
-            <h2 className="mt-1 text-xl font-black text-[#1e3f20]">{config.header}</h2>
-          </div>
-          <div className="flex flex-wrap items-center justify-end gap-2">
-            <MediaBadge mediaType={item.media_type ?? item.mediaType} />
-            <CategoryBadge category={item.content_category ?? item.contentCategory} />
-            <span className="rounded-full border border-[#1e3f20]/15 bg-[#FDFBF7] px-3 py-1 text-[10px] font-black text-[#1e3f20]">
-              {item.status}
-            </span>
-            <button
-              type="button"
-              onClick={onEdit}
-              className="rounded-lg border border-gray-200 bg-white p-2 transition hover:border-[#cda04c]/40 hover:bg-[#f4f0e6]"
-              aria-label="تعديل المحتوى"
-            >
-              <Pencil className="h-4 w-4 text-[#1e3f20]" />
-            </button>
-          </div>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className={`flex items-center gap-1.5 text-xs font-medium ${config.accentClass}`}>
+            <HeaderIcon className="h-3.5 w-3.5" aria-hidden />
+            Production Studio
+          </p>
+          <h2 className="mt-3 text-xl font-bold text-slate-900 dark:text-white">
+            {config.header}
+          </h2>
         </div>
+        <button
+          type="button"
+          onClick={onEdit}
+          className="rounded-lg border border-slate-200 bg-white p-2 transition hover:bg-slate-50 active:scale-[0.98] dark:border-[#2D3F3A] dark:bg-[#1A2421] dark:hover:bg-[#22302C]"
+          aria-label="تعديل المحتوى"
+        >
+          <Pencil className="h-4 w-4 text-slate-600 dark:text-slate-300" />
+        </button>
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col gap-4 p-6">
+      <div className="mt-3 mb-5 flex flex-wrap gap-2">
+        <MediaBadge mediaType={item.media_type ?? item.mediaType} />
+        <CategoryBadge category={item.content_category ?? item.contentCategory} />
+        <StatusBadge
+          status={item.status}
+          onClick={isReadyStatus(item.status) ? onEdit : undefined}
+        />
+      </div>
+
+      <div className="flex min-h-0 flex-1 flex-col gap-4">
         {item.productionType === 'ai' ? (
           <div className="shrink-0">
-            <label className="mb-2 block text-xs font-black text-[#1e3f20]">الكابشن (Caption)</label>
-            <textarea
-              value={item.caption || ''}
-              onChange={(e) => handleCaptionChange(e.target.value)}
-              onBlur={() => void persistCaption()}
-              rows={8}
-              className="crm-marketing-textarea w-full resize-y overflow-y-auto rounded-xl border border-[#D4AF37]/30 bg-[#FFFBF0] p-4 text-sm font-bold leading-relaxed text-[#2d3a33] focus:border-[#D4AF37] focus:outline-none"
-              placeholder="النص التسويقي للمنشور…"
-            />
+            <p className="mb-2 text-sm font-bold text-slate-700 dark:text-slate-300">Caption</p>
+            <div className="relative overflow-hidden rounded-xl border border-slate-100 bg-slate-50 dark:border-[#2D3F3A] dark:bg-[#1A2421]">
+              <textarea
+                value={item.caption || ''}
+                onChange={(e) => handleCaptionChange(e.target.value)}
+                onBlur={() => void persistCaption()}
+                rows={6}
+                className="crm-marketing-textarea w-full resize-y bg-transparent p-4 text-sm leading-relaxed text-slate-600 outline-none dark:text-slate-400"
+                placeholder="النص التسويقي للمنشور…"
+              />
+            </div>
           </div>
         ) : null}
 
         <div className="shrink-0">
-          <label className="mb-2 block text-xs font-black text-[#1e3f20]">{config.fieldLabel}</label>
-          {initialItem.productionType === 'ai' ? (
-            <textarea
-              value={item.prompt_text || item.prompt || ''}
-              onChange={(e) => handleFieldChange(e.target.value)}
-              onBlur={() => void persistField()}
-              rows={12}
-              spellCheck={false}
-              dir="ltr"
-              className="crm-marketing-textarea w-full resize-y overflow-y-auto rounded-xl border border-[#1e2420] bg-[#111412] p-4 font-mono text-xs leading-relaxed text-white transition-colors focus:border-[#D4AF37] focus:outline-none"
-            />
-          ) : (
-            <textarea
-              value={item.script}
-              onChange={(e) => handleFieldChange(e.target.value)}
-              onBlur={() => void persistField()}
-              rows={12}
-              spellCheck={false}
-              dir="rtl"
-              className="crm-marketing-textarea w-full resize-y overflow-y-auto rounded-xl border border-[#1e2420] bg-[#111412] p-4 text-sm leading-relaxed text-white transition-colors focus:border-[#D4AF37] focus:outline-none"
-            />
-          )}
+          <p className="mb-2 text-sm font-bold text-slate-700 dark:text-slate-300">
+            {config.fieldLabel}
+          </p>
+          <div className="relative overflow-hidden rounded-xl border border-slate-100 bg-slate-50 dark:border-[#2D3F3A] dark:bg-[#1A2421]">
+            {initialItem.productionType === 'ai' ? (
+              <textarea
+                value={item.prompt_text || item.prompt || ''}
+                onChange={(e) => handleFieldChange(e.target.value)}
+                onBlur={() => void persistField()}
+                rows={10}
+                spellCheck={false}
+                dir="ltr"
+                className="crm-marketing-textarea w-full resize-y bg-transparent p-4 font-mono text-xs leading-relaxed text-slate-600 outline-none dark:text-slate-300"
+              />
+            ) : (
+              <textarea
+                value={item.script}
+                onChange={(e) => handleFieldChange(e.target.value)}
+                onBlur={() => void persistField()}
+                rows={10}
+                spellCheck={false}
+                dir="rtl"
+                className="crm-marketing-textarea w-full resize-y bg-transparent p-4 text-sm leading-relaxed text-slate-600 outline-none dark:text-slate-300"
+              />
+            )}
+          </div>
         </div>
 
         <button
@@ -524,7 +676,7 @@ function ProductionStudioCard({
           onClick={() =>
             void config.onAction({ item, fieldValue, setItem: syncItem, setBusy, fileInputRef })
           }
-          className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-l from-[#cda04c] to-[#b3893d] px-5 py-3 text-sm font-black text-[#111111] shadow-md transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 dark:border dark:border-[#D4AF37]/50 dark:bg-[#D4AF37]/20 dark:text-[#D4AF37] dark:hover:bg-[#D4AF37]/30"
         >
           {busy ? (
             <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
@@ -547,10 +699,10 @@ function ProductionStudioCard({
 
         {config.productionType === 'ai' ? (
           <label className="block cursor-pointer">
-            <span className="mb-2 block text-[10px] font-bold text-gray-400">
+            <span className="mb-2 block text-[10px] font-medium text-slate-400">
               أو ارفع الفيديو المُولَّد يدوياً
             </span>
-            <div className="rounded-xl border border-dashed border-[#1e3f20]/20 bg-[#FDFBF7] px-3 py-2 text-center text-[11px] font-bold text-[#1e3f20]/70 transition hover:border-[#cda04c]/40">
+            <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-2 text-center text-[11px] font-medium text-slate-600 transition hover:border-[#D4AF37]/40 dark:border-[#2D3F3A] dark:bg-[#1A2421] dark:text-slate-400">
               اضغط لرفع فيديو AI
             </div>
             <input
@@ -625,14 +777,18 @@ export default function MarketingProductionStudio() {
       />
 
       {loading ? (
-        <div className="flex min-h-[280px] flex-col items-center justify-center gap-3 rounded-[1.75rem] border border-[#1e3f20]/10 bg-white p-10 shadow-sm">
-          <Loader2 className="h-8 w-8 animate-spin text-[#cda04c]" aria-hidden />
-          <p className="text-sm font-bold text-gray-500">جاري تحميل بطاقات الإنتاج…</p>
+        <div className="flex min-h-[280px] flex-col items-center justify-center gap-3 rounded-2xl border border-slate-200 bg-white p-10 shadow-sm dark:border-[#2D3F3A] dark:bg-[#22302C]">
+          <Loader2 className="h-8 w-8 animate-spin text-[#D4AF37]" aria-hidden />
+          <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
+            جاري تحميل بطاقات الإنتاج…
+          </p>
         </div>
       ) : filteredCards.length === 0 ? (
-        <div className="rounded-[1.75rem] border border-dashed border-[#1e3f20]/15 bg-white px-6 py-12 text-center">
-          <p className="text-sm font-black text-[#1e3f20]">لا توجد بطاقات تطابق هذا التصفية</p>
-          <p className="mt-2 text-xs font-bold text-gray-500">
+        <div className="rounded-2xl border border-dashed border-slate-200 bg-white px-6 py-12 text-center dark:border-[#2D3F3A] dark:bg-[#22302C]">
+          <p className="text-sm font-bold text-slate-900 dark:text-white">
+            لا توجد بطاقات تطابق هذا التصفية
+          </p>
+          <p className="mt-2 text-xs font-medium text-slate-500 dark:text-slate-400">
             جرّب نوع وسائط أو تصنيفاً آخر، أو عدّل البطاقات من نافذة التعديل
           </p>
         </div>

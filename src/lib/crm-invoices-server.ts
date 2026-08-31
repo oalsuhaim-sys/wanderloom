@@ -3,6 +3,7 @@ import 'server-only';
 import {
   buildInvoiceLedger,
   buildQuoteLedger,
+  formatInvoiceAmount,
   INVOICE_RECEIVABLE_DB_STATUSES,
   isInvoiceReceivableStatus,
   mapInvoiceRow,
@@ -11,7 +12,8 @@ import {
   type InvoiceType,
   type QuoteLedgerSummary,
 } from '@/lib/crm-invoices';
-import { setLeadPipelineStatus } from '@/lib/lead-pipeline-automation';
+import { logClientActivity } from '@/lib/client-activity-logs';
+import { updatePipelineStatus } from '@/lib/lead-pipeline-automation';
 import {
   coerceQuotationIdForDb,
   mapQuotationRow,
@@ -20,7 +22,13 @@ import {
 } from '@/lib/crm-quotations';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { runInvoicePaymentCascade } from '@/lib/invoice-payment-cascade';
+import type { WelcomeNotificationResult } from '@/lib/welcome-notifications';
 import type { SupabaseClient } from '@supabase/supabase-js';
+
+export type MarkInvoicePaidResult = {
+  invoice: InvoiceRow;
+  welcome: WelcomeNotificationResult | null;
+};
 
 export const CRM_INVOICES_TABLE = 'invoices' as const;
 export const CRM_QUOTATIONS_TABLE = 'quotations' as const;
@@ -116,6 +124,22 @@ export async function createInvoiceAdmin(input: CreateInvoiceInput): Promise<Inv
 
   await syncQuotationAfterInvoiceIssued(admin, persistedQuoteId);
 
+  const activityClientId = invoice.client_id ?? clientId;
+  if (activityClientId) {
+    const typeLabel = type === 'full' ? 'فاتورة كاملة' : 'دفعة مقدمة';
+    const tripBit = tripTitle ? ` · ${tripTitle}` : '';
+    void logClientActivity(
+      activityClientId,
+      'إصدار فاتورة',
+      `${typeLabel} بمبلغ ${formatInvoiceAmount(invoice.amount)}${tripBit}`,
+      'invoice',
+      {
+        admin,
+        metadata: { invoice_id: invoice.id, quote_id: persistedQuoteId, type },
+      },
+    );
+  }
+
   return invoice;
 }
 
@@ -159,7 +183,11 @@ async function syncQuotationAfterInvoiceIssued(
         .maybeSingle();
       const leadId = (qrow as { lead_id?: string | null } | null)?.lead_id ?? null;
       const clientId = (qrow as { client_id?: string | number | null } | null)?.client_id ?? null;
-      await setLeadPipelineStatus(admin, { leadId, clientId }, 'awaiting_payment').catch((err) => {
+      await updatePipelineStatus(
+        admin,
+        { leadId, clientId, force: true },
+        'awaiting_payment',
+      ).catch((err) => {
         console.warn('[invoices-admin] lead pipeline awaiting_payment:', err);
       });
       return;
@@ -252,7 +280,7 @@ export async function fetchInvoiceByIdAdmin(id: string): Promise<InvoiceRow | nu
   return invoice;
 }
 
-export async function markInvoicePaidAdmin(id: string): Promise<InvoiceRow> {
+export async function markInvoicePaidAdmin(id: string): Promise<MarkInvoicePaidResult> {
   const key = String(id ?? '').trim();
   if (!key) throw new Error('معرّف الفاتورة غير صالح.');
 
@@ -275,7 +303,28 @@ export async function markInvoicePaidAdmin(id: string): Promise<InvoiceRow> {
   const invoiceRow = mapInvoiceRow(existing as Record<string, unknown>);
 
   if (wasPaid) {
-    return invoiceRow;
+    // Still heal Kanban if a previous approve paid the invoice but missed leads.status
+    let welcome: WelcomeNotificationResult | null = null;
+    try {
+      const quoteRaw = await admin
+        .from('quotations')
+        .select('lead_id, client_id')
+        .eq('id', coerceQuotationIdForDb(invoiceRow.quote_id))
+        .maybeSingle();
+      const q = quoteRaw.data as
+        | { lead_id?: string | null; client_id?: string | number | null }
+        | null;
+      const cascade = await runInvoicePaymentCascade(admin, {
+        id: invoiceRow.id,
+        quote_id: invoiceRow.quote_id,
+        client_id: invoiceRow.client_id ?? (q?.client_id != null ? String(q.client_id) : null),
+        amount: invoiceRow.amount,
+      });
+      welcome = cascade.welcome;
+    } catch (err) {
+      console.warn('[invoices-admin] re-sync cascade for already-paid:', err);
+    }
+    return { invoice: invoiceRow, welcome };
   }
 
   const paidAt = new Date().toISOString();
@@ -295,14 +344,249 @@ export async function markInvoicePaidAdmin(id: string): Promise<InvoiceRow> {
 
   const invoice = mapInvoiceRow(data as Record<string, unknown>);
 
-  await runInvoicePaymentCascade(admin, {
+  const cascade = await runInvoicePaymentCascade(admin, {
     id: invoice.id,
     quote_id: invoice.quote_id,
     client_id: invoice.client_id,
     amount: invoice.amount,
   });
 
-  return invoice;
+  if (invoice.client_id) {
+    void logClientActivity(
+      invoice.client_id,
+      'تأكيد دفعة',
+      `تم تأكيد استلام ${formatInvoiceAmount(invoice.amount)}`,
+      'payment',
+      {
+        admin,
+        metadata: { invoice_id: invoice.id, quote_id: invoice.quote_id },
+      },
+    );
+  }
+
+  return { invoice, welcome: cascade.welcome };
+}
+
+/**
+ * Persist receipt URL after client-side Storage upload.
+ * Sets status to payment_review (falls back to paid if constraint missing).
+ */
+export async function submitInvoiceReceiptAdmin(
+  invoiceId: string,
+  receiptUrl: string,
+): Promise<InvoiceRow> {
+  const key = String(invoiceId ?? '').trim();
+  const url = String(receiptUrl ?? '').trim();
+  if (!key) throw new Error('معرّف الفاتورة غير صالح.');
+  if (!url) throw new Error('رابط صورة الحوالة غير صالح.');
+
+  const admin = createSupabaseAdminClient();
+
+  const { data: existing, error: fetchError } = await admin
+    .from(CRM_INVOICES_TABLE)
+    .select('*')
+    .eq('id', key)
+    .maybeSingle();
+
+  if (fetchError) {
+    throw new Error(formatSupabaseDbError(fetchError, 'تعذر قراءة الفاتورة.'));
+  }
+  if (!existing) {
+    throw new Error('لم يُعثر على الفاتورة.');
+  }
+
+  const current = mapInvoiceRow(existing as Record<string, unknown>);
+  if (current.status === 'paid' && current.receipt_url) {
+    return current;
+  }
+
+  const updatedAt = new Date().toISOString();
+  const reviewPayload: Record<string, unknown> = {
+    receipt_url: url,
+    status: 'payment_review',
+    rejection_reason: null,
+    updated_at: updatedAt,
+  };
+
+  let { data, error } = await admin
+    .from(CRM_INVOICES_TABLE)
+    .update(reviewPayload)
+    .eq('id', key)
+    .select('*')
+    .maybeSingle();
+
+  if (error && /rejection_reason|column|schema cache|does not exist/i.test(error.message ?? '')) {
+    const withoutReason = { ...reviewPayload };
+    delete withoutReason.rejection_reason;
+    const retry = await admin
+      .from(CRM_INVOICES_TABLE)
+      .update(withoutReason)
+      .eq('id', key)
+      .select('*')
+      .maybeSingle();
+    data = retry.data;
+    error = retry.error;
+  }
+
+  if (error && /payment_review|check|constraint|status/i.test(error.message ?? '')) {
+    const paidAt = updatedAt;
+    const fallback = await admin
+      .from(CRM_INVOICES_TABLE)
+      .update({
+        receipt_url: url,
+        status: 'paid',
+        paid_at: paidAt,
+        updated_at: paidAt,
+      })
+      .eq('id', key)
+      .select('*')
+      .maybeSingle();
+    data = fallback.data;
+    error = fallback.error;
+
+    if (!error && data) {
+      const invoice = mapInvoiceRow(data as Record<string, unknown>);
+      await runInvoicePaymentCascade(admin, {
+        id: invoice.id,
+        quote_id: invoice.quote_id,
+        client_id: invoice.client_id,
+        amount: invoice.amount,
+      });
+      return invoice;
+    }
+  }
+
+  if (error && /receipt_url|column|schema cache/i.test(error.message ?? '')) {
+    const withoutUrl = await admin
+      .from(CRM_INVOICES_TABLE)
+      .update({
+        status: 'payment_review',
+        updated_at: updatedAt,
+      })
+      .eq('id', key)
+      .select('*')
+      .maybeSingle();
+    if (!withoutUrl.error && withoutUrl.data) {
+      const invoice = mapInvoiceRow(withoutUrl.data as Record<string, unknown>);
+      invoice.receipt_url = url;
+      return invoice;
+    }
+    const paidOnly = await admin
+      .from(CRM_INVOICES_TABLE)
+      .update({ status: 'paid', paid_at: updatedAt, updated_at: updatedAt })
+      .eq('id', key)
+      .select('*')
+      .maybeSingle();
+    if (paidOnly.error || !paidOnly.data) {
+      throw new Error(
+        formatSupabaseDbError(
+          error,
+          'عمود receipt_url غير موجود — نفّذ supabase/sql/invoices_receipt_upload.sql',
+        ),
+      );
+    }
+    const invoice = mapInvoiceRow(paidOnly.data as Record<string, unknown>);
+    invoice.receipt_url = url;
+    await runInvoicePaymentCascade(admin, {
+      id: invoice.id,
+      quote_id: invoice.quote_id,
+      client_id: invoice.client_id,
+      amount: invoice.amount,
+    });
+    return invoice;
+  }
+
+  if (error || !data) {
+    throw new Error(formatSupabaseDbError(error, 'تعذر حفظ صورة الحوالة.'));
+  }
+
+  return mapInvoiceRow(data as Record<string, unknown>);
+}
+
+/**
+ * Admin rejects a bank-transfer receipt.
+ * — invoices.status = rejected (+ rejection_reason)
+ * — Falls back to pending + cleared receipt if `rejected` is not in the DB check yet
+ */
+export async function rejectInvoiceReceiptAdmin(
+  id: string,
+  reasonRaw?: string | null,
+): Promise<InvoiceRow> {
+  const key = String(id ?? '').trim();
+  if (!key) throw new Error('معرّف الفاتورة غير صالح.');
+
+  const reason = String(reasonRaw ?? '').trim().slice(0, 500) || 'تم رفض الإيصال';
+  const admin = createSupabaseAdminClient();
+  const updatedAt = new Date().toISOString();
+
+  const { data: existing, error: fetchError } = await admin
+    .from(CRM_INVOICES_TABLE)
+    .select('*')
+    .eq('id', key)
+    .maybeSingle();
+
+  if (fetchError) {
+    throw new Error(formatSupabaseDbError(fetchError, 'تعذر قراءة الفاتورة.'));
+  }
+  if (!existing) throw new Error('لم يُعثر على الفاتورة.');
+
+  const current = mapInvoiceRow(existing as Record<string, unknown>);
+  if (current.status === 'paid') {
+    throw new Error('لا يمكن رفض إيصال فاتورة مدفوعة.');
+  }
+
+  const attempts: Record<string, unknown>[] = [
+    {
+      status: 'rejected',
+      rejection_reason: reason,
+      updated_at: updatedAt,
+      paid_at: null,
+    },
+    {
+      status: 'rejected',
+      updated_at: updatedAt,
+      paid_at: null,
+    },
+    // Schema without `rejected` in check constraint — reopen for re-upload
+    {
+      status: 'pending',
+      rejection_reason: reason,
+      receipt_url: null,
+      updated_at: updatedAt,
+      paid_at: null,
+    },
+    {
+      status: 'pending',
+      receipt_url: null,
+      updated_at: updatedAt,
+      paid_at: null,
+    },
+  ];
+
+  let lastError: string | null = null;
+  for (const payload of attempts) {
+    const { data, error } = await admin
+      .from(CRM_INVOICES_TABLE)
+      .update(payload)
+      .eq('id', key)
+      .select('*')
+      .maybeSingle();
+    if (!error && data) {
+      const mapped = mapInvoiceRow(data as Record<string, unknown>);
+      if (!mapped.rejection_reason) mapped.rejection_reason = reason;
+      return mapped;
+    }
+    lastError = error?.message ?? null;
+    if (error && !/check|constraint|status|rejected|rejection_reason|column|schema cache|does not exist/i.test(error.message ?? '')) {
+      throw new Error(formatSupabaseDbError(error, 'تعذر رفض الإيصال.'));
+    }
+  }
+
+  throw new Error(
+    lastError
+      ? formatSupabaseDbError({ message: lastError }, 'تعذر رفض الإيصال.')
+      : 'تعذر رفض الإيصال.',
+  );
 }
 
 async function fetchQuotationCostForLedger(
@@ -379,7 +663,11 @@ export async function fetchQuoteLedgerAdmin(
 /** دفتر مالي لصفحة فاتورة العميل */
 export async function fetchInvoiceLedgerAdmin(
   invoiceId: string,
-): Promise<{ invoice: InvoiceRow; ledger: InvoiceLedgerSummary } | null> {
+): Promise<{
+  invoice: InvoiceRow;
+  ledger: InvoiceLedgerSummary;
+  quotationStatus: string | null;
+} | null> {
   const invoice = await fetchInvoiceByIdAdmin(invoiceId);
   if (!invoice) return null;
 
@@ -390,6 +678,22 @@ export async function fetchInvoiceLedgerAdmin(
     excludeInvoiceId: invoice.id,
   });
 
+  let quotationStatus: string | null = null;
+  if (invoice.quote_id) {
+    const variants = quoteIdVariants(invoice.quote_id);
+    for (const id of variants) {
+      const { data } = await admin
+        .from(CRM_QUOTATIONS_TABLE)
+        .select('status')
+        .eq('id', coerceQuotationIdForDb(id))
+        .maybeSingle();
+      if (data && (data as { status?: unknown }).status != null) {
+        quotationStatus = String((data as { status?: unknown }).status).trim() || null;
+        break;
+      }
+    }
+  }
+
   const ledger = buildInvoiceLedger({
     quoteId: invoice.quote_id,
     tripTitle: invoice.trip_title || tripTitle,
@@ -399,5 +703,5 @@ export async function fetchInvoiceLedgerAdmin(
     currentInvoiceAmount: invoice.amount,
   });
 
-  return { invoice, ledger };
+  return { invoice, ledger, quotationStatus };
 }

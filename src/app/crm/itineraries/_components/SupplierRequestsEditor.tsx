@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { MessageCircle, Plus, Trash2 } from 'lucide-react';
 
 import type { CrmSupplier } from '@/lib/crm-suppliers';
+import { WL_DATE_INPUT } from '@/lib/itinerary-builder-ui';
 import {
   openSupplierContact,
   findSupplierForRequest,
@@ -57,17 +58,16 @@ function SupplierChannelRow({
       onError('الرجاء إدخال رقم أو معرّف المورد أولاً.');
       return;
     }
-    if (app === 'kakao') {
-      try {
-        await navigator.clipboard.writeText(message);
-        onNotice('تم نسخ الرسالة! يمكنك الآن لصقها في KakaoTalk.');
-      } catch {
-        onError('تعذر نسخ الرسالة إلى الحافظة.');
-      }
+    const result = await openSupplierContact({
+      app,
+      phone: contact,
+      message,
+    });
+    if (!result.ok) {
+      onError(result.error);
       return;
     }
-    await openSupplierContact({ app, phone: contact, message });
-    onNotice('تم فتح تطبيق التواصل.');
+    onNotice(result.message);
   };
 
   return (
@@ -226,7 +226,7 @@ export default function SupplierRequestsEditor({
                     type="date"
                     value={request.service_date}
                     onChange={(e) => update(index, { service_date: e.target.value })}
-                    className="rounded-lg border border-gray-300 px-3 py-2.5 text-sm text-gray-900 outline-none focus:border-[#cda04c] [color-scheme:light]"
+                    className={WL_DATE_INPUT}
                   />
                 </label>
 

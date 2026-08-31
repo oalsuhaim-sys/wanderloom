@@ -250,7 +250,7 @@ export async function POST(request: Request) {
       magicLinkToken,
       clientId,
     );
-    let itineraryId = resolved.itineraryId;
+    const itineraryId = resolved.itineraryId;
     clientId = resolved.clientId ?? clientId;
 
     // Final Step-3 safety net: if we somehow have trip_id numeric but no client yet

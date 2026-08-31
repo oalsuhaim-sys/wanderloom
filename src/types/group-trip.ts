@@ -16,8 +16,14 @@ export type GroupTripRow = {
   sort_order?: number | null;
   is_active?: boolean | null;
   max_seats?: number | null;
+  booked_seats?: number | null;
   allow_waitlist?: boolean | null;
   leader_id?: number | null;
   leader_name?: string | null;
   registered_client_ids?: number[] | null;
 };
+
+/** Canonical alias — same as GroupTripRow (table: public.group_trips) */
+export type GroupTrip = GroupTripRow;
+
+export type { GroupMember, GroupMemberStatus } from '@/lib/group-members';

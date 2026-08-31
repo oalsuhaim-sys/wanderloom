@@ -3,12 +3,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
-import toast, { Toaster } from 'react-hot-toast';
 import {
   Award,
   BarChart3,
   CalendarDays,
-  CheckCircle2,
   Loader2,
   Radar,
   Route,
@@ -17,11 +15,10 @@ import {
   UserRound,
   Users,
   AlertCircle,
-  X,
-  XCircle,
 } from 'lucide-react';
 
 import { useCrmEmployee } from '@/app/crm/_components/CrmEmployeeProvider';
+import { SystemCheckModal } from '@/app/crm/_components/SystemCheckModal';
 import {
   fetchMarketingPublishingRadar,
   type MarketingPublishRadarItem,
@@ -29,8 +26,12 @@ import {
 import { getClientAccessToken } from '@/lib/crm-session-token';
 import { supabase } from '@/lib/supabase';
 
-const FOREST = '#1A3B2A';
-const GOLD = '#C5A059';
+const CARD =
+  'bg-white dark:bg-[#22302C] rounded-xl shadow-sm border border-slate-200 dark:border-[#2D3F3A] hover:shadow-md transition-shadow';
+const ICON_WELL =
+  'flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-700 dark:bg-[#1A2421] dark:text-[#D4AF37]';
+const TH =
+  'bg-slate-50 px-5 py-3 text-right text-sm font-semibold text-slate-600 border-b border-slate-200 dark:bg-[#1A2421] dark:text-[#D4AF37] dark:border-[#2D3F3A]';
 
 /** أقسام أسفل الصفحة — تُحمّل عند الحاجة فقط لتخفيف حجم الشحنة الأولى */
 const DashboardPendingActions = dynamic(
@@ -41,22 +42,6 @@ const MarketingPublishingRadar = dynamic(
   () => import('@/app/crm/_components/MarketingPublishingRadar'),
   { ssr: false },
 );
-
-type SystemTestStep = {
-  step: number;
-  name: string;
-  status: 'PASS' | 'FAIL' | 'SKIP';
-  detail?: string;
-  id?: string | number | null;
-};
-
-type SystemTestResult = {
-  ok?: boolean;
-  overall?: 'PASS' | 'FAIL';
-  summary?: string;
-  error?: string;
-  steps?: SystemTestStep[];
-};
 
 type ClientJoin = { name?: string | null };
 
@@ -108,17 +93,42 @@ function formatCreatedAtArabic(iso: string | null | undefined): string {
 function statusBadge(status: string | null | undefined): { label: string; className: string } {
   const s = String(status ?? '').trim().toLowerCase();
   const map: Record<string, { label: string; className: string }> = {
-    draft: { label: 'مسودة', className: 'bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-xs font-bold' },
-    sent: { label: 'مُرسل', className: 'bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-xs font-bold' },
-    active: { label: 'نشطة', className: 'bg-green-100 text-green-800 px-3 py-1 rounded-full text-xs font-bold' },
-    archived: { label: 'مؤرشفة', className: 'bg-red-100 text-red-800 px-3 py-1 rounded-full text-xs font-bold' },
-    confirmed: { label: 'مؤكّدة', className: 'bg-green-100 text-green-800 px-3 py-1 rounded-full text-xs font-bold' },
-    template: { label: 'قالب', className: 'bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-xs font-bold' },
+    draft: {
+      label: 'مسودة',
+      className:
+        'bg-amber-50 text-amber-800 px-3 py-1 rounded-full text-xs font-medium dark:bg-[#D4AF37]/10 dark:text-[#D4AF37]',
+    },
+    sent: {
+      label: 'مُرسل',
+      className:
+        'bg-amber-50 text-amber-800 px-3 py-1 rounded-full text-xs font-medium dark:bg-[#D4AF37]/10 dark:text-[#D4AF37]',
+    },
+    active: {
+      label: 'نشطة',
+      className:
+        'bg-emerald-50 text-emerald-800 px-3 py-1 rounded-full text-xs font-medium dark:bg-emerald-950/40 dark:text-emerald-300',
+    },
+    archived: {
+      label: 'مؤرشفة',
+      className:
+        'bg-rose-50 text-rose-800 px-3 py-1 rounded-full text-xs font-medium dark:bg-rose-950/40 dark:text-rose-300',
+    },
+    confirmed: {
+      label: 'مؤكّدة',
+      className:
+        'bg-emerald-50 text-emerald-800 px-3 py-1 rounded-full text-xs font-medium dark:bg-emerald-950/40 dark:text-emerald-300',
+    },
+    template: {
+      label: 'قالب',
+      className:
+        'bg-slate-100 text-slate-700 px-3 py-1 rounded-full text-xs font-medium dark:bg-[#1A2421] dark:text-slate-300',
+    },
   };
   return (
     map[s] ?? {
       label: status?.trim() || '—',
-      className: 'bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-xs font-bold',
+      className:
+        'bg-slate-100 text-slate-700 px-3 py-1 rounded-full text-xs font-medium dark:bg-[#1A2421] dark:text-slate-300',
     }
   );
 }
@@ -206,57 +216,8 @@ export default function CRMHomeDashboardPage() {
   const [marketingRadar, setMarketingRadar] = useState<MarketingPublishRadarItem[]>([]);
   const [marketingRadarLoading, setMarketingRadarLoading] = useState(true);
   const [marketingRadarError, setMarketingRadarError] = useState<string | undefined>();
-  const [healthChecking, setHealthChecking] = useState(false);
-  const [healthResult, setHealthResult] = useState<SystemTestResult | null>(null);
-
-  const runSystemHealthCheck = useCallback(async () => {
-    if (healthChecking) return;
-    setHealthChecking(true);
-    setHealthResult(null);
-    const loadingToast = toast.loading('جاري محاكاة دورة حياة رحلة كاملة...', {
-      style: { background: FOREST, color: '#fff', fontWeight: 700 },
-    });
-    try {
-      const accessToken = await getClientAccessToken();
-      const response = await fetch('/api/admin/system-test', {
-        method: 'POST',
-        cache: 'no-store',
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          Accept: 'application/json',
-        },
-      });
-      const payload = (await response.json()) as SystemTestResult;
-      setHealthResult(payload);
-
-      if (payload.overall === 'PASS' && payload.ok !== false) {
-        toast.success(payload.summary || 'فحص النظام نجح بالكامل ✓', {
-          id: loadingToast,
-          duration: 4500,
-          style: { background: '#1e3f20', color: '#fff', fontWeight: 700 },
-        });
-      } else {
-        const failed =
-          payload.steps?.find((s) => s.status === 'FAIL') ??
-          null;
-        const failMsg = failed
-          ? `فشل الخطوة ${failed.step}: ${failed.name}`
-          : payload.error || payload.summary || 'فشل فحص النظام';
-        toast.error(failMsg, {
-          id: loadingToast,
-          duration: 6000,
-          style: { fontWeight: 700 },
-        });
-      }
-    } catch (err) {
-      const message =
-        err instanceof Error ? err.message : 'تعذر الاتصال بفحص النظام';
-      setHealthResult({ ok: false, overall: 'FAIL', error: message, steps: [] });
-      toast.error(message, { id: loadingToast, duration: 5000 });
-    } finally {
-      setHealthChecking(false);
-    }
-  }, [healthChecking]);
+  /** Opens the E2E modal only — test runs after explicit "بدء اختبار E2E". */
+  const [systemCheckOpen, setSystemCheckOpen] = useState(false);
 
   const loadDashboard = useCallback(async () => {
     if (!supabase) {
@@ -357,28 +318,24 @@ export default function CRMHomeDashboardPage() {
         value: clientsTotal,
         sub: 'من جدول العملاء',
         icon: UserRound,
-        iconBg: 'bg-[#1A3B2A]/8 text-[#1A3B2A]',
       },
       {
         label: 'الرحلات الفردية',
         value: individualItineraries,
         sub: 'Individual أو غير مُعرّف + غير قالب',
         icon: Route,
-        iconBg: 'bg-sky-500/10 text-sky-800',
       },
       {
         label: 'إجمالي القروبات',
         value: groupsTotal,
         sub: 'الرحلات الجماعية المجدولة',
         icon: Users,
-        iconBg: 'bg-emerald-600/10 text-emerald-800',
       },
       {
         label: 'إجمالي الحجوزات',
         value: totalBookings,
         sub: 'الرحلات الخاصة والمقاعد الجماعية',
         icon: BarChart3,
-        iconBg: 'bg-[#1A3B2A] text-[#C5A059]',
       },
     ],
     [clientsTotal, individualItineraries, groupsTotal, totalBookings],
@@ -413,45 +370,40 @@ export default function CRMHomeDashboardPage() {
 
   function StatSkeleton() {
     return (
-      <article className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+      <article className={`${CARD} p-5`}>
         <div className="flex animate-pulse items-start justify-between gap-3">
           <div className="flex-1 space-y-3 text-right">
-            <div className="ms-auto h-3 w-32 rounded-full bg-gray-100" />
-            <div className="ms-auto h-8 w-24 rounded-xl bg-gray-100" />
-            <div className="ms-auto h-3 w-full max-w-[9rem] rounded-full bg-gray-50" />
+            <div className="ms-auto h-3 w-32 rounded-full bg-slate-100 dark:bg-[#1A2421]" />
+            <div className="ms-auto h-8 w-24 rounded-xl bg-slate-100 dark:bg-[#1A2421]" />
+            <div className="ms-auto h-3 w-full max-w-[9rem] rounded-full bg-slate-50 dark:bg-[#1A2421]/70" />
           </div>
-          <span className="h-12 w-12 shrink-0 rounded-xl bg-gray-100" />
+          <span className="h-11 w-11 shrink-0 rounded-xl bg-slate-100 dark:bg-[#1A2421]" />
         </div>
       </article>
     );
   }
 
   return (
-    <div className="min-h-full bg-[#F9F9F6] pb-14 font-[family-name:var(--font-tajawal),system-ui,sans-serif]" dir="rtl">
-      {/* رأس */}
-      <header
-        className="relative overflow-hidden rounded-2xl border px-4 py-6 shadow-xl sm:px-10 sm:py-10"
-        style={{
-          borderColor: `${GOLD}55`,
-          background: `linear-gradient(135deg, ${FOREST} 0%, #244F38 52%, ${FOREST} 100%)`,
-          boxShadow: `0 20px 50px rgba(26,59,42,0.28)`,
-        }}
-      >
-        <div aria-hidden className="pointer-events-none absolute -start-28 top-0 h-72 w-72 rounded-full blur-3xl" style={{ background: `${GOLD}22` }} />
-        <div aria-hidden className="pointer-events-none absolute bottom-0 end-0 h-48 w-48 rounded-full blur-3xl opacity-70" style={{ background: `${GOLD}18` }} />
-        <div className="relative flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
+    <div
+      className="min-h-full bg-[#F9FAFB] pb-14 font-sans dark:bg-[#1A2421]"
+      dir="rtl"
+      data-wl-dashboard="navy-olive-v1"
+    >
+      <header className="relative overflow-hidden rounded-2xl border border-transparent bg-slate-900 p-6 text-white shadow-sm sm:p-8 dark:border dark:border-[#D4AF37]/30 dark:!bg-[#22302C] dark:text-[#D4AF37]">
+        <div className="relative flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
           <div className="text-right">
-            <p className="text-[11px] font-black uppercase tracking-[0.38em]" style={{ color: `${GOLD}dd` }}>
+            <p className="text-[11px] font-medium uppercase tracking-[0.28em] text-white/50 dark:text-[#D4AF37]/80">
               Wanderloom CRM
             </p>
-            <h1 className="mt-2 text-3xl font-black leading-tight text-white sm:text-4xl">
-              مركز القيادة والإحصائيات&nbsp;📊
+            <h1 className="mt-2 text-2xl font-semibold leading-tight text-white sm:text-3xl dark:text-gray-100">
+              مركز القيادة والإحصائيات
             </h1>
-            <p className="mt-4 max-w-xl text-base font-semibold leading-relaxed text-white/82">
+            <p className="mt-3 max-w-xl text-sm font-medium leading-relaxed text-white/75 dark:text-gray-300">
               {displayName ? (
                 <>
-                  يسعدنا أن نراك، <span style={{ color: GOLD }}>{displayName}</span>. لمحة حقيقية من قاعدة البيانات — محدَّثة
-                  عند فتح هذه الصفحة.
+                  يسعدنا أن نراك،{' '}
+                  <span className="text-white dark:text-[#D4AF37]">{displayName}</span>. لمحة حقيقية من
+                  قاعدة البيانات — محدَّثة عند فتح هذه الصفحة.
                 </>
               ) : empLoading ? (
                 <span className="inline-block h-5 w-64 animate-pulse rounded bg-white/10" />
@@ -464,30 +416,21 @@ export default function CRMHomeDashboardPage() {
             {canRunSystemTest ? (
               <button
                 type="button"
-                onClick={() => void runSystemHealthCheck()}
-                disabled={healthChecking}
-                className="group flex items-center justify-center gap-2 rounded-2xl border px-5 py-3.5 text-sm font-black transition disabled:cursor-wait disabled:opacity-80"
-                style={{
-                  borderColor: `${GOLD}aa`,
-                  background: `linear-gradient(135deg, ${GOLD} 0%, #e8c86a 45%, ${GOLD} 100%)`,
-                  color: FOREST,
-                  boxShadow: `0 10px 28px ${GOLD}44`,
-                }}
+                onClick={() => setSystemCheckOpen(true)}
+                className="group flex items-center justify-center gap-2 rounded-xl !bg-white px-5 py-3 text-sm font-semibold !text-slate-900 transition hover:!bg-slate-50 dark:!border dark:!border-[#D4AF37]/50 dark:!bg-[#D4AF37]/20 dark:!text-[#D4AF37] dark:hover:!bg-[#D4AF37]/30"
               >
-                {healthChecking ? (
-                  <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
-                ) : (
-                  <ShieldCheck className="h-5 w-5 transition group-hover:scale-110" aria-hidden />
-                )}
-                {healthChecking ? 'جاري الفحص...' : 'فحص شامل للنظام'}
+                <ShieldCheck className="h-5 w-5 transition group-hover:scale-105" aria-hidden />
+                فحص شامل للنظام
               </button>
             ) : null}
-            <div className="rounded-2xl border border-white/12 bg-white/6 px-5 py-4 text-right backdrop-blur-md">
-              <span className="flex items-center justify-end gap-2 text-[11px] font-black uppercase tracking-wider text-white/70">
-                <CalendarDays className="h-4 w-4 shrink-0 text-[#C5A059]" aria-hidden />
+            <div className="rounded-xl border border-white/15 bg-white/10 px-4 py-3 text-right backdrop-blur-sm dark:border-[#D4AF37]/20 dark:bg-[#1A2421]/50">
+              <span className="flex items-center justify-end gap-2 text-[11px] font-medium uppercase tracking-wider text-white/65 dark:text-[#D4AF37]/80">
+                <CalendarDays className="h-4 w-4 shrink-0 text-[#D4AF37]" aria-hidden />
                 اليوم
               </span>
-              <p className="mt-1 text-sm font-bold leading-relaxed text-white">{todayLabelArabic()}</p>
+              <p className="mt-1 text-sm font-medium leading-relaxed text-white dark:text-gray-100">
+                {todayLabelArabic()}
+              </p>
             </div>
           </div>
         </div>
@@ -495,42 +438,34 @@ export default function CRMHomeDashboardPage() {
 
       {error ? (
         <div
-          className="mt-6 flex items-start gap-3 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-right text-sm text-rose-900 shadow-sm"
+          className="mt-4 flex items-start gap-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-right text-sm text-rose-900 shadow-sm dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-200"
           role="alert"
         >
           <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-rose-600" aria-hidden />
-          <span className="font-bold">{error}</span>
+          <span className="font-medium">{error}</span>
         </div>
       ) : null}
 
-      {/* بطاقات */}
-      <section className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-label="إحصائيات سريعة">
+      <section className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-label="إحصائيات سريعة">
         {loading
           ? [0, 1, 2, 3].map((k) => <StatSkeleton key={k} />)
           : statCards.map((s) => {
               const Icon = s.icon;
               return (
-                <article
-                  key={s.label}
-                  className="group relative overflow-hidden rounded-2xl border border-gray-100 bg-white p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_10px_20px_rgba(0,0,0,0.05)]"
-                >
-                  <div
-                    className="pointer-events-none absolute inset-0 opacity-0 transition group-hover:opacity-100"
-                    style={{ backgroundImage: 'linear-gradient(to bottom left, transparent, rgba(197,160,89,0.08))' }}
-                    aria-hidden
-                  />
-                  <div className="relative flex items-start justify-between gap-3">
+                <article key={s.label} className={`${CARD} p-5`}>
+                  <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0 text-right">
-                      <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500">{s.label}</p>
-                      <p className="mt-2 text-3xl font-bold text-[#C5A059]" dir="ltr">
+                      <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{s.label}</p>
+                      <p
+                        className="mt-2 text-2xl font-bold text-slate-900 dark:text-gray-100"
+                        dir="ltr"
+                      >
                         {formatStatNumber(s.value ?? 0)}
                       </p>
-                      <p className="mt-1 text-xs text-gray-500">{s.sub}</p>
+                      <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{s.sub}</p>
                     </div>
-                    <span
-                      className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl shadow-inner ring-2 ring-black/5 ${s.iconBg}`}
-                    >
-                      <Icon className="h-6 w-6" aria-hidden strokeWidth={2} />
+                    <span className={ICON_WELL}>
+                      <Icon className="h-5 w-5" aria-hidden strokeWidth={2} />
                     </span>
                   </div>
                 </article>
@@ -538,33 +473,35 @@ export default function CRMHomeDashboardPage() {
             })}
       </section>
 
-      {/* الوصول السريع — قبل الرادار لجذب الانتباه للإجراءات */}
-      <section className="mt-10 text-right" aria-label="الوصول السريع">
-        <h2 className="mb-5 flex flex-wrap items-center justify-end gap-2 text-xl font-black" style={{ color: FOREST }}>
-          <Sparkles className="h-5 w-5" style={{ color: GOLD }} aria-hidden />
+      <section className="mt-8 text-right" aria-label="الوصول السريع" dir="rtl">
+        <h2 className="mb-4 flex flex-wrap items-center justify-start gap-2 text-lg font-semibold text-slate-900 dark:text-gray-100">
+          <Sparkles className="h-5 w-5 text-[#D4AF37]" aria-hidden />
           الوصول السريع
         </h2>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div
+          className="grid grid-cols-1 gap-4 text-right sm:grid-cols-2 md:grid-cols-4 [direction:rtl]"
+          dir="rtl"
+        >
           {QUICK_ACTIONS.map((a) => {
             const Icon = a.icon;
             return (
               <Link
                 key={a.href}
                 href={a.href}
-                className="group flex flex-col rounded-2xl border border-gray-100 bg-white p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-[#C5A059]/40 hover:shadow-[0_10px_20px_rgba(0,0,0,0.05)]"
+                className={`${CARD} group flex flex-col p-5 text-right`}
+                dir="rtl"
               >
-                <span
-                  className="flex h-12 w-12 items-center justify-center rounded-xl shadow-md ring-2 transition ring-[#1A3B2A]/12 group-hover:ring-[#C5A059]/50"
-                  style={{ backgroundColor: FOREST, color: GOLD }}
-                >
-                  <Icon className="h-6 w-6" aria-hidden strokeWidth={2} />
+                <span className={ICON_WELL}>
+                  <Icon className="h-5 w-5" aria-hidden strokeWidth={2} />
                 </span>
-                <span className="mt-5 text-lg font-black transition" style={{ color: FOREST }}>
+                <span className="mt-4 text-base font-bold text-slate-900 dark:text-gray-100">
                   {a.title}
                 </span>
-                <span className="mt-2 text-sm font-semibold leading-relaxed text-slate-600">{a.desc}</span>
-                <span className="mt-4 text-xs font-black opacity-0 transition group-hover:opacity-100" style={{ color: `${GOLD}cc` }}>
-                  انتقال الآن ▸
+                <span className="mt-1.5 text-sm font-medium leading-relaxed text-slate-500 dark:text-slate-400">
+                  {a.desc}
+                </span>
+                <span className="mt-3 text-xs font-medium text-slate-400 opacity-0 transition group-hover:opacity-100 dark:text-[#D4AF37]">
+                  انتقال الآن ◂
                 </span>
               </Link>
             );
@@ -572,8 +509,7 @@ export default function CRMHomeDashboardPage() {
         </div>
       </section>
 
-      {/* رادار النشر التسويقي — مركز القيادة */}
-      <section className="mt-10" aria-label="رادار النشر التسويقي">
+      <section className="mt-8" aria-label="رادار النشر التسويقي">
         <MarketingPublishingRadar
           items={marketingRadar}
           loading={loading || marketingRadarLoading}
@@ -583,55 +519,50 @@ export default function CRMHomeDashboardPage() {
 
       <DashboardPendingActions />
 
-      {/* الرادار */}
-      <section className="mt-10 overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm" aria-label="آخر الرحلات">
-        <div
-          className="flex flex-col gap-2 border-b border-gray-100 px-6 py-5 text-right sm:flex-row sm:items-center sm:justify-between"
-          style={{
-            background: `linear-gradient(to left, rgba(26,59,42,0.04), transparent)`,
-          }}
-        >
+      <section
+        className={`${CARD} mt-8 overflow-hidden`}
+        aria-label="آخر الرحلات"
+      >
+        <div className="flex flex-col gap-2 border-b border-slate-200 px-5 py-4 text-right sm:flex-row sm:items-center sm:justify-between dark:border-[#2D3F3A]">
           <div className="flex items-center gap-3">
             <div>
-              <h2 className="text-lg font-black" style={{ color: FOREST }}>
-                الرادار الحي 📡
-              </h2>
-              <p className="text-xs font-semibold text-slate-600">آخر 5 مسارات مضافة (غير قوالب الجدول)</p>
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-gray-100">الرادار الحي</h2>
+              <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
+                آخر 5 مسارات مضافة (غير قوالب الجدول)
+              </p>
             </div>
-            <span
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl shadow-inner"
-              style={{ backgroundColor: FOREST, color: GOLD }}
-            >
+            <span className={ICON_WELL}>
               <Radar className="h-5 w-5" aria-hidden strokeWidth={2.2} />
             </span>
           </div>
           <Link
             href="/crm/itineraries"
-            className="self-end text-xs font-black underline decoration-[#C5A059]/65 underline-offset-4 transition hover:opacity-90 sm:self-auto"
-            style={{ color: FOREST }}
+            className="self-end text-xs font-semibold text-slate-600 underline decoration-slate-300 underline-offset-4 transition hover:text-slate-900 dark:text-[#D4AF37] dark:decoration-[#D4AF37]/40 sm:self-auto"
           >
             كل المسارات ←
           </Link>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="w-full overflow-x-auto rounded-xl border border-slate-200 dark:border-[#2D3F3A]">
           {loading ? (
-            <div className="flex min-h-[240px] items-center justify-center gap-3 px-6 py-12 text-[#1A3B2A]" dir="rtl">
-              <Loader2 className="h-8 w-8 animate-spin" style={{ color: GOLD }} aria-hidden />
-              <span className="text-sm font-bold">جاري تحميل الرادار...</span>
+            <div className="flex min-h-[200px] items-center justify-center gap-3 px-6 py-12 text-slate-600 dark:text-gray-300" dir="rtl">
+              <Loader2 className="h-7 w-7 animate-spin text-[#D4AF37]" aria-hidden />
+              <span className="text-sm font-medium">جاري تحميل الرادار...</span>
             </div>
           ) : radarRows.length === 0 ? (
-            <div className="px-6 py-12 text-center text-sm font-bold text-slate-600">لا توجد مسارات لعرضها بعد.</div>
+            <div className="px-6 py-12 text-center text-sm font-medium text-slate-500 dark:text-slate-400">
+              لا توجد مسارات لعرضها بعد.
+            </div>
           ) : (
             <table className="w-full min-w-[760px] border-collapse text-right text-sm">
               <thead>
                 <tr>
-                  <th className="bg-[#1A3B2A]/5 px-6 py-4 text-right text-sm font-semibold text-[#1A3B2A] border-b border-gray-200">اسم الرحلة</th>
-                  <th className="bg-[#1A3B2A]/5 px-6 py-4 text-right text-sm font-semibold text-[#1A3B2A] border-b border-gray-200">اسم العميل</th>
-                  <th className="bg-[#1A3B2A]/5 px-6 py-4 text-right text-sm font-semibold text-[#1A3B2A] border-b border-gray-200">الوجهة</th>
-                  <th className="bg-[#1A3B2A]/5 px-6 py-4 text-right text-sm font-semibold text-[#1A3B2A] border-b border-gray-200">المسؤول</th>
-                  <th className="bg-[#1A3B2A]/5 px-6 py-4 text-right text-sm font-semibold text-[#1A3B2A] border-b border-gray-200">تاريخ الإنشاء</th>
-                  <th className="bg-[#1A3B2A]/5 px-6 py-4 text-center text-sm font-semibold text-[#1A3B2A] border-b border-gray-200">الحالة</th>
+                  <th className={TH}>اسم الرحلة</th>
+                  <th className={TH}>اسم العميل</th>
+                  <th className={TH}>الوجهة</th>
+                  <th className={TH}>المسؤول</th>
+                  <th className={TH}>تاريخ الإنشاء</th>
+                  <th className={`${TH} text-center`}>الحالة</th>
                 </tr>
               </thead>
               <tbody>
@@ -640,32 +571,36 @@ export default function CRMHomeDashboardPage() {
                   return (
                     <tr
                       key={row.id}
-                      className="cursor-default border-b border-gray-100 transition-colors duration-200 hover:bg-white"
+                      className="border-b border-slate-100 transition-colors hover:bg-slate-50 dark:border-[#2D3F3A] dark:hover:bg-[#2A3834]/50"
                     >
-                      <td className="max-w-[12rem] truncate px-6 py-4 font-bold text-[#1A3B2A]" title={row.title ?? ''}>
+                      <td
+                        className="max-w-[12rem] truncate px-5 py-3.5 font-semibold text-slate-900 dark:text-gray-100"
+                        title={row.title ?? ''}
+                      >
                         {row.title?.trim() || '—'}
                       </td>
-                      <td className="px-6 py-4 font-semibold text-[#1A3B2A]/80">{resolveRadarClientName(row)}</td>
-                      <td className="px-6 py-4 font-semibold text-[#1A3B2A]/80">{row.destination?.trim() || '—'}</td>
-                      <td className="px-6 py-4">
-                        {row.expert_id != null &&
-                        expertNames[String(row.expert_id)] ? (
-                          <span className="font-bold text-[#1A3B2A]">
+                      <td className="px-5 py-3.5 font-medium text-slate-700 dark:text-gray-300">
+                        {resolveRadarClientName(row)}
+                      </td>
+                      <td className="px-5 py-3.5 font-medium text-slate-700 dark:text-gray-300">
+                        {row.destination?.trim() || '—'}
+                      </td>
+                      <td className="px-5 py-3.5">
+                        {row.expert_id != null && expertNames[String(row.expert_id)] ? (
+                          <span className="font-semibold text-slate-900 dark:text-gray-100">
                             {expertNames[String(row.expert_id)]}
                           </span>
                         ) : (
-                          <span className="inline-flex rounded-full bg-yellow-100 px-3 py-1 text-xs font-bold text-yellow-800">
+                          <span className="inline-flex rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-800 dark:bg-[#D4AF37]/10 dark:text-[#D4AF37]">
                             بانتظار التعيين
                           </span>
                         )}
                       </td>
-                      <td className="whitespace-nowrap px-6 py-4 font-medium text-gray-600">
+                      <td className="whitespace-nowrap px-5 py-3.5 font-medium text-slate-500 dark:text-slate-400">
                         {formatCreatedAtArabic(row.created_at)}
                       </td>
-                      <td className="px-6 py-4 text-center">
-                        <span className={`inline-flex ${b.className}`}>
-                          {b.label}
-                        </span>
+                      <td className="px-5 py-3.5 text-center">
+                        <span className={`inline-flex ${b.className}`}>{b.label}</span>
                       </td>
                     </tr>
                   );
@@ -676,113 +611,7 @@ export default function CRMHomeDashboardPage() {
         </div>
       </section>
 
-      <Toaster position="top-center" toastOptions={{ duration: 3500, style: { fontWeight: 700 } }} />
-
-      {healthResult ? (
-        <div
-          className="fixed inset-0 z-[80] flex items-center justify-center bg-[#1A3B2A]/55 p-4 backdrop-blur-sm"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="system-health-title"
-          onClick={() => setHealthResult(null)}
-        >
-          <div
-            className="relative max-h-[88vh] w-full max-w-lg overflow-y-auto rounded-3xl border bg-white p-6 shadow-2xl"
-            style={{ borderColor: `${GOLD}66` }}
-            dir="rtl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button
-              type="button"
-              onClick={() => setHealthResult(null)}
-              className="absolute start-4 top-4 rounded-full p-1.5 text-slate-500 transition hover:bg-slate-100 hover:text-slate-800"
-              aria-label="إغلاق"
-            >
-              <X className="h-5 w-5" />
-            </button>
-
-            <div className="flex items-start gap-3 pe-8 text-right">
-              {healthResult.overall === 'PASS' ? (
-                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700">
-                  <CheckCircle2 className="h-7 w-7" aria-hidden />
-                </span>
-              ) : (
-                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-rose-100 text-rose-700">
-                  <XCircle className="h-7 w-7" aria-hidden />
-                </span>
-              )}
-              <div>
-                <p className="text-[11px] font-black uppercase tracking-[0.2em]" style={{ color: GOLD }}>
-                  System Health Check
-                </p>
-                <h2 id="system-health-title" className="mt-1 text-xl font-black" style={{ color: FOREST }}>
-                  {healthResult.overall === 'PASS' ? 'النظام سليم بالكامل' : 'فشل فحص دورة الحياة'}
-                </h2>
-                <p className="mt-2 text-sm font-semibold text-slate-600">
-                  {healthResult.summary || healthResult.error || 'نتيجة الفحص الآلي لدورة الرحلة الكاملة'}
-                </p>
-              </div>
-            </div>
-
-            {Array.isArray(healthResult.steps) && healthResult.steps.length > 0 ? (
-              <ul className="mt-6 space-y-2">
-                {healthResult.steps.map((step) => {
-                  const ok = step.status === 'PASS';
-                  const skip = step.status === 'SKIP';
-                  return (
-                    <li
-                      key={`${step.step}-${step.name}`}
-                      className={`rounded-2xl border px-4 py-3 text-right ${
-                        ok
-                          ? 'border-emerald-200 bg-emerald-50/80'
-                          : skip
-                            ? 'border-slate-200 bg-slate-50'
-                            : 'border-rose-200 bg-rose-50'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between gap-3">
-                        <span
-                          className={`shrink-0 rounded-full px-2.5 py-0.5 text-[10px] font-black tracking-wide ${
-                            ok
-                              ? 'bg-emerald-600 text-white'
-                              : skip
-                                ? 'bg-slate-400 text-white'
-                                : 'bg-rose-600 text-white'
-                          }`}
-                        >
-                          {step.status}
-                        </span>
-                        <p className="min-w-0 text-sm font-black text-slate-900">
-                          <span className="ms-1 text-slate-400">{step.step}.</span>
-                          {step.name}
-                        </p>
-                      </div>
-                      {step.detail ? (
-                        <p className="mt-1.5 text-xs font-semibold leading-relaxed text-slate-600">
-                          {step.detail}
-                        </p>
-                      ) : null}
-                    </li>
-                  );
-                })}
-              </ul>
-            ) : healthResult.error ? (
-              <p className="mt-6 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-800">
-                {healthResult.error}
-              </p>
-            ) : null}
-
-            <button
-              type="button"
-              onClick={() => setHealthResult(null)}
-              className="mt-6 w-full rounded-2xl py-3 text-sm font-black text-white transition hover:opacity-95"
-              style={{ backgroundColor: FOREST }}
-            >
-              إغلاق
-            </button>
-          </div>
-        </div>
-      ) : null}
+      <SystemCheckModal open={systemCheckOpen} onClose={() => setSystemCheckOpen(false)} />
     </div>
   );
 }

@@ -6,6 +6,8 @@ import Link from 'next/link';
 
 import { saveItineraryClientLinkAction } from '@/app/actions/itineraryClientActions';
 import { useCrmEmployee } from '@/app/crm/_components/CrmEmployeeProvider';
+import { toast } from '@/lib/crm-toast';
+import { canEditItineraries } from '@/lib/crm-permissions';
 import { resolveVipDestinationStoredValue } from '@/lib/vip-destination-countries';
 import { FeaturesAchievementsModal } from '@/app/crm/itineraries/_components/FeaturesAchievementsModal';
 import { supabase } from '@/lib/supabase';
@@ -37,6 +39,7 @@ import {
   newLocalId,
   type ItineraryDraft,
 } from '@/lib/itinerary-builder-model';
+import { WL_DATE_INPUT } from '@/lib/itinerary-builder-ui';
 import { parseDaysDataFromRow } from '@/lib/public-itinerary';
 
 type ItineraryBuilderWorkspaceProps = {
@@ -50,13 +53,13 @@ const vipCardClass =
 const cardClass = vipCardClass;
 
 /** تسميات قراءة فوق خلفية الكرت الداكن (لوحة التحكم) */
-const labelOnDarkClass = 'mb-1 block text-xs font-bold text-gray-100';
+const labelOnDarkClass = 'mb-1 block text-xs font-bold text-slate-800';
 /** تسميات ذهبية — مركز القيادة والميزانية */
 const goldLabelClass = 'mb-1 block text-xs font-bold text-[#D4AF37]';
 const commandPanelClass = 'rounded-2xl border border-amber-500/20 bg-[#060b14]/70 p-5 ring-1 ring-amber-400/10';
 /** حقول إدخال واضحة التباين (WCAG-friendly) */
 const contrastInputClass =
-  'w-full rounded-xl border border-gray-300 bg-white px-3 py-2.5 text-sm font-bold text-gray-900 placeholder:text-gray-400 outline-none focus:border-gray-400 focus:ring-2 focus:ring-gray-300/60';
+  'w-full rounded-xl border border-gray-300 bg-white px-3 py-2.5 text-sm font-bold text-gray-900 placeholder:text-slate-500 outline-none focus:border-gray-400 focus:ring-2 focus:ring-gray-300/60';
 
 function parseEmployeeIdForPayload(employeeId: string | undefined): number | null {
   if (employeeId == null || !/^\d+$/.test(employeeId)) return null;
@@ -64,7 +67,9 @@ function parseEmployeeIdForPayload(employeeId: string | undefined): number | nul
 }
 
 export default function ItineraryBuilderWorkspace({ itineraryId }: ItineraryBuilderWorkspaceProps) {
-  const { employee } = useCrmEmployee();
+  const { employee, profileAccess } = useCrmEmployee();
+  const canEditItinerary = canEditItineraries(profileAccess);
+  const readOnly = !canEditItinerary;
   const isEditMode = Boolean(itineraryId?.trim());
   const editId = itineraryId?.trim() ?? '';
 
@@ -251,6 +256,10 @@ export default function ItineraryBuilderWorkspace({ itineraryId }: ItineraryBuil
   }
 
   async function saveExistingItinerary() {
+    if (readOnly) {
+      toast.error('صلاحية القراءة فقط — لا يمكن حفظ المسار.');
+      return;
+    }
     if (!supabase || !editId) return;
     if (!draft.customerName.trim() || !draft.title.trim()) {
       setNotice('يرجى إدخال اسم العميل وعنوان الرحلة.');
@@ -279,7 +288,7 @@ export default function ItineraryBuilderWorkspace({ itineraryId }: ItineraryBuil
           draft.linkedClientId || null,
         );
         if (!linkResult.ok) {
-          window.alert(linkResult.error);
+          toast.error(linkResult.error);
           throw new Error(linkResult.error);
         }
       }
@@ -300,6 +309,10 @@ export default function ItineraryBuilderWorkspace({ itineraryId }: ItineraryBuil
   }
 
   async function saveAndGenerateLink() {
+    if (readOnly) {
+      toast.error('صلاحية القراءة فقط — لا يمكن إنشاء مسار.');
+      return;
+    }
     if (!supabase) {
       setNotice('قاعدة البيانات غير مهيأة.');
       return;
@@ -370,7 +383,7 @@ export default function ItineraryBuilderWorkspace({ itineraryId }: ItineraryBuil
           draft.linkedClientId || null,
         );
         if (!linkResult.ok) {
-          window.alert(linkResult.error);
+          toast.error(linkResult.error);
           throw new Error(linkResult.error);
         }
       }
@@ -418,6 +431,10 @@ export default function ItineraryBuilderWorkspace({ itineraryId }: ItineraryBuil
   }
 
   async function saveAsTemplate() {
+    if (readOnly) {
+      toast.error('صلاحية القراءة فقط — لا يمكن حفظ قالب.');
+      return;
+    }
     if (!supabase) {
       setNotice('قاعدة البيانات غير مهيأة.');
       return;
@@ -532,8 +549,8 @@ export default function ItineraryBuilderWorkspace({ itineraryId }: ItineraryBuil
         <header className="mb-6 flex flex-wrap items-center justify-between gap-4 rounded-[1.25rem] border border-amber-500/25 bg-gradient-to-r from-[#0f1c35] to-[#060b14] px-5 py-4 ring-1 ring-amber-400/15">
           <div>
             <p className="text-[10px] font-black uppercase tracking-[0.3em] text-amber-400/80">Wanderloom CRM</p>
-            <h1 className="mt-1 text-xl font-black text-white sm:text-2xl">منشئ المسار الموحّد ✈️</h1>
-            <p className="mt-1 text-xs font-medium text-slate-400">
+            <h1 className="mt-1 text-xl font-black text-slate-900 sm:text-2xl">منشئ المسار الموحّد ✈️</h1>
+            <p className="mt-1 text-xs font-medium text-slate-500">
               مركز قيادة مدمج — الطقس، الوجهة، الميزانية الداخلية، والأيام (stops)
             </p>
           </div>
@@ -547,7 +564,7 @@ export default function ItineraryBuilderWorkspace({ itineraryId }: ItineraryBuil
           </button>
         </header>
         <div className="mb-4">
-          <Link href="/crm/itineraries" className="inline-flex items-center gap-2 rounded-lg px-2 py-1 text-sm text-slate-400 hover:bg-white/5 hover:text-amber-100">
+          <Link href="/crm/itineraries" className="inline-flex items-center gap-2 rounded-lg px-2 py-1 text-sm text-slate-500 hover:bg-white/5 hover:text-amber-100">
             <ArrowRight className="h-4 w-4" />
             الرجوع إلى المسارات
           </Link>
@@ -611,7 +628,13 @@ export default function ItineraryBuilderWorkspace({ itineraryId }: ItineraryBuil
               <span className="text-[10px] font-bold text-amber-800">إلزامي</span>
             </div>
             <div className="flex flex-wrap gap-3">
-              <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-gray-900 shadow-sm">
+              <label
+                className={`path-type-option inline-flex cursor-pointer items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-bold shadow-sm transition ${
+                  draft.tripMode === 'Individual'
+                    ? 'active border-[#D4AF37] bg-[#FEF08A] !text-[#0F172A]'
+                    : 'border-slate-200 bg-white text-gray-900'
+                }`}
+              >
                 <input
                   type="radio"
                   name="tripMode"
@@ -621,9 +644,17 @@ export default function ItineraryBuilderWorkspace({ itineraryId }: ItineraryBuil
                   }}
                   className="accent-slate-900"
                 />
-                رحلة خاصة — Private
+                <span className={draft.tripMode === 'Individual' ? 'font-black text-[#0F172A]' : ''}>
+                  رحلة خاصة — Private
+                </span>
               </label>
-              <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-gray-900 shadow-sm">
+              <label
+                className={`path-type-option inline-flex cursor-pointer items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-bold shadow-sm transition ${
+                  draft.tripMode === 'Group'
+                    ? 'active border-[#D4AF37] bg-[#FEF08A] !text-[#0F172A]'
+                    : 'border-slate-200 bg-white text-gray-900'
+                }`}
+              >
                 <input
                   type="radio"
                   name="tripMode"
@@ -633,7 +664,9 @@ export default function ItineraryBuilderWorkspace({ itineraryId }: ItineraryBuil
                   }}
                   className="accent-slate-900"
                 />
-                رحلة جماعية — Group Tour
+                <span className={draft.tripMode === 'Group' ? 'font-black text-[#0F172A]' : ''}>
+                  رحلة جماعية — Group Tour
+                </span>
               </label>
             </div>
             {draft.tripMode === 'Group' ? (
@@ -682,7 +715,43 @@ export default function ItineraryBuilderWorkspace({ itineraryId }: ItineraryBuil
                   </span>
                   <select
                     value={draft.linkedClientId || ''}
-                    onChange={(e) => patchDraft({ linkedClientId: e.target.value })}
+                    onChange={(e) => {
+                      const nextId = e.target.value;
+                      const client = clients.find((c) => String(c.id) === String(nextId));
+                      const patch: Partial<ItineraryDraft> = { linkedClientId: nextId };
+                      if (client?.name?.trim()) {
+                        patch.customerName = client.name.trim();
+                      }
+                      // Auto-fill destination from client target_trip when empty
+                      void (async () => {
+                        if (!nextId || !supabase || draft.destination.trim()) {
+                          patchDraft(patch);
+                          return;
+                        }
+                        try {
+                          const { data } = await supabase
+                            .from('clients')
+                            .select('target_trip, name')
+                            .eq('id', nextId)
+                            .maybeSingle();
+                          const targetTrip = String(
+                            (data as { target_trip?: unknown } | null)?.target_trip ?? '',
+                          ).trim();
+                          if (targetTrip) {
+                            patch.destination = targetTrip;
+                          }
+                          const nameFromDb = String(
+                            (data as { name?: unknown } | null)?.name ?? '',
+                          ).trim();
+                          if (nameFromDb && !patch.customerName) {
+                            patch.customerName = nameFromDb;
+                          }
+                        } catch (err) {
+                          console.warn('[builder] client dest autofill:', err);
+                        }
+                        patchDraft(patch);
+                      })();
+                    }}
                     className={contrastInputClass}
                     required
                   >
@@ -700,7 +769,7 @@ export default function ItineraryBuilderWorkspace({ itineraryId }: ItineraryBuil
 
           <div className="mt-6 space-y-5 border-t border-amber-500/20 pt-6">
             <div>
-              <h3 className="mb-3 inline-flex items-center gap-2 text-sm font-black text-white">
+              <h3 className="mb-3 inline-flex items-center gap-2 text-sm font-black text-slate-900">
                 <Globe className="h-4 w-4 text-[#D4AF37]" />
                 مركز القيادة
               </h3>
@@ -738,7 +807,7 @@ export default function ItineraryBuilderWorkspace({ itineraryId }: ItineraryBuil
 
             <div className={commandPanelClass}>
               <h3 className="mb-1 text-sm font-black text-[#D4AF37]">تبويب الرئيسية — للعميل VIP</h3>
-              <p className="mb-4 text-[11px] font-semibold text-white/50">
+              <p className="mb-4 text-[11px] font-semibold text-slate-500">
                 الطقس نصي؛ الميزانية والبوردينق والحقيبة تُبنى تلقائياً من الحقول المنظّمة.
               </p>
               <div className="grid grid-cols-1 gap-4">
@@ -757,7 +826,7 @@ export default function ItineraryBuilderWorkspace({ itineraryId }: ItineraryBuil
 
             <div className={commandPanelClass}>
               <h3 className="mb-1 text-sm font-black text-[#D4AF37]">بطاقة الصعود — flight_details</h3>
-              <p className="mb-4 text-[11px] font-semibold text-white/50">
+              <p className="mb-4 text-[11px] font-semibold text-slate-500">
                 تظهر كتذكرة صعود للعميل عند إدخال رقم الرحلة.
               </p>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -876,8 +945,8 @@ export default function ItineraryBuilderWorkspace({ itineraryId }: ItineraryBuil
 
             {draft.tripMode === 'Individual' ? (
               <div className={commandPanelClass}>
-                <h3 className="mb-1 text-sm font-black text-white">الملخص المالي للحجز</h3>
-                <p className="mb-4 text-[11px] font-semibold text-white/50">
+                <h3 className="mb-1 text-sm font-black text-slate-900">الملخص المالي للحجز</h3>
+                <p className="mb-4 text-[11px] font-semibold text-slate-500">
                   الميزانية والمدفوع والمتبقي — للرحلة الخاصة فقط.
                 </p>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -933,7 +1002,7 @@ export default function ItineraryBuilderWorkspace({ itineraryId }: ItineraryBuil
               </div>
             ) : null}
 
-            <p className="rounded-xl border border-amber-500/15 bg-amber-500/5 px-4 py-3 text-[11px] font-semibold text-white/55">
+            <p className="rounded-xl border border-amber-500/15 bg-amber-500/5 px-4 py-3 text-[11px] font-semibold text-slate-500">
               فنادق وتجارب العرض (hotel_details / experiences_details) تُشتق تلقائياً من أيام المسار عند الحفظ.
             </p>
           </div>
@@ -1002,7 +1071,7 @@ export default function ItineraryBuilderWorkspace({ itineraryId }: ItineraryBuil
                 type="date"
                 value={draft.datesFrom}
                 onChange={(e) => patchDraft({ datesFrom: e.target.value })}
-                className={contrastInputClass}
+                className={WL_DATE_INPUT}
               />
             </label>
 
@@ -1012,7 +1081,7 @@ export default function ItineraryBuilderWorkspace({ itineraryId }: ItineraryBuil
                 type="date"
                 value={draft.datesTo}
                 onChange={(e) => patchDraft({ datesTo: e.target.value })}
-                className={contrastInputClass}
+                className={WL_DATE_INPUT}
               />
             </label>
 
@@ -1020,11 +1089,11 @@ export default function ItineraryBuilderWorkspace({ itineraryId }: ItineraryBuil
               <button
                 type="button"
                 onClick={saveAsTemplate}
-                disabled={saving}
+                disabled={saving || readOnly}
                 className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-black text-slate-800 hover:bg-slate-100 disabled:opacity-60 lg:w-auto"
               >
                 <Save className="h-4 w-4" />
-                حفظ كقالب جاهز
+                {readOnly ? 'قراءة فقط' : 'حفظ كقالب جاهز'}
               </button>
             </div>
 
@@ -1032,11 +1101,15 @@ export default function ItineraryBuilderWorkspace({ itineraryId }: ItineraryBuil
               <button
                 type="button"
                 onClick={() => void (isEditMode ? saveExistingItinerary() : saveAndGenerateLink())}
-                disabled={saving}
+                disabled={saving || readOnly}
                 className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-black text-white disabled:opacity-60 lg:w-auto"
               >
                 {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                {isEditMode ? 'حفظ التعديلات' : 'حفظ وتوليد الرابط'}
+                {readOnly
+                  ? 'قراءة فقط'
+                  : isEditMode
+                    ? 'حفظ التعديلات'
+                    : 'حفظ وتوليد الرابط'}
               </button>
             </div>
           </div>
@@ -1060,7 +1133,7 @@ export default function ItineraryBuilderWorkspace({ itineraryId }: ItineraryBuil
               <button
                 type="button"
                 onClick={handleWhatsAppShare}
-                className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-green-500 px-5 py-3.5 text-base font-black text-white shadow-[0_8px_24px_rgba(34,197,94,0.35)] transition hover:bg-green-600 active:scale-[0.99] sm:py-4"
+                className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-green-500 px-5 py-3.5 text-base font-black text-slate-900 shadow-[0_8px_24px_rgba(34,197,94,0.35)] transition hover:bg-green-600 active:scale-[0.99] sm:py-4"
               >
                 <MessageCircle className="h-5 w-5 shrink-0" strokeWidth={2.25} aria-hidden />
                 إرسال الرابط للعميل عبر واتساب 💬
@@ -1073,11 +1146,11 @@ export default function ItineraryBuilderWorkspace({ itineraryId }: ItineraryBuil
         <section className={`${cardClass} mb-6 space-y-4`}>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h2 className="inline-flex items-center gap-2 text-lg font-black text-gray-100">
+              <h2 className="inline-flex items-center gap-2 text-lg font-black text-slate-800">
                 <CalendarDays className="h-5 w-5 text-[#D4AF37]" />
                 بناء الأيام — Wanderlog
               </h2>
-              <p className="mt-1 text-xs font-medium text-white/50">
+              <p className="mt-1 text-xs font-medium text-slate-500">
                 مصدر الأنشطة: جدول places فقط (بنك الأماكن)
               </p>
             </div>

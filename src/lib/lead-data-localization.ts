@@ -45,18 +45,27 @@ const LEAD_VALUE_AR: Record<string, string> = {
   star5: '5 نجوم',
   ryokan: 'ريوكان',
 
-  // مصدر التعارف
+  // مصدر التعارف (legacy form codes + leads.lead_source)
   instagram: 'إنستغرام',
+  instagram_reel: 'إنستغرام',
   tiktok: 'تيك توك',
   snap: 'سناب شات',
+  snapchat: 'سناب شات',
   friend: 'توصية من معارف',
+  referral: 'توصية من عميل',
   google: 'بحث / جوجل',
+  website: 'الموقع الإلكتروني',
   event: 'فعالية أو لقاء',
   other: 'أخرى',
+
+  // أسلوب الرحلة (canonical)
+  Group: 'جماعية',
+  Private: 'خاصة',
 
   // نوع النموذج
   trip_log: 'سجّل رحلتك',
   contact: 'تواصل',
+  group_trip: 'رحلة جماعية',
 };
 
 export function translateLeadData(key: string | null | undefined): string {

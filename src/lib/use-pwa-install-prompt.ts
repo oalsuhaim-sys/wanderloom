@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 
 export type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
@@ -55,23 +55,31 @@ export function resolvePwaFallbackToastMessage(): string {
   return PWA_TOAST_BROWSER_MENU;
 }
 
+function subscribeStandaloneDisplay(onStoreChange: () => void) {
+  const mq = window.matchMedia('(display-mode: standalone)');
+  mq.addEventListener('change', onStoreChange);
+  return () => mq.removeEventListener('change', onStoreChange);
+}
+
 /**
  * Native PWA install — captures `beforeinstallprompt`; button stays visible always
  * (hidden only when already running as installed standalone app).
  */
 export function usePwaInstallPrompt() {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
-  const [isStandalone, setIsStandalone] = useState(false);
+  /** Prefer external store over setState-in-effect so SSR/hydration stays correct. */
+  const isStandalone = useSyncExternalStore(
+    subscribeStandaloneDisplay,
+    isStandaloneDisplay,
+    () => false
+  );
   const [busy, setBusy] = useState(false);
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    if (isStandaloneDisplay()) {
-      setIsStandalone(true);
-      return;
-    }
+    if (isStandalone) return;
 
     const onBeforeInstall = (event: Event) => {
       event.preventDefault();
@@ -95,7 +103,7 @@ export function usePwaInstallPrompt() {
       window.removeEventListener('appinstalled', onInstalled);
       if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
     };
-  }, []);
+  }, [isStandalone]);
 
   const showFallbackToast = useCallback((message: string) => {
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current);

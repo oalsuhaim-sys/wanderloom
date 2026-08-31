@@ -15,7 +15,7 @@ export type CrmReportsKpis = {
 
 export type CrmRevenueBreakdown = {
   privateTrips: number;
-  groupTours: number;
+  groupTrips: number;
 };
 
 export type CrmPaidTransactionRow = {

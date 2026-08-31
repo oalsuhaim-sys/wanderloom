@@ -1,12 +1,17 @@
 'use client';
 
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Loader2, X } from 'lucide-react';
-
 import GroupManagement from '@/app/itinerary/_components/GroupManagement';
 import { parseRegisteredClientIds } from '@/lib/fellowship-matching';
 
+import { useCrmEmployee } from '@/app/crm/_components/CrmEmployeeProvider';
 import { supabase } from '@/lib/supabase';
+import {
+  filterGroupTripsByLeaderScope,
+  type PartnerAssignedScope,
+  shouldApplyAssignedScope,
+} from '@/lib/crm-assigned-scope';
 import {
   fetchGroupTripLeaderOptions,
   groupTripLeaderRoleEmoji,
@@ -148,6 +153,8 @@ function normalizeGroupTripRow(raw: GroupTripRow): GroupTripRow {
     leader_name: tripText(raw?.leader_name) || null,
     registered_client_ids: parseRegisteredClientIds(raw?.registered_client_ids),
     max_seats: typeof raw?.max_seats === 'number' ? raw.max_seats : Number(raw?.max_seats) || 0,
+    booked_seats:
+      typeof raw?.booked_seats === 'number' ? raw.booked_seats : Number(raw?.booked_seats) || 0,
   };
 }
 
@@ -230,7 +237,9 @@ function CardsSkeleton() {
 }
 
 export default function AdminGroupsPage() {
+  const { profileAccess, authEmail } = useCrmEmployee();
   const [trips, setTrips] = useState<GroupTripRow[]>([]);
+  const [assignedScope, setAssignedScope] = useState<PartnerAssignedScope | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [banner, setBanner] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
@@ -310,6 +319,46 @@ export default function AdminGroupsPage() {
     void fetchTrips();
     void fetchLeaders();
   }, [fetchTrips, fetchLeaders]);
+
+  useEffect(() => {
+    if (!shouldApplyAssignedScope(profileAccess) || !supabase || !authEmail) {
+      setAssignedScope(null);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      const email = authEmail.trim().toLowerCase();
+      const [expertsRes, leadersRes] = await Promise.all([
+        supabase.from('experts').select('id, referral_code').ilike('email', email).limit(5),
+        supabase.from('leaders').select('id, referral_code').ilike('email', email).limit(5),
+      ]);
+      if (cancelled) return;
+      const referralCodes: string[] = [];
+      const leaderIds: string[] = [];
+      const expertIds: string[] = [];
+      for (const row of expertsRes.data ?? []) {
+        const id = String((row as { id?: unknown }).id ?? '').trim();
+        if (id) expertIds.push(id);
+        const code = String((row as { referral_code?: unknown }).referral_code ?? '').trim();
+        if (code) referralCodes.push(code);
+      }
+      for (const row of leadersRes.data ?? []) {
+        const id = String((row as { id?: unknown }).id ?? '').trim();
+        if (id) leaderIds.push(id);
+        const code = String((row as { referral_code?: unknown }).referral_code ?? '').trim();
+        if (code) referralCodes.push(code);
+      }
+      setAssignedScope({ referralCodes, leaderIds, expertIds });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [profileAccess, authEmail]);
+
+  const visibleTrips = useMemo(() => {
+    if (!shouldApplyAssignedScope(profileAccess) || !assignedScope) return trips;
+    return filterGroupTripsByLeaderScope(trips, assignedScope);
+  }, [trips, profileAccess, assignedScope]);
 
   function openAddModal() {
     setFormData(initialFormState);
@@ -506,21 +555,21 @@ export default function AdminGroupsPage() {
       fallbackTitle="تعذّر تحميل صفحة القروبات"
       fallbackMessage="حدث خطأ أثناء عرض الرحلات. حدّث الصفحة أو تحقق من اتصال Supabase."
     >
-    <div className="min-h-screen bg-[#F6F4F0] p-6 font-sans sm:p-8" dir="rtl">
+    <div className="min-h-screen bg-slate-50 p-4 font-sans sm:p-6" dir="rtl">
       <div className="mx-auto max-w-6xl">
-        <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
+        <div className="mb-8 flex flex-wrap items-start justify-between gap-6">
         <div>
-            <h1 className="text-2xl font-extrabold text-[#1A3B2A] sm:text-3xl">
+            <h1 className="text-2xl font-semibold text-slate-900 sm:text-3xl">
               إدارة رحلات القروبات
             </h1>
-            <p className="mt-2 text-sm font-semibold text-gray-500">
+            <p className="mt-2 text-sm text-slate-500">
               سعة القروب، حالة التسجيل، والإيرادات المتوقعة في نظرة واحدة.
             </p>
         </div>
           <button
             type="button"
             onClick={openAddModal}
-            className="rounded-xl bg-[#1E2720] px-6 py-3 text-sm font-bold text-[#D4AF37] shadow-md transition hover:bg-[#2A362C]"
+            className="rounded-xl bg-slate-900 px-6 py-3 text-sm font-medium text-white shadow-sm transition hover:opacity-90 active:scale-[0.98]"
           >
           + إضافة قروب جديد
         </button>
@@ -553,22 +602,28 @@ export default function AdminGroupsPage() {
 
         {isLoading ? (
           <CardsSkeleton />
-        ) : trips.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-gray-300 bg-white px-8 py-16 text-center">
-            <p className="text-base font-bold text-gray-600">لا توجد رحلات قروبات في قاعدة البيانات.</p>
-            <button
-              type="button"
-              onClick={openAddModal}
-              className="mt-4 rounded-xl bg-[#1E2720] px-5 py-2.5 text-sm font-bold text-[#D4AF37]"
-            >
-              إضافة أول رحلة
-            </button>
+        ) : visibleTrips.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-slate-200 bg-white px-8 py-16 text-center shadow-sm">
+            <p className="text-base font-medium text-slate-600">
+              {shouldApplyAssignedScope(profileAccess) && trips.length > 0
+                ? 'لا توجد رحلات مجموعات مرتبطة بحسابك حالياً.'
+                : 'لا توجد رحلات قروبات في قاعدة البيانات.'}
+            </p>
+            {!shouldApplyAssignedScope(profileAccess) ? (
+              <button
+                type="button"
+                onClick={openAddModal}
+                className="mt-4 rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-medium text-white transition hover:opacity-90 active:scale-[0.98]"
+              >
+                إضافة أول رحلة
+              </button>
+            ) : null}
           </div>
         ) : (
           <>
-            <GroupTripsMetrics trips={trips} />
+            <GroupTripsMetrics trips={visibleTrips} />
             <div dir="rtl" className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
-              {(trips ?? []).map((trip) => {
+              {(visibleTrips ?? []).map((trip) => {
                 const dateLabels = tripDateLabels(trip);
                 return (
                   <GroupTripCard
@@ -585,12 +640,12 @@ export default function AdminGroupsPage() {
               })}
             </div>
 
-            <div className="mt-6 flex items-center justify-between rounded-xl border border-gray-200 bg-white px-5 py-3 text-xs font-bold text-gray-500 shadow-sm">
-              <span>{trips.length} رحلة</span>
+            <div className="mt-6 flex items-center justify-between rounded-xl border border-slate-100 bg-white px-5 py-3 text-xs font-medium text-slate-500 shadow-sm">
+              <span>{visibleTrips.length} رحلة</span>
               <button
                 type="button"
                 onClick={() => void fetchTrips()}
-                className="inline-flex items-center gap-1.5 text-[#1c4532] hover:underline"
+                className="inline-flex items-center gap-1.5 text-slate-700 transition hover:text-slate-900"
               >
                 <Loader2 className="h-3.5 w-3.5" aria-hidden />
                 تحديث
@@ -602,14 +657,14 @@ export default function AdminGroupsPage() {
 
       {fellowshipTrip ? (
         <div
-          className="fixed inset-0 z-[110] flex items-end justify-center bg-black/75 p-0 backdrop-blur-sm sm:items-center sm:p-4"
+          className="fixed inset-0 z-[110] flex items-center justify-center bg-black/75 p-0 backdrop-blur-sm sm:p-4"
           role="dialog"
           aria-modal="true"
           aria-label="ميزة التطابق البشري"
           onClick={() => setFellowshipTrip(null)}
         >
           <div
-            className="w-full max-w-4xl p-0 sm:p-2"
+            className="w-[95%] max-w-4xl p-0 sm:p-2"
             onClick={(e) => e.stopPropagation()}
             onMouseDown={(e) => e.stopPropagation()}
           >
@@ -633,7 +688,7 @@ export default function AdminGroupsPage() {
 
       {isModalOpen ? (
         <div
-          className="fixed inset-0 z-[100] flex items-end justify-center bg-black/60 p-0 backdrop-blur-sm sm:items-center sm:p-4"
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-0 backdrop-blur-sm sm:p-4"
           role="dialog"
           aria-modal="true"
           aria-labelledby="group-trip-modal-title"
@@ -641,7 +696,7 @@ export default function AdminGroupsPage() {
         >
           <div
             dir="rtl"
-            className="flex max-h-[92dvh] w-full max-w-3xl flex-col overflow-hidden rounded-t-3xl border border-[#1A3B2A] bg-[#0B1912] shadow-2xl sm:max-h-[88vh] sm:rounded-2xl"
+            className="flex max-h-[92dvh] w-[95%] max-w-3xl flex-col overflow-hidden rounded-t-3xl border border-[#1A3B2A] bg-[#0B1912] shadow-2xl sm:max-h-[88vh] sm:rounded-2xl"
             onClick={(e) => e.stopPropagation()}
             onMouseDown={(e) => e.stopPropagation()}
           >
@@ -1078,6 +1133,7 @@ export default function AdminGroupsPage() {
                   includesAr={formData.includes_ar}
                   excludesAr={formData.excludes_ar}
                   defaultLeaderId={formData.leader_id}
+                  tripStartDate={selectedDates.start}
                 />
               </div>
             </div>

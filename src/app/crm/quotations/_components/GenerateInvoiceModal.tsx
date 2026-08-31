@@ -105,14 +105,14 @@ export function GenerateInvoiceModal({ quotation, onClose, onCreated }: Generate
 
   return (
     <div
-      className="fixed inset-0 z-[70] flex items-end justify-center bg-black/50 p-0 backdrop-blur-sm sm:items-center sm:p-4"
+      className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-0 backdrop-blur-sm sm:p-4"
       role="dialog"
       aria-modal="true"
       dir="rtl"
       onClick={onClose}
     >
       <div
-        className="flex max-h-[92dvh] w-full max-w-lg flex-col overflow-hidden rounded-t-3xl border border-[#cda04c]/35 bg-gradient-to-b from-[#0a1410] to-[#0f1e16] shadow-2xl sm:rounded-3xl"
+        className="flex max-h-[90vh] w-[95%] max-w-lg flex-col overflow-hidden rounded-t-3xl border border-[#cda04c]/35 bg-gradient-to-b from-[#0a1410] to-[#0f1e16] shadow-2xl sm:rounded-3xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-3 border-b border-[#cda04c]/20 px-5 py-4">
@@ -194,7 +194,7 @@ export function GenerateInvoiceModal({ quotation, onClose, onCreated }: Generate
             <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
               <div>
                 <p className="mb-2 text-[11px] font-black text-white/70">نوع الدفعة</p>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                   {(['deposit', 'full'] as const).map((option) => {
                     const selected = type === option;
                     return (

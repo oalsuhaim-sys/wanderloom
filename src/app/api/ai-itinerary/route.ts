@@ -135,13 +135,18 @@ export async function POST(request: NextRequest) {
   const clientDNA = body.clientDNA ?? {};
 
   const apiKey = (process.env.OPENAI_API_KEY ?? '').trim();
+  console.log('[ai-itinerary] API Key Status:', apiKey ? 'EXISTS' : 'MISSING');
+
   if (!apiKey) {
-    return NextResponse.json({
-      ok: true,
-      simulated: true,
-      suggestions: fallbackSuggestions(destination),
-      warning: 'OPENAI_API_KEY غير مضبوط — تم إرجاع اقتراحات احتياطية.',
-    });
+    console.error('[ai-itinerary] OPENAI_API_KEY is missing from server environment');
+    return NextResponse.json(
+      {
+        ok: false,
+        error:
+          'مفتاح الذكاء الاصطناعي غير متوفر حالياً. يرجى إضافته في إعدادات Vercel / .env',
+      },
+      { status: 500 },
+    );
   }
 
   try {
@@ -150,6 +155,8 @@ export async function POST(request: NextRequest) {
       (process.env.OPENAI_ITINERARY_MODEL ?? '').trim() ||
       (process.env.OPENAI_MODEL ?? '').trim() ||
       'gpt-4o-mini';
+
+    console.log('[ai-itinerary] requesting model:', model, 'destination:', destination);
 
     const completion = await openai.chat.completions.create({
       model,
@@ -172,13 +179,22 @@ export async function POST(request: NextRequest) {
     let parsed: unknown = {};
     try {
       parsed = JSON.parse(raw);
-    } catch {
+    } catch (parseErr) {
+      console.error('[ai-itinerary] JSON parse failed:', parseErr, 'raw:', raw.slice(0, 200));
       parsed = {};
     }
 
     let suggestions = parseSuggestions(parsed);
     if (!suggestions.length) {
+      console.warn('[ai-itinerary] empty parse — using local fallback suggestions');
       suggestions = fallbackSuggestions(destination);
+      return NextResponse.json({
+        ok: true,
+        simulated: true,
+        model,
+        suggestions,
+        warning: 'تعذر تفسير رد OpenAI — تم عرض اقتراحات احتياطية.',
+      });
     }
 
     return NextResponse.json({
@@ -188,18 +204,34 @@ export async function POST(request: NextRequest) {
       suggestions,
     });
   } catch (error) {
-    console.error('[ai-itinerary]', error);
+    console.error('OpenAI Error:', error);
+    const message =
+      error instanceof Error ? error.message : 'تعذر الاتصال بـ OpenAI';
+    const lower = message.toLowerCase();
+    const isAuthKeyIssue =
+      /api[\s_-]?key|unauthorized|authentication|invalid.?key|401|incorrect api key/.test(
+        lower,
+      );
+
+    if (isAuthKeyIssue) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error:
+            'مفتاح الذكاء الاصطناعي غير متوفر حالياً. يرجى إضافته في إعدادات Vercel / .env',
+        },
+        { status: 500 },
+      );
+    }
+
     return NextResponse.json(
       {
-        ok: true,
-        simulated: true,
+        ok: false,
+        error: `تعذر الاتصال بخدمة الذكاء الاصطناعي: ${message}`,
         suggestions: fallbackSuggestions(destination),
-        warning:
-          error instanceof Error
-            ? `تعذر الاتصال بـ OpenAI: ${error.message}`
-            : 'تعذر الاتصال بـ OpenAI',
+        simulated: true,
       },
-      { status: 200 },
+      { status: 502 },
     );
   }
 }

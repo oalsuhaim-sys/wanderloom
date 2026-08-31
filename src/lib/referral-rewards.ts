@@ -3,19 +3,44 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { isQuotationStatusApproved, normalizeQuotationId } from '@/lib/crm-quotations';
 import {
   canonicalizeReferralCode,
+  normalizeAffiliateRef,
   referralCodeLookupVariants,
 } from '@/lib/referral-url';
+import { resolveCommissionRate } from '@/lib/partner-commission';
 import { addClientWalletTransaction } from '@/lib/vip-wallet-ledger';
 
-/** مكافأة المحفظة للمُحيل عند تأكيد الحجز */
+/** مكافأة المحفظة للمُحيل عند تأكيد الحجز (عروض الأسعار) */
 export const REFERRAL_REWARD_AMOUNT_SAR = 500;
+
+/** مكافأة إحالة عند موافقة طلب مجموعة وترحيله للعملاء */
+export const REFERRAL_APPROVAL_BONUS_SAR = 150;
 
 export type ReferralRewardResult = {
   processed: boolean;
   reason?: string;
   referrerId?: string;
   amount?: number;
+  referrerRole?: 'leader' | 'expert' | 'client';
 };
+
+export type PartnerReferrerRole = 'leader' | 'expert';
+
+/** Extract referral code from lead column or final_thoughts note. */
+export function extractReferralCodeFromLead(
+  lead: Record<string, unknown> | null | undefined,
+): string | null {
+  if (!lead) return null;
+  const direct = normalizeAffiliateRef(
+    String(lead.referral_code ?? lead.referralCode ?? '').trim(),
+  );
+  if (direct) return direct;
+
+  const thoughts = String(lead.final_thoughts ?? '');
+  const fromNotes =
+    /كود الإحالة:\s*([A-Za-z0-9][A-Za-z0-9_-]{1,62})/i.exec(thoughts)?.[1] ??
+    /referral[_ ]?code[:\s]+([A-Za-z0-9][A-Za-z0-9_-]{1,62})/i.exec(thoughts)?.[1];
+  return normalizeAffiliateRef(fromNotes);
+}
 
 export function isQuotationReferralTriggerStatus(raw: unknown): boolean {
   const s = String(raw ?? '').trim().toLowerCase();
@@ -72,6 +97,201 @@ async function resolveReferralCodeForQuotation(
   if (used) return used;
 
   return null;
+}
+
+async function findPartnerReferrerByCode(
+  supabase: SupabaseClient,
+  code: string,
+): Promise<{
+  id: string;
+  role: PartnerReferrerRole;
+  pending_commission: number;
+  commission_rate: number;
+} | null> {
+  const normalized = normalizeReferralCode(code);
+  if (!normalized) return null;
+  const variants = referralCodeLookupVariants(normalized);
+
+  for (const role of ['leader', 'expert'] as const) {
+    const table = role === 'leader' ? 'leaders' : 'experts';
+    for (const variant of variants) {
+      let result = await supabase
+        .from(table)
+        .select('id, referral_code, pending_commission, commission_rate')
+        .eq('referral_code', variant)
+        .maybeSingle();
+
+      if (
+        result.error &&
+        /commission_rate|pending_commission|column|schema cache|does not exist/i.test(
+          result.error.message ?? '',
+        )
+      ) {
+        result = await supabase
+          .from(table)
+          .select('id, referral_code')
+          .eq('referral_code', variant)
+          .maybeSingle();
+      }
+
+      if (result.error) {
+        if (/column|schema cache|does not exist/i.test(result.error.message ?? '')) {
+          break;
+        }
+        throw result.error;
+      }
+
+      const row = result.data as Record<string, unknown> | null;
+      const id = String(row?.id ?? '').trim();
+      if (!id) continue;
+
+      return {
+        id,
+        role,
+        pending_commission: Number(row?.pending_commission ?? 0) || 0,
+        commission_rate: resolveCommissionRate(row?.commission_rate),
+      };
+    }
+  }
+
+  return null;
+}
+
+async function creditPartnerPendingCommission(
+  supabase: SupabaseClient,
+  referrer: {
+    id: string;
+    role: PartnerReferrerRole;
+    pending_commission: number;
+  },
+  amount: number,
+  description: string,
+): Promise<boolean> {
+  const table = referrer.role === 'leader' ? 'leaders' : 'experts';
+
+  // Insert ledger row first — used for idempotency and Smart Wallet "آخر الحركات"
+  const { error: txError } = await supabase.from('wallet_transactions').insert({
+    partner_id: referrer.id,
+    partner_type: referrer.role,
+    amount,
+    status: 'pending',
+    description,
+  });
+
+  if (txError) {
+    console.warn('[referral-approval] wallet_transactions insert failed:', txError.message);
+    return false;
+  }
+
+  const nextPending = Math.max(0, referrer.pending_commission + amount);
+  const { error: updateError } = await supabase
+    .from(table)
+    .update({ pending_commission: nextPending })
+    .eq('id', referrer.id);
+
+  if (updateError) {
+    console.warn(
+      '[referral-approval] pending_commission update failed:',
+      updateError.message,
+    );
+    // Transaction row already exists; balance can be reconciled later
+  }
+
+  return true;
+}
+
+/**
+ * Credits leader/expert pending wallet (or client VIP wallet) when a referred
+ * group lead is approved and converted to a client.
+ */
+export async function processReferralCommissionOnLeadApproval(
+  supabase: SupabaseClient,
+  input: {
+    referralCode: string | null | undefined;
+    clientId: string | number;
+    clientName: string;
+    leadId?: string | null;
+  },
+): Promise<ReferralRewardResult> {
+  const code = normalizeAffiliateRef(input.referralCode);
+  if (!code) return { processed: false, reason: 'no_referral_code' };
+
+  const clientId = String(input.clientId ?? '').trim();
+  const clientName = String(input.clientName ?? '').trim() || 'عميل';
+  const leadId = String(input.leadId ?? '').trim();
+  const amount = REFERRAL_APPROVAL_BONUS_SAR;
+  const leadTag = leadId ? ` [lead:${leadId}]` : '';
+  const description = `عمولة إحالة عن انضمام العميل: ${clientName}${leadTag}`;
+
+  // Idempotency: skip if this lead already generated a commission row
+  if (leadId) {
+    const { data: existing } = await supabase
+      .from('wallet_transactions')
+      .select('id')
+      .ilike('description', `%[lead:${leadId}]%`)
+      .limit(1);
+    if (existing && existing.length > 0) {
+      return { processed: false, reason: 'already_credited' };
+    }
+  }
+
+  const partner = await findPartnerReferrerByCode(supabase, code);
+  if (partner) {
+    const credited = await creditPartnerPendingCommission(
+      supabase,
+      partner,
+      amount,
+      description,
+    );
+    if (!credited) {
+      return { processed: false, reason: 'wallet_write_failed' };
+    }
+    return {
+      processed: true,
+      referrerId: partner.id,
+      referrerRole: partner.role,
+      amount,
+    };
+  }
+
+  // Fallback: client-owned referral code → VIP wallet credit
+  const bookingClientId = /^\d+$/.test(clientId) ? Number(clientId) : null;
+  const referrerClient = await findReferrerByCode(supabase, code, bookingClientId);
+  if (!referrerClient) {
+    return { processed: false, reason: 'referrer_not_found' };
+  }
+
+  // Client ledger idempotency via description scan
+  if (leadId) {
+    const { data: clientDup } = await supabase
+      .from('wallet_transactions')
+      .select('id')
+      .eq('client_id', referrerClient.id)
+      .ilike('description', `%[lead:${leadId}]%`)
+      .limit(1);
+    if (clientDup && clientDup.length > 0) {
+      return { processed: false, reason: 'already_credited' };
+    }
+  }
+
+  try {
+    await addClientWalletTransaction(
+      supabase,
+      String(referrerClient.id),
+      amount,
+      description,
+    );
+  } catch (walletError) {
+    console.error('[referral-approval] client wallet credit failed:', walletError);
+    return { processed: false, reason: 'client_wallet_failed' };
+  }
+
+  return {
+    processed: true,
+    referrerId: String(referrerClient.id),
+    referrerRole: 'client',
+    amount,
+  };
 }
 
 async function findReferrerByCode(

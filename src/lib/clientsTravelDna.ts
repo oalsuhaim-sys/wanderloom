@@ -72,11 +72,20 @@ export type VipClientProfile = {
   profile_url: string
   total_spent: number
   total_profit: number
+  /** CLV من عمود lifetime_value (أو total_spent كاحتياطي حقيقي) */
+  lifetime_value: number
+  /** تسمية شريحة اختيارية من عمود tier النصي */
+  tier_label: string
+  /** حرارة التفاعل: active | warm | cold */
+  engagement_status: 'active' | 'warm' | 'cold' | null
+  /** travel_dna الخام من قاعدة البيانات (مصفوفة أو كائن) */
+  travel_dna: unknown
   vip_tier: VipSpendingTier
   sales_stage: string
   used_code: string
   tags: string[]
   target_trip: string
+  created_at?: string | null
 }
 
 export const CLIENT_DNA_ACTIVITY_OPTIONS: { value: string; label: string }[] = [
@@ -112,9 +121,13 @@ export function formatDnaInterests(interests: string[]): string {
 
 export function activityLevelBadgeClass(level: string): string {
   const s = level.trim()
-  if (s.includes('استرخاء')) return 'border-emerald-200/80 bg-emerald-50 text-emerald-900'
-  if (s.includes('مغامرة') || s.includes('نشاط')) return 'border-orange-200/80 bg-orange-50 text-orange-900'
-  return 'border-[#d4af37]/35 bg-[#d4af37]/10 text-[#1c3d27]'
+  if (s.includes('استرخاء')) {
+    return 'border-emerald-200/80 bg-emerald-50 text-emerald-900 dark:border-emerald-800/50 dark:bg-emerald-950/40 dark:text-emerald-300'
+  }
+  if (s.includes('مغامرة') || s.includes('نشاط')) {
+    return 'border-orange-200/80 bg-orange-50 text-orange-900 dark:border-orange-800/50 dark:bg-orange-950/30 dark:text-orange-300'
+  }
+  return 'border-[#D4AF37]/35 bg-[#D4AF37]/10 text-[#1c3d27] dark:text-[#D4AF37]'
 }
 
 export type ClientDnaAdvancedFields = {
@@ -213,12 +226,12 @@ export const CLIENT_INFLUENCER_COLUMNS =
   'is_influencer, platforms, influencer_followers, content_focus, influencer_commission, profile_url' as const
 
 /** الأعمدة الأساسية التي يقرأها normalizeVipClient — صراحةً بدل select('*') */
-const CLIENT_SELECT_CORE =
+export const CLIENT_SELECT_CORE =
   'id, name, phone_wa, email, birth_date, flight_seat, food_allergies, favorite_drink, hotel_preference, passport_expiry, flight_preferences, hotel_preferences, dietary, secret_notes, dna_interests, dna_special_requests, dna_activity_level, travel_dna, created_at, client_type, client_tier, total_trips, referrals_count, referral_code, ref_code, lead_source, is_leader, sales_stage, used_code, target_trip, tags'
 
 /** عمود Select الموحّد لقائمة العملاء — يغطي كل ما يحتاجه normalizeVipClient فقط */
 export const CLIENT_LIST_SELECT =
-  `${CLIENT_SELECT_CORE}, ${CLIENT_INFLUENCER_COLUMNS}, total_spent, total_profit, vip_tier, wallet_balance, onboarding_completed`
+  `${CLIENT_SELECT_CORE}, ${CLIENT_INFLUENCER_COLUMNS}, total_spent, total_profit, lifetime_value, engagement_status, tier, vip_tier, wallet_balance, onboarding_completed`
 
 function parseBool(raw: unknown): boolean {
   if (raw === true || raw === 1 || raw === '1' || raw === 'true') return true
@@ -300,10 +313,14 @@ export function resolveClientTargetTrip(raw: Record<string, unknown>): string {
 /** توحيد صف `clients` من أعمدة VIP أو الحقول القديمة + travel_dna */
 export function normalizeVipClient(raw: Record<string, unknown>): VipClientProfile | null {
   const id = raw.id != null ? String(raw.id) : ''
-  const dna = parseTravelDnaForm(raw.travel_dna)
-  const name = pick(raw, ['name', 'full_name'])
-  if (!id || !name) return null
+  if (!id) return null
 
+  const dna = parseTravelDnaForm(raw.travel_dna)
+  // Never drop a real clients row from the directory — phone fallback prevents "ghost" inserts
+  const name =
+    pick(raw, ['name', 'full_name']) ||
+    pick(raw, ['phone_wa']) ||
+    `ضيف #${id}`
   const drink =
     pick(raw, ['favorite_drink']) ||
     dna.drink_coffee.trim()
@@ -352,14 +369,31 @@ export function normalizeVipClient(raw: Record<string, unknown>): VipClientProfi
     platforms: pickText(raw, ['platforms', 'platform', 'social_platforms']),
     content_focus: pickText(raw, ['content_focus', 'content_niche', 'content', 'niche', 'focus']),
     profile_url: pick(raw, ['profile_url']),
-    total_spent: parseTotalSpent(raw.total_spent),
+    total_spent: parseTotalSpent(raw.total_spent ?? raw.lifetime_value),
     total_profit: parseTotalProfit(raw.total_profit ?? raw.total_spent),
-    vip_tier: normalizeVipSpendingTier(raw.vip_tier, raw.total_profit ?? raw.total_spent),
+    lifetime_value: parseTotalSpent(raw.lifetime_value ?? raw.total_spent),
+    tier_label: pick(raw, ['tier']).replace(/regular/i, '').trim(),
+    engagement_status: normalizeEngagementStatusField(raw.engagement_status),
+    travel_dna: raw.travel_dna ?? null,
+    vip_tier: normalizeVipSpendingTier(raw.vip_tier, raw.total_profit ?? raw.total_spent ?? raw.lifetime_value),
     sales_stage: pick(raw, ['sales_stage']),
     used_code: pick(raw, ['used_code']),
     tags: parseClientTags(raw.tags),
     target_trip: resolveClientTargetTrip(raw),
+    created_at: raw.created_at != null ? String(raw.created_at) : null,
   }
+}
+
+function normalizeEngagementStatusField(
+  raw: unknown,
+): 'active' | 'warm' | 'cold' | null {
+  const s = String(raw ?? '')
+    .trim()
+    .toLowerCase()
+  if (s === 'active' || s === 'نشط') return 'active'
+  if (s === 'warm' || s === 'دافئ') return 'warm'
+  if (s === 'cold' || s === 'بارد') return 'cold'
+  return null
 }
 
 export function buildClientInsertPayload(fields: {

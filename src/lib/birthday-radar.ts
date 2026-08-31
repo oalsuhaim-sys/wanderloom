@@ -35,8 +35,14 @@ export function getDaysUntilRecurringDate(dateRaw: string, today: Date): number 
   return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 }
 
-export function getDaysUntilBirthday(birthDateRaw: string, today: Date): number | null {
+export function getDaysUntilBirthday(birthDateRaw: string, today: Date = new Date()): number | null {
   return getDaysUntilRecurringDate(birthDateRaw, today);
+}
+
+/** True when the next birthday falls within the next `horizonDays` (inclusive). */
+export function isBirthdaySoon(birthDateRaw: string, horizonDays = 7, today: Date = new Date()): boolean {
+  const daysLeft = getDaysUntilBirthday(birthDateRaw, today);
+  return daysLeft !== null && daysLeft >= 0 && daysLeft <= horizonDays;
 }
 
 export function filterUpcomingBirthdays(

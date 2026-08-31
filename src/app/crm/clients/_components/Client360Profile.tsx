@@ -1,29 +1,37 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
-import Link from 'next/link';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import {
   Calendar,
+  CheckCircle2,
+  FileText,
   Loader2,
   Mail,
   MapPin,
+  MessageCircle,
   Phone,
   Plane,
+  Plus,
   Receipt,
+  StickyNote,
   Wallet,
+  type LucideIcon,
 } from 'lucide-react';
 
+import {
+  addClientActivityNoteAction,
+  fetchClientActivityAction,
+} from '@/app/actions/clientActivityActions';
 import { getClientFinancialHubAction } from '@/app/actions/clientFinancialActions';
 import type { ClientFinancialHubData } from '@/lib/client-financial-hub';
+import type { ClientActivityLog, ClientActivityType } from '@/lib/client-activity-types';
 import type { UnifiedTripRow } from '@/lib/client-trips-crm';
-import {
-  formatInvoiceAmount,
-  INVOICE_STATUS_LABEL,
-  type InvoiceRow,
-} from '@/lib/crm-invoices';
-import { formatShortArabicDate } from '@/lib/public-itinerary';
 import { formatWalletAmount } from '@/lib/vip-wallet-ledger';
-import VipSpendingTierBadge from '@/components/VipSpendingTierBadge';
+import {
+  normalizeVipSpendingTier,
+  vipSpendingTierLabel,
+} from '@/lib/vip-spending-tier';
+import { toast } from '@/lib/crm-toast';
 
 type Client360ProfileProps = {
   clientId: string;
@@ -40,15 +48,16 @@ type Client360ProfileProps = {
   footer?: ReactNode;
 };
 
-type TimelineItem = {
-  id: string;
-  kind: 'trip' | 'payment' | 'invoice';
-  title: string;
-  subtitle: string;
-  date: string | null;
-  href: string | null;
-  amountLabel?: string;
+type TimelineTone = 'emerald' | 'navy' | 'gold' | 'slate';
+
+type TimelineVisual = {
+  icon: LucideIcon;
+  tone: TimelineTone;
+  kindLabel: string;
 };
+
+const GLASS_BADGE =
+  'inline-flex items-center rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-medium text-white backdrop-blur-sm';
 
 function clientInitials(name: string): string {
   const parts = String(name ?? '')
@@ -62,65 +71,66 @@ function clientInitials(name: string): string {
   return single.slice(0, 2);
 }
 
-function tripDateLabel(raw: string | null | undefined): string {
+function formatActivityDate(raw: string | null | undefined): string {
   if (!raw) return '';
-  const s = String(raw).trim();
-  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return formatShortArabicDate(s.slice(0, 10));
-  const d = new Date(s);
-  if (Number.isNaN(d.getTime())) return s;
-  return d.toLocaleDateString('ar-SA');
-}
-
-function invoiceDate(inv: InvoiceRow): string | null {
-  const raw =
-    (inv as { paid_at?: string | null }).paid_at ||
-    (inv as { created_at?: string | null }).created_at ||
-    null;
-  return raw ? String(raw).slice(0, 10) : null;
-}
-
-function buildTimeline(
-  trips: UnifiedTripRow[],
-  invoices: InvoiceRow[],
-): TimelineItem[] {
-  const items: TimelineItem[] = [];
-
-  for (const trip of trips) {
-    items.push({
-      id: `trip-${trip.backend}-${trip.id}`,
-      kind: 'trip',
-      title: trip.destination || 'رحلة',
-      subtitle: trip.notes?.trim() || trip.status || 'رحلة مسجّلة',
-      date: trip.trip_date || trip.end_date || null,
-      href: trip.viewUrl ?? null,
-      amountLabel:
-        trip.cost > 0 ? formatWalletAmount(trip.cost) : undefined,
-    });
+  const d = new Date(raw);
+  if (Number.isNaN(d.getTime())) {
+    const s = String(raw).trim();
+    if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
+      try {
+        return new Date(s.slice(0, 10)).toLocaleDateString('ar-SA', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+        });
+      } catch {
+        return s.slice(0, 10);
+      }
+    }
+    return s;
   }
-
-  for (const inv of invoices) {
-    const status = String(inv.status ?? '').toLowerCase();
-    const statusLabel =
-      (INVOICE_STATUS_LABEL as Record<string, string>)[status] ||
-      inv.status ||
-      'فاتورة';
-    items.push({
-      id: `inv-${inv.id}`,
-      kind: status === 'paid' ? 'payment' : 'invoice',
-      title: status === 'paid' ? 'دفعة مستلمة' : 'فاتورة',
-      subtitle: statusLabel,
-      date: invoiceDate(inv),
-      href: `/invoice/${inv.id}`,
-      amountLabel: formatInvoiceAmount(Number(inv.amount ?? 0)),
-    });
-  }
-
-  return items.sort((a, b) => {
-    const da = a.date ?? '';
-    const db = b.date ?? '';
-    if (da !== db) return db.localeCompare(da);
-    return b.id.localeCompare(a.id);
+  return d.toLocaleString('ar-SA', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
   });
+}
+
+function timelineVisual(type: ClientActivityType): TimelineVisual {
+  switch (type) {
+    case 'booking':
+    case 'trip':
+      return { icon: CheckCircle2, tone: 'emerald', kindLabel: 'تأكيد حجز' };
+    case 'quote':
+      return { icon: FileText, tone: 'navy', kindLabel: 'عرض سعر' };
+    case 'meeting':
+      return { icon: Calendar, tone: 'gold', kindLabel: 'اجتماع' };
+    case 'contact':
+      return { icon: MessageCircle, tone: 'slate', kindLabel: 'تواصل' };
+    case 'payment':
+      return { icon: Wallet, tone: 'emerald', kindLabel: 'دفعة' };
+    case 'invoice':
+      return { icon: Receipt, tone: 'navy', kindLabel: 'فاتورة' };
+    case 'note':
+      return { icon: StickyNote, tone: 'gold', kindLabel: 'ملاحظة' };
+    default:
+      return { icon: MapPin, tone: 'slate', kindLabel: 'حدث' };
+  }
+}
+
+function nodeToneClass(tone: TimelineTone): string {
+  switch (tone) {
+    case 'emerald':
+      return 'border-emerald-300 text-emerald-600 dark:border-emerald-700/40 dark:text-emerald-400';
+    case 'navy':
+      return 'border-slate-300 text-slate-700 dark:border-[#D4AF37]/40 dark:text-[#D4AF37]';
+    case 'gold':
+      return 'border-[#D4AF37]/50 text-[#B8941F] dark:border-[#D4AF37]/40 dark:text-[#D4AF37]';
+    default:
+      return 'border-slate-200 text-slate-500 dark:border-[#2D3F3A] dark:text-[#D4AF37]';
+  }
 }
 
 export default function Client360Profile({
@@ -139,6 +149,11 @@ export default function Client360Profile({
 }: Client360ProfileProps) {
   const [finance, setFinance] = useState<ClientFinancialHubData | null>(null);
   const [loadingFinance, setLoadingFinance] = useState(true);
+  const [activities, setActivities] = useState<ClientActivityLog[]>([]);
+  const [loadingActivities, setLoadingActivities] = useState(true);
+  const [activityError, setActivityError] = useState<string | null>(null);
+  const [noteText, setNoteText] = useState('');
+  const [savingNote, setSavingNote] = useState(false);
 
   const loadFinance = useCallback(async () => {
     if (!clientId) return;
@@ -149,13 +164,49 @@ export default function Client360Profile({
     else setFinance(null);
   }, [clientId]);
 
+  const loadActivities = useCallback(async () => {
+    if (!clientId) return;
+    setLoadingActivities(true);
+    setActivityError(null);
+    const result = await fetchClientActivityAction(clientId);
+    setLoadingActivities(false);
+    if (!result.ok) {
+      setActivities([]);
+      setActivityError(result.error);
+      return;
+    }
+    setActivities(result.rows);
+  }, [clientId]);
+
   useEffect(() => {
     void loadFinance();
   }, [loadFinance]);
 
+  useEffect(() => {
+    void loadActivities();
+  }, [loadActivities]);
+
+  const handleAddNote = async () => {
+    const text = noteText.trim();
+    if (!text || savingNote) return;
+    setSavingNote(true);
+    const result = await addClientActivityNoteAction(clientId, text);
+    setSavingNote(false);
+    if (!result.ok) {
+      toast.error(result.error || 'تعذر حفظ الملاحظة.');
+      return;
+    }
+    setNoteText('');
+    toast.success('تم إضافة الملاحظة.');
+    await loadActivities();
+  };
+
   const initials = clientInitials(name || 'عميل');
   const displayPhone = String(phone ?? '').trim();
   const displayEmail = String(email ?? '').trim();
+  const tierLabel = vipSpendingTierLabel(
+    normalizeVipSpendingTier(vipTier, totalProfit),
+  ).replace(/\s*[🟡⚫✨]\s*$/u, '');
 
   const totalSpent = finance?.totals.paid ?? 0;
   const remaining = finance?.totals.remaining ?? 0;
@@ -166,100 +217,75 @@ export default function Client360Profile({
       return !s || !['completed', 'done', 'cancelled', 'canceled', 'مكتمل', 'ملغي'].includes(s);
     }).length;
 
-  const timeline = useMemo(
-    () => buildTimeline(trips, finance?.invoices ?? []),
-    [trips, finance?.invoices],
-  );
-
   return (
-    <div className="space-y-6" aria-label="ملف العميل 360">
-      {/* ── Profile Header ── */}
-      <section className="relative overflow-hidden rounded-3xl bg-[#1A3B2A] p-8 text-white shadow-xl">
-        <div
-          className="pointer-events-none absolute inset-0 opacity-40"
-          style={{
-            background:
-              'radial-gradient(ellipse 80% 60% at 100% 0%, rgba(197,160,89,0.35), transparent 55%), radial-gradient(ellipse 50% 40% at 0% 100%, rgba(197,160,89,0.15), transparent 50%)',
-          }}
-          aria-hidden
-        />
-        <div
-          className="pointer-events-none absolute inset-0 opacity-[0.07]"
-          style={{
-            backgroundImage:
-              'repeating-linear-gradient(-45deg, #C5A059 0 1px, transparent 1px 14px)',
-          }}
-          aria-hidden
-        />
-
-        <div className="relative flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
-          <div className="flex min-w-0 flex-1 items-start gap-5">
-            <div
-              className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#C5A059]/40 to-[#C5A059]/10 text-2xl font-black text-[#C5A059] ring-2 ring-[#C5A059]/50 shadow-[0_0_24px_rgba(197,160,89,0.35)]"
-              aria-hidden
-            >
-              {initials}
-            </div>
-
-            <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-3">
-                <h1 className="text-2xl font-black tracking-tight md:text-3xl">
-                  {name || 'عميل بدون اسم'}
-                </h1>
-                <span className="rounded-full border border-[#C5A059] bg-[#C5A059]/20 px-3 py-1 text-sm font-bold text-[#C5A059] shadow-[0_0_12px_rgba(197,160,89,0.45)]">
-                  VIP
-                </span>
-                <VipSpendingTierBadge
-                  tier={vipTier}
-                  totalProfit={totalProfit}
-                  className="!text-[11px]"
-                />
-              </div>
-
-              {badges ? (
-                <div className="mt-3 flex flex-wrap items-center gap-2">{badges}</div>
-              ) : null}
-
-              <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-sm text-white/75">
-                {displayPhone ? (
-                  <span className="inline-flex items-center gap-1.5 font-semibold" dir="ltr">
-                    <Phone className="h-3.5 w-3.5 text-[#C5A059]" aria-hidden />
-                    {displayPhone}
-                  </span>
-                ) : null}
-                {displayEmail ? (
-                  <span className="inline-flex items-center gap-1.5 font-semibold">
-                    <Mail className="h-3.5 w-3.5 text-[#C5A059]" aria-hidden />
-                    {displayEmail}
-                  </span>
-                ) : null}
-                {jobType ? (
-                  <span className="font-semibold text-white/60">{jobType}</span>
-                ) : null}
-                {travelType ? (
-                  <span className="font-semibold text-white/60">{travelType}</span>
-                ) : null}
-              </div>
-            </div>
+    <div
+      className="space-y-4 font-sans"
+      aria-label="ملف العميل 360"
+      data-wl-client-profile="navy-olive-v4"
+    >
+      <section
+        data-wl-banner="theme-aware"
+        className="flex w-full flex-col flex-wrap items-start justify-between gap-4 rounded-2xl bg-slate-900 p-6 text-white md:flex-row md:items-center dark:!bg-[#22302C] dark:text-[#D4AF37]"
+      >
+        <div className="flex min-w-0 flex-1 flex-col gap-4 sm:flex-row sm:items-center">
+          <div
+            className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-white/20 bg-white/10 text-lg font-semibold tracking-wide text-white backdrop-blur-sm dark:border-[#D4AF37]/35 dark:!bg-[#1A2421] dark:text-[#D4AF37]"
+            aria-hidden
+          >
+            {initials}
           </div>
 
-          {actions ? (
-            <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>
-          ) : null}
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-xl font-semibold tracking-tight text-white md:text-2xl dark:text-gray-100">
+                {name || 'عميل بدون اسم'}
+              </h1>
+              <span className={GLASS_BADGE}>VIP</span>
+              <span className={GLASS_BADGE} title={tierLabel}>
+                {tierLabel}
+              </span>
+            </div>
+
+            {badges ? (
+              <div className="mt-2 flex flex-wrap items-center gap-2">{badges}</div>
+            ) : null}
+
+            <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-white/70 dark:text-gray-300">
+              {displayPhone ? (
+                <span className="inline-flex items-center gap-1.5 font-medium" dir="ltr">
+                  <Phone className="h-3.5 w-3.5 opacity-70" aria-hidden />
+                  {displayPhone}
+                </span>
+              ) : null}
+              {displayEmail ? (
+                <span className="inline-flex items-center gap-1.5 font-medium">
+                  <Mail className="h-3.5 w-3.5 opacity-70" aria-hidden />
+                  {displayEmail}
+                </span>
+              ) : null}
+              {jobType ? <span className="font-medium text-white/55">{jobType}</span> : null}
+              {travelType ? (
+                <span className="font-medium text-white/55">{travelType}</span>
+              ) : null}
+            </div>
+          </div>
         </div>
 
-        {footer ? <div className="relative mt-6">{footer}</div> : null}
+        {actions ? (
+          <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>
+        ) : null}
+
+        {footer ? <div className="w-full md:basis-full">{footer}</div> : null}
       </section>
 
-      {/* ── Wallet & Financials ── */}
       <section aria-label="ملخص المحفظة">
         {loadingFinance ? (
-          <div className="flex items-center justify-center gap-2 rounded-2xl border border-[#C5A059]/25 bg-white py-10 text-sm font-bold text-[#1A3B2A]/60">
-            <Loader2 className="h-5 w-5 animate-spin text-[#C5A059]" aria-hidden />
+          <div className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-slate-50 py-8 text-sm font-medium text-slate-500 dark:border-[#2D3F3A] dark:!bg-[#22302C] dark:text-slate-400">
+            <Loader2 className="h-5 w-5 animate-spin dark:text-[#D4AF37]" aria-hidden />
             جارٍ تحميل الملخص المالي…
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <FinanceStatCard
               label="إجمالي المدفوعات"
               value={formatWalletAmount(totalSpent)}
@@ -280,91 +306,95 @@ export default function Client360Profile({
         )}
       </section>
 
-      {/* ── Activity Timeline ── */}
       <section
-        className="rounded-3xl border border-slate-100 bg-white p-6 shadow-sm"
+        className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-[#2D3F3A] dark:!bg-[#22302C]"
         aria-labelledby="client-360-timeline-title"
       >
-        <h2
-          id="client-360-timeline-title"
-          className="mb-6 text-base font-black text-[#1A3B2A]"
-        >
-          سجل الرحلات والتفاعلات
-        </h2>
+        <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
+          <h2
+            id="client-360-timeline-title"
+            className="text-lg font-semibold text-slate-900 dark:text-white"
+          >
+            سجل الرحلات والتفاعلات
+          </h2>
+        </div>
 
-        {timeline.length === 0 ? (
-          <p className="rounded-2xl bg-slate-50 px-4 py-8 text-center text-sm font-bold text-slate-400">
-            لا توجد تفاعلات مسجّلة بعد.
+        <form
+          className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-stretch"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void handleAddNote();
+          }}
+        >
+          <input
+            type="text"
+            value={noteText}
+            onChange={(e) => setNoteText(e.target.value)}
+            placeholder="أضف ملاحظة أو تفاعلاً يدوياً…"
+            className="min-w-0 flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:ring-2 focus:ring-slate-900/10 dark:border-[#2D3F3A] dark:bg-[#1A2421] dark:text-gray-100 dark:placeholder:text-slate-500 dark:focus:border-[#D4AF37]/50 dark:focus:ring-[#D4AF37]/20"
+            disabled={savingNote}
+            maxLength={500}
+          />
+          <button
+            type="submit"
+            disabled={savingNote || !noteText.trim()}
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-50 dark:border dark:border-[#D4AF37]/50 dark:bg-[#D4AF37]/20 dark:text-[#D4AF37] dark:hover:bg-[#D4AF37]/30"
+          >
+            {savingNote ? (
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+            ) : (
+              <Plus className="h-4 w-4" aria-hidden />
+            )}
+            إضافة
+          </button>
+        </form>
+
+        {loadingActivities ? (
+          <div className="flex items-center justify-center gap-2 py-10 text-sm text-slate-500 dark:text-slate-400">
+            <Loader2 className="h-5 w-5 animate-spin dark:text-[#D4AF37]" aria-hidden />
+            جارٍ تحميل السجل…
+          </div>
+        ) : activityError ? (
+          <p className="rounded-xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm text-rose-800 dark:border-rose-900/40 dark:bg-rose-950/30 dark:text-rose-200">
+            {activityError}
+          </p>
+        ) : activities.length === 0 ? (
+          <p className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-10 text-center text-sm text-slate-500 dark:border-[#2D3F3A] dark:bg-[#1A2421] dark:text-slate-400">
+            لا توجد تفاعلات بعد — أضف ملاحظة أو ستظهر هنا الدفعات والحجوزات تلقائياً.
           </p>
         ) : (
-          <ol className="relative space-y-0 pr-1">
-            {timeline.map((item, index) => {
-              const isLast = index === timeline.length - 1;
-              const Inner = (
-                <>
-                  <div className="flex flex-wrap items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="text-sm font-black text-[#1A3B2A]">{item.title}</p>
-                      <p className="mt-0.5 text-xs font-semibold text-slate-500">
-                        {item.subtitle}
-                      </p>
-                    </div>
-                    {item.amountLabel ? (
-                      <span
-                        className="shrink-0 text-xs font-black text-[#C5A059]"
-                        dir="ltr"
-                      >
-                        {item.amountLabel}
-                      </span>
-                    ) : null}
-                  </div>
-                  {item.date ? (
-                    <p className="mt-2 inline-flex items-center gap-1 text-[11px] font-bold text-slate-400">
-                      <Calendar className="h-3 w-3" aria-hidden />
-                      {tripDateLabel(item.date)}
-                    </p>
-                  ) : null}
-                </>
-              );
-
+          <ol className="relative space-y-4 border-s-2 border-slate-200 ps-6 dark:border-[#2D3F3A]">
+            {activities.map((item) => {
+              const visual = timelineVisual(item.type);
+              const Icon = visual.icon;
               return (
-                <li key={item.id} className="relative flex gap-4 pb-6 last:pb-0">
-                  <div className="relative flex w-4 shrink-0 flex-col items-center">
-                    <span className="z-10 mt-1.5 h-3 w-3 rounded-full bg-[#C5A059] shadow-[0_0_8px_rgba(197,160,89,0.7)] ring-2 ring-[#C5A059]/30" />
-                    {!isLast ? (
-                      <span className="absolute top-5 bottom-0 w-px bg-slate-200" aria-hidden />
+                <li key={item.id} className="relative">
+                  <span
+                    className={`absolute -start-[1.9rem] top-1 flex h-7 w-7 items-center justify-center rounded-full border-2 bg-white shadow-sm dark:!bg-[#1A2421] ${nodeToneClass(visual.tone)}`}
+                  >
+                    <Icon className="h-3.5 w-3.5" aria-hidden />
+                  </span>
+                  <div className="rounded-xl border border-slate-100 bg-slate-50/80 px-3 py-2.5 transition hover:bg-white dark:border-[#2D3F3A] dark:!bg-[#1A2421]/80">
+                    <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+                      <span className="text-[10px] font-medium uppercase tracking-wider text-slate-400 dark:text-[#D4AF37]/70">
+                        {visual.kindLabel}
+                      </span>
+                      <time
+                        className="text-[11px] font-medium text-slate-400 dark:text-slate-500"
+                        dateTime={item.created_at}
+                      >
+                        {formatActivityDate(item.created_at)}
+                      </time>
+                    </div>
+                    <p className="text-sm font-semibold text-slate-900 dark:text-gray-100">
+                      {item.title}
+                    </p>
+                    {item.description ? (
+                      <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                        {item.description}
+                      </p>
                     ) : null}
                   </div>
-                  {item.href ? (
-                    <Link
-                      href={item.href}
-                      className="min-w-0 flex-1 rounded-2xl border border-slate-100 bg-slate-50/80 px-4 py-3 transition hover:border-[#C5A059]/40 hover:bg-[#FEFDF9] hover:shadow-sm"
-                    >
-                      <span className="mb-1 inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-[#C5A059]/80">
-                        {item.kind === 'trip' ? (
-                          <>
-                            <MapPin className="h-3 w-3" aria-hidden /> رحلة
-                          </>
-                        ) : item.kind === 'payment' ? (
-                          <>
-                            <Wallet className="h-3 w-3" aria-hidden /> دفعة
-                          </>
-                        ) : (
-                          <>
-                            <Receipt className="h-3 w-3" aria-hidden /> فاتورة
-                          </>
-                        )}
-                      </span>
-                      {Inner}
-                    </Link>
-                  ) : (
-                    <div className="min-w-0 flex-1 rounded-2xl border border-slate-100 bg-slate-50/80 px-4 py-3">
-                      <span className="mb-1 inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-[#C5A059]/80">
-                        {item.kind === 'trip' ? 'رحلة' : item.kind === 'payment' ? 'دفعة' : 'فاتورة'}
-                      </span>
-                      {Inner}
-                    </div>
-                  )}
                 </li>
               );
             })}
@@ -387,15 +417,13 @@ function FinanceStatCard({
   dir?: 'ltr' | 'rtl';
 }) {
   return (
-    <div className="group rounded-2xl border border-slate-100 bg-white p-5 shadow-sm transition hover:border-[#C5A059]/50 hover:shadow-md">
-      <div className="mb-3 flex items-center justify-between">
-        <p className="text-xs font-bold text-slate-500">{label}</p>
-        <span className="text-[#C5A059] opacity-70 transition group-hover:opacity-100">
-          {icon}
-        </span>
+    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 shadow-sm dark:border-[#2D3F3A] dark:!bg-[#22302C]">
+      <div className="mb-2 flex items-center justify-between">
+        <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{label}</p>
+        <span className="text-slate-400 dark:text-[#D4AF37]">{icon}</span>
       </div>
       <p
-        className="text-xl font-black text-[#1A3B2A] tabular-nums md:text-2xl"
+        className="text-xl font-semibold tabular-nums text-slate-900 dark:text-gray-100"
         dir={dir}
       >
         {value}

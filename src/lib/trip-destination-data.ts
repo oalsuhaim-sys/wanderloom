@@ -1,6 +1,6 @@
 /**
  * وجهات ومدن نموذج «سجّل رحلتك» — يُستورد في العميل وفي Server Action.
- * قائمة حصرية: 21 دولة فقط (متطابقة مع مفاتيح الدول في دليل الوجهات بالـ CRM).
+ * قائمة حصرية: 22+ دولة (متزامنة مع جدول countries و useCountries)
  */
 
 export type TripCityDef = {
@@ -15,6 +15,15 @@ export type TripCountryDef = {
 };
 
 export const TRIP_DESTINATIONS = [
+  {
+    id: 'indonesia',
+    labelAr: 'إندونيسيا',
+    cities: [
+      { id: 'bali', labelAr: 'بالي' },
+      { id: 'jakarta', labelAr: 'جاكرتا' },
+      { id: 'yogyakarta', labelAr: 'يوجياكارتا' },
+    ],
+  },
   {
     id: 'japan',
     labelAr: 'اليابان',

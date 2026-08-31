@@ -1674,10 +1674,25 @@ export function toPublicItinerary(row: Record<string, unknown>): PublicItinerary
   const destination =
     pickStr(row, ['destination']) || pickStr(row, ['title']) || 'وجهتك'
   const legacyDates = parseLegacyDatesField(row.dates)
-  const startDate =
-    row.start_date != null ? String(row.start_date).slice(0, 10) : legacyDates.start
+  const colStart =
+    row.start_date != null ? String(row.start_date).slice(0, 10) : null
+  const colEnd = row.end_date != null ? String(row.end_date).slice(0, 10) : null
+  // Prefer the later end when columns and legacy `dates` diverge (admin may have
+  // updated only one field). Keeps client app from staying on "رحلة مكتملة".
+  const endCandidates = [colEnd, legacyDates.end].filter(
+    (d): d is string => Boolean(d && /^\d{4}-\d{2}-\d{2}/.test(d)),
+  )
+  const startCandidates = [colStart, legacyDates.start].filter(
+    (d): d is string => Boolean(d && /^\d{4}-\d{2}-\d{2}/.test(d)),
+  )
   const endDate =
-    row.end_date != null ? String(row.end_date).slice(0, 10) : legacyDates.end
+    endCandidates.length > 0
+      ? endCandidates.reduce((a, b) => (a >= b ? a : b))
+      : null
+  const startDate =
+    startCandidates.length > 0
+      ? startCandidates.reduce((a, b) => (a <= b ? a : b))
+      : null
   const rawDays = row.days_data ?? row.days
   const mediaContext = buildDayMediaContext(row)
   const pin = extractPasscodeFromRow(row)

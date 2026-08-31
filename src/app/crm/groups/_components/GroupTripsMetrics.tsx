@@ -25,19 +25,19 @@ function MetricCard({
   icon: React.ReactNode;
 }) {
   return (
-    <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
-      <div className="mb-2 flex items-center justify-between gap-2">
-        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#C5A059]">
+    <div className="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm transition-all duration-200 hover:shadow-md">
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
           {label}
         </p>
-        <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#1A3B2A]/8 text-[#1A3B2A]">
+        <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-50 text-slate-500 ring-1 ring-slate-100">
           {icon}
         </span>
       </div>
-      <p className="text-2xl font-black text-[#1A3B2A]" dir="ltr">
+      <p className="text-2xl font-semibold text-slate-900" dir="ltr">
         {value}
       </p>
-      {sub ? <p className="mt-1 text-[11px] font-semibold text-slate-500">{sub}</p> : null}
+      {sub ? <p className="mt-1 text-xs text-slate-500">{sub}</p> : null}
     </div>
   );
 }
@@ -48,9 +48,13 @@ export function computeGroupDashboardMetrics(trips: GroupTripRow[]) {
   let expectedRevenue = 0;
 
   for (const trip of trips) {
-    const booked = Array.isArray(trip.registered_client_ids)
+    const fromRegistered = Array.isArray(trip.registered_client_ids)
       ? trip.registered_client_ids.length
       : 0;
+    const fromBooked = Number(trip.booked_seats);
+    const booked = Number.isFinite(fromBooked)
+      ? Math.max(fromBooked, fromRegistered)
+      : fromRegistered;
     const capacity = Math.max(0, Number(trip.max_seats) || 0);
     const { to: endIso } = parseGroupTripStoredDates(trip.dates_ar, trip.dates_en);
     const status = resolveGroupSeatStatus({
@@ -80,7 +84,7 @@ export default function GroupTripsMetrics({ trips }: Props) {
     computeGroupDashboardMetrics(trips);
 
   return (
-    <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+    <div className="mb-6 grid grid-cols-1 gap-6 sm:grid-cols-3">
       <MetricCard
         label="إجمالي القروبات النشطة"
         value={String(activeGroups)}

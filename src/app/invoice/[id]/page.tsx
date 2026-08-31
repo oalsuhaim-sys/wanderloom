@@ -1,20 +1,26 @@
 'use client';
 
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type DragEvent, type ReactNode } from 'react';
 import { useParams } from 'next/navigation';
-import Image from 'next/image';
 import {
   Check,
   CheckCircle2,
   Copy,
+  ImagePlus,
   Loader2,
   QrCode,
   Receipt,
+  Upload,
   Wallet,
+  X,
 } from 'lucide-react';
 
-import { getInvoiceAction, markInvoicePaidAction } from '@/app/actions/invoiceActions';
 import {
+  getInvoiceAction,
+  submitInvoiceReceiptAction,
+} from '@/app/actions/invoiceActions';
+import {
+  uploadInvoicePaymentReceipt,
   WANDERLOOM_BANK_DETAILS,
   WANDERLOOM_PAYMENT_QR_SRC,
 } from '@/lib/bank-checkout';
@@ -107,9 +113,33 @@ function IbanCopyToast({ visible }: { visible: boolean }) {
   );
 }
 
-function PaymentQrSection() {
-  const [qrFailed, setQrFailed] = useState(false);
+function SuccessToast({ message, visible }: { message: string; visible: boolean }) {
+  if (!visible || !message) return null;
+  return (
+    <>
+      <style>{`
+        @keyframes invoiceSuccessToastIn {
+          from { opacity: 0; transform: translateY(-8px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
+      <div
+        className="pointer-events-none fixed inset-x-0 top-6 z-[100] flex justify-center px-4"
+        role="status"
+        aria-live="polite"
+      >
+        <span
+          className="max-w-md rounded-2xl border border-emerald-400/40 bg-emerald-950/95 px-4 py-3 text-center text-xs font-black leading-relaxed text-emerald-100 shadow-lg"
+          style={{ animation: 'invoiceSuccessToastIn 0.25s ease-out forwards' }}
+        >
+          {message}
+        </span>
+      </div>
+    </>
+  );
+}
 
+function PaymentQrSection() {
   return (
     <div className="mt-5 rounded-2xl border border-[#d4af37]/20 bg-black/30 p-4">
       <div className="mb-3 flex items-center gap-2">
@@ -120,37 +150,19 @@ function PaymentQrSection() {
         امسح الرمز عبر تطبيق البنك أو STC Pay لإتمام التحويل بسرعة.
       </p>
 
-      {/*
-        TODO: Replace the placeholder below with your payment QR image.
-        1. Add your QR file to `public/` (e.g. `public/payment-qr.png`)
-        2. Optionally set NEXT_PUBLIC_PAYMENT_QR_URL=/payment-qr.png in .env.local
-      */}
       <div className="mx-auto flex max-w-[220px] flex-col items-center">
-        {!qrFailed ? (
-          <div className="relative aspect-square w-full overflow-hidden rounded-2xl border border-[#d4af37]/30 bg-[#d4af37]/5 shadow-[inset_0_0_40px_rgba(212,175,55,0.06)]">
-            <Image
-              src={WANDERLOOM_PAYMENT_QR_SRC}
-              alt="رمز QR للدفع"
-              fill
-              className="object-contain p-3"
-              sizes="220px"
-              onError={() => setQrFailed(true)}
-            />
-          </div>
-        ) : (
-          <div
-            className="flex aspect-square w-full flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-[#d4af37]/25 bg-[#d4af37]/5 px-4 text-center"
-            aria-hidden
-          >
-            <QrCode className={`h-10 w-10 ${GOLD} opacity-50`} />
-            <p className="text-[10px] font-bold text-white/40">
-              ضع صورة QR في
-              <span dir="ltr" className="mx-1 font-mono text-[#d4af37]/70">
-                public/payment-qr.png
-              </span>
-            </p>
-          </div>
-        )}
+        <div className="flex w-full items-center justify-center rounded-2xl border border-[#d4af37]/30 bg-white p-4 shadow-[inset_0_0_40px_rgba(212,175,55,0.06)]">
+          {/* Native img avoids next/image optimizer quirks for local public assets */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={WANDERLOOM_PAYMENT_QR_SRC}
+            alt="Payment QR Code"
+            width={192}
+            height={192}
+            className="mx-auto h-48 w-48 rounded-xl object-contain"
+            decoding="async"
+          />
+        </div>
       </div>
     </div>
   );
@@ -159,14 +171,20 @@ function PaymentQrSection() {
 export default function PublicInvoicePage() {
   const params = useParams();
   const invoiceId = String(params?.id ?? '').trim();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [loading, setLoading] = useState(true);
   const [invoice, setInvoice] = useState<InvoiceRow | null>(null);
   const [ledger, setLedger] = useState<InvoiceLedgerSummary | null>(null);
+  const [quotationStatus, setQuotationStatus] = useState<string | null>(null);
   const [error, setError] = useState('');
-  const [confirming, setConfirming] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
   const [transferSubmitted, setTransferSubmitted] = useState(false);
   const [ibanCopied, setIbanCopied] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
 
   const load = useCallback(async () => {
     if (!invoiceId) {
@@ -183,13 +201,21 @@ export default function PublicInvoicePage() {
     if (!result.ok) {
       setInvoice(null);
       setLedger(null);
+      setQuotationStatus(null);
       setError(result.error);
       return;
     }
 
     setInvoice(result.invoice);
     setLedger(result.ledger);
-    if (result.invoice.status === 'paid') {
+    setQuotationStatus(result.quotationStatus);
+    if (result.invoice.status === 'rejected') {
+      setTransferSubmitted(false);
+    } else if (
+      result.invoice.status === 'paid' ||
+      result.invoice.status === 'payment_review' ||
+      Boolean(result.invoice.receipt_url)
+    ) {
       setTransferSubmitted(true);
     }
   }, [invoiceId]);
@@ -197,6 +223,35 @@ export default function PublicInvoicePage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+  }, [previewUrl]);
+
+  function clearReceiptSelection() {
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    setReceiptFile(null);
+    setPreviewUrl(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }
+
+  function selectReceiptFile(file: File | undefined) {
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      setError('يُقبل رفع الصور فقط (JPG · PNG · WebP).');
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setError('حجم الملف يتجاوز 10 ميجابايت.');
+      return;
+    }
+    setError('');
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    setReceiptFile(file);
+    setPreviewUrl(URL.createObjectURL(file));
+  }
 
   async function copyIban() {
     try {
@@ -208,21 +263,42 @@ export default function PublicInvoicePage() {
     }
   }
 
-  async function handleConfirmTransfer() {
-    if (!invoice || invoice.status === 'paid' || confirming || transferSubmitted) return;
-    setConfirming(true);
+  async function handleUpload() {
+    if (!invoice || !receiptFile || isUploading || transferSubmitted) return;
+    setIsUploading(true);
     setError('');
+    setSuccessMessage('');
     try {
-      const result = await markInvoicePaidAction(invoice.id);
+      // 1) Upload File on the client — never pass File into a Server Action
+      const upload = await uploadInvoicePaymentReceipt({
+        invoiceId: invoice.id,
+        quoteId: invoice.quote_id,
+        file: receiptFile,
+      });
+      if (!upload.ok || !upload.publicUrl) {
+        throw new Error(upload.error || 'تعذر رفع صورة الحوالة.');
+      }
+
+      // 2) Persist URL + status via service-role action (strings only)
+      const result = await submitInvoiceReceiptAction(invoice.id, upload.publicUrl);
       if (!result.ok) throw new Error(result.error);
       setInvoice(result.invoice);
       setLedger(result.ledger);
       setTransferSubmitted(true);
+      setSuccessMessage(result.message);
+      clearReceiptSelection();
+      window.setTimeout(() => setSuccessMessage(''), 6000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'تعذر تأكيد التحويل.');
+      setError(err instanceof Error ? err.message : 'تعذر رفع صورة الحوالة.');
     } finally {
-      setConfirming(false);
+      setIsUploading(false);
     }
+  }
+
+  function onDrop(e: DragEvent) {
+    e.preventDefault();
+    setDragOver(false);
+    selectReceiptFile(e.dataTransfer.files?.[0]);
   }
 
   if (loading) {
@@ -249,12 +325,34 @@ export default function PublicInvoicePage() {
 
   if (!invoice) return null;
 
-  const isPaid = invoice.status === 'paid' || transferSubmitted;
+  const quoteStatus = String(quotationStatus ?? '').trim().toLowerCase();
+  const paymentConfirmed =
+    invoice.status === 'paid' ||
+    quoteStatus === 'payment_confirmed' ||
+    quoteStatus === 'deposit_paid' ||
+    quoteStatus === 'fully_paid';
+
+  const isRejected = invoice.status === 'rejected';
+  const awaitingReview =
+    !paymentConfirmed &&
+    !isRejected &&
+    (transferSubmitted ||
+      invoice.status === 'payment_review' ||
+      Boolean(invoice.receipt_url));
+
   const clientName = invoice.client_name?.trim() || 'ضيفنا الكريم';
+  const statusLabel = paymentConfirmed
+    ? 'تم تأكيد الدفع'
+    : isRejected
+      ? 'إيصال مرفوض — أعد الرفع'
+      : awaitingReview
+        ? 'جاري مراجعة الدفع'
+        : INVOICE_STATUS_LABEL[invoice.status];
 
   return (
     <PageShell>
       <IbanCopyToast visible={ibanCopied} />
+      <SuccessToast message={successMessage} visible={Boolean(successMessage)} />
 
       <header className="mb-8 text-center">
         <p className="text-[10px] font-black uppercase tracking-[0.4em] text-[#d4af37]/80">
@@ -275,12 +373,16 @@ export default function PublicInvoicePage() {
           </div>
           <span
             className={`inline-flex shrink-0 rounded-full px-3 py-1 text-[10px] font-black ${
-              isPaid
+              paymentConfirmed
                 ? 'bg-emerald-500/15 text-emerald-300 ring-1 ring-emerald-400/30'
-                : 'bg-amber-500/15 text-amber-200 ring-1 ring-amber-400/30'
+                : isRejected
+                  ? 'bg-rose-500/15 text-rose-300 ring-1 ring-rose-400/30'
+                  : awaitingReview
+                    ? 'bg-amber-500/15 text-amber-200 ring-1 ring-amber-400/30'
+                    : 'bg-amber-500/15 text-amber-200 ring-1 ring-amber-400/30'
             }`}
           >
-            {isPaid ? 'قيد المراجعة' : INVOICE_STATUS_LABEL[invoice.status]}
+            {statusLabel}
           </span>
         </div>
 
@@ -298,87 +400,187 @@ export default function PublicInvoicePage() {
         </div>
       </section>
 
-      <section className={`${PANEL} mt-5`}>
-        <div className="flex items-center gap-2">
-          <Wallet className="h-5 w-5 text-[#d4af37]" aria-hidden />
-          <h3 className="text-base font-black text-white">التحويل البنكي</h3>
-        </div>
-        <p className="mt-2 text-xs font-semibold leading-relaxed text-white/50">
-          حوّل المبلغ المستحق إلى الحساب أدناه، ثم اضغط «تأكيد إتمام التحويل» بعد إرسال الحوالة.
-        </p>
-
-        <div className="mt-5 rounded-2xl border border-[#d4af37]/25 bg-gradient-to-b from-[#0f1412] to-[#070908] p-4">
-          <h4 className={`mb-4 text-sm font-black ${GOLD}`}>تفاصيل الحساب البنكي</h4>
-          <dl className="space-y-3">
-            <div className="rounded-xl border border-white/8 bg-black/35 px-4 py-3">
-              <dt className="text-[10px] font-bold text-white/40">اسم البنك</dt>
-              <dd className="mt-1 text-sm font-black text-white">{WANDERLOOM_BANK_DETAILS.bankName}</dd>
+      {paymentConfirmed ? (
+        <section className={`${PANEL} mt-5`}>
+          <div className="flex flex-col items-center gap-4 rounded-2xl border border-emerald-400/35 bg-gradient-to-b from-emerald-950/50 to-emerald-950/20 px-5 py-10 text-center shadow-[0_0_60px_rgba(52,211,153,0.12)]">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full border-2 border-emerald-400/50 bg-emerald-500/15 shadow-[0_0_40px_rgba(52,211,153,0.35)]">
+              <CheckCircle2 className="h-9 w-9 text-emerald-400" aria-hidden />
             </div>
-            <div className="rounded-xl border border-white/8 bg-black/35 px-4 py-3">
-              <dt className="text-[10px] font-bold text-white/40">المستفيد</dt>
-              <dd className="mt-1 text-sm font-black text-white">
-                {WANDERLOOM_BANK_DETAILS.accountName}
-              </dd>
-            </div>
-            <div className="rounded-xl border border-[#d4af37]/30 bg-[#d4af37]/8 px-4 py-3">
-              <dt className="text-[10px] font-bold text-[#d4af37]/75">رقم الآيبان (IBAN)</dt>
-              <dd className="mt-2 flex items-center justify-between gap-3">
-                <span
-                  className="font-mono text-sm font-black tracking-wide text-[#f5f0e6]"
-                  dir="ltr"
-                >
-                  {WANDERLOOM_BANK_DETAILS.iban}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => void copyIban()}
-                  className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-[#d4af37]/40 bg-[#d4af37]/12 px-3 py-1.5 text-[10px] font-black text-[#d4af37] transition hover:bg-[#d4af37]/22"
-                  aria-label="نسخ رقم الآيبان"
-                >
-                  {ibanCopied ? (
-                    <Check className="h-3.5 w-3.5" aria-hidden />
-                  ) : (
-                    <Copy className="h-3.5 w-3.5" aria-hidden />
-                  )}
-                  نسخ
-                </button>
-              </dd>
-            </div>
-          </dl>
-
-          <PaymentQrSection />
-        </div>
-
-        {isPaid ? (
-          <div className="mt-6 flex flex-col items-center gap-2 rounded-2xl border border-emerald-400/30 bg-emerald-950/30 px-4 py-5 text-center">
-            <CheckCircle2 className="h-8 w-8 text-emerald-400" aria-hidden />
-            <p className="text-sm font-black leading-relaxed text-emerald-100">
-              ✅ تم استلام إشعار الحوالة بنجاح، سيتم مراجعتها وتحديث رصيدك قريباً.
+            <p className="max-w-sm text-base font-black leading-relaxed text-emerald-50 sm:text-lg">
+              🎉 تم تأكيد الدفع بنجاح! يتم الآن تجهيز مسار رحلتك وسيتم إرساله لك قريباً.
             </p>
-            <p className="text-xs font-semibold text-emerald-200/65">
-              شكراً لثقتك — فريق Wanderloom سيتواصل معك بعد التحقق من التحويل.
+            <p className="text-xs font-semibold text-emerald-200/70">
+              Payment confirmed successfully — your itinerary is being prepared.
             </p>
           </div>
-        ) : (
-          <button
-            type="button"
-            disabled={confirming}
-            onClick={() => void handleConfirmTransfer()}
-            className="mt-6 flex w-full items-center justify-center gap-2 rounded-2xl bg-[#d4af37] px-5 py-3.5 text-sm font-black text-[#0a0d0b] shadow-[0_12px_40px_rgba(212,175,55,0.25)] transition hover:brightness-110 disabled:opacity-60"
-          >
-            {confirming ? (
-              <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-            ) : (
-              <CheckCircle2 className="h-4 w-4" aria-hidden />
-            )}
-            {confirming ? 'جارٍ الإرسال…' : 'تأكيد إتمام التحويل'}
-          </button>
-        )}
+        </section>
+      ) : (
+        <section className={`${PANEL} mt-5`}>
+          <div className="flex items-center gap-2">
+            <Wallet className="h-5 w-5 text-[#d4af37]" aria-hidden />
+            <h3 className="text-base font-black text-white">التحويل البنكي</h3>
+          </div>
+          <p className="mt-2 text-xs font-semibold leading-relaxed text-white/50">
+            حوّل المبلغ المستحق إلى الحساب أدناه، ثم أرفق صورة الحوالة واضغط «تأكيد الدفع».
+          </p>
 
-        {error ? (
-          <p className="mt-3 text-center text-xs font-bold text-rose-300">{error}</p>
-        ) : null}
-      </section>
+          <div className="mt-5 rounded-2xl border border-[#d4af37]/25 bg-gradient-to-b from-[#0f1412] to-[#070908] p-4">
+            <h4 className={`mb-4 text-sm font-black ${GOLD}`}>تفاصيل الحساب البنكي</h4>
+            <dl className="space-y-3">
+              <div className="rounded-xl border border-white/8 bg-black/35 px-4 py-3">
+                <dt className="text-[10px] font-bold text-white/40">اسم البنك</dt>
+                <dd className="mt-1 text-sm font-black text-white">
+                  {WANDERLOOM_BANK_DETAILS.bankName}
+                </dd>
+              </div>
+              <div className="rounded-xl border border-white/8 bg-black/35 px-4 py-3">
+                <dt className="text-[10px] font-bold text-white/40">المستفيد</dt>
+                <dd className="mt-1 text-sm font-black text-white">
+                  {WANDERLOOM_BANK_DETAILS.accountName}
+                </dd>
+              </div>
+              <div className="rounded-xl border border-[#d4af37]/30 bg-[#d4af37]/8 px-4 py-3">
+                <dt className="text-[10px] font-bold text-[#d4af37]/75">رقم الآيبان (IBAN)</dt>
+                <dd className="mt-2 flex items-center justify-between gap-3">
+                  <span
+                    className="font-mono text-sm font-black tracking-wide text-[#f5f0e6]"
+                    dir="ltr"
+                  >
+                    {WANDERLOOM_BANK_DETAILS.iban}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => void copyIban()}
+                    className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-[#d4af37]/40 bg-[#d4af37]/12 px-3 py-1.5 text-[10px] font-black text-[#d4af37] transition hover:bg-[#d4af37]/22"
+                    aria-label="نسخ رقم الآيبان"
+                  >
+                    {ibanCopied ? (
+                      <Check className="h-3.5 w-3.5" aria-hidden />
+                    ) : (
+                      <Copy className="h-3.5 w-3.5" aria-hidden />
+                    )}
+                    نسخ
+                  </button>
+                </dd>
+              </div>
+            </dl>
+
+            <PaymentQrSection />
+          </div>
+
+          {awaitingReview ? (
+            <div className="mt-6 flex flex-col items-center gap-2 rounded-2xl border border-amber-400/30 bg-amber-950/25 px-4 py-5 text-center">
+              <CheckCircle2 className="h-8 w-8 text-amber-300" aria-hidden />
+              <p className="text-sm font-black leading-relaxed text-amber-50">
+                تم استلام صورة الحوالة بنجاح، سيتم مراجعتها وتأكيد حجزك قريباً!
+              </p>
+              <p className="text-xs font-semibold text-amber-200/65">
+                شكراً لثقتك — فريق Wanderloom سيتواصل معك بعد التحقق من التحويل.
+              </p>
+            </div>
+          ) : (
+          <div className="mt-6 space-y-4">
+            {isRejected ? (
+              <div className="rounded-2xl border border-rose-400/30 bg-rose-950/30 px-4 py-4 text-center">
+                <p className="text-sm font-black text-rose-100">تم رفض الإيصال السابق</p>
+                <p className="mt-1 text-xs font-semibold leading-relaxed text-rose-200/80">
+                  {invoice.rejection_reason?.trim() ||
+                    'يرجى رفع صورة حوالة أوضح تطابق مبلغ الفاتورة.'}
+                </p>
+              </div>
+            ) : null}
+            <div>
+              <h4 className="mb-2 text-sm font-black text-white">إرفاق صورة الحوالة</h4>
+              <p className="mb-3 text-[11px] font-semibold text-white/40">
+                اسحب الصورة هنا أو اضغط للاختيار — صور فقط حتى 10 ميجابايت
+              </p>
+
+              <div
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') fileInputRef.current?.click();
+                }}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setDragOver(true);
+                }}
+                onDragLeave={() => setDragOver(false)}
+                onDrop={onDrop}
+                onClick={() => fileInputRef.current?.click()}
+                className={`flex cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed px-6 py-10 text-center transition ${
+                  dragOver
+                    ? 'border-[#d4af37]/60 bg-[#d4af37]/10'
+                    : 'border-white/15 bg-black/20 hover:border-[#d4af37]/35 hover:bg-[#d4af37]/5'
+                }`}
+              >
+                {previewUrl ? (
+                  <>
+                    <div className="relative h-28 w-28 overflow-hidden rounded-xl border border-[#d4af37]/30">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={previewUrl}
+                        alt="معاينة صورة الحوالة"
+                        className="h-full w-full object-cover"
+                      />
+                    </div>
+                    <p className="max-w-full truncate px-2 text-xs font-bold text-[#d4af37]/90">
+                      {receiptFile?.name}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        clearReceiptSelection();
+                      }}
+                      className="inline-flex items-center gap-1 rounded-lg border border-white/15 px-2.5 py-1 text-[10px] font-bold text-white/60 hover:text-white"
+                    >
+                      <X className="h-3 w-3" aria-hidden />
+                      إزالة
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <ImagePlus className="h-10 w-10 text-[#d4af37]/55" aria-hidden />
+                    <p className="text-sm font-black text-white/80">اضغط أو اسحب صورة الحوالة هنا</p>
+                    <p className="text-[11px] font-semibold text-white/35">JPG · PNG · WebP</p>
+                  </>
+                )}
+              </div>
+
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="sr-only"
+                onChange={(e) => {
+                  selectReceiptFile(e.target.files?.[0]);
+                  e.target.value = '';
+                }}
+              />
+            </div>
+
+            <button
+              type="button"
+              disabled={!receiptFile || isUploading}
+              onClick={() => void handleUpload()}
+              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#d4af37] px-5 py-3.5 text-sm font-black text-[#0a0d0b] shadow-[0_12px_40px_rgba(212,175,55,0.25)] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-45"
+            >
+              {isUploading ? (
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+              ) : (
+                <Upload className="h-4 w-4" aria-hidden />
+              )}
+              {isUploading ? 'جارٍ الرفع…' : 'تأكيد الدفع'}
+            </button>
+          </div>
+          )}
+
+          {error ? (
+            <p className="mt-3 text-center text-xs font-bold text-rose-300">{error}</p>
+          ) : null}
+        </section>
+      )}
 
       {ledger ? (
         <section className={`${PANEL} mt-5`} aria-label="ملخص الحساب">

@@ -55,38 +55,41 @@ export default function ClientDnaSmartEventRecommendations({
 
   return (
     <section
-      className={`rounded-2xl border border-[#d4af37]/25 bg-gradient-to-br from-[#fffdf8] via-white to-amber-50/40 p-5 shadow-[0_12px_40px_rgba(212,175,55,0.08)] ${className}`}
+      className={`rounded-2xl border border-slate-200 bg-slate-50/50 p-5 shadow-sm dark:border-[#2D3F3A] dark:bg-[#22302C] ${className}`}
     >
       <div className="mb-4 flex items-start justify-between gap-3">
         <div>
           <h3
-            className={`inline-flex items-center gap-2 font-black text-[#001f3f] ${compact ? 'text-sm' : 'text-base'}`}
+            className={`flex items-center gap-2 font-bold text-slate-900 dark:text-gray-100 ${compact ? 'text-base' : 'text-lg'}`}
           >
-            <Sparkles className="h-4 w-4 text-[#d4af37]" aria-hidden />
-            ✨ الفعاليات والمواسم المرشحة للعميل
+            <span className="inline-block select-none fill-none" aria-hidden>
+              ✨
+            </span>
+            <Sparkles className="h-4 w-4 shrink-0 text-[#D4AF37]" aria-hidden />
+            الفعاليات والمواسم المرشحة للعميل
           </h3>
-          <p className="mt-1 text-[11px] font-semibold leading-relaxed text-slate-500">
+          <p className="mt-1 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
             مطابقة ذكية بين اهتمامات DNA والفعاليات الإيجابية فقط (اذهب — بدون تجنب).
           </p>
         </div>
         {interestList.length > 0 ? (
-          <span className="shrink-0 rounded-full bg-[#001f3f]/5 px-2.5 py-1 text-[10px] font-black text-[#001f3f]">
+          <span className="shrink-0 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[10px] font-bold text-slate-700 dark:border-[#2D3F3A] dark:bg-[#1A2421] dark:text-[#D4AF37]">
             {events.length} مطابقة
           </span>
         ) : null}
       </div>
 
       {!interestList.length ? (
-        <div className="rounded-xl border border-dashed border-[#d4af37]/30 bg-white/70 px-4 py-6 text-center text-sm font-semibold text-slate-500">
+        <div className="rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50/50 p-6 text-center text-sm text-slate-600 dark:border-[#2D3F3A] dark:bg-[#1A2421]/50 dark:text-slate-300">
           أضف اهتمامات السفر في قسم DNA لعرض التوصيات الذكية.
         </div>
       ) : loading ? (
-        <div className="flex items-center justify-center gap-2 py-10 text-slate-500">
-          <Loader2 className="h-5 w-5 animate-spin text-[#d4af37]" aria-hidden />
-          <span className="text-sm font-bold">جارٍ تحليل الاهتمامات…</span>
+        <div className="flex items-center justify-center gap-2 py-10 text-slate-600 dark:text-slate-300">
+          <Loader2 className="h-5 w-5 animate-spin text-[#D4AF37]" aria-hidden />
+          <span className="text-sm font-medium">جارٍ تحليل الاهتمامات…</span>
         </div>
       ) : events.length === 0 ? (
-        <div className="rounded-xl border border-slate-200/80 bg-white/80 px-4 py-6 text-center text-sm font-semibold text-slate-500">
+        <div className="rounded-2xl border border-slate-200 bg-white px-4 py-6 text-center text-sm text-slate-600 dark:border-[#2D3F3A] dark:bg-[#1A2421] dark:text-slate-300">
           لا توجد فعاليات مطابقة لاهتمامات العميل حالياً.
         </div>
       ) : (
@@ -94,17 +97,17 @@ export default function ClientDnaSmartEventRecommendations({
           {events.map((ev) => (
             <li
               key={ev.id}
-              className="group rounded-xl border border-[#d4af37]/20 bg-white/90 p-4 shadow-sm transition hover:border-[#d4af37]/45 hover:shadow-md"
+              className="group rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-[#D4AF37]/45 hover:shadow-md dark:border-[#2D3F3A] dark:bg-[#1A2421] dark:hover:border-[#D4AF37]/40"
             >
-              <div className="font-black text-[#001f3f]">{ev.name || 'فعالية'}</div>
+              <div className="font-bold text-slate-900 dark:text-white">{ev.name || 'فعالية'}</div>
 
-              <div className="mt-2 flex flex-wrap items-center gap-2 text-xs font-bold text-slate-600">
+              <div className="mt-2 flex flex-wrap items-center gap-2 text-xs font-medium text-slate-600 dark:text-slate-300">
                 <span className="inline-flex items-center gap-1">
-                  <MapPin size={12} className="text-[#d4af37]" aria-hidden />
+                  <MapPin size={12} className="text-[#D4AF37]" aria-hidden />
                   {[ev.city, ev.country].filter(Boolean).join(' · ') || '—'}
                 </span>
                 {(ev.start_date || ev.end_date) && (
-                  <span className="inline-flex items-center gap-1 text-slate-500">
+                  <span className="inline-flex items-center gap-1 text-slate-500 dark:text-slate-400">
                     <CalendarDays size={12} aria-hidden />
                     {formatEventDateRange(ev.start_date, ev.end_date)}
                   </span>
@@ -116,7 +119,7 @@ export default function ClientDnaSmartEventRecommendations({
                   {ev.matchedInterests.map((tag) => (
                     <span
                       key={`${ev.id}-${tag}`}
-                      className="rounded-full bg-[#d4af37]/15 px-2.5 py-0.5 text-[10px] font-black text-[#7a5c00] ring-1 ring-[#d4af37]/25"
+                      className="rounded-full bg-[#D4AF37]/15 px-2.5 py-0.5 text-[10px] font-bold text-[#8B7355] ring-1 ring-[#D4AF37]/25 dark:text-[#D4AF37]"
                     >
                       {tag}
                     </span>
@@ -125,7 +128,9 @@ export default function ClientDnaSmartEventRecommendations({
               ) : null}
 
               {ev.season ? (
-                <div className="mt-2 text-[10px] font-bold text-slate-400">موسم: {ev.season}</div>
+                <div className="mt-2 text-[10px] font-medium text-slate-500 dark:text-slate-400">
+                  موسم: {ev.season}
+                </div>
               ) : null}
             </li>
           ))}

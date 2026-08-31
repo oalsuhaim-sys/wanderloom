@@ -8,7 +8,7 @@ import {
   WHATSAPP_TEMPLATE_OPTIONS,
   type WhatsAppTemplateId,
 } from '@/lib/whatsapp-templates';
-import { setLeadPipelineStatus } from '@/lib/lead-pipeline-automation';
+import { updatePipelineStatus } from '@/lib/lead-pipeline-automation';
 import { supabase } from '@/lib/supabase';
 
 type Props = {
@@ -55,9 +55,8 @@ export default function WhatsAppTemplatePicker({
       quoteId,
     });
 
-    // أتمتة كانبان: إرسال العرض → بانتظار الدفع
     if (supabase && (leadId || clientId != null)) {
-      void setLeadPipelineStatus(supabase, { leadId, clientId }, 'awaiting_payment').catch((err) =>
+      void updatePipelineStatus(supabase, { leadId, clientId, force: true }, 'awaiting_payment').catch((err) =>
         console.warn('[quote-whatsapp] lead pipeline:', err),
       );
 
@@ -77,14 +76,14 @@ export default function WhatsAppTemplatePicker({
   return (
     <div className={`relative min-w-[9.5rem] ${className}`}>
       <MessageCircle
-        className="pointer-events-none absolute start-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#C9A84C]"
+        className="pointer-events-none absolute start-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-emerald-600 dark:text-[#D4AF37]"
         aria-hidden
       />
       <select
         value={value}
         disabled={disabled || !quoteId}
         onChange={(e) => handleChange(e.target.value)}
-        className="w-full appearance-none rounded-lg border-2 border-[#C9A84C]/55 bg-gradient-to-l from-[#FEFDF9] to-white py-2 pe-8 ps-8 text-[10px] font-black text-[#1C4532] shadow-sm outline-none transition hover:border-[#C9A84C] focus:border-[#C9A84C] focus:ring-2 focus:ring-[#C9A84C]/25 disabled:cursor-not-allowed disabled:opacity-50"
+        className="w-full appearance-none rounded-lg border border-slate-200 bg-white py-2 pe-8 ps-8 text-xs font-medium text-slate-700 shadow-sm outline-none transition hover:bg-slate-50 focus:border-slate-300 focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:opacity-50 dark:border-[#2D3F3A] dark:bg-[#2A3834] dark:text-gray-200 dark:hover:border-[#D4AF37]/30 dark:focus:border-[#D4AF37]/40 dark:focus:ring-[#D4AF37]/15"
         aria-label="قوالب واتساب"
         title={phone ? 'إرسال قالب واتساب للعميل' : 'فتح واتساب بدون رقم — ألصق الرقم يدوياً'}
       >
@@ -96,7 +95,7 @@ export default function WhatsAppTemplatePicker({
         ))}
       </select>
       <span
-        className="pointer-events-none absolute end-2.5 top-1/2 -translate-y-1/2 text-[10px] text-[#C9A84C]"
+        className="pointer-events-none absolute end-2.5 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 dark:text-[#D4AF37]/70"
         aria-hidden
       >
         ▾

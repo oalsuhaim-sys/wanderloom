@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
-import { requireCrmAdmin } from '@/lib/supabase/route-handler';
+import { getAuthenticatedCrmUser } from '@/lib/supabase/route-handler';
 
 type AvailabilityStatus = 'available' | 'unavailable';
 
@@ -24,8 +24,17 @@ function isIsoDate(value: string): boolean {
     parsed.toISOString().slice(0, 10) === value;
 }
 
+async function requireCrmStaff(request: NextRequest) {
+  const result = await getAuthenticatedCrmUser(request);
+  if ('error' in result) return result;
+  if (result.access.is_suspended) {
+    return { error: 'الحساب موقوف', status: 403 as const, ...result };
+  }
+  return result;
+}
+
 export async function GET(request: NextRequest) {
-  const auth = await requireCrmAdmin(request);
+  const auth = await requireCrmStaff(request);
   if ('error' in auth) {
     return jsonWithCookies(
       { ok: false, error: auth.error },
@@ -76,7 +85,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const auth = await requireCrmAdmin(request);
+  const auth = await requireCrmStaff(request);
   if ('error' in auth) {
     return jsonWithCookies(
       { ok: false, error: auth.error },

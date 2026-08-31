@@ -108,7 +108,7 @@ export default function ItineraryClientRevealControl({
           className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-black ${
             bypass
               ? 'bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200'
-              : 'bg-[#1E2720]/5 text-[#1E2720]/70 ring-1 ring-[#1E2720]/10'
+              : 'bg-slate-100/5 text-[#1E2720]/70 ring-1 ring-[#1E2720]/10'
           }`}
         >
           {bypass ? (
@@ -149,8 +149,8 @@ export default function ItineraryClientRevealControl({
           onClick={() => void updateBypass(false)}
           className={`inline-flex items-center justify-center gap-2 rounded-xl border-2 px-4 py-3 text-sm font-black transition ${
             !bypass
-              ? 'cursor-default border-[#1E2720] bg-[#1E2720] text-[#FAFAFA]'
-              : 'border-[#1E2720]/20 bg-white text-[#1E2720] hover:border-[#1E2720]/40 hover:bg-[#1E2720]/5'
+              ? 'cursor-default border-[#1E2720] bg-slate-100 text-[#FAFAFA]'
+              : 'border-[#1E2720]/20 bg-white text-[#1E2720] hover:border-[#1E2720]/40 hover:bg-slate-100/5'
           } disabled:opacity-70`}
         >
           {saving && bypass ? (

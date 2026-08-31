@@ -1,12 +1,16 @@
 'use client';
 
-import { Suspense, useState, type ReactNode } from 'react';
+import { Suspense, useEffect, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { Menu, X } from 'lucide-react';
 
 import { AdminNotificationBell } from '@/components/AdminNotificationBell';
+import { CrmLuxuryToaster } from '@/components/CrmLuxuryToaster';
+import { CRM_MODAL_OVERLAY, CRM_MODAL_PANEL } from '@/lib/crm-luxury-ui';
 
 import InternalDiscussion from './InternalDiscussion';
 import { CrmPushNotifications } from './CrmPushNotifications';
+import { RealtimeListener } from './RealtimeListener';
 import CommandPalette from './CommandPalette';
 import CrmThemeToggle from './CrmThemeToggle';
 import { useCrmTheme } from './CrmThemeProvider';
@@ -26,21 +30,21 @@ export function CrmShell({ children }: CrmShellProps) {
       dir="rtl"
       className={`crm-command-center min-h-screen font-sans transition-colors duration-300 ${
         isDark
-          ? 'dark bg-brand-dark text-[#E8EDE9]'
-          : 'bg-brand-offwhite text-brand-primary'
+          ? 'dark bg-[#1A2421] text-gray-100'
+          : 'bg-[#F9FAFB] text-slate-900'
       }`}
     >
-      <header className="sticky top-0 z-40 flex items-center justify-between gap-3 border-b border-brand-gold/20 bg-brand-primary px-4 py-3 lg:hidden">
+      <header className="sticky top-0 z-40 flex items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-[#2D3F3A] dark:bg-[#22302C] dark:shadow-none lg:hidden">
         <button
           type="button"
           onClick={() => setSidebarOpen(true)}
-          className="flex h-10 w-10 items-center justify-center rounded-xl border border-brand-gold/30 bg-white/5 text-brand-gold transition-colors duration-300 hover:bg-white/10"
+          className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition-colors duration-200 hover:bg-slate-100 hover:text-slate-900 dark:border-[#2D3F3A] dark:bg-[#2A3834] dark:text-gray-300 dark:hover:border-[#D4AF37]/30 dark:hover:text-[#D4AF37]"
           aria-expanded={sidebarOpen}
           aria-label="فتح القائمة"
         >
           <Menu className="h-5 w-5" aria-hidden />
         </button>
-        <span className="text-sm font-black tracking-[0.2em] text-brand-gold">
+        <span className="text-sm font-semibold tracking-tight text-slate-900 dark:text-[#D4AF37]">
           Wanderloom CRM
         </span>
         <CrmThemeToggle compact />
@@ -50,7 +54,7 @@ export function CrmShell({ children }: CrmShellProps) {
       {sidebarOpen ? (
         <button
           type="button"
-          className="fixed inset-0 z-[55] bg-brand-primary/50 backdrop-blur-[2px] lg:hidden"
+          className="fixed inset-0 z-[55] bg-[#1A2421]/70 backdrop-blur-[2px] lg:hidden"
           aria-label="إغلاق القائمة"
           onClick={() => setSidebarOpen(false)}
         />
@@ -59,8 +63,8 @@ export function CrmShell({ children }: CrmShellProps) {
       <div className="flex min-h-[calc(100vh-3.25rem)] lg:min-h-screen">
         <Sidebar mobileOpen={sidebarOpen} onNavigate={() => setSidebarOpen(false)} />
         <main
-          className={`w-full min-w-0 flex-1 p-4 text-sm transition-colors duration-300 md:p-6 md:text-base lg:p-8 ${
-            isDark ? 'bg-brand-dark text-[#E8EDE9]' : 'bg-brand-offwhite text-brand-primary'
+          className={`crm-animate-in w-full min-w-0 flex-1 p-4 text-sm transition-colors duration-300 md:p-6 md:text-base lg:p-8 ${
+            isDark ? 'bg-[#1A2421] text-gray-100' : 'bg-[#F9FAFB] text-slate-900'
           }`}
         >
           {children}
@@ -70,6 +74,8 @@ export function CrmShell({ children }: CrmShellProps) {
       <Suspense fallback={null}>
         <InternalDiscussion />
       </Suspense>
+      <RealtimeListener />
+      <CrmLuxuryToaster />
       <CrmPushNotifications />
       <CommandPalette />
     </div>
@@ -85,9 +91,12 @@ export function CrmModalBackdrop({
   onClose?: () => void;
   labelledBy?: string;
 }) {
-  return (
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  const overlay = (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 backdrop-blur-sm sm:items-center sm:p-4"
+      className={CRM_MODAL_OVERLAY}
       role="dialog"
       aria-modal="true"
       aria-labelledby={labelledBy}
@@ -98,6 +107,9 @@ export function CrmModalBackdrop({
       {children}
     </div>
   );
+
+  if (!mounted || typeof document === 'undefined') return overlay;
+  return createPortal(overlay, document.body);
 }
 
 export function CrmModalPanel({
@@ -111,7 +123,7 @@ export function CrmModalPanel({
 }) {
   return (
     <div
-      className={`flex max-h-[92dvh] w-[95%] max-w-lg flex-col overflow-hidden rounded-t-2xl border border-[#D4AF37]/30 bg-white shadow-2xl dark:border-brand-gold/30 dark:bg-brand-surface dark:text-[#E8EDE9] sm:max-h-[90vh] sm:w-full sm:rounded-2xl md:w-3/4 md:max-w-2xl lg:w-1/2 lg:max-w-3xl ${className}`}
+      className={`${CRM_MODAL_PANEL} dark:border-[#2D3F3A] dark:bg-[#1A2421] dark:text-gray-100 ${className}`}
       onClick={onClick}
     >
       {children}
@@ -130,7 +142,7 @@ export function CrmModalCloseButton({
     <button
       type="button"
       onClick={onClick}
-      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-gray-200 text-gray-500 transition hover:bg-gray-50 dark:border-brand-gold/25 dark:text-brand-muted dark:hover:bg-brand-dark"
+      className="inline-flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition hover:bg-slate-50 dark:border-[#2D3F3A] dark:bg-[#2A3834] dark:text-gray-400 dark:hover:border-[#D4AF37]/30 dark:hover:text-[#D4AF37]"
       aria-label={label}
     >
       <X className="h-4 w-4" aria-hidden />

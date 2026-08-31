@@ -8,8 +8,13 @@ import {
   type CrmProfileAccess,
   type EmployeeRbacRow,
 } from '@/lib/crm-permissions';
+import { EMPLOYEE_SELECT_ATTEMPTS, isMissingEmployeeColumnError } from '@/lib/employees-rbac-db';
 import { isEmergencyCrmOwnerBypass } from '@/lib/crm-roles';
 import { supabase } from '@/lib/supabase';
+import {
+  isJwtClockSkewError,
+  recoverSupabaseSessionFromClockSkew,
+} from '@/lib/supabase/auth-clock-skew';
 
 export type EmployeeRow = {
   id: string;
@@ -56,13 +61,24 @@ function toEmployeeRow(row: EmployeeRbacRow | null): EmployeeRow | null {
 async function fetchEmployeeByAuth(userId: string, email: string | null) {
   if (!supabase) return { data: null, error: new Error('Supabase غير مهيأ') };
 
-  const byUserId = await supabase.from('employees').select('*').eq('user_id', userId).maybeSingle();
+  async function queryBy(column: 'user_id' | 'email', value: string) {
+    let lastError: { message: string } | null = null;
+    for (const select of EMPLOYEE_SELECT_ATTEMPTS) {
+      const result = await supabase.from('employees').select(select).eq(column, value).maybeSingle();
+      if (!result.error) return result;
+      lastError = result.error;
+      if (!isMissingEmployeeColumnError(result.error.message)) return result;
+    }
+    return { data: null, error: lastError };
+  }
+
+  const byUserId = await queryBy('user_id', userId);
   console.log('Auth Debug - user_id query:', { userId, data: byUserId.data, error: byUserId.error });
 
   if (!byUserId.error && byUserId.data) return byUserId;
 
   if (email) {
-    const byEmail = await supabase.from('employees').select('*').eq('email', email).maybeSingle();
+    const byEmail = await queryBy('email', email);
     console.log('Auth Debug - email query:', { email, data: byEmail.data, error: byEmail.error });
     if (!byEmail.error && byEmail.data) return byEmail;
   }
@@ -90,9 +106,19 @@ export function CrmEmployeeProvider({ children }: { children: ReactNode }) {
       setLoading(false);
       return;
     }
-    const {
+    let {
       data: { user },
+      error: authUserError,
     } = await supabase.auth.getUser();
+
+    if (isJwtClockSkewError(authUserError)) {
+      const recovered = await recoverSupabaseSessionFromClockSkew(supabase);
+      if (recovered) {
+        const retry = await supabase.auth.getUser();
+        user = retry.data.user;
+        authUserError = retry.error;
+      }
+    }
 
     console.log('Auth Debug - Email:', user?.email);
     console.log('Auth Debug - Auth User ID:', user?.id);
@@ -103,7 +129,11 @@ export function CrmEmployeeProvider({ children }: { children: ReactNode }) {
       setEmployeeDbRow(null);
       setAuthUserId(null);
       setAuthEmail(null);
-      setEmployeeError(null);
+      setEmployeeError(
+        isJwtClockSkewError(authUserError)
+          ? 'انحراف بساعة الجهاز — صحّح وقت النظام ثم أعد تحميل الصفحة.'
+          : null,
+      );
       if (typeof window !== 'undefined') {
         window.sessionStorage.removeItem('wanderloom_employee');
         window.sessionStorage.removeItem(PROFILE_STORAGE_KEY);
@@ -143,7 +173,13 @@ export function CrmEmployeeProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    const employeeResult = await fetchEmployeeByAuth(user.id, normalizedEmail);
+    let employeeResult = await fetchEmployeeByAuth(user.id, normalizedEmail);
+    if (employeeResult.error && isJwtClockSkewError(employeeResult.error)) {
+      const recovered = await recoverSupabaseSessionFromClockSkew(supabase);
+      if (recovered) {
+        employeeResult = await fetchEmployeeByAuth(user.id, normalizedEmail);
+      }
+    }
     console.log('Auth Debug - DB Result:', employeeResult.data);
     console.log('Auth Debug - DB Error:', employeeResult.error);
 

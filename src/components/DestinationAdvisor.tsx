@@ -12,6 +12,7 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 
+import { useTripDestinations } from '@/hooks/useCountries';
 import {
   ADVISOR_COUNTRY_IDS,
   getCountryAdvisorData,
@@ -19,7 +20,7 @@ import {
   SEASON_LABELS,
   type SeasonKey,
 } from '@/lib/destination-advisor-data';
-import { TRIP_DESTINATIONS, type TripCountryId } from '@/lib/trip-destination-data';
+import type { TripCountryId } from '@/lib/trip-destination-data';
 
 type Step = 1 | 2 | 3;
 
@@ -60,9 +61,15 @@ function AdvisorImage({
 }
 
 export default function DestinationAdvisor() {
+  const { tripDestinations } = useTripDestinations();
   const [step, setStep] = useState<Step>(1);
   const [countryId, setCountryId] = useState<TripCountryId | null>(null);
   const [seasonKey, setSeasonKey] = useState<SeasonKey | null>(null);
+
+  const advisorCountryIds = useMemo(() => {
+    const dynamicIds = tripDestinations.map((country) => country.id);
+    return Array.from(new Set([...ADVISOR_COUNTRY_IDS, ...dynamicIds])) as TripCountryId[];
+  }, [tripDestinations]);
 
   const countryData = useMemo(
     () => (countryId ? getCountryAdvisorData(countryId) : null),
@@ -75,7 +82,7 @@ export default function DestinationAdvisor() {
   }, [countryData, seasonKey]);
 
   const countryLabel =
-    TRIP_DESTINATIONS.find((c) => c.id === countryId)?.labelAr ?? countryData?.name ?? '';
+    tripDestinations.find((c) => c.id === countryId)?.labelAr ?? countryData?.name ?? '';
 
   const selectCountry = (id: TripCountryId) => {
     setCountryId(id);
@@ -166,15 +173,17 @@ export default function DestinationAdvisor() {
       <div className="w-full rounded-2xl border border-gray-100 bg-white p-6 shadow-sm sm:p-8">
         {step === 1 ? (
           <div className="flex flex-wrap justify-center gap-3">
-            {ADVISOR_COUNTRY_IDS.map((id) => {
-              const label = TRIP_DESTINATIONS.find((c) => c.id === id)?.labelAr ?? id;
+            {advisorCountryIds.map((id) => {
+              const label = tripDestinations.find((c) => c.id === id)?.labelAr ?? id;
+              const hasAdvisorData = Boolean(getCountryAdvisorData(id));
               const isSelected = countryId === id;
               return (
                 <button
                   key={id}
                   type="button"
-                  onClick={() => selectCountry(id)}
-                  className={`wl-dest-tag inline-flex cursor-pointer select-none rounded-full border border-gray-200 bg-white px-4 py-1.5 text-sm font-bold text-gray-700 transition-all duration-300 hover:border-[#1A3B2A] hover:shadow-sm ${
+                  onClick={() => hasAdvisorData && selectCountry(id)}
+                  disabled={!hasAdvisorData}
+                  className={`wl-dest-tag inline-flex cursor-pointer select-none rounded-full border border-gray-200 bg-white px-4 py-1.5 text-sm font-bold text-gray-700 transition-all duration-300 hover:border-[#1A3B2A] hover:shadow-sm disabled:cursor-not-allowed disabled:opacity-45 ${
                     isSelected ? 'is-active scale-105 border-transparent bg-[#1A3B2A] text-[#C5A059] shadow-md' : ''
                   }`}
                 >

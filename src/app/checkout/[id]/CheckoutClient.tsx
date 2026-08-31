@@ -6,12 +6,14 @@ import { useParams } from 'next/navigation'
 import { Check, Copy, Loader2, ShieldCheck, Sparkles, Upload } from 'lucide-react'
 
 import {
-  fetchCheckoutClient,
-  submitBankReceipt,
   uploadBankReceipt,
-  WANDERLOOM_BANK_DETAILS,
   type CheckoutClientProfile,
 } from '@/lib/bank-checkout'
+import {
+  fetchCheckoutClientAction,
+  submitBankReceiptAction,
+} from '@/app/actions/checkoutActions'
+import { formatSarAmount, type AgencyBankDetails } from '@/lib/system-settings'
 
 const PANEL =
   'rounded-[1.75rem] border border-[#d4af37]/20 bg-gradient-to-b from-[#121816] to-[#0a0d0b] p-6 shadow-[0_24px_80px_rgba(0,0,0,0.45)] sm:p-8'
@@ -25,6 +27,7 @@ export default function CheckoutClient() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [loading, setLoading] = useState(true)
   const [client, setClient] = useState<CheckoutClientProfile | null>(null)
+  const [bank, setBank] = useState<AgencyBankDetails | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
   const [success, setSuccess] = useState(false)
@@ -41,16 +44,18 @@ export default function CheckoutClient() {
 
     setLoading(true)
     setError(null)
-    const res = await fetchCheckoutClient(clientId)
+    const res = await fetchCheckoutClientAction(clientId)
     setLoading(false)
 
     if (!res.ok || !res.client) {
       setClient(null)
-      setError(res.error ?? 'لم يتم العثور على بيانات الحجز')
+      setBank(null)
+      setError(!res.ok ? res.error : 'لم يتم العثور على بيانات الحجز')
       return
     }
 
     setClient(res.client)
+    setBank(res.bank)
     if (res.client.receipt_url) setSuccess(true)
   }, [clientId])
 
@@ -59,8 +64,10 @@ export default function CheckoutClient() {
   }, [load])
 
   async function copyIban() {
+    const value = (bank?.iban ?? '').replace(/\s+/g, '')
+    if (!value) return
     try {
-      await navigator.clipboard.writeText(WANDERLOOM_BANK_DETAILS.iban.replace(/\s+/g, ''))
+      await navigator.clipboard.writeText(value)
       setCopied(true)
       window.setTimeout(() => setCopied(false), 2000)
     } catch {
@@ -81,7 +88,7 @@ export default function CheckoutClient() {
       return
     }
 
-    const save = await submitBankReceipt(clientId, upload.publicUrl)
+    const save = await submitBankReceiptAction(clientId, upload.publicUrl)
     setUploading(false)
 
     if (!save.ok) {
@@ -128,7 +135,10 @@ export default function CheckoutClient() {
   }
 
   const displayName = client?.name?.trim() || 'ضيفنا الكريم'
-  const displayTrip = client?.target_trip?.trim() || 'رحلتك الحصرية'
+  const displayTrip =
+    client?.destination?.trim() || client?.target_trip?.trim() || 'رحلتك الحصرية'
+  const datesLabel = client?.dates_label?.trim() || null
+  const amountLabel = formatSarAmount(client?.amount_due)
 
   return (
     <main
@@ -146,7 +156,10 @@ export default function CheckoutClient() {
 
       <header className="relative z-10 border-b border-[#d4af37]/10 bg-[#0a0d0b]/80 px-4 py-4 backdrop-blur-md sm:px-8">
         <div className="mx-auto flex max-w-2xl items-center justify-between gap-4">
-          <Link href="/" className="text-xs font-black tracking-[0.2em] text-[#d4af37]/80 transition hover:text-[#d4af37]">
+          <Link
+            href="/"
+            className="text-xs font-black tracking-[0.2em] text-[#d4af37]/80 transition hover:text-[#d4af37]"
+          >
             WANDERLOOM
           </Link>
           <span className="inline-flex items-center gap-1.5 text-[10px] font-bold text-white/40">
@@ -165,50 +178,82 @@ export default function CheckoutClient() {
           <h1 className="mt-4 text-2xl font-black leading-snug text-white sm:text-3xl">
             أهلاً بك{' '}
             <span className={GOLD}>{displayName}</span>
-            <br />
-            <span className="text-lg font-bold text-white/75 sm:text-xl">في رحلة</span>{' '}
-            <span className="text-[#e8dcc0]">{displayTrip}</span>
           </h1>
-          <p className="mt-3 text-sm font-semibold text-white/45">
-            أكمل التحويل البنكي وأرفق الإيصال لتثبيت مقعدك في الرادار الحي
+          <p className="mt-3 text-sm font-semibold text-white/55">
+            إليك تفاصيل حجزك — أكمل التحويل البنكي وأرفق إيصال التحويل
           </p>
         </div>
 
         {success ? (
           <div className={`${PANEL} text-center`}>
             <div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-full border-2 border-emerald-400/50 bg-emerald-500/10 shadow-[0_0_40px_rgba(52,211,153,0.25)]">
-              <Check className="h-10 w-10 text-emerald-400 animate-[pulse_2s_ease-in-out_infinite]" aria-hidden />
+              <Check
+                className="h-10 w-10 text-emerald-400 animate-[pulse_2s_ease-in-out_infinite]"
+                aria-hidden
+              />
             </div>
             <p className="text-lg font-black text-emerald-200">
-              تم استلام الإيصال بنجاح، جاري تأكيد حجزك ونقله للرادار الحي! ✨
+              شكراً لك! جاري مراجعة إيصالك وسنتأكد من حجزك قريباً ✨
             </p>
             <p className="mt-3 text-xs font-semibold text-white/40">
-              سيتواصل معك فريق وندرلُوم قريباً لتأكيد التفاصيل النهائية.
+              حالة الطلب: جاري التحقق من السداد — سيتواصل معك فريق وندرلُوم قريباً.
             </p>
           </div>
         ) : (
           <div className="space-y-6">
             <section className={PANEL}>
-              <h2 className={`mb-5 text-right text-sm font-black ${GOLD}`}>تفاصيل الحساب البنكي الرسمي</h2>
+              <h2 className={`mb-5 text-right text-sm font-black ${GOLD}`}>ملخص الحجز</h2>
+              <dl className="space-y-3">
+                <div className="flex items-center justify-between gap-3 rounded-xl border border-white/8 bg-black/30 px-4 py-3">
+                  <dt className="text-[10px] font-bold text-white/40">الوجهة</dt>
+                  <dd className="text-sm font-black text-white">{displayTrip}</dd>
+                </div>
+                {datesLabel ? (
+                  <div className="flex items-center justify-between gap-3 rounded-xl border border-white/8 bg-black/30 px-4 py-3">
+                    <dt className="text-[10px] font-bold text-white/40">التواريخ</dt>
+                    <dd className="text-sm font-black text-white" dir="ltr">
+                      {datesLabel}
+                    </dd>
+                  </div>
+                ) : null}
+                <div className="flex items-center justify-between gap-3 rounded-xl border border-[#d4af37]/30 bg-[#d4af37]/10 px-4 py-4">
+                  <dt className="text-[10px] font-bold text-[#d4af37]/80">مبلغ السداد</dt>
+                  <dd className="text-xl font-black text-[#f5e6b8]">{amountLabel}</dd>
+                </div>
+              </dl>
+            </section>
+
+            <section className={PANEL}>
+              <h2 className={`mb-5 text-right text-sm font-black ${GOLD}`}>
+                تفاصيل الحساب البنكي الرسمي
+              </h2>
               <dl className="space-y-4">
                 <div className="rounded-xl border border-white/8 bg-black/30 px-4 py-3">
                   <dt className="text-[10px] font-bold text-white/40">اسم البنك</dt>
-                  <dd className="mt-1 text-sm font-black text-white">{WANDERLOOM_BANK_DETAILS.bankName}</dd>
+                  <dd className="mt-1 text-sm font-black text-white">
+                    {bank?.bankName || '—'}
+                  </dd>
                 </div>
                 <div className="rounded-xl border border-white/8 bg-black/30 px-4 py-3">
                   <dt className="text-[10px] font-bold text-white/40">اسم الحساب</dt>
-                  <dd className="mt-1 text-sm font-black text-white">{WANDERLOOM_BANK_DETAILS.accountName}</dd>
+                  <dd className="mt-1 text-sm font-black text-white">
+                    {bank?.accountName || '—'}
+                  </dd>
                 </div>
                 <div className="rounded-xl border border-[#d4af37]/25 bg-[#d4af37]/5 px-4 py-3">
                   <dt className="text-[10px] font-bold text-[#d4af37]/70">رقم الآيبان (IBAN)</dt>
                   <dd className="mt-2 flex items-center justify-between gap-3">
-                    <span className="font-mono text-sm font-black tracking-wide text-[#f5f0e6]" dir="ltr">
-                      {WANDERLOOM_BANK_DETAILS.iban}
+                    <span
+                      className="font-mono text-sm font-black tracking-wide text-[#f5f0e6]"
+                      dir="ltr"
+                    >
+                      {bank?.iban || '—'}
                     </span>
                     <button
                       type="button"
                       onClick={() => void copyIban()}
-                      className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-[#d4af37]/35 bg-[#d4af37]/10 px-3 py-1.5 text-[10px] font-black text-[#d4af37] transition hover:bg-[#d4af37]/20"
+                      disabled={!bank?.iban}
+                      className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-[#d4af37]/35 bg-[#d4af37]/10 px-3 py-1.5 text-[10px] font-black text-[#d4af37] transition hover:bg-[#d4af37]/20 disabled:opacity-40"
                     >
                       {copied ? (
                         <>
@@ -228,7 +273,9 @@ export default function CheckoutClient() {
             </section>
 
             <section className={PANEL}>
-              <h2 className={`mb-2 text-right text-sm font-black ${GOLD}`}>إرفاق إيصال التحويل البنكي</h2>
+              <h2 className={`mb-2 text-right text-sm font-black ${GOLD}`}>
+                إرفاق إيصال التحويل البنكي
+              </h2>
               <p className="mb-5 text-right text-xs font-semibold text-white/40">
                 اسحب الملف هنا أو اضغط للرفع — صورة أو PDF (حتى 10 ميجابايت)
               </p>
@@ -273,7 +320,7 @@ export default function CheckoutClient() {
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="image/jpeg,image/png,image/webp,image/gif,application/pdf"
+                accept="image/*,.pdf,application/pdf"
                 className="sr-only"
                 onChange={(e) => {
                   void processFile(e.target.files?.[0])

@@ -1,3 +1,4 @@
+import { CRM_DESTINATIONS_GUIDE } from '@/lib/crm-destinations-guide-data';
 import { parsePartnerDnaProfile } from '@/lib/partner-dna';
 
 export type MatchableExpert = {
@@ -42,6 +43,31 @@ function isActiveExpertStatus(status: unknown): boolean {
   );
 }
 
+/** Expand Arabic/English destination tokens so "روسيا" also matches "Russia" / guide ids / cities. */
+function expandDestinationTokens(raw: string): string[] {
+  const base = normalizeDestination(raw);
+  if (!base) return [];
+
+  const out = new Set<string>([base]);
+
+  for (const country of CRM_DESTINATIONS_GUIDE) {
+    const label = normalizeDestination(country.labelAr);
+    const id = normalizeDestination(country.id);
+    const related = [label, id, ...country.cities.map((c) => normalizeDestination(c.labelAr))];
+    const hits = related.some(
+      (token) =>
+        token &&
+        (base === token || base.includes(token) || token.includes(base)),
+    );
+    if (!hits) continue;
+    for (const token of related) {
+      if (token) out.add(token);
+    }
+  }
+
+  return [...out];
+}
+
 export function expertSpecialtyDestinations(expert: MatchableExpert): string[] {
   const dna = parsePartnerDnaProfile(
     expert.partnerDna ?? expert.dnaProfile ?? expert.dna_profile,
@@ -56,27 +82,79 @@ export function expertSpecialtyDestinations(expert: MatchableExpert): string[] {
   );
 }
 
+function expertSpecialtyTokens(expert: MatchableExpert): string[] {
+  return Array.from(
+    new Set(
+      expertSpecialtyDestinations(expert).flatMap((dest) =>
+        expandDestinationTokens(dest),
+      ),
+    ),
+  ).filter(Boolean);
+}
+
+function tripHaystackTokens(fields: unknown[]): string[] {
+  return Array.from(
+    new Set(
+      fields
+        .flatMap(splitDestinationText)
+        .flatMap((part) => expandDestinationTokens(part)),
+    ),
+  ).filter(Boolean);
+}
+
+function tokensOverlap(a: string[], b: string[]): boolean {
+  if (!a.length || !b.length) return false;
+  return a.some((left) =>
+    b.some(
+      (right) =>
+        left === right || left.includes(right) || right.includes(left),
+    ),
+  );
+}
+
 export function expertMatchesDestination(
   expert: MatchableExpert,
   destinations: unknown[],
 ): boolean {
-  const targets = destinations
-    .flatMap(splitDestinationText)
-    .map(normalizeDestination)
-    .filter(Boolean);
-  if (targets.length === 0) return false;
+  return tokensOverlap(
+    expertSpecialtyTokens(expert),
+    tripHaystackTokens(destinations),
+  );
+}
 
-  return expertSpecialtyDestinations(expert)
-    .map(normalizeDestination)
-    .filter(Boolean)
-    .some((specialty) =>
-      targets.some(
-        (target) =>
-          specialty === target ||
-          specialty.includes(target) ||
-          target.includes(specialty),
-      ),
-    );
+/**
+ * Match expert destinations against trip destination / country / title / description fields.
+ * Returns false only when the expert has no destinations OR the trip haystack is empty.
+ */
+export function expertMatchesTripFields(
+  expert: MatchableExpert,
+  fields: {
+    destination?: unknown;
+    country?: unknown;
+    title?: unknown;
+    titleAr?: unknown;
+    titleEn?: unknown;
+    description?: unknown;
+    descriptionAr?: unknown;
+    descriptionEn?: unknown;
+    badge?: unknown;
+    badgeAr?: unknown;
+    badgeEn?: unknown;
+  },
+): boolean {
+  return expertMatchesDestination(expert, [
+    fields.destination,
+    fields.country,
+    fields.title,
+    fields.titleAr,
+    fields.titleEn,
+    fields.description,
+    fields.descriptionAr,
+    fields.descriptionEn,
+    fields.badge,
+    fields.badgeAr,
+    fields.badgeEn,
+  ]);
 }
 
 export function groupExpertsByDestination<T extends MatchableExpert>(

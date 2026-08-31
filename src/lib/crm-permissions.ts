@@ -1,7 +1,8 @@
 /** مفاتيح صلاحيات CRM القابلة للتعديل عبر لوحة المدير */
 import { hasCrmAdminAccess, isEmployeeAdminRole, isEmployeeExpertRole, isEmergencyCrmOwnerBypass } from '@/lib/crm-roles';
 
-export const CRM_PERMISSION_KEYS = [
+/** أعمدة الوصول القديمة (مسارات CRM) — تُشتق من الصلاحيات الدقيقة عند الحفظ */
+export const LEGACY_ACCESS_KEYS = [
   'can_access_dashboard',
   'can_access_clients',
   'can_access_itineraries',
@@ -9,6 +10,38 @@ export const CRM_PERMISSION_KEYS = [
   'can_access_payments',
 ] as const;
 
+/**
+ * صلاحيات حسب أقسام اللوحة (أسماء قائمة الرادار / السايدبار)
+ * تُخزَّن في employees.permissions كـ JSON array لمفاتيح مفعّلة: ["view_dashboard", ...]
+ */
+export const GRANULAR_PERMISSION_KEYS = [
+  'view_dashboard',
+  'access_inbox',
+  'access_appointments',
+  'access_group_operations',
+  'access_itineraries_view',
+  'access_itineraries_edit',
+  'access_wallet',
+  'access_assigned_only',
+] as const;
+
+/** مفاتيح قديمة — تُحوَّل تلقائياً عند القراءة */
+const LEGACY_GRANULAR_ALIASES: Record<string, (typeof GRANULAR_PERMISSION_KEYS)[number]> = {
+  view_assigned_only: 'access_assigned_only',
+  manage_clients_workflow: 'access_inbox',
+  view_itineraries_readonly: 'access_itineraries_view',
+  edit_itineraries: 'access_itineraries_edit',
+  manage_groups: 'access_group_operations',
+  view_financials: 'access_wallet',
+};
+
+export const CRM_PERMISSION_KEYS = [
+  ...LEGACY_ACCESS_KEYS,
+  ...GRANULAR_PERMISSION_KEYS,
+] as const;
+
+export type LegacyAccessKey = (typeof LEGACY_ACCESS_KEYS)[number];
+export type GranularPermissionKey = (typeof GRANULAR_PERMISSION_KEYS)[number];
 export type CrmPermissionKey = (typeof CRM_PERMISSION_KEYS)[number];
 
 export type CrmPermissions = Record<CrmPermissionKey, boolean>;
@@ -19,24 +52,58 @@ export const CRM_PERMISSION_LABELS: Record<CrmPermissionKey, string> = {
   can_access_itineraries: 'مخطط المسارات',
   can_access_marketing: 'مركز التسويق',
   can_access_payments: 'المدفوعات والمالية',
+  view_dashboard: '📊 لوحة التحكم والرادار',
+  access_inbox: '📥 صندوق الوارد والطلبات',
+  access_appointments: '📅 مواعيد المقابلات',
+  access_group_operations: '👥 عمليات القروبات وتجهيز الطلبات',
+  access_itineraries_view: '🗺️ المسارات وعروض الأسعار (عرض فقط)',
+  access_itineraries_edit: '✏️ المسارات وعروض الأسعار (تعديل وإنشاء)',
+  access_wallet: '💰 المحفظة والعمولات',
+  access_assigned_only: '🔒 مشاهدة العملاء المرتبطين بكود الإحالة فقط',
 };
 
-export const DEFAULT_CRM_PERMISSIONS: CrmPermissions = {
-  can_access_dashboard: false,
-  can_access_clients: false,
-  can_access_itineraries: false,
-  can_access_marketing: false,
-  can_access_payments: false,
-};
+/** خيارات واجهة إضافة/تعديل مستخدم — بأسماء أقسام اللوحة */
+export const ACCOUNT_PERMISSION_OPTIONS: {
+  id: GranularPermissionKey;
+  label: string;
+}[] = GRANULAR_PERMISSION_KEYS.map((id) => ({
+  id,
+  label: CRM_PERMISSION_LABELS[id],
+}));
 
-/** خبير: عمليات (بدون جلسات/تسويق) + بنك الأماكن/الموردين عبر can_access_itineraries */
+function emptyPermissions(): CrmPermissions {
+  return Object.fromEntries(CRM_PERMISSION_KEYS.map((k) => [k, false])) as CrmPermissions;
+}
+
+export const DEFAULT_CRM_PERMISSIONS: CrmPermissions = emptyPermissions();
+
+/** خبير / قائد: مرتبطون فقط + عمليات قروبات */
 export const EXPERT_CRM_PERMISSIONS: CrmPermissions = {
+  ...emptyPermissions(),
+  view_dashboard: true,
+  access_assigned_only: true,
+  access_group_operations: true,
   can_access_dashboard: true,
-  can_access_clients: false,
+  can_access_clients: true,
   can_access_itineraries: true,
-  can_access_marketing: false,
-  can_access_payments: false,
 };
+
+/** موظف مبيعات / عمليات: وارد + مواعيد + قروبات + مسارات عرض فقط */
+export const EMPLOYEE_CRM_PERMISSIONS: CrmPermissions = {
+  ...emptyPermissions(),
+  view_dashboard: true,
+  access_inbox: true,
+  access_appointments: true,
+  access_group_operations: true,
+  access_itineraries_view: true,
+  can_access_dashboard: true,
+  can_access_clients: true,
+  can_access_itineraries: true,
+};
+
+export const FULL_CRM_PERMISSIONS: CrmPermissions = Object.fromEntries(
+  CRM_PERMISSION_KEYS.map((k) => [k, true]),
+) as CrmPermissions;
 
 export const EMPLOYEE_RBAC_SELECT =
   'id, user_id, full_name, role, job_title, email, is_admin, is_suspended, permissions, can_access_dashboard, can_access_clients, can_access_itineraries, can_access_marketing, can_access_payments, created_at';
@@ -61,14 +128,6 @@ export type EmployeeRbacRow = {
   created_at?: string | null;
 };
 
-export const FULL_CRM_PERMISSIONS: CrmPermissions = {
-  can_access_dashboard: true,
-  can_access_clients: true,
-  can_access_itineraries: true,
-  can_access_marketing: true,
-  can_access_payments: true,
-};
-
 export type CrmProfileAccess = {
   is_admin: boolean;
   is_expert: boolean;
@@ -77,6 +136,201 @@ export type CrmProfileAccess = {
 };
 
 export type CrmRouteGuardKey = CrmPermissionKey | 'is_admin' | 'can_access_partners';
+
+/** يشتق أعلام المسارات القديمة من صلاحيات أقسام اللوحة */
+export function deriveLegacyAccessFlags(perms: CrmPermissions): CrmPermissions {
+  const next = { ...perms };
+  next.can_access_clients = Boolean(
+    perms.can_access_clients ||
+      perms.access_assigned_only ||
+      perms.access_inbox ||
+      perms.access_appointments,
+  );
+  next.can_access_itineraries = Boolean(
+    perms.can_access_itineraries ||
+      perms.access_itineraries_edit ||
+      perms.access_itineraries_view ||
+      perms.access_group_operations ||
+      perms.access_inbox ||
+      perms.access_appointments ||
+      perms.view_dashboard,
+  );
+  next.can_access_payments = Boolean(perms.can_access_payments || perms.access_wallet);
+  next.can_access_dashboard = Boolean(
+    perms.can_access_dashboard ||
+      perms.view_dashboard ||
+      next.can_access_clients ||
+      next.can_access_itineraries ||
+      next.can_access_payments ||
+      perms.can_access_marketing,
+  );
+  next.can_access_marketing = Boolean(perms.can_access_marketing);
+  return next;
+}
+
+/** يملأ صلاحيات الأقسام من الأعلام القديمة / الأسماء السابقة (توافق خلفي) */
+export function expandLegacyToGranular(perms: CrmPermissions): CrmPermissions {
+  const next = { ...perms };
+  const hasAnyGranular = GRANULAR_PERMISSION_KEYS.some((k) => perms[k]);
+  if (hasAnyGranular) return deriveLegacyAccessFlags(next);
+
+  if (perms.can_access_dashboard) next.view_dashboard = true;
+  if (perms.can_access_clients) {
+    next.access_inbox = true;
+    next.access_appointments = true;
+  }
+  if (perms.can_access_itineraries) {
+    next.access_itineraries_edit = true;
+    next.access_group_operations = true;
+    next.view_dashboard = true;
+  }
+  if (perms.can_access_payments) {
+    next.access_wallet = true;
+  }
+  return deriveLegacyAccessFlags(next);
+}
+
+function applyPermissionId(base: CrmPermissions, rawId: string): void {
+  const key = String(rawId ?? '').trim();
+  if (!key) return;
+  if ((CRM_PERMISSION_KEYS as readonly string[]).includes(key)) {
+    base[key as CrmPermissionKey] = true;
+    return;
+  }
+  const modern = LEGACY_GRANULAR_ALIASES[key];
+  if (modern) {
+    base[modern] = true;
+    if (key === 'manage_clients_workflow') {
+      base.access_appointments = true;
+    }
+  }
+}
+
+/**
+ * يحوّل صلاحيات الواجهة إلى مصفوفة JSON صالحة لعمود employees.permissions
+ * (Supabase يتوقع JSON array وليس كائن boolean map).
+ */
+export function permissionsToDbArray(perms: CrmPermissions | Partial<CrmPermissions> | null | undefined): string[] {
+  const normalized = deriveLegacyAccessFlags(normalizeCrmPermissions(perms ?? {}));
+  return CRM_PERMISSION_KEYS.filter((k) => Boolean(normalized[k]));
+}
+
+/** يضمن دائماً Array نظيفة قبل الإرسال لـ Supabase */
+export function ensurePermissionsDbArray(raw: unknown): string[] {
+  if (Array.isArray(raw)) {
+    return raw
+      .map((item) => String(item ?? '').trim())
+      .filter(Boolean);
+  }
+  if (typeof raw === 'string') {
+    try {
+      return ensurePermissionsDbArray(JSON.parse(raw || '[]'));
+    } catch {
+      return [];
+    }
+  }
+  if (raw && typeof raw === 'object') {
+    return permissionsToDbArray(normalizeCrmPermissions(raw));
+  }
+  return [];
+}
+
+export function normalizeCrmPermissions(raw: unknown): CrmPermissions {
+  const base = emptyPermissions();
+
+  let value: unknown = raw;
+  if (typeof value === 'string') {
+    try {
+      value = JSON.parse(value || '[]');
+    } catch {
+      return base;
+    }
+  }
+
+  // DB / Auth metadata: ["view_dashboard", "access_inbox", ...]
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      applyPermissionId(base, String(item ?? ''));
+    }
+    return expandLegacyToGranular(base);
+  }
+
+  if (!value || typeof value !== 'object') return base;
+  const record = value as Record<string, unknown>;
+
+  for (const key of CRM_PERMISSION_KEYS) {
+    if (key in record && typeof record[key] === 'boolean') {
+      base[key] = record[key] as boolean;
+    }
+  }
+
+  // Migrate previous granular key names → menu keys
+  for (const [legacy, modern] of Object.entries(LEGACY_GRANULAR_ALIASES)) {
+    if (typeof record[legacy] === 'boolean' && record[legacy]) {
+      base[modern] = true;
+      // workflow previously covered appointments too
+      if (legacy === 'manage_clients_workflow') {
+        base.access_appointments = true;
+      }
+    }
+  }
+
+  return expandLegacyToGranular(base);
+}
+
+export function hasCrmPermission(
+  access: CrmProfileAccess | null | undefined,
+  key: CrmPermissionKey,
+): boolean {
+  if (!access || access.is_suspended) return false;
+  if (access.is_admin) return true;
+  return Boolean(access.permissions[key]);
+}
+
+/** Alias واضح للواجهات */
+export function hasPermission(
+  access: CrmProfileAccess | null | undefined,
+  key: CrmPermissionKey,
+): boolean {
+  return hasCrmPermission(access, key);
+}
+
+/**
+ * هل يمكن تعديل/إنشاء المسارات وعروض الأسعار؟
+ * access_itineraries_edit مطلوب؛ العرض فقط لا يكفي.
+ */
+export function canEditItineraries(access: CrmProfileAccess | null | undefined): boolean {
+  if (!access || access.is_suspended) return false;
+  if (access.is_admin) return true;
+  if (access.permissions.access_itineraries_view && !access.permissions.access_itineraries_edit) {
+    return false;
+  }
+  return Boolean(access.permissions.access_itineraries_edit);
+}
+
+export function isAssignedOnlyScope(access: CrmProfileAccess | null | undefined): boolean {
+  if (!access || access.is_suspended || access.is_admin) return false;
+  return Boolean(access.permissions.access_assigned_only);
+}
+
+/** صلاحيات أقسام الرادار */
+export function canAccessRadarInbox(access: CrmProfileAccess | null | undefined): boolean {
+  if (!access || access.is_suspended) return false;
+  if (access.is_admin) return true;
+  return Boolean(access.permissions.access_inbox);
+}
+
+export function canAccessRadarAppointments(access: CrmProfileAccess | null | undefined): boolean {
+  if (!access || access.is_suspended) return false;
+  if (access.is_admin) return true;
+  return Boolean(access.permissions.access_appointments);
+}
+
+export function canAccessGroupOperations(access: CrmProfileAccess | null | undefined): boolean {
+  if (!access || access.is_suspended) return false;
+  if (access.is_admin) return true;
+  return Boolean(access.permissions.access_group_operations);
+}
 
 /** مسارات قسم الشركاء — تُفتح لأي موظف CRM مسجّل (غير معلّق) — ما عدا الخبراء */
 export function isPartnersCrmPath(pathname: string): boolean {
@@ -94,7 +348,7 @@ export function isPartnersCrmPath(pathname: string): boolean {
   return prefixes.some((p) => path === p || path.startsWith(`${p}/`));
 }
 
-/** مسارات مسموحة لدور Expert فقط (عمليات + بنك الموارد) */
+/** مسارات مسموحة لدور Expert فقط (عمليات + بنك الموارد + عملاء مرتبطون عند الصلاحية) */
 const EXPERT_ALLOWED_PREFIXES = [
   '/crm/unauthorized',
   '/crm/features',
@@ -104,6 +358,8 @@ const EXPERT_ALLOWED_PREFIXES = [
   '/crm/hotels',
   '/crm/suppliers',
   '/crm/vault',
+  '/crm/clients',
+  '/crm/customers',
 ];
 
 /** مسارات محظورة صراحةً على الخبراء حتى لو can_access_itineraries */
@@ -112,14 +368,13 @@ const EXPERT_BLOCKED_PREFIXES = [
   '/crm/marketing',
   '/crm/radar',
   '/crm/pipeline',
-  '/crm/clients',
-  '/crm/customers',
   '/crm/memories',
   '/crm/analytics',
   '/crm/finance',
   '/crm/reports',
   '/crm/admin',
   '/crm/accounts',
+  '/crm/settings',
   '/crm/team',
   '/crm/partners-radar',
   '/crm/partners-directory',
@@ -145,6 +400,7 @@ export function isExpertAllowedCrmPath(pathname: string): boolean {
 const CRM_ROUTE_RULES: { prefix: string; permission: CrmRouteGuardKey }[] = [
   { prefix: '/crm/admin', permission: 'is_admin' },
   { prefix: '/crm/accounts', permission: 'is_admin' },
+  { prefix: '/crm/settings', permission: 'is_admin' },
   { prefix: '/crm/team', permission: 'is_admin' },
   { prefix: '/crm/marketing', permission: 'can_access_marketing' },
   { prefix: '/crm/analytics', permission: 'can_access_payments' },
@@ -199,26 +455,6 @@ export function hasPartnersCrmAccess(
   return true;
 }
 
-export function normalizeCrmPermissions(raw: unknown): CrmPermissions {
-  const base = { ...DEFAULT_CRM_PERMISSIONS };
-  if (!raw || typeof raw !== 'object') return base;
-  for (const key of CRM_PERMISSION_KEYS) {
-    if (key in raw && typeof (raw as Record<string, unknown>)[key] === 'boolean') {
-      base[key] = (raw as Record<string, boolean>)[key];
-    }
-  }
-  return base;
-}
-
-export function hasCrmPermission(
-  access: CrmProfileAccess | null | undefined,
-  key: CrmPermissionKey,
-): boolean {
-  if (!access || access.is_suspended) return false;
-  if (access.is_admin) return true;
-  return Boolean(access.permissions[key]);
-}
-
 export function resolveCrmRoutePermission(pathname: string): CrmRouteGuardKey | null {
   const path = pathname.split('?')[0] ?? pathname;
   if (!path.startsWith('/crm')) return null;
@@ -242,8 +478,17 @@ export function canAccessCrmPath(
   if (isEmergencyCrmOwnerBypass(authEmail)) return true;
   if (access?.is_suspended) return false;
 
-  // Experts: strict allowlist (Operations + Supplier Bank) — no partners force-open
+  // Experts: strict allowlist (Operations + Supplier Bank + scoped clients)
   if (access?.is_expert && !access.is_admin) {
+    const path = (pathname.split('?')[0] ?? pathname).replace(/\/$/, '') || '/';
+    const isClientsPath =
+      path === '/crm/clients' ||
+      path.startsWith('/crm/clients/') ||
+      path === '/crm/customers' ||
+      path.startsWith('/crm/customers/');
+    if (isClientsPath && !access.permissions.access_assigned_only && !access.permissions.access_inbox) {
+      return false;
+    }
     return isExpertAllowedCrmPath(pathname);
   }
 
@@ -264,13 +509,21 @@ export function canAccessCrmPath(
 
 export function defaultCrmLandingPath(access: CrmProfileAccess | null | undefined): string {
   if (!access || access.is_suspended) return '/crm/unauthorized';
-  if (access.is_expert && !access.is_admin) return '/crm/itineraries';
+  if (access.is_expert && !access.is_admin) {
+    if (access.permissions.access_group_operations) return '/crm/groups';
+    return '/crm/itineraries';
+  }
   if (access.is_admin) return '/crm';
   const order: { key: CrmPermissionKey; href: string }[] = [
+    { key: 'view_dashboard', href: '/crm' },
     { key: 'can_access_dashboard', href: '/crm' },
+    { key: 'access_inbox', href: '/crm/radar' },
+    { key: 'access_appointments', href: '/crm/radar' },
     { key: 'can_access_itineraries', href: '/crm/itineraries' },
+    { key: 'access_itineraries_view', href: '/crm/itineraries' },
     { key: 'can_access_clients', href: '/crm/clients' },
     { key: 'can_access_marketing', href: '/crm/marketing' },
+    { key: 'access_wallet', href: '/crm/reports' },
     { key: 'can_access_payments', href: '/crm/reports' },
   ];
   for (const item of order) {
@@ -295,11 +548,11 @@ export function mergeProfileAccess(row: {
 
 function permissionsFromEmployeeColumns(row: EmployeeRbacRow | null | undefined): CrmPermissions {
   const merged = normalizeCrmPermissions(row?.permissions);
-  for (const key of CRM_PERMISSION_KEYS) {
+  for (const key of LEGACY_ACCESS_KEYS) {
     const value = row?.[key];
     if (typeof value === 'boolean') merged[key] = value;
   }
-  return merged;
+  return deriveLegacyAccessFlags(merged);
 }
 
 function employeeHasExplicitPermissions(row: EmployeeRbacRow | null | undefined): boolean {
@@ -308,7 +561,7 @@ function employeeHasExplicitPermissions(row: EmployeeRbacRow | null | undefined)
     const parsed = normalizeCrmPermissions(row.permissions);
     if (CRM_PERMISSION_KEYS.some((key) => parsed[key])) return true;
   }
-  return CRM_PERMISSION_KEYS.some((key) => typeof row[key] === 'boolean');
+  return LEGACY_ACCESS_KEYS.some((key) => typeof row[key] === 'boolean');
 }
 
 /** يبني صلاحيات CRM من صف employees */
@@ -352,11 +605,14 @@ export function accessFromEmployeeRow(
   }
 
   if (isExpert) {
+    const stored = employeeHasExplicitPermissions(row)
+      ? permissionsFromEmployeeColumns(row)
+      : { ...EXPERT_CRM_PERMISSIONS };
     return {
       is_admin: false,
       is_expert: true,
       is_suspended: isSuspended,
-      permissions: { ...EXPERT_CRM_PERMISSIONS },
+      permissions: deriveLegacyAccessFlags(stored),
     };
   }
 
@@ -365,7 +621,7 @@ export function accessFromEmployeeRow(
       is_admin: false,
       is_expert: false,
       is_suspended: isSuspended,
-      permissions: { ...FULL_CRM_PERMISSIONS },
+      permissions: { ...EMPLOYEE_CRM_PERMISSIONS },
     };
   }
 
@@ -385,9 +641,11 @@ export function employeePatchFromAccess(input: {
   is_expert?: boolean;
 }): Record<string, unknown> {
   const isExpert = Boolean(input.is_expert) && !input.is_admin;
+  const perms = deriveLegacyAccessFlags(normalizeCrmPermissions(input.permissions));
   const patch: Record<string, unknown> = {
     is_admin: input.is_admin,
-    permissions: isExpert ? EXPERT_CRM_PERMISSIONS : input.permissions,
+    // Always a JSON array — Postgres/PostgREST rejects boolean-map objects ("expected JSON array")
+    permissions: permissionsToDbArray(perms),
     role: input.is_admin ? 'Admin' : isExpert ? 'Expert' : 'Advisor',
     job_title: input.is_admin
       ? 'CRM Admin'
@@ -397,8 +655,7 @@ export function employeePatchFromAccess(input: {
   };
   if (typeof input.is_suspended === 'boolean') patch.is_suspended = input.is_suspended;
   if (input.full_name?.trim()) patch.full_name = input.full_name.trim();
-  const perms = isExpert ? EXPERT_CRM_PERMISSIONS : input.permissions;
-  for (const key of CRM_PERMISSION_KEYS) {
+  for (const key of LEGACY_ACCESS_KEYS) {
     patch[key] = perms[key];
   }
   return patch;
@@ -416,4 +673,13 @@ export function mapEmployeeToAdminUser(row: EmployeeRbacRow) {
     permissions: permissionsFromEmployeeColumns(row),
     created_at: row.created_at ?? null,
   };
+}
+
+/** إعدادات افتراضية حسب دور إنشاء الحساب */
+export function defaultPermissionsForAccountRole(
+  role: 'employee' | 'expert' | 'admin',
+): CrmPermissions {
+  if (role === 'admin') return { ...FULL_CRM_PERMISSIONS };
+  if (role === 'expert') return { ...EXPERT_CRM_PERMISSIONS };
+  return { ...EMPLOYEE_CRM_PERMISSIONS };
 }

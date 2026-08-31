@@ -1,13 +1,146 @@
 'use client';
 
+import { Suspense, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { CalendarDays, Sparkles } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
+import { CalendarDays, Eye, MessageCircle, Sparkles } from 'lucide-react';
 
+import {
+  InterviewBookedSuccess,
+  InterviewCalendar,
+} from '@/app/dna/_components/InterviewCalendar';
 import { DEFAULT_INTAKE_BOOKING_URL } from '@/lib/client-intake-pipeline';
+import {
+  buildQuotationPublicLink,
+  openWhatsAppWithMessage,
+  whatsappTemplates,
+} from '@/lib/whatsapp-templates';
+import { getDnaQuoteShareAction } from '@/app/actions/dnaQuoteShareActions';
 
 const GOLD = '#D4AF37';
 
-export default function DnaSuccessPage() {
+function QuoteReadyActions({
+  quoteId,
+  quoteUrlFromQuery,
+}: {
+  quoteId: string;
+  quoteUrlFromQuery: string;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [shareError, setShareError] = useState<string | null>(null);
+
+  const previewUrl = useMemo(() => {
+    if (quoteUrlFromQuery) return quoteUrlFromQuery;
+    if (typeof window === 'undefined') return buildQuotationPublicLink(quoteId);
+    return buildQuotationPublicLink(quoteId, window.location.origin);
+  }, [quoteId, quoteUrlFromQuery]);
+
+  async function handleWhatsApp() {
+    setBusy(true);
+    setShareError(null);
+    try {
+      const share = await getDnaQuoteShareAction(quoteId);
+      const url = share.quotationUrl || previewUrl;
+      const message = whatsappTemplates.send_quote(
+        share.clientName || 'عزيزي العميل',
+        share.tripTitle || 'رحلتك',
+        url,
+      );
+      const opened = openWhatsAppWithMessage(share.clientPhone, message);
+      if (!opened) {
+        setShareError('تعذر فتح واتساب من هذا الجهاز.');
+      }
+    } catch (err) {
+      setShareError(err instanceof Error ? err.message : 'تعذر تجهيز رسالة واتساب.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="mt-6 w-full space-y-3 rounded-2xl border border-[#D4AF37]/35 bg-[#1A2421]/80 p-4 text-right">
+      <p className="text-sm font-bold text-[#D4AF37]">
+        تم إكمال الـ DNA بنجاح! عرض السعر جاهز الآن للعميل.
+      </p>
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        <a
+          href={previewUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#D4AF37] px-4 py-3 text-sm font-black text-[#0D0F0E] transition hover:brightness-110"
+        >
+          <Eye className="h-4 w-4" aria-hidden />
+          معاينة عرض السعر للعميل
+        </a>
+        <button
+          type="button"
+          onClick={() => void handleWhatsApp()}
+          disabled={busy}
+          className="inline-flex items-center justify-center gap-2 rounded-xl border border-emerald-500/40 bg-emerald-600/20 px-4 py-3 text-sm font-black text-emerald-300 transition hover:bg-emerald-600/30 disabled:opacity-60"
+        >
+          <MessageCircle className="h-4 w-4" aria-hidden />
+          {busy ? 'جاري التحضير…' : 'إرسال العرض عبر واتساب'}
+        </button>
+      </div>
+      {shareError ? (
+        <p className="text-xs font-semibold text-rose-300" role="alert">
+          {shareError}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function DnaSuccessContent() {
+  const searchParams = useSearchParams();
+  const leadId = String(searchParams.get('leadId') ?? '').trim();
+  const quoteId = String(searchParams.get('quoteId') ?? '').trim();
+  const quoteUrl = String(searchParams.get('quoteUrl') ?? '').trim();
+  const [booked, setBooked] = useState(false);
+
+  if (leadId && booked) {
+    return (
+      <main
+        dir="rtl"
+        className="relative min-h-screen overflow-hidden bg-[#F9F9F6] px-4 py-10"
+        style={{ fontFamily: 'var(--font-tajawal), system-ui, sans-serif' }}
+      >
+        <InterviewBookedSuccess />
+        {quoteId ? (
+          <div className="mx-auto mt-6 max-w-4xl px-2">
+            <QuoteReadyActions quoteId={quoteId} quoteUrlFromQuery={quoteUrl} />
+          </div>
+        ) : null}
+      </main>
+    );
+  }
+
+  if (leadId) {
+    return (
+      <main
+        dir="rtl"
+        className="relative min-h-screen overflow-hidden bg-[#F9F9F6] px-3 py-6 sm:px-4 sm:py-10"
+        style={{ fontFamily: 'var(--font-tajawal), system-ui, sans-serif' }}
+      >
+        <div className="mx-auto mb-4 max-w-4xl text-center">
+          <p className="text-xs font-black tracking-widest text-[#D4AF37]">WANDERLOOM VIP</p>
+          <h1 className="mt-2 text-xl font-black text-[#1e3f20] sm:text-2xl">
+            تم حفظ بطاقة DNA بنجاح
+          </h1>
+          <p className="mt-2 text-sm font-semibold text-gray-600">
+            اختر موعد جلسة قراءة الأمنيات — سيظهر الموعد مباشرة في لوحة الإدارة.
+          </p>
+        </div>
+        {quoteId ? (
+          <div className="mx-auto mb-6 max-w-4xl">
+            <QuoteReadyActions quoteId={quoteId} quoteUrlFromQuery={quoteUrl} />
+          </div>
+        ) : null}
+        <InterviewCalendar leadId={leadId} onBooked={() => setBooked(true)} />
+      </main>
+    );
+  }
+
   return (
     <main
       dir="rtl"
@@ -38,6 +171,10 @@ export default function DnaSuccessPage() {
             قراءة الأمنيات عبر اتصال مرئي.
           </p>
 
+          {quoteId ? (
+            <QuoteReadyActions quoteId={quoteId} quoteUrlFromQuery={quoteUrl} />
+          ) : null}
+
           <a
             href={DEFAULT_INTAKE_BOOKING_URL}
             target="_blank"
@@ -65,5 +202,19 @@ export default function DnaSuccessPage() {
         </footer>
       </div>
     </main>
+  );
+}
+
+export default function DnaSuccessPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="flex min-h-screen items-center justify-center bg-[#0D0F0E]" dir="rtl">
+          <p className="text-sm font-bold text-[#D4AF37]">جاري التحميل…</p>
+        </main>
+      }
+    >
+      <DnaSuccessContent />
+    </Suspense>
   );
 }

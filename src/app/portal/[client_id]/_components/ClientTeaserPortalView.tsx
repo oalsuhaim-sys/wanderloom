@@ -16,6 +16,10 @@ import {
   INVOICE_TYPE_LABEL,
 } from '@/lib/crm-invoices';
 import {
+  groupMemberPortalBadge,
+  paymentDeadlineBadgeLabel,
+} from '@/lib/group-members';
+import {
   TEASER_CARDS,
   type ClientTeaserPendingInvoice,
   type ClientTeaserPortalData,
@@ -75,6 +79,10 @@ export function ClientTeaserPortalView({ data }: ClientTeaserPortalViewProps) {
           </p>
         </header>
 
+        {data.groupMember ? (
+          <GroupMemberStatusBanner member={data.groupMember} />
+        ) : null}
+
         {pendingInvoices.length > 0 ? (
           <section
             className={`${PANEL} ${FADE} mb-6 border-amber-400/40 bg-gradient-to-b from-amber-950/50 via-amber-950/25 to-[#121816]/95 shadow-[0_0_60px_rgba(245,158,11,0.12)]`}
@@ -129,7 +137,7 @@ export function ClientTeaserPortalView({ data }: ClientTeaserPortalViewProps) {
           </section>
         ) : null}
 
-        {!data.paymentDueOnly ? (
+        {!data.paymentDueOnly && !data.groupStatusOnly ? (
           <>
         {/* Countdown */}
         <section
@@ -254,6 +262,77 @@ export function ClientTeaserPortalView({ data }: ClientTeaserPortalViewProps) {
         </footer>
       </div>
     </div>
+  );
+}
+
+function GroupMemberStatusBanner({
+  member,
+}: {
+  member: NonNullable<ClientTeaserPortalData['groupMember']>;
+}) {
+  const badge = groupMemberPortalBadge(member.status);
+  const deadlineBadge =
+    member.status === 'confirmed_seat'
+      ? paymentDeadlineBadgeLabel(member.paymentDeadline)
+      : null;
+  const toneClass =
+    badge.tone === 'green'
+      ? 'border-emerald-400/40 bg-gradient-to-b from-emerald-950/55 via-emerald-950/25 to-[#121816]/95 text-emerald-50'
+      : badge.tone === 'orange'
+        ? 'border-orange-400/40 bg-gradient-to-b from-orange-950/55 via-orange-950/20 to-[#121816]/95 text-orange-50'
+        : badge.tone === 'rose'
+          ? 'border-rose-400/35 bg-gradient-to-b from-rose-950/50 via-rose-950/20 to-[#121816]/95 text-rose-50'
+          : badge.tone === 'amber'
+            ? 'border-amber-400/40 bg-gradient-to-b from-amber-950/50 via-amber-950/20 to-[#121816]/95 text-amber-50'
+            : 'border-[#d4af37]/30 bg-gradient-to-b from-[#121816]/95 to-[#0a0d0b]/95 text-white';
+
+  const pillClass =
+    badge.tone === 'green'
+      ? 'bg-emerald-500/20 text-emerald-200 ring-emerald-400/30'
+      : badge.tone === 'orange'
+        ? 'bg-orange-500/20 text-orange-200 ring-orange-400/30'
+        : badge.tone === 'rose'
+          ? 'bg-rose-500/20 text-rose-200 ring-rose-400/30'
+          : badge.tone === 'amber'
+            ? 'bg-amber-500/20 text-amber-200 ring-amber-400/30'
+            : 'bg-[#d4af37]/15 text-[#d4af37] ring-[#d4af37]/30';
+
+  return (
+    <section
+      className={`${PANEL} ${FADE} mb-6 ${toneClass}`}
+      style={{ animationDelay: '0.03s' }}
+      aria-label="حالة انضمام المجموعة"
+    >
+      <div className="text-center">
+        <p className="text-[10px] font-black uppercase tracking-[0.35em] opacity-70">
+          Group Trip Status
+        </p>
+        <span
+          className={`mt-3 inline-flex items-center rounded-full px-4 py-1.5 text-sm font-black ring-1 ${pillClass}`}
+        >
+          {badge.label}
+        </span>
+        {badge.detail ? (
+          <p className="mt-3 text-xs font-semibold leading-relaxed opacity-80">{badge.detail}</p>
+        ) : null}
+        {deadlineBadge ? (
+          <span
+            className={`mt-3 inline-flex items-center rounded-full px-3 py-1 text-[11px] font-black ring-1 ${
+              deadlineBadge.tone === 'slate'
+                ? 'bg-white/10 text-white/80 ring-white/20'
+                : deadlineBadge.tone === 'amber'
+                  ? 'bg-amber-500/20 text-amber-100 ring-amber-400/30'
+                  : 'bg-rose-500/20 text-rose-100 ring-rose-400/30'
+            }`}
+          >
+            {deadlineBadge.label}
+          </span>
+        ) : null}
+        {member.tripTitle ? (
+          <p className="mt-2 text-[11px] font-bold opacity-60">الرحلة: {member.tripTitle}</p>
+        ) : null}
+      </div>
+    </section>
   );
 }
 

@@ -1,11 +1,29 @@
 import { supabase } from '@/lib/supabase';
 import { processReferralRewardForQuotation } from '@/lib/referral-rewards';
+import { updatePipelineStatus } from '@/lib/lead-pipeline-automation';
+import {
+  parseClientFeedback,
+  parseCostBreakdown,
+  parseHotelOptions,
+  parseItineraryDays,
+  parseActivityOptions,
+  parseTransportOptions,
+  type QuotationActivityOption,
+  type QuotationClientFeedback,
+  type QuotationCostLine,
+  type QuotationHotelOption,
+  type QuotationItineraryDay,
+  type QuotationTransportOption,
+} from '@/lib/interactive-quotation';
 
 export type QuotationStatus =
   | 'draft'
   | 'pending_client'
+  | 'needs_revision'
+  | 'client_responded'
   | 'approved'
   | 'awaiting_payment'
+  | 'payment_confirmed'
   | 'deposit_paid'
   | 'fully_paid';
 
@@ -67,7 +85,17 @@ export type QuotationRow = {
   lead_source: string | null;
   referral_code: string | null;
   is_referral_paid: boolean;
+  /** اسم الخبير/الموظف المسؤول عن العرض */
+  expert_name: string | null;
+  /** معرّف الخبير (إن وُجد عمود expert_id في quotations) */
+  expert_id: string | null;
   created_at: string;
+  itinerary_days: QuotationItineraryDay[];
+  hotel_options: QuotationHotelOption[];
+  transport_options: QuotationTransportOption[];
+  activity_options: QuotationActivityOption[];
+  cost_breakdown: QuotationCostLine[];
+  client_feedback: QuotationClientFeedback;
   clients?: {
     id?: number;
     name?: string | null;
@@ -88,13 +116,38 @@ export type QuotationInsertInput = {
 };
 
 export const QUOTATION_STATUS_LABEL: Record<QuotationStatus, string> = {
-  draft: 'مسودة 📝',
-  pending_client: 'بانتظار العميل ⏳',
-  approved: 'تم الاعتماد ✨',
-  awaiting_payment: 'بانتظار الدفع 💳',
-  deposit_paid: 'عربون مدفوع 💰',
-  fully_paid: 'مدفوع بالكامل ✅',
+  draft: 'مسودة',
+  pending_client: 'بانتظار العميل',
+  needs_revision: 'يحتاج تعديلاً',
+  client_responded: 'رد العميل',
+  approved: 'تم الاعتماد',
+  awaiting_payment: 'بانتظار الدفع',
+  payment_confirmed: 'تم تأكيد الدفع',
+  deposit_paid: 'عربون مدفوع',
+  fully_paid: 'مدفوع بالكامل',
 };
+
+/** Soft SaaS badge classes for quotation status chips */
+export function quotationStatusBadgeClass(status: QuotationStatus): string {
+  const base = 'px-3 py-1 rounded-full text-xs font-semibold border';
+  switch (status) {
+    case 'draft':
+      return `${base} border-transparent bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300`;
+    case 'pending_client':
+    case 'awaiting_payment':
+    case 'client_responded':
+      return `${base} border-amber-100 bg-amber-50 text-amber-600 dark:border-amber-900/30 dark:bg-amber-900/20 dark:text-amber-400`;
+    case 'approved':
+    case 'payment_confirmed':
+    case 'deposit_paid':
+    case 'fully_paid':
+      return `${base} border-emerald-100 bg-emerald-50 text-emerald-600 dark:border-emerald-900/30 dark:bg-emerald-900/20 dark:text-emerald-400`;
+    case 'needs_revision':
+      return `${base} border-rose-100 bg-rose-50 text-rose-600 dark:border-rose-900/30 dark:bg-rose-900/20 dark:text-rose-400`;
+    default:
+      return `${base} border-transparent bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300`;
+  }
+}
 
 /** أعمدة clients المطلوبة لقائمة العروض وواتساب (بترتيب من الأشمل للأضيق عند الفشل) */
 export const QUOTATION_CLIENT_EMBED_SELECTS = [
@@ -108,9 +161,9 @@ export const QUOTATION_CLIENT_EMBED_SELECT = QUOTATION_CLIENT_EMBED_SELECTS[0];
 
 /** يطابق القيم الإنجليزية في DB أو أي نص عربي مرن */
 export function isQuotationStatusApproved(raw: unknown): boolean {
-  const s = String(raw ?? '').trim();
+  const s = String(raw ?? '').trim().toLowerCase();
   if (!s) return false;
-  if (s === 'approved') return true;
+  if (s === 'approved' || s === 'confirmed') return true;
   return s.includes('اعتماد') || s.includes('مؤكد');
 }
 
@@ -126,8 +179,11 @@ function parseQuotationStatus(raw: unknown): QuotationStatus {
   const s = String(raw ?? '').trim();
   if (s === 'fully_paid') return 'fully_paid';
   if (s === 'deposit_paid') return 'deposit_paid';
+  if (s === 'payment_confirmed') return 'payment_confirmed';
   if (s === 'awaiting_payment') return 'awaiting_payment';
   if (s === 'draft') return 'draft';
+  if (s === 'needs_revision') return 'needs_revision';
+  if (s === 'client_responded') return 'client_responded';
   if (s === 'pending_client') return 'pending_client';
   if (s === 'approved' || isQuotationStatusApproved(raw)) return 'approved';
   return 'pending_client';
@@ -629,7 +685,7 @@ export function serializeTransportationForClientColumn(
 
 /** أعمدة quotations المطلوبة لصفحة العميل */
 export const PUBLIC_QUOTATION_SELECT =
-  'id, client_id, lead_id, title, destinations, start_date, end_date, total_estimated_cost, expected_profit, status, flight_proposals, hotel_proposals, activities, transportation, profit_margin, service_fee, grand_total, lead_source, created_at, clients(id, name, phone_wa), lead:leads(id, full_name, phone_wa)';
+  'id, client_id, lead_id, title, destinations, start_date, end_date, total_estimated_cost, expected_profit, status, flight_proposals, hotel_proposals, activities, transportation, profit_margin, service_fee, grand_total, lead_source, expert_name, created_at, itinerary_days, hotel_options, transport_options, activity_options, cost_breakdown, client_feedback, clients(id, name, phone_wa), lead:leads(id, full_name, phone_wa)';
 
 /** أعمدة هاتف العميل المحتملة في clients */
 const CLIENT_PHONE_KEYS = ['phone_wa', 'phone_number', 'phone'] as const;
@@ -694,7 +750,12 @@ export function mapQuotationRow(row: Record<string, unknown>): QuotationRow {
   return {
     id: normalizeQuotationId(row.id),
     lead_id: leadId,
-    client_id: row.client_id != null ? normalizeQuotationId(row.client_id) || null : null,
+    client_id:
+      row.client_id != null
+        ? normalizeQuotationId(row.client_id) || null
+        : clients?.id != null
+          ? String(clients.id)
+          : null,
     title: String(row.title ?? '').trim(),
     destinations: parseDestinations(row.destinations),
     start_date: row.start_date != null ? String(row.start_date).slice(0, 10) : null,
@@ -736,7 +797,33 @@ export function mapQuotationRow(row: Record<string, unknown>): QuotationRow {
     referral_code:
       row.referral_code != null ? String(row.referral_code).trim() || null : null,
     is_referral_paid: row.is_referral_paid === true,
+    expert_name: row.expert_name != null ? String(row.expert_name).trim() || null : null,
+    expert_id: row.expert_id != null ? String(row.expert_id).trim() || null : null,
     created_at: String(row.created_at ?? ''),
+    itinerary_days: parseItineraryDays(row.itinerary_days),
+    hotel_options: parseHotelOptions(row.hotel_options),
+    transport_options: parseTransportOptions(row.transport_options),
+    activity_options: (() => {
+      const fromCol = parseActivityOptions(row.activity_options);
+      if (fromCol.length > 0) return fromCol;
+      return parseActivityProposals(
+        pickJsonbArray(
+          row,
+          'activities',
+          'activities_proposals',
+          'activities_details',
+          'activitiesDetails',
+        ),
+      ).map((a) => ({
+        id: a.id,
+        name: a.name,
+        description: a.description,
+        price: a.price,
+        is_selected_by_client: false,
+      }));
+    })(),
+    cost_breakdown: parseCostBreakdown(row.cost_breakdown),
+    client_feedback: parseClientFeedback(row.client_feedback),
     clients,
   };
 }
@@ -770,18 +857,18 @@ export function serializeFlightProposalsForSave(
   return rows
     .filter(
       (r) =>
-        r.departureCity.trim() ||
-        r.arrivalCity.trim() ||
-        r.airline.trim() ||
-        r.flight_class.trim() ||
-        r.price > 0,
+        String(r?.departureCity ?? '').trim() ||
+        String(r?.arrivalCity ?? '').trim() ||
+        String(r?.airline ?? '').trim() ||
+        String(r?.flight_class ?? '').trim() ||
+        Number(r?.price) > 0,
     )
     .map((r) => ({
       id: r.id,
-      departureCity: r.departureCity.trim(),
-      arrivalCity: r.arrivalCity.trim(),
-      airline: r.airline.trim(),
-      flight_class: r.flight_class.trim(),
+      departureCity: String(r.departureCity ?? '').trim(),
+      arrivalCity: String(r.arrivalCity ?? '').trim(),
+      airline: String(r.airline ?? '').trim(),
+      flight_class: String(r.flight_class ?? '').trim(),
       price: parseMoney(r.price),
     }));
 }
@@ -790,12 +877,18 @@ export function serializeHotelProposalsForSave(
   rows: QuotationHotelProposal[],
 ): Record<string, unknown>[] {
   return rows
-    .filter((r) => r.hotel_name.trim() || r.city.trim() || r.room_type.trim() || r.price > 0)
+    .filter(
+      (r) =>
+        String(r?.hotel_name ?? '').trim() ||
+        String(r?.city ?? '').trim() ||
+        String(r?.room_type ?? '').trim() ||
+        Number(r?.price) > 0,
+    )
     .map((r) => ({
       id: r.id,
-      hotel_name: r.hotel_name.trim(),
-      city: r.city.trim(),
-      room_type: r.room_type.trim(),
+      hotel_name: String(r.hotel_name ?? '').trim(),
+      city: String(r.city ?? '').trim(),
+      room_type: String(r.room_type ?? '').trim(),
       price: parseMoney(r.price),
     }));
 }
@@ -804,12 +897,18 @@ export function serializeActivityProposalsForSave(
   rows: QuotationActivityProposal[],
 ): Record<string, unknown>[] {
   return rows
-    .filter((r) => r.name.trim() || r.location.trim() || r.description.trim() || r.price > 0)
+    .filter(
+      (r) =>
+        String(r?.name ?? '').trim() ||
+        String(r?.location ?? '').trim() ||
+        String(r?.description ?? '').trim() ||
+        Number(r?.price) > 0,
+    )
     .map((r) => ({
       id: r.id,
-      name: r.name.trim(),
-      location: r.location.trim(),
-      description: r.description.trim(),
+      name: String(r.name ?? '').trim(),
+      location: String(r.location ?? '').trim(),
+      description: String(r.description ?? '').trim(),
       price: parseMoney(r.price),
     }));
 }
@@ -818,11 +917,16 @@ export function serializeTransportProposalsForSave(
   rows: QuotationTransportProposal[],
 ): Record<string, unknown>[] {
   return rows
-    .filter((r) => r.description.trim() || r.mode.trim() || r.price > 0)
+    .filter(
+      (r) =>
+        String(r?.description ?? '').trim() ||
+        String(r?.mode ?? '').trim() ||
+        Number(r?.price) > 0,
+    )
     .map((r) => ({
       id: r.id,
-      description: r.description.trim(),
-      mode: r.mode.trim(),
+      description: String(r.description ?? '').trim(),
+      mode: String(r.mode ?? '').trim(),
       price: parseMoney(r.price),
     }));
 }
@@ -831,18 +935,21 @@ export async function insertQuotation(input: QuotationInsertInput): Promise<stri
   if (!supabase) throw new Error('Supabase غير مهيأ.');
 
   const clientId = resolveQuotationClientId(input.clientId);
-  if (!input.title.trim()) throw new Error('أدخل عنوان الرحلة.');
+  const titleSafe = String(input.title ?? '').trim();
+  const startSafe = String(input.startDate ?? '').trim();
+  const endSafe = String(input.endDate ?? '').trim();
+  if (!titleSafe) throw new Error('أدخل عنوان الرحلة.');
   if (!input.destinations.length) throw new Error('أضف وجهة واحدة على الأقل.');
-  if (!input.startDate.trim()) throw new Error('أدخل تاريخ البداية.');
-  if (!input.endDate.trim()) throw new Error('أدخل تاريخ النهاية.');
-  if (input.endDate < input.startDate) throw new Error('تاريخ النهاية يجب أن يكون بعد البداية.');
+  if (!startSafe) throw new Error('أدخل تاريخ البداية.');
+  if (!endSafe) throw new Error('أدخل تاريخ النهاية.');
+  if (endSafe < startSafe) throw new Error('تاريخ النهاية يجب أن يكون بعد البداية.');
 
   const payload = {
     client_id: clientId,
-    title: input.title.trim(),
+    title: titleSafe,
     destinations: input.destinations,
-    start_date: input.startDate.trim(),
-    end_date: input.endDate.trim(),
+    start_date: startSafe,
+    end_date: endSafe,
     total_estimated_cost: parseMoney(input.totalEstimatedCost),
     expected_profit: parseMoney(input.expectedProfit),
     status: 'pending_client' as const,
@@ -865,7 +972,7 @@ export async function fetchQuotationsList(): Promise<QuotationRow[]> {
   const withLeadEmbed = await supabase
     .from('quotations')
     .select(
-      'id, client_id, lead_id, title, destinations, start_date, end_date, total_estimated_cost, expected_profit, status, flight_proposals, hotel_proposals, created_at, updated_at, client:clients(id, name, phone_wa), lead:leads(id, full_name, phone_wa)',
+      'id, client_id, lead_id, title, destinations, start_date, end_date, total_estimated_cost, expected_profit, status, flight_proposals, hotel_proposals, created_at, updated_at, client_feedback, expert_name, client:clients(id, name, phone_wa), lead:leads(id, full_name, phone_wa)',
     )
     .order('created_at', { ascending: false });
 
@@ -877,11 +984,33 @@ export async function fetchQuotationsList(): Promise<QuotationRow[]> {
     const fallback = await supabase
       .from('quotations')
       .select(
+        'id, client_id, lead_id, title, destinations, start_date, end_date, total_estimated_cost, expected_profit, status, flight_proposals, hotel_proposals, created_at, updated_at, client_feedback, expert_name, client:clients(id, name, phone_wa)',
+      )
+      .order('created_at', { ascending: false });
+    data = fallback.data as typeof withLeadEmbed.data;
+    error = fallback.error;
+  }
+
+  if (error && /expert_name/i.test(error.message)) {
+    const noExpert = await supabase
+      .from('quotations')
+      .select(
+        'id, client_id, lead_id, title, destinations, start_date, end_date, total_estimated_cost, expected_profit, status, flight_proposals, hotel_proposals, created_at, updated_at, client_feedback, client:clients(id, name, phone_wa)',
+      )
+      .order('created_at', { ascending: false });
+    data = noExpert.data as typeof withLeadEmbed.data;
+    error = noExpert.error;
+  }
+
+  if (error && /client_feedback/i.test(error.message)) {
+    const noFeedback = await supabase
+      .from('quotations')
+      .select(
         'id, client_id, lead_id, title, destinations, start_date, end_date, total_estimated_cost, expected_profit, status, flight_proposals, hotel_proposals, created_at, updated_at, client:clients(id, name, phone_wa)',
       )
       .order('created_at', { ascending: false });
-    data = fallback.data;
-    error = fallback.error;
+    data = noFeedback.data as typeof withLeadEmbed.data;
+    error = noFeedback.error;
   }
 
   if (error) throw new Error(error.message || 'تعذر تحميل عروض الأسعار.');
@@ -1045,11 +1174,11 @@ export function hotelMatchesDestination(
   hotel: QuotationHotelPlace,
   destination: string,
 ): boolean {
-  const sel = destination.trim();
+  const sel = String(destination ?? '').trim();
   if (!sel) return false;
   const selNorm = normalizeArabic(sel);
-  const cityRaw = hotel.city.trim();
-  const countryRaw = hotel.country.trim();
+  const cityRaw = String(hotel.city ?? '').trim();
+  const countryRaw = String(hotel.country ?? '').trim();
   const cityNorm = normalizeArabic(cityRaw);
   const countryNorm = normalizeArabic(countryRaw);
 
@@ -1059,6 +1188,27 @@ export function hotelMatchesDestination(
     Boolean(cityRaw && (cityRaw.includes(sel) || sel.includes(cityRaw))) ||
     Boolean(countryRaw && (countryRaw.includes(sel) || sel.includes(countryRaw)))
   );
+}
+
+/** Keep first occurrence per normalized name (+ optional city key). */
+export function dedupeQuotationHotelPlaces(
+  places: QuotationHotelPlace[],
+  scope: 'name' | 'name+city' = 'name+city',
+): QuotationHotelPlace[] {
+  const seen = new Set<string>();
+  const out: QuotationHotelPlace[] = [];
+  for (const place of places) {
+    const nameKey = normPlaceText(place.name);
+    if (!nameKey) continue;
+    const key =
+      scope === 'name'
+        ? nameKey
+        : `${nameKey}::${normPlaceText(place.city) || normPlaceText(place.country)}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(place);
+  }
+  return out;
 }
 
 export async function fetchQuotationHotelPlaces(): Promise<QuotationHotelPlace[]> {
@@ -1073,17 +1223,23 @@ export async function fetchQuotationHotelPlaces(): Promise<QuotationHotelPlace[]
     throw new Error(error.message || 'تعذر تحميل قاعدة الفنادق.');
   }
 
-  return (data ?? [])
+  const mapped = (data ?? [])
     .map((row) => mapHotelsTableRow(row as Record<string, unknown>))
     .filter((h): h is QuotationHotelPlace => h != null);
+
+  return dedupeQuotationHotelPlaces(mapped, 'name+city');
 }
 
 export function filterQuotationHotelsByCity(
   places: QuotationHotelPlace[],
   destinationInput: string,
 ): QuotationHotelPlace[] {
-  if (!destinationInput.trim()) return [];
-  return places.filter((place) => hotelMatchesDestination(place, destinationInput));
+  if (!String(destinationInput ?? '').trim()) return [];
+  const matched = places.filter((place) =>
+    hotelMatchesDestination(place, destinationInput),
+  );
+  // Dropdown must show each hotel name once for the selected city/destination
+  return dedupeQuotationHotelPlaces(matched, 'name');
 }
 
 export function findQuotationHotelPlace(
@@ -1096,7 +1252,7 @@ export function findQuotationHotelPlace(
   return places.find(
     (p) =>
       normPlaceText(p.name) === nameNorm &&
-      (!destination.trim() || hotelMatchesDestination(p, destination)),
+      (!String(destination ?? '').trim() || hotelMatchesDestination(p, destination)),
   );
 }
 
@@ -1116,11 +1272,11 @@ export async function silentInsertQuotationHotelPlace(input: {
 }): Promise<QuotationHotelPlace | null> {
   if (!supabase) return null;
 
-  const name = input.hotelName.trim();
+  const name = String(input.hotelName ?? '').trim();
   if (!name) return null;
 
-  const city = input.city.trim();
-  const roomType = input.roomType.trim();
+  const city = String(input.city ?? '').trim();
+  const roomType = String(input.roomType ?? '').trim();
 
   const payload = {
     name,
@@ -1193,6 +1349,26 @@ export async function approveQuotation(id: string | number): Promise<void> {
     throw new Error('لم يُحفظ الاعتماد — تحقق من صلاحيات قاعدة البيانات.');
   }
 
+  // EVENT C — approved quote → Kanban awaiting_payment
+  try {
+    const { data: full } = await supabase
+      .from('quotations')
+      .select('lead_id, client_id')
+      .eq('id', key)
+      .maybeSingle();
+    await updatePipelineStatus(
+      supabase,
+      {
+        leadId: (full as { lead_id?: string | null } | null)?.lead_id ?? null,
+        clientId: (full as { client_id?: string | number | null } | null)?.client_id ?? null,
+        force: true,
+      },
+      'awaiting_payment',
+    );
+  } catch (pipelineErr) {
+    console.warn('[approveQuotation] pipeline awaiting_payment:', pipelineErr);
+  }
+
   try {
     const reward = await processReferralRewardForQuotation(supabase, key);
     if (reward.processed) {
@@ -1200,6 +1376,21 @@ export async function approveQuotation(id: string | number): Promise<void> {
     }
   } catch (rewardError) {
     console.error('[referral-reward] after approval:', rewardError);
+  }
+
+  // Best-effort: push into active individual routes (idempotent)
+  try {
+    const { createItineraryFromApprovedQuotation } = await import('@/lib/quotation-to-itinerary');
+    const full = await fetchQuotationById(key);
+    if (full) {
+      await createItineraryFromApprovedQuotation(
+        { ...full, status: 'approved' },
+        supabase,
+        { status: 'active' },
+      );
+    }
+  } catch (itineraryErr) {
+    console.warn('[approveQuotation] itinerary auto-create:', itineraryErr);
   }
 }
 

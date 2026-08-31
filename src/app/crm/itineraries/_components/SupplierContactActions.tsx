@@ -30,6 +30,10 @@ function supplierPhoneInDirectory(contact: string, suppliers: CrmSupplier[]): bo
 
 const CHANNEL_APPS: SupplierContactApp[] = ['whatsapp', 'line', 'kakao'];
 
+const labelClass = 'mb-2 block text-xs font-semibold text-slate-700';
+const inputClass =
+  'w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-900 outline-none transition focus:border-[#D4AF37] placeholder:text-slate-600 [color-scheme:light]';
+
 export default function SupplierContactActions({
   hotel,
   supplierContact,
@@ -63,21 +67,23 @@ export default function SupplierContactActions({
 
   return (
     <div className="flex w-full flex-col gap-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <span className="text-xs font-bold text-[#1e3f20]">المورد المعتمد للوجهة</span>
-        <label className="flex cursor-pointer items-center gap-1.5 text-[10px] font-bold text-gray-500">
+      <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+        <span className="flex items-center gap-2 text-base font-bold text-[#D4AF37]">
+          المورد المعتمد للوجهة
+        </span>
+        <label className="flex cursor-pointer items-center gap-1.5 text-[10px] font-bold text-slate-600">
           <input
             type="checkbox"
             checked={isManualSupplier}
             onChange={(e) => onManualSupplierChange(e.target.checked)}
-            className="rounded border-gray-300 accent-[#cda04c]"
+            className="rounded border-slate-200 accent-[#D4AF37]"
           />
           إدخال رقم يدوياً
         </label>
       </div>
 
       {suppliers.length === 0 && !isManualSupplier ? (
-        <p className="rounded-lg border border-[#cda04c]/30 bg-[#FFFBF0] px-3 py-2 text-xs font-bold text-[#1e3f20]">
+        <p className="rounded-xl border border-[#D4AF37]/35 bg-white px-3 py-2 text-xs font-bold text-[#D4AF37]">
           لا يوجد موردون مسجلون لوجهة ({destinationLabel}). فعّل «إدخال رقم يدوياً» أو أضف موردين من
           قسم الموردين.
         </p>
@@ -87,7 +93,7 @@ export default function SupplierContactActions({
         <select
           value={selectValue}
           onChange={(e) => onSupplierContactChange(e.target.value)}
-          className="w-full rounded-lg border border-[#1e3f20]/15 bg-white px-3 py-2 text-sm font-bold text-gray-900 outline-none focus:border-[#cda04c]"
+          className={inputClass}
         >
           <option value="">— اختر المورد من الدليل —</option>
           {suppliers.map((supplier) => (
@@ -98,15 +104,15 @@ export default function SupplierContactActions({
         </select>
       ) : null}
 
-      <label className="flex flex-col gap-1.5">
-        <span className="text-xs font-bold text-gray-600">رقم/معرّف المورد</span>
+      <label className="block">
+        <span className={labelClass}>رقم/معرّف المورد</span>
         <input
           type="text"
           placeholder="+966… / LINE ID / Kakao ID"
           value={supplierContact}
           onChange={(e) => onSupplierContactChange(e.target.value)}
           dir="ltr"
-          className="w-full rounded-lg border border-[#1e3f20]/15 bg-white px-3 py-2 text-sm text-gray-900 outline-none transition focus:border-[#cda04c]"
+          className={inputClass}
         />
       </label>
 
@@ -116,7 +122,7 @@ export default function SupplierContactActions({
             key={app}
             type="button"
             onClick={() => void handleContact(app)}
-            className={`inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-[11px] font-black transition min-w-[5.5rem] ${supplierContactButtonClass(app)}`}
+            className={`inline-flex min-w-[5.5rem] flex-1 items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-[11px] font-black transition ${supplierContactButtonClass(app)}`}
           >
             <MessageCircle className="h-3.5 w-3.5 shrink-0" aria-hidden />
             {supplierContactLabel(app)}
@@ -124,8 +130,8 @@ export default function SupplierContactActions({
         ))}
       </div>
 
-      {error ? <p className="text-xs font-bold text-red-600">{error}</p> : null}
-      {notice ? <p className="text-xs font-bold text-[#1e3f20]">{notice}</p> : null}
+      {error ? <p className="text-xs font-bold text-red-400">{error}</p> : null}
+      {notice ? <p className="text-xs font-bold text-[#D4AF37]">{notice}</p> : null}
     </div>
   );
 }

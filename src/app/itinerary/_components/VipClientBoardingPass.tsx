@@ -11,6 +11,7 @@ import {
   type VipFlightDetails,
 } from '@/lib/vip-flight-voucher';
 import type { PublicItinerary } from '@/lib/public-itinerary';
+import { resolveDestinationCoverImage } from '@/lib/destination-cover-image';
 
 const EM = '—';
 
@@ -98,14 +99,11 @@ export default function VipClientBoardingPass({ trip, dateRange }: Props) {
 
   return (
     <header className="relative w-full overflow-hidden border-b border-[#1E2720]/8 bg-gradient-to-b from-[#F5F3EE] via-[#FAFAFA] to-[#FAFAFA]">
-      {trip.coverImage ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={trip.coverImage}
-          alt=""
-          className="absolute inset-0 h-full w-full object-cover opacity-[0.14]"
-        />
-      ) : null}
+      <img
+        src={resolveDestinationCoverImage(trip.destination, { coverImage: trip.coverImage })}
+        alt=""
+        className="absolute inset-0 h-full w-full object-cover opacity-[0.14]"
+      />
 
       <div className="relative mx-auto max-w-lg px-4 pb-5 pt-5 sm:max-w-xl sm:px-6 sm:pb-6 sm:pt-6">
         <div className="overflow-hidden rounded-[1.25rem] border-2 border-[#D4AF37]/45 bg-white shadow-[0_16px_48px_rgba(30,39,32,0.1)] ring-1 ring-[#1E2720]/5">

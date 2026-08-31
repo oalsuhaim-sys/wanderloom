@@ -65,17 +65,23 @@ export default function CRMSessionsClient() {
       fallbackTitle="تعذر عرض جلسات CRM"
       fallbackMessage="حدث خطأ غير متوقع أثناء تحميل واجهة الجلسات للموظفين."
     >
-      <div dir="rtl" className="mx-auto w-full max-w-[min(100%,88rem)] space-y-8 px-4 pb-10 sm:px-6">
+      <div
+        dir="rtl"
+        className="mx-auto w-full max-w-[min(100%,88rem)] space-y-8 bg-[#F9FAFB] px-4 pb-10 dark:bg-[#1A2421] sm:px-6"
+      >
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h1 className="text-xl font-black text-[#1C4532]">إدارة الجلسات</h1>
-            <p className="mt-1 max-w-2xl text-xs font-bold leading-relaxed text-stone-500">
-              أنشئ الجلسات وحدّثها، واطّلع على المسجّلين لكل جلسة من القائمة في الأسفل.
+            <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-400 dark:text-[#D4AF37]/80">
+              Sessions
+            </p>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">الجلسات</h1>
+            <p className="mt-1 max-w-2xl text-sm leading-relaxed text-slate-500 dark:text-slate-400">
+              مواعيد قادمة · المسجّلون · دخول الجلسة بنقرة واحدة
             </p>
           </div>
           <Link
             href="/portal/sessions"
-            className="inline-flex items-center gap-2 rounded-xl border border-stone-200 bg-white px-3 py-2 text-xs font-black text-[#1C4532] shadow-sm hover:bg-stone-50"
+            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-800 shadow-sm hover:bg-slate-50 dark:border-[#2D3F3A] dark:bg-[#22302C] dark:text-slate-200"
           >
             معاينة واجهة العميل
             <ArrowRight className="h-4 w-4 rotate-180" />
@@ -83,7 +89,7 @@ export default function CRMSessionsClient() {
         </div>
 
         {!HAS_PUBLIC_SUPABASE_ENV && (
-          <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-black text-amber-900">
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-medium text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-300">
             إعدادات الاتصال بقاعدة البيانات غير مكتملة على بيئة النشر. أضف رابط المشروع ومفتاح الوصول
             العام من لوحة Supabase إلى إعدادات المشروع في Vercel ثم أعد النشر.
           </div>
@@ -92,12 +98,12 @@ export default function CRMSessionsClient() {
         {(loadError || demoHint) && (
           <div className="space-y-2">
             {loadError && (
-              <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-xs font-black text-red-900">
+              <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs font-medium text-rose-900 dark:border-rose-900/40 dark:bg-rose-950/30 dark:text-rose-300">
                 {loadError}
               </div>
             )}
             {demoHint && (
-              <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-black text-amber-950">
+              <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-medium text-amber-950 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-300">
                 {demoHint}
               </div>
             )}

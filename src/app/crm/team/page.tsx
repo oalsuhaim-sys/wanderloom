@@ -262,7 +262,7 @@ export default function CrmTeamPage() {
 
       {modalOpen ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="relative w-full max-w-lg rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl">
+          <div className="relative w-[95%] max-w-lg max-h-[90vh] overflow-y-auto rounded-3xl border border-slate-200 bg-white p-4 shadow-2xl sm:p-6">
             <button
               type="button"
               onClick={() => !creating && setModalOpen(false)}

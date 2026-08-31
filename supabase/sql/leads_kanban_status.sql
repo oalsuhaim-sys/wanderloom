@@ -10,8 +10,13 @@ alter table public.leads
       -- Master pipeline
       'radar_pending',
       'radar_rejected',
+      'interest_only',
+      'interest',
+      'register_interest',
+      'converted',
       'awaiting_dna',
       'meeting',
+      'interview_scheduled',
       'quote_stage',
       'awaiting_payment',
       'preparing_itinerary',

@@ -54,10 +54,9 @@ import {
   type PublicWeatherForecast,
 } from '@/lib/public-itinerary'
 import { isTripFinished } from '@/lib/client-portal-trip-phase'
+import { resolveDestinationCoverImage } from '@/lib/destination-cover-image'
 
 const WA_CONCIERGE = '966544948640'
-const DEFAULT_HERO =
-  'https://images.unsplash.com/photo-1436491865332-7a61a109cc05?q=80&w=2074&auto=format&fit=crop'
 
 const EM_DASH = '\u2014'
 const ARROW = '\u2190'
@@ -600,7 +599,7 @@ export default function PublicVipItineraryView({
           </div>
         ) : null}
         <img
-          src={trip.coverImage || DEFAULT_HERO}
+          src={resolveDestinationCoverImage(trip.destination, { coverImage: trip.coverImage })}
           alt=""
           className="absolute inset-0 h-full w-full object-cover opacity-35"
         />

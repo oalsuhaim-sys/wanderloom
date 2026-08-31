@@ -7,12 +7,14 @@ import { Loader2, Send } from 'lucide-react';
 
 import { submitCustomerLead, type CustomerLeadState } from '@/app/actions/submitCustomerLead';
 import { useLanguage } from '@/context/LanguageContext';
+import { ReferralCodeField } from '@/components/ReferralCodeField';
+import { useTripDestinations } from '@/hooks/useCountries';
 import {
   normalizeAffiliateRef,
   persistAffiliateRef,
   readPersistedAffiliateRef,
 } from '@/lib/referral-url';
-import { TRIP_DESTINATIONS, getTripCountryById } from '@/lib/trip-destination-data';
+import { getTripCountryById } from '@/lib/trip-destination-data';
 
 const INPUT_CLASS =
   'h-10 w-full rounded-lg border border-gray-200/90 bg-white/50 px-3 text-sm font-bold text-[#111111] outline-none transition placeholder:text-gray-400 focus:border-[#cda04c]/70 focus:ring-2 focus:ring-[#cda04c]/25';
@@ -239,9 +241,11 @@ function TripDesignFormInner() {
   const { dir, t } = useLanguage();
   const f = t.form;
   const labels = t.tripLabels;
+  const { tripDestinations } = useTripDestinations();
 
   const countryLabel = (id: string) =>
     labels.countries[id as keyof typeof labels.countries] ??
+    tripDestinations.find((country) => country.id === id)?.labelAr ??
     getTripCountryById(id)?.labelAr ??
     id;
 
@@ -249,6 +253,8 @@ function TripDesignFormInner() {
     labels.cities[countryId as keyof typeof labels.cities]?.[
       cityId as keyof (typeof labels.cities)[keyof typeof labels.cities]
     ] ??
+    tripDestinations.find((country) => country.id === countryId)?.cities.find((c) => c.id === cityId)
+      ?.labelAr ??
     getTripCountryById(countryId)?.cities.find((c) => c.id === cityId)?.labelAr ??
     cityId;
 
@@ -465,14 +471,6 @@ function TripDesignFormInner() {
 
   return (
     <form onSubmit={onSubmit} className="mx-auto max-w-3xl space-y-6 bg-[#FDFBF7]" dir={dir}>
-      {referralCode ? (
-        <input type="hidden" name="referral_code" value={referralCode} />
-      ) : null}
-      {referralCode ? (
-        <p className="rounded-xl border border-[#cda04c]/25 bg-[#cda04c]/10 px-4 py-2.5 text-center text-xs font-bold text-[#7a5f28]">
-          كود الإحالة <span dir="ltr">{referralCode}</span> — مُطبَّق على طلبك
-        </p>
-      ) : null}
       {selectedCountries.map((id) => (
         <input key={id} type="hidden" name="dest_countries" value={id} />
       ))}
@@ -518,13 +516,19 @@ function TripDesignFormInner() {
             <option value="other">{f.sourceOther}</option>
           </select>
         </div>
+        <ReferralCodeField
+          value={referralCode}
+          onChange={setReferralCode}
+          autoPrefill={false}
+          inputClassName={INPUT_CLASS}
+        />
       </SectionCard>
 
       <SectionCard n={2} title={f.section2Title} subtitle={f.section2Subtitle}>
         <div className={QUESTION_BLOCK}>
           <p className="text-right text-xs font-black text-[#111111]">{f.countriesLabel}</p>
           <div className={PILL_ROW}>
-            {TRIP_DESTINATIONS.map((c) => {
+            {tripDestinations.map((c) => {
               const isSelected = selectedCountries.includes(c.id);
               return (
                 <DestinationTag
@@ -558,7 +562,7 @@ function TripDesignFormInner() {
           <div className="space-y-4 border-t border-gray-100 pt-4">
             <p className="text-right text-xs font-black text-[#111111]">{f.citiesHeading}</p>
             {effectiveCountries.map((cid) => {
-              const country = cid === 'other' ? null : getTripCountryById(cid);
+              const country = cid === 'other' ? null : tripDestinations.find((c) => c.id === cid) ?? getTripCountryById(cid);
               if (cid !== 'other' && !country) return null;
               const otherCityOn =
                 selectedCities.includes(`${cid}:other`) || activeCustomCityFor === cid;
@@ -678,7 +682,13 @@ function TripDesignFormInner() {
             <p className="text-right text-xs font-black text-[#111111]">{f.visitSectionTitle}</p>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               {effectiveCountries.map((cid) => {
-                if (cid !== "other" && !getTripCountryById(cid)) return null;
+                if (
+                  cid !== 'other' &&
+                  !tripDestinations.some((country) => country.id === cid) &&
+                  !getTripCountryById(cid)
+                ) {
+                  return null;
+                }
                 return (
                   <div key={cid} className={QUESTION_BLOCK}>
                     <p className="text-right text-[11px] font-bold text-gray-600">

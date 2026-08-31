@@ -95,6 +95,17 @@ export async function PATCH(request: Request, context: RouteContext) {
       parsePartnerDnaProfile(body.dna_profile ?? body.dnaProfile),
     );
   }
+  if (body.referral_code !== undefined || body.referralCode !== undefined) {
+    patch.referral_code =
+      String(body.referral_code ?? body.referralCode ?? '').trim() || null;
+  }
+  if (body.commission_rate !== undefined || body.commissionRate !== undefined) {
+    const raw = body.commission_rate ?? body.commissionRate;
+    const n = Number(raw);
+    patch.commission_rate = Number.isFinite(n)
+      ? Math.min(100, Math.max(0, n))
+      : 15;
+  }
 
   if (Object.keys(patch).length === 0) {
     return NextResponse.json({ ok: false, error: 'empty_patch' }, { status: 400 });
@@ -106,6 +117,27 @@ export async function PATCH(request: Request, context: RouteContext) {
     .eq('id', leaderId)
     .select('*')
     .maybeSingle();
+
+  if (
+    error &&
+    /commission_rate|referral_code|column|schema cache|does not exist/i.test(
+      error.message ?? '',
+    )
+  ) {
+    const soft = { ...patch };
+    if (/commission_rate/i.test(error.message ?? '')) delete soft.commission_rate;
+    if (/referral_code/i.test(error.message ?? '')) delete soft.referral_code;
+    if (Object.keys(soft).length > 0 && Object.keys(soft).length < Object.keys(patch).length) {
+      const retry = await admin
+        .from('leaders')
+        .update(soft)
+        .eq('id', leaderId)
+        .select('*')
+        .maybeSingle();
+      data = retry.data;
+      error = retry.error;
+    }
+  }
 
   if (error && /dna_profile|column|schema cache|does not exist/i.test(error.message ?? '')) {
     const { dna_profile: _dna, ...withoutDna } = patch;

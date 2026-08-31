@@ -31,7 +31,7 @@ export default function ReferralQrModal({
 
   return (
     <div
-      className="fixed inset-0 z-[320] flex items-end justify-center bg-[#001f3f]/45 p-0 backdrop-blur-sm sm:items-center sm:p-4"
+      className="fixed inset-0 z-[320] flex items-center justify-center bg-[#001f3f]/45 p-0 backdrop-blur-sm sm:p-4"
       dir="rtl"
       role="presentation"
       onClick={onClose}

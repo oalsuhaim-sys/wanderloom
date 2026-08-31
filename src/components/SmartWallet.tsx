@@ -61,7 +61,7 @@ function tierPresentation(rawTier: string) {
       label: 'VIP',
       icon: Crown,
       className:
-        'border-[#D4AF37]/40 bg-gradient-to-l from-[#10251B] to-[#07100D] text-[#E4C989]',
+        'border-[#D4AF37]/40 bg-gradient-to-l from-slate-900 to-slate-800 text-[#E4C989]',
     };
   }
   if (tier === 'gold') {
@@ -162,17 +162,17 @@ export function SmartWallet({
 
   return (
     <section
-      className="overflow-hidden rounded-2xl border border-[#C4A464]/25 bg-white shadow-sm"
+      className="mb-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-[#2D3F3A] dark:bg-[#22302C]"
       dir="rtl"
     >
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#C4A464]/15 bg-gradient-to-l from-[#10251B] to-[#08140F] px-5 py-4 text-white">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 bg-gradient-to-r from-slate-900 to-slate-800 px-5 py-4 text-white dark:border-[#2D3F3A] dark:from-[#1A2421] dark:to-[#22302C]">
         <div className="flex items-center gap-3">
-          <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-[#C4A464]/30 bg-[#C4A464]/10 text-[#D8BD85]">
+          <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/15 bg-white/10 text-white dark:border-[#D4AF37]/30 dark:bg-[#D4AF37]/10 dark:text-[#D4AF37]">
             <WalletCards className="h-5 w-5" />
           </span>
           <div>
-            <h2 className="text-base font-black">المحفظة الذكية</h2>
-            <p className="mt-0.5 text-xs font-semibold text-white/50">
+            <h2 className="text-base font-bold">المحفظة الذكية</h2>
+            <p className="mt-0.5 text-xs font-medium text-white/50">
               العمولات والأرباح والحركات المالية
             </p>
           </div>
@@ -188,19 +188,19 @@ export function SmartWallet({
       </div>
 
       {loading ? (
-        <div className="flex min-h-64 items-center justify-center gap-2 p-6 text-sm font-bold text-slate-500">
-          <Loader2 className="h-5 w-5 animate-spin text-[#C4A464]" />
+        <div className="flex min-h-64 items-center justify-center gap-2 p-6 text-sm font-medium text-slate-500">
+          <Loader2 className="h-5 w-5 animate-spin text-slate-400 dark:text-[#D4AF37]" />
           جاري تحميل المحفظة…
         </div>
       ) : error || !wallet ? (
         <div className="p-6">
-          <p className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700">
+          <p className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
             {error || 'تعذر تحميل المحفظة.'}
           </p>
           <button
             type="button"
             onClick={() => void load()}
-            className="mt-3 rounded-xl border border-[#C4A464]/30 bg-[#C4A464]/10 px-4 py-2 text-xs font-black text-[#10251B] transition hover:bg-[#C4A464]/20"
+            className="mt-3 rounded-lg border border-slate-200 bg-white px-4 py-2 text-xs font-medium text-slate-800 transition hover:bg-slate-50 dark:border-[#D4AF37]/40 dark:bg-[#D4AF37]/10 dark:text-[#D4AF37]"
           >
             إعادة المحاولة
           </button>
@@ -208,19 +208,19 @@ export function SmartWallet({
       ) : (
         <div className="p-5">
           <div className="grid gap-4 sm:grid-cols-2">
-            <article className="relative overflow-hidden rounded-2xl bg-gradient-to-bl from-[#183C2C] to-[#0C2118] p-5 text-white shadow-lg">
-              <div className="absolute -left-8 -top-8 h-28 w-28 rounded-full bg-[#C4A464]/10" />
-              <p className="relative inline-flex items-center gap-2 text-xs font-bold text-white/60">
-                <WalletCards className="h-4 w-4 text-[#D8BD85]" />
+            <article className="relative overflow-hidden rounded-2xl bg-gradient-to-bl from-slate-900 to-slate-800 p-5 text-white shadow-lg dark:from-[#1A2421] dark:to-[#22302C]">
+              <div className="absolute -left-8 -top-8 h-28 w-28 rounded-full bg-white/5 dark:bg-[#D4AF37]/10" />
+              <p className="relative inline-flex items-center gap-2 text-xs font-medium text-white/60">
+                <WalletCards className="h-4 w-4 text-white/70 dark:text-[#D4AF37]" />
                 الرصيد المتاح
               </p>
               <p
-                className="relative mt-4 text-2xl font-black text-[#E4C989]"
+                className="relative mt-4 text-2xl font-bold text-white dark:text-[#D4AF37]"
                 dir="ltr"
               >
                 {formatMoney(wallet.walletBalance)}
               </p>
-              <p className="relative mt-2 text-[10px] font-semibold text-white/40">
+              <p className="relative mt-2 text-[10px] font-medium text-white/40">
                 عمولات مصفاة ومتاحة
               </p>
             </article>

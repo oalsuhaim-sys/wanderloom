@@ -592,11 +592,11 @@ function DayBlock({
   )
 }
 
-const LUXURY_HERO_FALLBACK =
-  'https://images.unsplash.com/photo-1499856871958-5b9627545d1a?auto=format&fit=crop&q=80&w=2000'
+import { resolveDestinationCoverImage } from '@/lib/destination-cover-image'
 
 function resolveHeroCoverUrl(
   coverImage: string | null | undefined,
+  destination: string,
   days: PublicItineraryDay[] = [],
 ): string {
   const primary = String(coverImage ?? '').trim()
@@ -609,7 +609,7 @@ function resolveHeroCoverUrl(
     }
   }
 
-  return LUXURY_HERO_FALLBACK
+  return resolveDestinationCoverImage(destination, { width: 1200 })
 }
 
 function LuxuryItineraryHero({
@@ -630,8 +630,8 @@ function LuxuryItineraryHero({
   const pill = useMemo(() => countdownPillLabel(startDate), [startDate])
   const headline = title.trim() || destination.trim() || 'مسار رحلتك'
   const resolvedCover = useMemo(
-    () => resolveHeroCoverUrl(coverImage, days),
-    [coverImage, days],
+    () => resolveHeroCoverUrl(coverImage, destination, days),
+    [coverImage, destination, days],
   )
 
   return (

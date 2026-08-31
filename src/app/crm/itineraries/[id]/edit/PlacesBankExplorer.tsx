@@ -5,6 +5,7 @@ import { Loader2, MapPin, Search, X } from 'lucide-react';
 
 import {
   VIP_INPUT,
+  VIP_OPTION,
   VIP_PANEL,
   VIP_PANEL_BODY,
   VIP_PANEL_HEAD,
@@ -13,8 +14,7 @@ import {
 import {
   PLACES_BANK_CATEGORIES,
   PLACES_BANK_PAGE_SIZE,
-  fetchAllPlacesBank,
-  filterPlacesBankInventory,
+  fetchPlacesBankPage,
   placeBankCategoryLabel,
 } from '@/lib/places-bank';
 import {
@@ -115,16 +115,16 @@ export default function PlacesBankExplorer({
     setError(null);
 
     try {
-      const inventory = await fetchAllPlacesBank(supabase);
-      const filtered = filterPlacesBankInventory(inventory, {
-        countries: filters.country ? [filters.country] : undefined,
-        cityFilter: filters.city,
+      const { rows, total: count } = await fetchPlacesBankPage(supabase, {
+        page,
+        pageSize: PLACES_BANK_PAGE_SIZE,
         search: filters.search,
         category: filters.category,
+        countries: filters.country ? [filters.country] : undefined,
+        cityFilter: filters.city,
       });
-      setTotal(filtered.length);
-      const start = page * PLACES_BANK_PAGE_SIZE;
-      setPlaces(filtered.slice(start, start + PLACES_BANK_PAGE_SIZE));
+      setPlaces(rows);
+      setTotal(count);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'تعذر تحميل الأماكن.');
       setPlaces([]);
@@ -218,12 +218,12 @@ export default function PlacesBankExplorer({
 
       <div className="shrink-0 space-y-2 border-b border-[#D4AF37]/40 bg-[#FAFAFA] p-3">
         <div className="relative">
-          <Search className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#1E2720]/40" />
+          <Search className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="بحث بالاسم..."
-            className={`${VIP_INPUT} pe-9`}
+            className={`${VIP_INPUT} pe-9 placeholder:text-slate-500`}
           />
         </div>
         <select
@@ -234,9 +234,11 @@ export default function PlacesBankExplorer({
           }}
           className={VIP_SELECT}
         >
-          <option value="">كل الدول</option>
+          <option value="" className={VIP_OPTION}>
+            كل الدول
+          </option>
           {countries.map((c) => (
-            <option key={c} value={c}>
+            <option key={c} value={c} className={VIP_OPTION}>
               {c}
             </option>
           ))}
@@ -245,19 +247,23 @@ export default function PlacesBankExplorer({
           value={filterCity}
           onChange={(e) => setFilterCity(e.target.value)}
           disabled={!filterCountry}
-          className={`${VIP_SELECT} disabled:opacity-50`}
+          className={VIP_SELECT}
         >
-          <option value="">كل المدن</option>
+          <option value="" className={VIP_OPTION}>
+            كل المدن
+          </option>
           {cities.map((c) => (
-            <option key={c} value={c}>
+            <option key={c} value={c} className={VIP_OPTION}>
               {c}
             </option>
           ))}
         </select>
         <select value={filterCat} onChange={(e) => setFilterCat(e.target.value)} className={VIP_SELECT}>
-          <option value="">كل الفئات</option>
+          <option value="" className={VIP_OPTION}>
+            كل الفئات
+          </option>
           {Object.entries(PLACES_BANK_CATEGORIES).map(([code, label]) => (
-            <option key={code} value={code}>
+            <option key={code} value={code} className={VIP_OPTION}>
               {label}
             </option>
           ))}
@@ -268,12 +274,12 @@ export default function PlacesBankExplorer({
         {loading ? (
           <div className="flex flex-col items-center py-16">
             <Loader2 className="h-8 w-8 animate-spin text-[#D4AF37]" />
-            <p className="mt-2 text-xs font-bold text-[#1E2720]/50">جاري التحميل…</p>
+            <p className="mt-2 text-xs font-bold text-slate-600">جاري التحميل…</p>
           </div>
         ) : error ? (
           <p className="py-8 text-center text-xs font-bold text-red-700">{error}</p>
         ) : pageSlice.length === 0 ? (
-          <p className="py-8 text-center text-xs font-semibold text-[#1E2720]/50">لا توجد نتائج.</p>
+          <p className="py-8 text-center text-xs font-semibold text-slate-600">لا توجد نتائج.</p>
         ) : (
           <ul className="space-y-2">
             {pageSlice.map((item) => {
@@ -302,17 +308,34 @@ export default function PlacesBankExplorer({
                     )}
                     <div className="min-w-0 flex-1">
                       <div className="flex items-start justify-between gap-1">
-                        <p className="truncate text-sm font-bold text-[#1E2720]">{p.name}</p>
+                        <div className="flex min-w-0 flex-wrap items-center justify-end gap-2">
+                          {p.branch_name ? (
+                            <span className="shrink-0 rounded-md border border-amber-200 bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-800">
+                              {p.branch_name}
+                            </span>
+                          ) : null}
+                          <p className="truncate text-sm font-bold text-[#1E2720]">{p.name}</p>
+                        </div>
                         {dist != null ? (
-                          <span className="shrink-0 rounded bg-[#1E2720] px-1.5 py-0.5 text-[9px] font-bold text-[#D4AF37]">
+                          <span className="shrink-0 rounded bg-slate-100 px-1.5 py-0.5 text-[9px] font-bold text-[#D4AF37]">
                             {formatDistanceKmAr(dist)}
                           </span>
                         ) : null}
                       </div>
-                      <p className="text-[10px] font-medium text-[#1E2720]/55">
+                      <p className="text-[10px] font-bold text-slate-700">
                         {placeBankCategoryLabel(p.category)}
-                        {p.city ? ` · ${p.city}` : ''}
                       </p>
+                      <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs font-medium text-slate-500">
+                        {p.city ? <span>{p.city}</span> : null}
+                        {p.branch_name ? (
+                          <>
+                            {p.city ? <span aria-hidden>•</span> : null}
+                            <span className="rounded border border-amber-200/60 bg-amber-50 px-1.5 py-0.5 font-bold text-amber-700">
+                              {p.branch_name}
+                            </span>
+                          </>
+                        ) : null}
+                      </div>
                     </div>
                   </div>
                   <button

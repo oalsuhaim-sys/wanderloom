@@ -25,7 +25,7 @@ export {
   isKanbanVisibleStatus,
 } from '@/lib/lead-status';
 
-/** Kanban columns (Radar gate statuses are not shown here) */
+/** Kanban columns — 5-stage sales pipeline (Radar gate statuses are not shown here) */
 export const LEAD_KANBAN_COLUMNS = [
   { id: 'awaiting_dna' as const, label: LEAD_STATUS_LABEL_AR.awaiting_dna, tone: 'teal' },
   { id: 'meeting' as const, label: LEAD_STATUS_LABEL_AR.meeting, tone: 'sky' },
@@ -36,11 +36,10 @@ export const LEAD_KANBAN_COLUMNS = [
     tone: 'orange',
   },
   {
-    id: 'preparing_itinerary' as const,
-    label: LEAD_STATUS_LABEL_AR.preparing_itinerary,
-    tone: 'violet',
+    id: 'payment_confirmed' as const,
+    label: 'تم الدفع / المسارات',
+    tone: 'emerald',
   },
-  { id: 'delivered' as const, label: LEAD_STATUS_LABEL_AR.delivered, tone: 'emerald' },
 ] as const;
 
 export type LeadKanbanColumnId = (typeof LEAD_KANBAN_COLUMNS)[number]['id'];
@@ -50,23 +49,30 @@ export const LEAD_KANBAN_DB_STATUS: Record<LeadKanbanColumnId, LeadStatus> = {
   awaiting_dna: 'awaiting_dna',
   meeting: 'meeting',
   quote_stage: 'quote_stage',
+  /** User-facing alias pending_payment → canonical awaiting_payment */
   awaiting_payment: 'awaiting_payment',
-  preparing_itinerary: 'preparing_itinerary',
-  delivered: 'delivered',
+  payment_confirmed: 'payment_confirmed',
 };
 
 /** Map DB status → Kanban column (null = radar gate / rejected / postponed) */
 export function normalizeLeadKanbanStatus(raw: unknown): LeadKanbanColumnId | null {
   const master = normalizeLeadStatus(raw);
+  if (master === 'interview_scheduled') return 'meeting';
   if (
     master === 'radar_pending' ||
     master === 'radar_rejected' ||
-    master === 'postponed'
+    master === 'postponed' ||
+    master === 'interest_only' ||
+    master === 'converted'
   ) {
     return null;
   }
   if (LEAD_KANBAN_COLUMNS.some((c) => c.id === master)) {
     return master as LeadKanbanColumnId;
+  }
+  // Legacy route stages collapse into payment_confirmed column
+  if (master === 'preparing_itinerary' || master === 'delivered') {
+    return 'payment_confirmed';
   }
   return null;
 }
@@ -75,53 +81,70 @@ export function isLeadKanbanColumnId(value: string): value is LeadKanbanColumnId
   return LEAD_KANBAN_COLUMNS.some((col) => col.id === value);
 }
 
+/**
+ * Dual-theme column accents — light pastel strip + dark olive/gold readable headers.
+ * Never leaves light-only backgrounds in dark mode (invisible white text bug).
+ */
 export function leadKanbanColumnToneClass(tone: string): {
   header: string;
   badge: string;
   drop: string;
+  accentDot: string;
 } {
+  const baseHeader =
+    'border-slate-200 bg-white/80 dark:border-[#2D3F3A] dark:bg-[#22302C]';
+  const baseBadge =
+    'bg-slate-200 text-slate-700 dark:bg-[#1A2421] dark:text-[#D4AF37] border border-slate-300 dark:border-[#2D3F3A]';
+
   switch (tone) {
     case 'amber':
       return {
-        header: 'border-amber-200/80 bg-amber-50/90',
-        badge: 'bg-amber-100 text-amber-900',
-        drop: 'ring-amber-300/60',
+        header: `${baseHeader} border-s-4 border-s-amber-400 dark:border-s-[#D4AF37]`,
+        badge: baseBadge,
+        drop: 'ring-amber-300/60 dark:ring-[#D4AF37]/35',
+        accentDot: 'bg-amber-400 dark:bg-[#D4AF37]',
       };
     case 'teal':
       return {
-        header: 'border-teal-200/80 bg-teal-50/90',
-        badge: 'bg-teal-100 text-teal-900',
-        drop: 'ring-teal-300/60',
+        header: `${baseHeader} border-s-4 border-s-teal-500 dark:border-s-teal-400`,
+        badge: baseBadge,
+        drop: 'ring-teal-300/60 dark:ring-teal-500/35',
+        accentDot: 'bg-teal-500 dark:bg-teal-400',
       };
     case 'sky':
       return {
-        header: 'border-sky-200/80 bg-sky-50/90',
-        badge: 'bg-sky-100 text-sky-900',
-        drop: 'ring-sky-300/60',
+        header: `${baseHeader} border-s-4 border-s-sky-500 dark:border-s-sky-400`,
+        badge: baseBadge,
+        drop: 'ring-sky-300/60 dark:ring-sky-500/35',
+        accentDot: 'bg-sky-500 dark:bg-sky-400',
       };
     case 'orange':
       return {
-        header: 'border-orange-200/80 bg-orange-50/90',
-        badge: 'bg-orange-100 text-orange-950',
-        drop: 'ring-orange-300/60',
+        header: `${baseHeader} border-s-4 border-s-orange-400 dark:border-s-orange-400`,
+        badge: baseBadge,
+        drop: 'ring-orange-300/60 dark:ring-orange-400/35',
+        accentDot: 'bg-orange-400',
       };
     case 'violet':
       return {
-        header: 'border-violet-200/80 bg-violet-50/90',
-        badge: 'bg-violet-100 text-violet-900',
-        drop: 'ring-violet-300/60',
+        header: `${baseHeader} border-s-4 border-s-violet-400 dark:border-s-violet-400`,
+        badge: baseBadge,
+        drop: 'ring-violet-300/60 dark:ring-violet-400/35',
+        accentDot: 'bg-violet-400',
       };
     case 'emerald':
       return {
-        header: 'border-emerald-200/80 bg-emerald-50/90',
-        badge: 'bg-emerald-100 text-emerald-900',
-        drop: 'ring-emerald-300/60',
+        header: `${baseHeader} border-s-4 border-s-emerald-500 dark:border-s-emerald-400`,
+        badge: baseBadge,
+        drop: 'ring-emerald-300/60 dark:ring-emerald-400/35',
+        accentDot: 'bg-emerald-500 dark:bg-emerald-400',
       };
     default:
       return {
-        header: 'border-slate-200 bg-slate-50/90',
-        badge: 'bg-slate-200/80 text-slate-800',
-        drop: 'ring-slate-300/60',
+        header: baseHeader,
+        badge: baseBadge,
+        drop: 'ring-slate-300/60 dark:ring-[#D4AF37]/30',
+        accentDot: 'bg-slate-400 dark:bg-[#D4AF37]',
       };
   }
 }

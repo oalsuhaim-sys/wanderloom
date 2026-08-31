@@ -12,6 +12,7 @@ import DestinationAdvisor from '@/components/DestinationAdvisor';
 import { AffiliateReferralCapture } from './AffiliateReferralCapture';
 import { GeneralContactSection } from './GeneralContactSection';
 import { GroupTripsSection } from './GroupTripsSection';
+import { InterestFooterCta } from './InterestFooterCta';
 import { LogoWatermarkLayer } from './LogoWatermarkLayer';
 import { PublicAboutSection } from './PublicAboutSection';
 import { PublicHomeHero } from './PublicHomeHero';
@@ -142,6 +143,7 @@ export function PublicHomePage({ sessions, sessionsLoadError, sessionsDemo }: Pu
         </SectionFrame>
 
         <footer className="border-t border-[#1e3f20]/10 bg-transparent px-4 py-10 text-center sm:py-12">
+          <InterestFooterCta />
           <p className="text-xs font-black tracking-[0.4em] text-[#cda04c]/80">{t.footer.brand}</p>
           <p className="mt-2 text-[11px] font-bold text-gray-500">{t.footer.tagline}</p>
           <p className="mt-5">

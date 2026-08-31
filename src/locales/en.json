@@ -59,11 +59,13 @@
       "namePlaceholder": "Your full name",
       "waLabel": "WhatsApp number *",
       "waPlaceholder": "05XXXXXXXX",
-      "emailLabel": "Email *",
+      "emailLabel": "Email",
+      "optionalHint": "optional",
       "emailPlaceholder": "example@email.com",
       "ageLabel": "Age *",
       "agePlaceholder": "e.g. 28",
-      "submit": "Reserve seat",
+      "birthDateLabel": "Date of birth",
+      "submit": "Submit join request",
       "close": "Close"
     },
     "errors": {
@@ -73,6 +75,8 @@
       "invalidEmail": "Please enter a valid email address.",
       "ageRequired": "Please enter your age.",
       "invalidAge": "Please enter a valid age.",
+      "birthDateRequired": "Please enter your date of birth.",
+      "invalidBirthDate": "Please enter a valid date of birth.",
       "generic": "Sorry, an error occurred during registration. Please try again."
     },
     "success": "Your group was registered successfully! The Wanderloom team will contact you on WhatsApp soon."

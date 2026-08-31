@@ -9,7 +9,9 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-    images: {
+  // Next.js 16 + Turbopack: PWA wrapper injects webpack; empty turbopack opts silence the mismatch.
+  turbopack: {},
+  images: {
     remotePatterns: [
       {
         protocol: "https",

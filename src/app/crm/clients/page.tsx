@@ -1,39 +1,43 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import {
-  Activity,
-  Building2,
-  ChevronDown,
   Crown,
+  Download,
+  Eye,
+  LayoutGrid,
   Loader2,
-  Lock,
   Mail,
+  MessageCircle,
   Pencil,
   Phone,
-  Plane,
   Plus,
   Search,
+  SlidersHorizontal,
+  Table2,
   Trash2,
-  MessageSquare,
-  Tags,
-  UtensilsCrossed,
   X,
 } from 'lucide-react'
 
-import VipSpendingTierBadge from '@/components/VipSpendingTierBadge'
 import { deleteClientAction, fetchClientDirectoryAction } from '@/app/actions/clientDirectoryActions'
-import ReferralCodeBadge from '@/app/crm/clients/_components/ReferralCodeBadge'
-import ReferralQrModal from '@/app/crm/clients/_components/ReferralQrModal'
 import ContactFilterTabs from '@/app/crm/clients/_components/ContactFilterTabs'
-import ClientDnaAdvancedDisplay from '@/app/crm/clients/_components/ClientDnaAdvancedDisplay'
 import ClientDnaAdvancedFieldsEditor from '@/app/crm/clients/_components/ClientDnaAdvancedFieldsEditor'
 import ClientDnaSmartEventRecommendations from '@/app/crm/clients/_components/ClientDnaSmartEventRecommendations'
 import ClientPaymentWhatsAppButton from '@/app/crm/clients/_components/ClientPaymentWhatsAppButton'
 import ClientSalesStageControl from '@/app/crm/clients/_components/ClientSalesStageControl'
-import ClientTargetTripBadge from '@/app/crm/clients/_components/ClientTargetTripBadge'
 import { countClientTripsByClientIds, sumClientTripProfitByClientIds } from '@/lib/client-trips-crm'
+import {
+  clientDisplayTierBadge,
+  engagementDotClass,
+  engagementStatusLabel,
+  formatSarClv,
+  parseTravelDnaChips,
+  resolveClientLifetimeValue,
+} from '@/lib/client-crm-profile'
+import { whatsAppHref } from '@/lib/crm-lead-actions'
+import { getClientAccessToken } from '@/lib/crm-session-token'
 import {
   countClientsByTab,
   filterClientsByTab,
@@ -45,9 +49,7 @@ import { ONBOARDING_HOTEL_TYPE_OPTIONS } from '@/lib/client-onboarding'
 import {
   buildClientInsertPayload,
   buildClientUpdatePayload,
-  CLIENT_TIER_OPTIONS,
   DEFAULT_CLIENT_TYPE,
-  clientTypeEmoji,
   type ClientTier,
   type ClientType,
   type VipClientProfile,
@@ -55,15 +57,22 @@ import {
 import {
   CLIENT_SALES_STAGES,
   normalizeSalesStage,
-  salesStageSelectClass,
 } from '@/lib/client-sales-stage'
-import { LEAD_SOURCE_OPTIONS, LEAD_SOURCE_SELECT_CLASS } from '@/lib/lead-source'
+import { LEAD_SOURCE_OPTIONS } from '@/lib/lead-source'
+import { exportClientsToCSV } from '@/lib/export-clients-csv'
+import { CRM_BTN_PRIMARY, CRM_BTN_GHOST, CRM_CARD_GRID, CRM_CARD_INTERACTIVE, CRM_FILTER_BAR, CRM_INPUT, CRM_TABLE, CRM_TABLE_SCROLL, partnerInitials } from '@/lib/crm-luxury-ui'
+import { toast } from '@/lib/crm-toast'
 
 const ar = {
   "loyalty": "نظام الولاء",
   "title": "قاعدة العملاء ونظام الولاء",
   "subtitle": "مصدر واحد للحقيقة: جدول العملاء — الشرائح، الرحلات، الإحالات، وملف الـ DNA السياحي.",
   "addBtn": "إضافة عميل جديد",
+  "addClientShort": "إضافة عميل",
+  "filterBtn": "تصفية",
+  "exportCsv": "تصدير العملاء (CSV)",
+  "exportCsvEmpty": "لا يوجد عملاء للتصدير.",
+  "exportCsvOk": "تم تنزيل ملف CSV.",
   "searchPh": "بحث بالاسم، الشريحة، كود الإحالة، الهاتف، أو التفضيلات…",
   "searchPhUnified": "بحث في قاعدة العملاء…",
   "loading": "جاري تحميل قاعدة العملاء…",
@@ -74,6 +83,8 @@ const ar = {
   "copyRef": "نسخ كود الإحالة",
   "noRef": "لا يوجد كود إحالة",
   "openProfile": "فتح الملف الكامل ←",
+  "viewProfile": "عرض",
+  "manageProfile": "إدارة الملف",
   "edit": "تعديل",
   "delete": "حذف",
   "deleteConfirm": "هل أنت متأكد من حذف هذا العميل نهائياً؟",
@@ -87,6 +98,9 @@ const ar = {
   "fullName": "الاسم الكامل *",
   "loyaltySection": "الولاء والشرائح",
   "tier": "الشريحة",
+  "clientSegment": "شريحة العميل",
+  "referralSource": "مصدر الإحالة",
+  "referralSourcePlaceholder": "اختر مصدر الإحالة...",
   "trips": "عدد الرحلات",
   "referrals": "عدد الإحالات",
   "totalProfit": "إجمالي الأرباح",
@@ -125,7 +139,24 @@ const ar = {
 } as const
 
 const CRM_FIELD =
-  'w-full rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-[#1A3B2A] outline-none transition-all placeholder:text-gray-400 focus:border-[#C5A059] focus:ring-2 focus:ring-[#C5A059]/50 [color-scheme:light]'
+  'w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-300 focus:ring-2 focus:ring-slate-200 dark:border-[#2D3F3A] dark:bg-[#1A2421] dark:text-gray-100 dark:focus:border-[#D4AF37]/40 dark:focus:ring-[#D4AF37]/15'
+
+/** Premium modal controls — Add/Edit client */
+const MODAL_FIELD =
+  'w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-slate-900 dark:border-[#2D3F3A] dark:bg-[#1A2421] dark:text-gray-100 dark:focus:ring-[#D4AF37]'
+
+const CLIENT_SEGMENT_OPTIONS: { value: ClientTier; label: string }[] = [
+  { value: 'regular', label: 'عادي' },
+  { value: 'vip', label: 'VIP (هام)' },
+  { value: 'vvip', label: 'VVIP (هام جداً)' },
+]
+
+const BTN_PRIMARY = CRM_BTN_PRIMARY
+
+const BTN_SECONDARY = CRM_BTN_GHOST
+
+const CARD =
+  'rounded-xl border border-slate-200 bg-white shadow-sm dark:border-[#2D3F3A] dark:bg-[#22302C]'
 
 const EMPTY_FORM = {
   name: '',
@@ -235,67 +266,6 @@ function uniqueClientsById(rows: VipClientProfile[]): VipClientProfile[] {
   return out
 }
 
-function CollapsibleSection({
-  title,
-  icon,
-  children,
-  muted = false,
-  premiumNote = false,
-}: {
-  title: string
-  icon: ReactNode
-  children: ReactNode
-  muted?: boolean
-  premiumNote?: boolean
-}) {
-  const [open, setOpen] = useState(false)
-  const text = String(children ?? '').trim()
-  const hasContent = Boolean(text && text !== '\u2014')
-
-  return (
-    <div className="border-t border-gray-100/90 first:border-t-0">
-      <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation()
-          setOpen((v) => !v)
-        }}
-        className="flex w-full items-center justify-between gap-2 py-3 text-right transition hover:bg-gray-50/80"
-      >
-        <span className="flex items-center gap-2 text-xs font-bold tracking-wide text-[#1A3B2A]">
-          <span className="text-[#C5A059]">{icon}</span>
-          {title}
-        </span>
-        <ChevronDown
-          className={`h-4 w-4 shrink-0 text-gray-400 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
-          aria-hidden
-        />
-      </button>
-      <div
-        className={`grid transition-[grid-template-rows] duration-200 ease-out ${open ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}
-      >
-        <div className="overflow-hidden">
-          {premiumNote ? (
-            <div className="pb-3">
-              <div className="mt-2 rounded-lg border border-[#C5A059]/30 bg-[#FEFDF9] p-3 shadow-sm">
-                <p className="whitespace-pre-wrap text-sm font-medium leading-relaxed text-gray-800">
-                  {hasContent ? text : 'لا توجد ملاحظات سرية.'}
-                </p>
-              </div>
-            </div>
-          ) : (
-            <p
-              className={`pb-3 text-sm leading-relaxed ${muted ? 'italic text-gray-500' : 'text-gray-700'} ${!hasContent ? 'text-gray-400' : ''}`}
-            >
-              {hasContent ? children : '\u2014'}
-            </p>
-          )}
-        </div>
-      </div>
-    </div>
-  )
-}
-
 export default function ClientsLoyaltyPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
@@ -303,6 +273,8 @@ export default function ClientsLoyaltyPage() {
   const [clients, setClients] = useState<VipClientProfile[]>([])
   const [activeTab, setActiveTab] = useState<ContactTabId>('all')
   const [search, setSearch] = useState('')
+  const [filtersOpen, setFiltersOpen] = useState(false)
+  const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards')
   const [showModal, setShowModal] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
@@ -312,7 +284,6 @@ export default function ClientsLoyaltyPage() {
   const [tripCounts, setTripCounts] = useState<Record<string, number>>({})
   const [profitTotals, setProfitTotals] = useState<Record<string, number>>({})
   const [deletingId, setDeletingId] = useState<string | null>(null)
-  const [qrModal, setQrModal] = useState<{ code: string; name: string } | null>(null)
 
   const showErrorToast = (message: string) => {
     const msg = message.trim() || ar.loadErr
@@ -347,7 +318,8 @@ export default function ClientsLoyaltyPage() {
 
     setLoading(true)
     try {
-      const result = await fetchClientDirectoryAction()
+      const token = await getClientAccessToken()
+      const result = await fetchClientDirectoryAction(token)
       if (!result.ok) {
         throw new Error(result.error || ar.loadErr)
       }
@@ -400,7 +372,8 @@ export default function ClientsLoyaltyPage() {
       }
 
       try {
-        const result = await fetchClientDirectoryAction()
+        const token = await getClientAccessToken()
+      const result = await fetchClientDirectoryAction(token)
         if (!isMounted) return
 
         if (!result.ok) {
@@ -500,9 +473,9 @@ export default function ClientsLoyaltyPage() {
       if (!result.ok) {
         const msg = result.error || ar.deleteFail
         if (msg.includes('عروض أسعار') || msg.includes('رحلات مرتبطة')) {
-          alert(ar.deleteConstraintErr)
+          toast.error(ar.deleteConstraintErr)
         } else {
-          alert(msg)
+          toast.error(msg)
         }
         console.error('[CRM clients] delete failed:', result.error)
         return
@@ -526,7 +499,7 @@ export default function ClientsLoyaltyPage() {
       window.setTimeout(() => setCopyToast(''), 2800)
     } catch (e) {
       console.error('[CRM clients] delete failed', e)
-      alert(e instanceof Error ? e.message : ar.deleteFail)
+      toast.error(e instanceof Error ? e.message : ar.deleteFail)
     } finally {
       setDeletingId(null)
     }
@@ -629,41 +602,42 @@ export default function ClientsLoyaltyPage() {
     }
   }
 
-  const copyReferralCode = async (code: string) => {
-    if (!code.trim()) return
-    try {
-      await navigator.clipboard.writeText(code.trim())
-      setCopyToast(ar.copyOk)
-      window.setTimeout(() => setCopyToast(''), 2800)
-    } catch {
-      setError(ar.copyFail + code)
-    }
-  }
-
   const isEditing = Boolean(editingId)
 
   return (
-    <div dir="rtl" className="min-h-0 bg-gradient-to-b from-[#F6F4F0] via-[#FAF8F4] to-[#EDE8DD] pb-8 font-sans sm:pb-16">
-      <div className="mx-auto max-w-7xl">
-        <header className="mb-6 rounded-2xl border border-[#C5A059]/25 bg-gradient-to-br from-white via-white to-amber-50/50 p-4 shadow-[0_24px_64px_-28px_rgba(0,31,63,0.35)] sm:mb-8 sm:rounded-3xl sm:p-6 md:p-8">
-          <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between sm:gap-6">
-            <div className="space-y-2">
-              <p className="inline-flex items-center gap-2 rounded-full border border-[#C5A059]/40 bg-[#1A3B2A]/5 px-3 py-1 text-[11px] font-black uppercase tracking-[0.18em] text-[#1A3B2A]">
-                <Crown className="h-3.5 w-3.5 text-[#C5A059]" aria-hidden />
-                {ar.loyalty}
-              </p>
-              <h1 className="text-2xl font-black tracking-tight text-[#1A3B2A] sm:text-3xl md:text-[2rem]">
-                {ar.title}</h1>
-              <p className="max-w-lg text-sm font-semibold leading-relaxed text-slate-600">
-                {ar.subtitle}</p>
-            </div>
+    <div dir="rtl" className="min-h-0 bg-[#F9FAFB] pb-8 font-sans dark:bg-[#1A2421] sm:pb-12">
+      <div className="mx-auto max-w-7xl space-y-4">
+        <header className="flex flex-col gap-4 rounded-2xl bg-slate-900 p-4 text-white shadow-sm sm:flex-row sm:justify-between sm:p-6 dark:border dark:border-[#D4AF37]/30 dark:!bg-[#22302C] dark:text-[#D4AF37]">
+          <div className="space-y-1.5">
+            <p className="inline-flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-white/50 dark:text-[#D4AF37]/80">
+              <Crown className="h-3.5 w-3.5" aria-hidden />
+              {ar.loyalty}
+            </p>
+            <h1 className="text-2xl font-semibold tracking-tight text-white sm:text-3xl dark:text-gray-100">
+              {ar.title}
+            </h1>
+            <p className="max-w-lg text-sm leading-relaxed text-white/70 dark:text-gray-300">
+              {ar.subtitle}
+            </p>
+          </div>
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
             <button
               type="button"
-              onClick={openAdd}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[#1A3B2A] px-6 py-3.5 text-sm font-black text-white shadow-lg shadow-[#1A3B2A]/20 transition hover:bg-[#244F38] focus:outline-none focus:ring-2 focus:ring-[#C5A059] focus:ring-offset-2 sm:w-auto"
+              onClick={() => {
+                const source = filtered.length ? filtered : clients
+                if (!source.length) {
+                  showErrorToast(ar.exportCsvEmpty)
+                  return
+                }
+                exportClientsToCSV(source)
+                setCopyToast(ar.exportCsvOk)
+                window.setTimeout(() => setCopyToast(''), 3000)
+              }}
+              disabled={loading || clients.length === 0}
+              className={`${BTN_SECONDARY} w-full border-white/20 !bg-white/10 !text-white hover:!bg-white/20 sm:w-auto dark:!border-[#D4AF37]/30 dark:!bg-[#1A2421] dark:!text-[#D4AF37]`}
             >
-              <Plus className="h-5 w-5 text-[#C5A059]" aria-hidden />
-              {ar.addBtn}
+              <Download className="h-4 w-4 opacity-70" aria-hidden />
+              {ar.exportCsv}
             </button>
           </div>
         </header>
@@ -671,34 +645,101 @@ export default function ClientsLoyaltyPage() {
         {error ? (
           <div
             role="alert"
-            className="mb-6 rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-sm font-bold text-red-900"
+            className="rounded-xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-800 ring-1 ring-rose-600/10 dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-200"
           >
             {error}
           </div>
         ) : null}
 
-        <div className="mb-8 space-y-4">
-          <ContactFilterTabs
-            activeTab={activeTab}
-            onChange={setActiveTab}
-            counts={tabCounts}
-          />
+        <div className="mb-2 w-full">
+          <div className={`mb-4 md:mb-6 ${CRM_FILTER_BAR}`}>
+            <label className="relative w-full sm:max-w-md md:w-96">
+              <Search
+                className="pointer-events-none absolute right-3 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-slate-400 dark:text-slate-500"
+                aria-hidden
+              />
+              <input
+                type="search"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder={ar.searchPhUnified}
+                className={`${CRM_INPUT} pr-10`}
+                autoComplete="off"
+              />
+            </label>
 
-          <label className="relative block">
-            <Search
-              className="pointer-events-none absolute right-4 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-[#C5A059]"
-              aria-hidden
-            />
-            <input
-              type="search"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder={ar.searchPhUnified}
-              className={`${CRM_FIELD} h-12 pr-11`}
-            />
-          </label>
+            <div className="flex w-full flex-wrap items-stretch gap-3 sm:w-auto sm:items-center">
+              <div
+                className="flex min-h-[44px] items-center rounded-lg border border-slate-200 bg-slate-100 p-1 dark:border-[#2D3F3A] dark:bg-[#1A2421]"
+                role="group"
+                aria-label="طريقة العرض"
+              >
+                <button
+                  type="button"
+                  onClick={() => setViewMode('cards')}
+                  aria-pressed={viewMode === 'cards'}
+                  title="عرض البطاقات"
+                  className={
+                    viewMode === 'cards'
+                      ? 'inline-flex min-h-[40px] min-w-[44px] items-center justify-center rounded-md bg-white px-3 py-1.5 text-slate-900 shadow-sm transition-all dark:bg-[#22302C] dark:text-[#D4AF37]'
+                      : 'inline-flex min-h-[40px] min-w-[44px] items-center justify-center px-3 py-1.5 text-slate-500 transition-all hover:text-slate-700 dark:text-slate-400 dark:hover:text-gray-300'
+                  }
+                >
+                  <LayoutGrid className="h-4 w-4" aria-hidden />
+                  <span className="sr-only">بطاقات</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode('table')}
+                  aria-pressed={viewMode === 'table'}
+                  title="عرض الجدول"
+                  className={
+                    viewMode === 'table'
+                      ? 'inline-flex min-h-[40px] min-w-[44px] items-center justify-center rounded-md bg-white px-3 py-1.5 text-slate-900 shadow-sm transition-all dark:bg-[#22302C] dark:text-[#D4AF37]'
+                      : 'inline-flex min-h-[40px] min-w-[44px] items-center justify-center px-3 py-1.5 text-slate-500 transition-all hover:text-slate-700 dark:text-slate-400 dark:hover:text-gray-300'
+                  }
+                >
+                  <Table2 className="h-4 w-4" aria-hidden />
+                  <span className="sr-only">جدول</span>
+                </button>
+              </div>
+              <button
+                type="button"
+                onClick={() => setFiltersOpen((open) => !open)}
+                aria-expanded={filtersOpen}
+                aria-controls="clients-filter-tabs"
+                className={`inline-flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-medium shadow-sm transition-colors sm:flex-none ${
+                  filtersOpen || activeTab !== 'all'
+                    ? 'border-slate-900 bg-slate-900 text-white dark:border-[#D4AF37]/50 dark:bg-[#D4AF37]/20 dark:text-[#D4AF37]'
+                    : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-[#2D3F3A] dark:bg-[#22302C] dark:text-gray-300 dark:hover:bg-[#1A2421]'
+                }`}
+              >
+                <SlidersHorizontal className="h-4 w-4" aria-hidden />
+                {ar.filterBtn}
+              </button>
+              <button
+                type="button"
+                onClick={openAdd}
+                className={`${BTN_PRIMARY} flex-1 sm:flex-none`}
+              >
+                <Plus className="h-4 w-4" aria-hidden />
+                {ar.addClientShort}
+              </button>
+            </div>
+          </div>
+
+          {filtersOpen ? (
+            <div id="clients-filter-tabs" className="mb-4">
+              <ContactFilterTabs
+                activeTab={activeTab}
+                onChange={setActiveTab}
+                counts={tabCounts}
+              />
+            </div>
+          ) : null}
+
           {!loading ? (
-            <p className="text-xs font-semibold text-slate-500">
+            <p className="mb-4 text-xs text-slate-500 dark:text-slate-400">
               {ar.resultCountUnified
                 .replace('{n}', String(filtered.length))
                 .replace('{m}', String(clients.length))}
@@ -707,74 +748,307 @@ export default function ClientsLoyaltyPage() {
         </div>
 
         {loading ? (
-          <div className="flex min-h-[280px] flex-col items-center justify-center gap-3 rounded-2xl border border-white/80 bg-white/80 py-16 shadow-sm">
-            <Loader2 className="h-10 w-10 animate-spin text-[#1A3B2A]" aria-hidden />
-            <p className="text-sm font-semibold text-slate-500">{ar.loading}</p>
+          <div className={`flex min-h-[240px] flex-col items-center justify-center gap-3 py-14 ${CARD}`}>
+            <Loader2 className="h-7 w-7 animate-spin text-slate-400 dark:text-[#D4AF37]" aria-hidden />
+            <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{ar.loading}</p>
           </div>
         ) : filtered.length === 0 ? (
-          <p className="py-20 text-center text-sm font-medium text-slate-500">{emptyTabMessage}</p>
-        ) : (
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
-            {filtered.map((c) => (
-              <article
-                key={String(c.id)}
-                dir="rtl"
-                role="link"
-                tabIndex={0}
-                onClick={() => openClientProfile(c)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault()
-                    openClientProfile(c)
-                  }
-                }}
-                className="flex cursor-pointer flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_10px_20px_rgba(0,0,0,0.05)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#C5A059]/60 focus-visible:ring-offset-2"
-              >
-                <div className="border-b border-[#C5A059]/10 bg-gradient-to-l from-[#1A3B2A]/[0.03] to-transparent px-6 py-5">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="min-w-0 flex-1">
-                      <p className="block text-lg font-bold leading-snug text-[#1A3B2A] transition group-hover:text-[#244F38]">
-                        {c.name ?? '—'}
-                      </p>
+          <div className={`${CARD} border-dashed px-6 py-14 text-center`}>
+            <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{emptyTabMessage}</p>
+          </div>
+        ) : viewMode === 'cards' ? (
+          <div className={`crm-stagger ${CRM_CARD_GRID}`}>
+            {filtered.map((c) => {
+              const tier = clientDisplayTierBadge(c)
+              const trips = tripCounts[c?.id ?? ''] ?? c?.total_trips ?? 0
+              const clv = resolveClientLifetimeValue(c)
+              const displayName = c.name?.trim() || '—'
+              const dnaChips = parseTravelDnaChips({
+                travel_dna: c.travel_dna,
+                dna_interests: c.dna_interests,
+                tags: c.tags,
+              })
+              const engagement = c.engagement_status
+              const wa = c.phone_wa?.trim() ? whatsAppHref(c.phone_wa) : null
 
-                      <div
-                        className="mt-3 flex flex-wrap items-center gap-2"
+              return (
+                <article
+                  key={String(c.id)}
+                  className={`group relative flex cursor-pointer flex-col items-center rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-sm dark:border-[#2D3F3A] dark:bg-[#22302C] ${CRM_CARD_INTERACTIVE}`}
+                  onClick={() => openClientProfile(c)}
+                >
+                  <div className="relative mb-4">
+                    <div
+                      className="flex h-20 w-20 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-xl font-bold text-slate-700 dark:border-[#D4AF37]/30 dark:bg-[#1A2421] dark:text-[#D4AF37]"
+                      aria-hidden
+                    >
+                      {partnerInitials(displayName)}
+                    </div>
+                    {engagement ? (
+                      <span
+                        className={`absolute bottom-1 left-1 h-3.5 w-3.5 rounded-full ring-2 ring-white dark:ring-[#22302C] ${engagementDotClass(engagement)} animate-pulse`}
+                        title={engagementStatusLabel(engagement)}
+                        aria-label={`التفاعل: ${engagementStatusLabel(engagement)}`}
+                      />
+                    ) : null}
+                  </div>
+
+                  <h2 className="mb-1 max-w-full truncate text-lg font-bold text-slate-900 dark:text-white">
+                    {displayName}
+                  </h2>
+
+                  <div className="mt-1 flex flex-col items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
+                    {c?.phone_wa ? (
+                      <a
+                        href={`tel:${c.phone_wa.replace(/\s+/g, '')}`}
+                        dir="ltr"
+                        className="inline-flex items-center gap-1.5 transition hover:text-slate-800 dark:hover:text-[#D4AF37]"
                         onClick={(e) => e.stopPropagation()}
-                        onKeyDown={(e) => e.stopPropagation()}
                       >
-                        <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[#C5A059]/30 bg-white/90 px-2.5 py-1 text-[10px] font-black text-[#1c3d27]">
-                          <span aria-hidden>{clientTypeEmoji(c.client_type)}</span>
-                          عميل
+                        <Phone className="h-3 w-3 shrink-0" aria-hidden />
+                        {c.phone_wa}
+                      </a>
+                    ) : null}
+                    {c?.email ? (
+                      <a
+                        href={`mailto:${c.email}`}
+                        dir="ltr"
+                        title={c.email}
+                        className="inline-flex max-w-full items-center gap-1.5 truncate transition hover:text-slate-800 dark:hover:text-[#D4AF37]"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <Mail className="h-3 w-3 shrink-0" aria-hidden />
+                        {c.email}
+                      </a>
+                    ) : null}
+                    {!c?.phone_wa && !c?.email ? <span>{ar.noContact}</span> : null}
+                  </div>
+
+                  <div className="mt-3 mb-3 flex flex-wrap items-center justify-center gap-2">
+                    <span
+                      className="rounded-md border border-emerald-200/80 bg-emerald-50 px-2 py-1 text-[10px] font-bold text-emerald-800 dark:border-emerald-800/40 dark:bg-emerald-950/30 dark:text-emerald-300"
+                      dir="ltr"
+                      title="Lifetime Value"
+                    >
+                      {formatSarClv(clv)}
+                    </span>
+                    <span className={`inline-flex items-center gap-1 ${tier.className}`}>
+                      {(c.client_tier === 'vip' || c.client_tier === 'vvip' || tier.label.includes('VIP')) ? (
+                        <Crown className="h-3 w-3" aria-hidden />
+                      ) : null}
+                      {tier.label}
+                    </span>
+                    <span className="rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-[10px] font-medium text-slate-600 dark:border-[#2D3F3A] dark:bg-[#1A2421] dark:text-slate-300">
+                      {trips} رحلات
+                    </span>
+                    <div onClick={(e) => e.stopPropagation()}>
+                      <ClientSalesStageControl
+                        clientId={c.id}
+                        value={c.sales_stage ?? ''}
+                        compact
+                        className="min-w-0"
+                        onUpdated={(stage) => {
+                          setClients((prev) =>
+                            prev.map((row) =>
+                              row.id === c.id ? { ...row, sales_stage: stage || '' } : row,
+                            ),
+                          )
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  {dnaChips.length > 0 ? (
+                    <div className="mb-4 flex w-full flex-wrap justify-center gap-1.5">
+                      {dnaChips.map((chip) => (
+                        <span
+                          key={chip.key}
+                          className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] font-medium text-slate-700 dark:border-[#2D3F3A] dark:bg-[#1A2421] dark:text-slate-300"
+                        >
+                          {chip.label}
                         </span>
+                      ))}
+                    </div>
+                  ) : null}
 
-                        {c.client_tier === 'vip' || c.client_tier === 'vvip' ? (
-                          <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[#C5A059]/45 bg-[#C5A059]/10 px-2.5 py-1 text-[10px] font-black text-[#8a6d1f]">
+                  <div
+                    className="mt-auto flex w-full gap-2 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => openClientProfile(c)}
+                      className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white py-2.5 text-sm font-semibold text-slate-900 transition-all hover:bg-slate-900 hover:text-white dark:border-[#D4AF37]/50 dark:bg-transparent dark:text-[#D4AF37] dark:hover:bg-[#D4AF37]/10"
+                    >
+                      {ar.manageProfile}
+                    </button>
+                    {wa ? (
+                      <a
+                        href={wa}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title="واتساب"
+                        aria-label={`واتساب ${displayName}`}
+                        className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700 transition hover:bg-emerald-600 hover:text-white dark:border-emerald-800/50 dark:bg-emerald-950/40 dark:text-emerald-300"
+                      >
+                        <MessageCircle className="h-4 w-4" aria-hidden />
+                      </a>
+                    ) : (
+                      <ClientPaymentWhatsAppButton
+                        clientId={c.id}
+                        clientName={c.name ?? '—'}
+                        phone={c.phone_wa}
+                        targetTrip={c.target_trip}
+                        salesStage={c.sales_stage}
+                        compact
+                        className="!h-11 !w-11 shrink-0 !rounded-full"
+                      />
+                    )}
+                  </div>
+
+                  <div
+                    className="mt-2 flex items-center justify-center gap-1"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => openEdit(c)}
+                      disabled={deletingId === c?.id}
+                      title={ar.edit}
+                      aria-label={`${ar.edit} ${c?.name ?? ''}`}
+                      className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 disabled:opacity-50 dark:hover:bg-[#1A2421] dark:hover:text-[#D4AF37]"
+                    >
+                      <Pencil className="h-4 w-4" aria-hidden />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void handleDeleteClient(c)}
+                      disabled={deletingId === c?.id}
+                      title={ar.delete}
+                      aria-label={`${ar.delete} ${c?.name ?? ''}`}
+                      className="rounded-lg p-2 text-slate-400 transition hover:bg-rose-50 hover:text-red-600 disabled:opacity-50 dark:hover:bg-rose-950/30 dark:hover:text-red-400"
+                    >
+                      {deletingId === c?.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                      ) : (
+                        <Trash2 className="h-4 w-4" aria-hidden />
+                      )}
+                    </button>
+                  </div>
+                </article>
+              )
+            })}
+          </div>
+        ) : (
+          <div className={CRM_TABLE_SCROLL}>
+            <table className={CRM_TABLE}>
+              <thead className="bg-slate-50 text-sm text-slate-500 dark:bg-[#1A2421] dark:text-slate-400">
+                <tr className="border-b border-slate-200 dark:border-[#2D3F3A]">
+                  <th className="whitespace-nowrap px-6 py-4 font-semibold">العميل</th>
+                  <th className="whitespace-nowrap px-6 py-4 font-semibold">التواصل</th>
+                  <th className="whitespace-nowrap px-6 py-4 font-semibold">CLV</th>
+                  <th className="whitespace-nowrap px-6 py-4 font-semibold">الشريحة</th>
+                  <th className="whitespace-nowrap px-6 py-4 font-semibold">التفاعل</th>
+                  <th className="whitespace-nowrap px-6 py-4 font-semibold">المرحلة</th>
+                  <th className="whitespace-nowrap px-6 py-4 font-semibold">الرحلات</th>
+                  <th className="whitespace-nowrap px-6 py-4 font-semibold">إجراءات</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((c) => {
+                  const tier = clientDisplayTierBadge(c)
+                  const clv = resolveClientLifetimeValue(c)
+                  const trips = tripCounts[c?.id ?? ''] ?? c?.total_trips ?? 0
+                  const engagement = c.engagement_status
+                  const wa = c.phone_wa?.trim() ? whatsAppHref(c.phone_wa) : null
+                  return (
+                    <tr
+                      key={String(c.id)}
+                      className="cursor-pointer border-b border-slate-100 transition-colors duration-150 hover:bg-slate-50/50 dark:border-[#2D3F3A] dark:hover:bg-[#1A2421]/50"
+                      onClick={() => openClientProfile(c)}
+                    >
+                      <td className="px-6 py-4 text-sm text-slate-900 dark:text-gray-100">
+                        <div className="flex items-center gap-2">
+                          {engagement ? (
+                            <span
+                              className={`h-2.5 w-2.5 shrink-0 rounded-full ${engagementDotClass(engagement)}`}
+                              title={engagementStatusLabel(engagement)}
+                            />
+                          ) : null}
+                          <div>
+                            <p className="font-bold">{c.name ?? '—'}</p>
+                            <div className="mt-1 flex flex-wrap gap-1">
+                              {parseTravelDnaChips({
+                                travel_dna: c.travel_dna,
+                                dna_interests: c.dna_interests,
+                              })
+                                .slice(0, 3)
+                                .map((chip) => (
+                                  <span
+                                    key={chip.key}
+                                    className="rounded bg-slate-100 px-1.5 py-0.5 text-[9px] text-slate-600 dark:bg-[#1A2421] dark:text-slate-400"
+                                  >
+                                    {chip.label}
+                                  </span>
+                                ))}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                      <td
+                        className="px-6 py-4 text-sm text-slate-900 dark:text-gray-100"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <div className="flex flex-col gap-1">
+                          {c?.phone_wa ? (
+                            <a
+                              href={`tel:${c.phone_wa.replace(/\s+/g, '')}`}
+                              dir="ltr"
+                              className="inline-flex items-center gap-1.5 text-xs text-slate-500 transition hover:text-slate-800 dark:text-slate-400 dark:hover:text-[#D4AF37]"
+                            >
+                              <Phone className="h-3 w-3 shrink-0 text-slate-400" aria-hidden />
+                              {c.phone_wa}
+                            </a>
+                          ) : null}
+                          {c?.email ? (
+                            <a
+                              href={`mailto:${c.email}`}
+                              dir="ltr"
+                              title={c.email}
+                              className="inline-flex max-w-[14rem] items-center gap-1.5 truncate text-xs text-slate-500 transition hover:text-slate-800 dark:text-slate-400"
+                            >
+                              <Mail className="h-3 w-3 shrink-0 text-slate-400" aria-hidden />
+                              {c.email}
+                            </a>
+                          ) : null}
+                          {!c?.phone_wa && !c?.email ? (
+                            <span className="text-xs text-slate-400">{ar.noContact}</span>
+                          ) : null}
+                        </div>
+                      </td>
+                      <td
+                        className="whitespace-nowrap px-6 py-4 text-sm font-semibold text-slate-900 dark:text-gray-100"
+                        dir="ltr"
+                      >
+                        {formatSarClv(clv)}
+                      </td>
+                      <td className="whitespace-nowrap px-6 py-4 text-sm">
+                        <span className={`inline-flex items-center gap-1 ${tier.className}`}>
+                          {c.client_tier === 'vip' || c.client_tier === 'vvip' ? (
                             <Crown className="h-3 w-3" aria-hidden />
-                            {c.client_tier === 'vvip' ? 'VVIP' : 'VIP'}
-                          </span>
-                        ) : null}
-
-                        {c.is_influencer ? (
-                          <span className="inline-flex shrink-0 items-center rounded-full border border-fuchsia-200 bg-fuchsia-50 px-2.5 py-1 text-[10px] font-black text-fuchsia-800">
-                            مؤثر
-                          </span>
-                        ) : null}
-
-                        {c.is_leader ? (
-                          <span className="inline-flex shrink-0 items-center rounded-full border border-sky-200 bg-sky-50 px-2.5 py-1 text-[10px] font-black text-sky-800">
-                            ليدر
-                          </span>
-                        ) : null}
-
-                        {c.target_trip?.trim() ? (
-                          <ClientTargetTripBadge label={c.target_trip} className="min-w-0 shrink" />
-                        ) : null}
-
+                          ) : null}
+                          {tier.label}
+                        </span>
+                      </td>
+                      <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-600 dark:text-slate-300">
+                        {engagementStatusLabel(engagement)}
+                      </td>
+                      <td className="px-6 py-4 text-sm" onClick={(e) => e.stopPropagation()}>
                         <ClientSalesStageControl
                           clientId={c.id}
                           value={c.sales_stage ?? ''}
                           compact
-                          className="min-w-0 shrink"
+                          className="min-w-0"
                           onUpdated={(stage) => {
                             setClients((prev) =>
                               prev.map((row) =>
@@ -783,167 +1057,72 @@ export default function ClientsLoyaltyPage() {
                             )
                           }}
                         />
-
-                        <ClientPaymentWhatsAppButton
-                          clientId={c.id}
-                          clientName={c.name ?? '—'}
-                          phone={c.phone_wa}
-                          targetTrip={c.target_trip}
-                          salesStage={c.sales_stage}
-                          compact
-                          className="min-w-0 shrink"
-                        />
-                      </div>
-
-                      <div
-                        className="mt-3 flex flex-col gap-2 text-sm text-slate-600"
-                        onClick={(e) => e.stopPropagation()}
-                        onKeyDown={(e) => e.stopPropagation()}
-                      >
-                        {c?.phone_wa ? (
-                          <div className="flex min-w-0 items-center gap-2 text-gray-700">
-                            <Phone className="h-4 w-4 shrink-0 text-[#C5A059]" aria-hidden />
+                      </td>
+                      <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-slate-900 dark:text-gray-100">
+                        {trips}
+                      </td>
+                      <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-end gap-1.5">
+                          {wa ? (
                             <a
-                              href={`tel:${c.phone_wa.replace(/\s+/g, '')}`}
-                              dir="ltr"
-                              className="min-w-0 text-left font-medium text-[#1A3B2A] transition-colors hover:text-[#C5A059]"
+                              href={wa}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              title="واتساب"
+                              className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-700 transition hover:bg-emerald-600 hover:text-white dark:border-emerald-800/50 dark:bg-emerald-950/40 dark:text-emerald-300"
                             >
-                              {c.phone_wa}
+                              <MessageCircle className="h-4 w-4" aria-hidden />
                             </a>
-                          </div>
-                        ) : null}
-                        {c?.email ? (
-                          <div className="flex min-w-0 items-center gap-2 text-gray-700">
-                            <Mail className="h-4 w-4 shrink-0 text-[#C5A059]" aria-hidden />
-                            <a
-                              href={`mailto:${c.email}`}
-                              dir="ltr"
-                              title={c.email}
-                              className="min-w-0 max-w-full truncate text-left font-medium text-[#1A3B2A] transition-colors hover:text-[#C5A059]"
-                            >
-                              {c.email}
-                            </a>
-                          </div>
-                        ) : null}
-                        {!c?.phone_wa && !c?.email ? (
-                          <span className="text-xs text-gray-400">{ar.noContact}</span>
-                        ) : null}
-                      </div>
-                    </div>
-                    <VipSpendingTierBadge
-                      tier={c?.vip_tier ?? 'gold'}
-                      totalProfit={profitTotals[c?.id ?? ''] ?? c?.total_profit ?? 0}
-                      className="shrink-0"
-                    />
-                  </div>
-
-                  <div className="mt-4 flex flex-wrap gap-4 text-xs font-bold text-slate-600">
-                    <span className="inline-flex items-center gap-1.5">
-                      <span aria-hidden>{'\u2708\uFE0F'}</span>
-                      {ar.trips}: {tripCounts[c?.id ?? ''] ?? c?.total_trips ?? 0}
-                    </span>
-                    <span className="inline-flex items-center gap-1.5">
-                      <span aria-hidden>{'\uD83E\uDD1D'}</span>
-                      {ar.referrals}: {c?.referrals_count ?? 0}
-                    </span>
-                    <span className="inline-flex items-center gap-1.5">
-                      <span aria-hidden>{'\uD83D\uDCB0'}</span>
-                      {ar.totalProfit}:{' '}
-                      {(profitTotals[c?.id ?? ''] ?? c?.total_profit ?? 0) > 0
-                        ? `${(profitTotals[c?.id ?? ''] ?? c?.total_profit ?? 0).toLocaleString('ar-SA')} ر.س`
-                        : '0 ر.س'}
-                    </span>
-                  </div>
-
-                  {c?.referral_code ? (
-                    <div onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
-                      <ReferralCodeBadge
-                        code={c.referral_code}
-                        label={ar.refCode}
-                        onCopy={() => void copyReferralCode(c.referral_code)}
-                        onOpenQr={() =>
-                          setQrModal({ code: c.referral_code, name: c.name ?? '—' })
-                        }
-                      />
-                    </div>
-                  ) : (
-                    <p className="mt-3 text-[11px] font-semibold text-gray-400">{ar.noRef}</p>
-                  )}
-                </div>
-
-                <div
-                  className="flex flex-1 flex-col px-5 pb-4 pt-1"
-                  onClick={(e) => e.stopPropagation()}
-                  onKeyDown={(e) => e.stopPropagation()}
-                >
-                  <ClientDnaAdvancedDisplay client={c} className="mb-3" compact />
-                  <CollapsibleSection title={ar.dnaFlight} icon={<Plane className="h-4 w-4" />}>
-                    {c?.flight_seat?.trim() || c?.flight_preferences?.trim() || '—'}
-                  </CollapsibleSection>
-                  <CollapsibleSection title={ar.dnaHotel} icon={<Building2 className="h-4 w-4" />}>
-                    {c?.hotel_preference?.trim() || c?.hotel_preferences?.trim() || '—'}
-                  </CollapsibleSection>
-                  <CollapsibleSection title={ar.dnaDietary} icon={<UtensilsCrossed className="h-4 w-4" />}>
-                    {c?.food_allergies?.trim() ||
-                      c?.dietary?.trim() ||
-                      '—'}
-                  </CollapsibleSection>
-                  <CollapsibleSection title={ar.dnaFavoriteDrink} icon={<UtensilsCrossed className="h-4 w-4" />}>
-                    {c?.favorite_drink?.trim() || '—'}
-                  </CollapsibleSection>
-                  <CollapsibleSection title={ar.dnaPassport} icon={<Lock className="h-4 w-4" />}>
-                    {c?.passport_expiry?.trim() || '—'}
-                  </CollapsibleSection>
-                  <CollapsibleSection title={ar.dnaInterests} icon={<Tags className="h-4 w-4" />}>
-                    {c?.dna_interests?.trim() || '—'}
-                  </CollapsibleSection>
-                  <CollapsibleSection title={ar.dnaActivity} icon={<Activity className="h-4 w-4" />}>
-                    {c?.dna_activity_level?.trim() || '—'}
-                  </CollapsibleSection>
-                  <CollapsibleSection title={ar.dnaSpecial} icon={<MessageSquare className="h-4 w-4" />}>
-                    {c?.dna_special_requests?.trim() || '—'}
-                  </CollapsibleSection>
-                  <CollapsibleSection title={ar.dnaSecret} icon={<Lock className="h-4 w-4" />} premiumNote>
-                    {c?.secret_notes ?? '—'}
-                  </CollapsibleSection>
-                </div>
-
-                <div
-                  className="flex items-center justify-between gap-2 border-t border-gray-100 px-5 py-3"
-                  onClick={(e) => e.stopPropagation()}
-                  onKeyDown={(e) => e.stopPropagation()}
-                >
-                  <span className="text-xs font-bold text-[#1A3B2A]/70 underline decoration-[#C5A059]/50 underline-offset-4">
-                    {ar.openProfile}
-                  </span>
-                  <div className="flex items-center gap-1">
-                    <button
-                      type="button"
-                      onClick={() => openEdit(c)}
-                      disabled={deletingId === c?.id}
-                      className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-bold text-[#1A3B2A] transition hover:bg-gray-100 disabled:opacity-50"
-                    >
-                      <Pencil className="h-3.5 w-3.5 text-[#C5A059]" aria-hidden />
-                      {ar.edit}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => void handleDeleteClient(c)}
-                      disabled={deletingId === c?.id}
-                      className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-bold text-red-600 transition-colors hover:bg-red-50 hover:text-red-800 disabled:opacity-50"
-                      aria-label={`${ar.delete} ${c?.name ?? ''}`}
-                    >
-                      {deletingId === c?.id ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
-                      ) : (
-                        <Trash2 className="h-3.5 w-3.5" aria-hidden />
-                      )}
-                      {ar.delete}
-                    </button>
-                  </div>
-                </div>
-              </article>
-            ))}
+                          ) : (
+                            <ClientPaymentWhatsAppButton
+                              clientId={c.id}
+                              clientName={c.name ?? '—'}
+                              phone={c.phone_wa}
+                              targetTrip={c.target_trip}
+                              salesStage={c.sales_stage}
+                              compact
+                              className="shrink-0"
+                            />
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => openClientProfile(c)}
+                            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-900 transition-all hover:bg-slate-900 hover:text-white dark:border-[#D4AF37]/50 dark:bg-transparent dark:text-[#D4AF37] hover:dark:bg-[#D4AF37]/10"
+                          >
+                            <Eye className="h-3.5 w-3.5" aria-hidden />
+                            {ar.viewProfile}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => openEdit(c)}
+                            disabled={deletingId === c?.id}
+                            title={ar.edit}
+                            aria-label={`${ar.edit} ${c?.name ?? ''}`}
+                            className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 disabled:opacity-50 dark:hover:bg-[#1A2421] dark:hover:text-[#D4AF37]"
+                          >
+                            <Pencil className="h-4 w-4" aria-hidden />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void handleDeleteClient(c)}
+                            disabled={deletingId === c?.id}
+                            title={ar.delete}
+                            aria-label={`${ar.delete} ${c?.name ?? ''}`}
+                            className="rounded-lg p-2 text-slate-400 transition hover:bg-rose-50 hover:text-red-600 disabled:opacity-50 dark:hover:bg-rose-950/30 dark:hover:text-red-400"
+                          >
+                            {deletingId === c?.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                            ) : (
+                              <Trash2 className="h-4 w-4" aria-hidden />
+                            )}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
           </div>
         )}
       </div>
@@ -951,18 +1130,11 @@ export default function ClientsLoyaltyPage() {
       {copyToast ? (
         <div
           role="status"
-          className="fixed bottom-6 left-1/2 z-[200] w-[min(100%,20rem)] -translate-x-1/2 rounded-2xl border border-[#C5A059]/45 bg-gradient-to-br from-[#1A3B2A] via-[#0a1830] to-[#1A3B2A] px-5 py-3.5 text-center text-sm font-bold text-[#C5A059] shadow-[0_20px_60px_rgba(0,31,63,0.55)]"
+          className="fixed bottom-6 left-1/2 z-[200] w-[min(100%,20rem)] -translate-x-1/2 rounded-2xl border border-emerald-100 bg-emerald-50 px-5 py-3.5 text-center text-sm font-medium text-emerald-800 shadow-lg ring-1 ring-emerald-600/20"
         >
           {copyToast}
         </div>
       ) : null}
-
-      <ReferralQrModal
-        open={Boolean(qrModal)}
-        onClose={() => setQrModal(null)}
-        referralCode={qrModal?.code ?? ''}
-        clientName={qrModal?.name}
-      />
 
       {errorToast ? (
         <div
@@ -973,80 +1145,104 @@ export default function ClientsLoyaltyPage() {
         </div>
       ) : null}
 
-      {showModal ? (
-        <div
-          className="fixed inset-0 z-[300] flex items-end justify-center bg-[#1A3B2A]/40 p-0 backdrop-blur-sm sm:items-center sm:p-4"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="client-modal-title"
-          onClick={closeModal}
-        >
-          <div
-            className="max-h-[92dvh] w-[95%] max-w-lg overflow-y-auto rounded-t-3xl border border-[#C5A059]/20 bg-white p-4 shadow-2xl sm:max-h-[90vh] sm:w-full sm:rounded-3xl sm:p-6 md:w-3/4 md:max-w-2xl lg:w-1/2 lg:max-w-3xl md:p-8"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="mb-4 flex items-start justify-between gap-4 sm:mb-6">
-              <div>
-                <h2 id="client-modal-title" className="text-lg font-black text-[#1A3B2A] sm:text-xl">
-                  {isEditing ? ar.editTitle : ar.addTitle}
-                </h2>
-                <p className="mt-1 text-xs font-semibold text-slate-500">{ar.modalHint}</p>
-              </div>
-              <button
-                type="button"
-                onClick={closeModal}
-                disabled={saving}
-                className="flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 text-gray-600 transition hover:bg-gray-200 disabled:opacity-50"
-                aria-label={ar.close}
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-
-            {error ? (
+      {showModal && typeof document !== 'undefined'
+        ? createPortal(
+            <div
+              className="crm-modal-overlay fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto bg-black/75 p-4 backdrop-blur-sm sm:p-6"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="client-modal-title"
+              onClick={closeModal}
+            >
               <div
-                role="alert"
-                className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-800"
+                className="relative my-auto w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl border border-[#2D3F3A] bg-[#1A2421] p-6 shadow-2xl duration-200 animate-in fade-in zoom-in-95 sm:p-8"
+                onClick={(e) => e.stopPropagation()}
               >
-                {error}
-              </div>
-            ) : null}
+                <div className="mb-4 flex items-start justify-between gap-4 sm:mb-6">
+                  <div>
+                    <h2 id="client-modal-title" className="text-lg font-semibold text-gray-100 sm:text-xl">
+                      {isEditing ? ar.editTitle : ar.addTitle}
+                    </h2>
+                    <p className="mt-1 text-xs text-slate-400">{ar.modalHint}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={closeModal}
+                    disabled={saving}
+                    className="flex h-9 w-9 items-center justify-center rounded-full bg-[#22302C] text-slate-400 transition hover:bg-[#2A3834] hover:text-gray-100 disabled:opacity-50"
+                    aria-label={ar.close}
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
 
-            <div className="space-y-4">
+                {error ? (
+                  <div
+                    role="alert"
+                    className="mb-4 rounded-xl border border-red-400/30 bg-red-950/40 px-4 py-3 text-sm font-bold text-red-100"
+                  >
+                    {error}
+                  </div>
+                ) : null}
+
+                <div className="space-y-4 pb-6">
               <label className="block">
-                <span className="mb-1.5 block text-xs font-bold text-[#1A3B2A]">{ar.fullName}</span>
+                <span className="mb-1.5 block text-xs font-medium text-slate-600 dark:text-slate-400">
+                  {ar.fullName}
+                </span>
                 <input
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  className={CRM_FIELD}
+                  className={MODAL_FIELD}
                   dir="rtl"
                 />
               </label>
 
-              <label className="block">
-                <span className="mb-1.5 block text-xs font-bold text-[#1A3B2A]">{ar.leadSource}</span>
-                <select
-                  value={form.lead_source}
-                  onChange={(e) => setForm({ ...form, lead_source: e.target.value })}
-                  className={LEAD_SOURCE_SELECT_CLASS}
-                >
-                  <option value="" disabled>
-                    {ar.leadSourcePlaceholder}
-                  </option>
-                  {LEAD_SOURCE_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <label className="block">
+                  <span className="mb-1.5 block text-xs font-medium text-slate-600 dark:text-slate-400">
+                    {ar.clientSegment}
+                  </span>
+                  <select
+                    value={form.client_tier}
+                    onChange={(e) => setForm({ ...form, client_tier: e.target.value as ClientTier })}
+                    className={MODAL_FIELD}
+                  >
+                    {CLIENT_SEGMENT_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="block">
+                  <span className="mb-1.5 block text-xs font-medium text-slate-600 dark:text-slate-400">
+                    {ar.referralSource}
+                  </span>
+                  <select
+                    value={form.lead_source}
+                    onChange={(e) => setForm({ ...form, lead_source: e.target.value })}
+                    className={MODAL_FIELD}
+                  >
+                    <option value="" disabled>
+                      {ar.referralSourcePlaceholder}
                     </option>
-                  ))}
-                </select>
-              </label>
+                    {LEAD_SOURCE_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
 
               <label className="block">
-                <span className="mb-1.5 block text-xs font-bold text-[#1A3B2A]">{ar.salesStage}</span>
+                <span className="mb-1.5 block text-xs font-medium text-slate-600 dark:text-slate-400">{ar.salesStage}</span>
                 <select
                   value={form.sales_stage}
                   onChange={(e) => setForm({ ...form, sales_stage: e.target.value })}
-                  className={salesStageSelectClass(form.sales_stage)}
+                  className={MODAL_FIELD}
                 >
                   <option value="" disabled>
                     {ar.salesStagePlaceholder}
@@ -1059,25 +1255,11 @@ export default function ClientsLoyaltyPage() {
                 </select>
               </label>
 
-              <div className="rounded-2xl border border-[#C5A059]/15 bg-amber-50/40 p-4 space-y-4">
-                <p className="text-xs font-black text-[#1A3B2A]">{ar.loyaltySection}</p>
-                <label className="block">
-                  <span className="mb-1.5 block text-xs font-bold text-[#1A3B2A]">{ar.tier}</span>
-                  <select
-                    value={form.client_tier}
-                    onChange={(e) => setForm({ ...form, client_tier: e.target.value as ClientTier })}
-                    className={CRM_FIELD}
-                  >
-                    {CLIENT_TIER_OPTIONS.map((opt) => (
-                      <option key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-4 rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-[#2D3F3A] dark:bg-[#1A2421]/60">
+                <p className="text-xs font-semibold text-slate-700 dark:text-[#D4AF37]">{ar.loyaltySection}</p>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <label className="block">
-                    <span className="mb-1.5 block text-xs font-bold text-[#1A3B2A]">{ar.trips}</span>
+                    <span className="mb-1.5 block text-xs font-medium text-slate-600 dark:text-slate-400">{ar.trips}</span>
                     <input
                       type="number"
                       min={0}
@@ -1088,12 +1270,12 @@ export default function ClientsLoyaltyPage() {
                           total_trips: Math.max(0, parseInt(e.target.value, 10) || 0),
                         })
                       }
-                      className={CRM_FIELD}
+                      className={MODAL_FIELD}
                       dir="ltr"
                     />
                   </label>
                   <label className="block">
-                    <span className="mb-1.5 block text-xs font-bold text-[#1A3B2A]">{ar.referrals}</span>
+                    <span className="mb-1.5 block text-xs font-medium text-slate-600 dark:text-slate-400">{ar.referrals}</span>
                     <input
                       type="number"
                       min={0}
@@ -1104,70 +1286,70 @@ export default function ClientsLoyaltyPage() {
                           referrals_count: Math.max(0, parseInt(e.target.value, 10) || 0),
                         })
                       }
-                      className={CRM_FIELD}
+                      className={MODAL_FIELD}
                       dir="ltr"
                     />
                   </label>
                 </div>
               </div>
 
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <label className="block">
-                  <span className="mb-1.5 block text-xs font-bold text-[#1A3B2A]">{ar.phone}</span>
+                  <span className="mb-1.5 block text-xs font-medium text-slate-600 dark:text-slate-400">{ar.phone}</span>
                   <input
                     value={form.phone_wa}
                     onChange={(e) => setForm({ ...form, phone_wa: e.target.value })}
-                    className={CRM_FIELD}
+                    className={MODAL_FIELD}
                     dir="ltr"
                   />
                 </label>
                 <label className="block">
-                  <span className="mb-1.5 block text-xs font-bold text-[#1A3B2A]">{ar.email}</span>
+                  <span className="mb-1.5 block text-xs font-medium text-slate-600 dark:text-slate-400">{ar.email}</span>
                   <input
                     type="email"
                     value={form.email}
                     onChange={(e) => setForm({ ...form, email: e.target.value })}
-                    className={CRM_FIELD}
+                    className={MODAL_FIELD}
                     dir="ltr"
                   />
                 </label>
                 <label className="block">
-                  <span className="mb-1.5 block text-xs font-bold text-[#1A3B2A]">{ar.birthday}</span>
+                  <span className="mb-1.5 block text-xs font-medium text-slate-600 dark:text-slate-400">{ar.birthday}</span>
                   <input
                     type="date"
                     value={form.birth_date}
                     onChange={(e) => setForm({ ...form, birth_date: e.target.value })}
-                    className={`${CRM_FIELD} [color-scheme:light]`}
+                    className={`${MODAL_FIELD} [color-scheme:light]`}
                   />
                 </label>
               </div>
               <label className="block">
-                <span className="mb-1.5 block text-xs font-bold text-[#1A3B2A]">{ar.dnaFlight}</span>
+                <span className="mb-1.5 block text-xs font-medium text-slate-600 dark:text-slate-400">{ar.dnaFlight}</span>
                 <input
                   value={form.flight_seat}
                   onChange={(e) => setForm({ ...form, flight_seat: e.target.value })}
                   placeholder="نافذة، ممر…"
-                  className={CRM_FIELD}
+                  className={MODAL_FIELD}
                   dir="rtl"
                 />
               </label>
               <label className="block">
-                <span className="mb-1.5 block text-xs font-bold text-[#1A3B2A]">{ar.dnaDietary}</span>
+                <span className="mb-1.5 block text-xs font-medium text-slate-600 dark:text-slate-400">{ar.dnaDietary}</span>
                 <textarea
                   value={form.food_allergies}
                   onChange={(e) => setForm({ ...form, food_allergies: e.target.value })}
                   rows={2}
-                  className={`${CRM_FIELD} resize-y`}
+                  className={`${MODAL_FIELD} resize-y`}
                   dir="rtl"
                 />
               </label>
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <label className="block">
-                  <span className="mb-1.5 block text-xs font-bold text-[#1A3B2A]">{ar.dnaHotel}</span>
+                  <span className="mb-1.5 block text-xs font-medium text-slate-600 dark:text-slate-400">{ar.dnaHotel}</span>
                   <select
                     value={form.hotel_preference}
                     onChange={(e) => setForm({ ...form, hotel_preference: e.target.value })}
-                    className={CRM_FIELD}
+                    className={MODAL_FIELD}
                   >
                     <option value="">— لم يحدد —</option>
                     {ONBOARDING_HOTEL_TYPE_OPTIONS.map((opt) => (
@@ -1178,33 +1360,33 @@ export default function ClientsLoyaltyPage() {
                   </select>
                 </label>
                 <label className="block">
-                  <span className="mb-1.5 block text-xs font-bold text-[#1A3B2A]">{ar.dnaFavoriteDrink}</span>
+                  <span className="mb-1.5 block text-xs font-medium text-slate-600 dark:text-slate-400">{ar.dnaFavoriteDrink}</span>
                   <input
                     value={form.favorite_drink}
                     onChange={(e) => setForm({ ...form, favorite_drink: e.target.value })}
                     placeholder="قهوة، شاي…"
-                    className={CRM_FIELD}
+                    className={MODAL_FIELD}
                     dir="rtl"
                   />
                 </label>
               </div>
               <label className="block">
-                <span className="mb-1.5 block text-xs font-bold text-[#1A3B2A]">{ar.dnaPassport}</span>
+                <span className="mb-1.5 block text-xs font-medium text-slate-600 dark:text-slate-400">{ar.dnaPassport}</span>
                 <input
                   type="date"
                   value={form.passport_expiry}
                   onChange={(e) => setForm({ ...form, passport_expiry: e.target.value })}
-                  className={`${CRM_FIELD} [color-scheme:light]`}
+                  className={`${MODAL_FIELD} [color-scheme:light]`}
                   dir="ltr"
                 />
               </label>
               <label className="block">
-                <span className="mb-1.5 block text-xs font-bold text-[#1A3B2A]">{ar.dnaSecret}</span>
+                <span className="mb-1.5 block text-xs font-medium text-slate-600 dark:text-slate-400">{ar.dnaSecret}</span>
                 <textarea
                   value={form.secret_notes}
                   onChange={(e) => setForm({ ...form, secret_notes: e.target.value })}
                   rows={3}
-                  className={`${CRM_FIELD} resize-y`}
+                  className={`${MODAL_FIELD} resize-y`}
                   dir="rtl"
                 />
               </label>
@@ -1234,12 +1416,12 @@ export default function ClientsLoyaltyPage() {
               ) : null}
             </div>
 
-            <div className="mt-8 flex gap-3">
+            <div className="mt-6 flex gap-3 pb-2">
               <button
                 type="button"
                 onClick={() => void saveClient()}
                 disabled={saving || !form.name.trim()}
-                className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-[#1A3B2A] py-3.5 text-sm font-black text-white transition hover:bg-[#244F38] disabled:cursor-not-allowed disabled:opacity-50"
+                className={`${BTN_PRIMARY} flex-1`}
               >
                 {saving ? (
                   <>
@@ -1256,14 +1438,16 @@ export default function ClientsLoyaltyPage() {
                 type="button"
                 onClick={closeModal}
                 disabled={saving}
-                className="rounded-2xl border border-gray-200 bg-gray-50 px-5 py-3.5 text-sm font-bold text-gray-600 transition hover:bg-gray-100 disabled:opacity-50"
+                className={BTN_SECONDARY}
               >
                 {ar.cancel}
               </button>
             </div>
-          </div>
-        </div>
-      ) : null}
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
     </div>
   )
 }

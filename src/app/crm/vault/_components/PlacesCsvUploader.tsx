@@ -18,7 +18,8 @@ import {
 } from '@/lib/csv-parse';
 import { PLACES_BANK_CATEGORIES } from '@/lib/places-bank';
 import { supabase } from '@/lib/supabase';
-import { TRIP_DESTINATIONS } from '@/lib/trip-destination-data';
+import type { TripCountryDef } from '@/lib/trip-destination-data';
+import { useTripDestinations } from '@/hooks/useCountries';
 
 const CHUNK_SIZE = 100;
 
@@ -73,6 +74,7 @@ const LAT_ALIASES = ['lat', 'latitude', 'خط_العرض'];
 const LNG_ALIASES = ['lng', 'lon', 'longitude', 'long', 'خط_الطول'];
 
 const COUNTRY_EN: Record<string, string> = {
+  indonesia: 'Indonesia',
   japan: 'Japan',
   korea: 'South Korea',
   china: 'China',
@@ -97,6 +99,9 @@ const COUNTRY_EN: Record<string, string> = {
 };
 
 const CITY_EN: Record<string, string> = {
+  bali: 'Bali',
+  jakarta: 'Jakarta',
+  yogyakarta: 'Yogyakarta',
   tokyo: 'Tokyo',
   kyoto: 'Kyoto',
   osaka: 'Osaka',
@@ -203,9 +208,9 @@ export function extractLatLngFromMapsUrl(url: string): {
   return { lat: null, lng: null };
 }
 
-function buildTripDestinationOptions(): DestinationOption[] {
+function buildTripDestinationOptions(tripDestinations: TripCountryDef[]): DestinationOption[] {
   const out: DestinationOption[] = [];
-  for (const country of TRIP_DESTINATIONS) {
+  for (const country of tripDestinations) {
     const countryEn = COUNTRY_EN[country.id] ?? country.labelAr;
     for (const city of country.cities) {
       const cityEn = CITY_EN[city.id] ?? city.labelAr;
@@ -316,11 +321,10 @@ Dongmun Market,https://maps.google.com/?q=Dongmun+Market+Jeju
 `;
 
 export default function PlacesCsvUploader({ onImported }: Props) {
+  const { tripDestinations } = useTripDestinations();
   const inputRef = useRef<HTMLInputElement>(null);
   const [open, setOpen] = useState(false);
-  const [destinations, setDestinations] = useState<DestinationOption[]>(() =>
-    buildTripDestinationOptions(),
-  );
+  const [destinations, setDestinations] = useState<DestinationOption[]>([]);
   const [destLoading, setDestLoading] = useState(false);
   const [selectedDestinationId, setSelectedDestinationId] = useState('');
   const [fileName, setFileName] = useState<string | null>(null);
@@ -336,13 +340,13 @@ export default function PlacesCsvUploader({ onImported }: Props) {
 
   const loadDestinations = useCallback(async () => {
     if (!supabase) {
-      setDestinations(buildTripDestinationOptions());
+      setDestinations(buildTripDestinationOptions(tripDestinations));
       return;
     }
 
     setDestLoading(true);
     try {
-      const tripOpts = buildTripDestinationOptions();
+      const tripOpts = buildTripDestinationOptions(tripDestinations);
       const byKey = new Map<string, DestinationOption>();
 
       for (const opt of tripOpts) {
@@ -400,11 +404,15 @@ export default function PlacesCsvUploader({ onImported }: Props) {
       setDestinations(merged.length ? merged : tripOpts);
     } catch (err) {
       console.warn('[PlacesCsvUploader] destinations load:', err);
-      setDestinations(buildTripDestinationOptions());
+      setDestinations(buildTripDestinationOptions(tripDestinations));
     } finally {
       setDestLoading(false);
     }
-  }, []);
+  }, [tripDestinations]);
+
+  useEffect(() => {
+    setDestinations(buildTripDestinationOptions(tripDestinations));
+  }, [tripDestinations]);
 
   useEffect(() => {
     if (open) void loadDestinations();
@@ -584,7 +592,7 @@ export default function PlacesCsvUploader({ onImported }: Props) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="inline-flex items-center gap-2 rounded-xl border border-[#C9A84C]/50 bg-[#1C4532] px-4 py-2.5 text-xs font-black text-[#F6E7B8] shadow-sm transition hover:bg-[#163828]"
+        className="flex items-center gap-2 rounded-xl border border-slate-300/80 bg-slate-100 px-4 py-2.5 text-sm font-extrabold text-slate-800 shadow-sm transition-all hover:bg-slate-200"
       >
         <Upload className="h-4 w-4" aria-hidden />
         استيراد CSV

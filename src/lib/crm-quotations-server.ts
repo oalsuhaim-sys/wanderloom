@@ -25,7 +25,12 @@ import {
 import type { CrmLeadRow } from '@/lib/crm-leads';
 import { runQuoteAcceptedIntakeAutomation } from '@/lib/client-intake-pipeline';
 import { processReferralRewardForQuotation } from '@/lib/referral-rewards';
+import { updatePipelineStatus } from '@/lib/lead-pipeline-automation';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
+import {
+  createItineraryFromApprovedQuotation,
+  type CreateItineraryFromQuotationResult,
+} from '@/lib/quotation-to-itinerary';
 
 /** جدول قائمة /crm/quotations */
 export const CRM_QUOTATIONS_TABLE = 'quotations' as const;
@@ -62,7 +67,7 @@ async function fetchClientRowsByIdsAdmin(
   for (const select of QUOTATION_CLIENT_EMBED_SELECTS) {
     const result = await admin.from('clients').select(select).in('id', clientIds);
     if (!result.error) {
-      return (result.data as Record<string, unknown>[]) ?? [];
+      return (result.data as unknown as Record<string, unknown>[]) ?? [];
     }
     lastError = result.error.message;
   }
@@ -76,6 +81,7 @@ async function attachClientRow(
 ): Promise<Record<string, unknown>> {
   const rawClientId = row.client_id;
   if (rawClientId == null || rawClientId === '') return row;
+  if (typeof rawClientId !== 'string' && typeof rawClientId !== 'number') return row;
 
   const clientId = coerceQuotationIdForDb(rawClientId);
   const clients = await fetchClientRowsByIdsAdmin(admin, [clientId]);
@@ -306,7 +312,7 @@ async function fetchLeadDraftForEditAdmin(
     const clients = await fetchClientRowsByIdsAdmin(admin, [
       coerceQuotationIdForDb(lead.client_id),
     ]);
-    if (clients[0]) client = mapQuotationClientEmbed(clients[0]);
+    if (clients[0]) client = mapQuotationClientEmbed(clients[0]) ?? null;
   } else if (lead.phone_wa) {
     const phone = String(lead.phone_wa).trim();
     const normalized = formatWhatsAppPhone(phone);
@@ -320,12 +326,12 @@ async function fetchLeadDraftForEditAdmin(
           .eq('phone_wa', value)
           .maybeSingle();
         if (!primary.error && primary.data) {
-          clientRow = primary.data as Record<string, unknown>;
+          clientRow = primary.data as unknown as Record<string, unknown>;
           break;
         }
       }
       if (clientRow) {
-        client = mapQuotationClientEmbed(clientRow);
+        client = mapQuotationClientEmbed(clientRow) ?? null;
         break;
       }
     }
@@ -450,6 +456,12 @@ export async function convertLeadToQuotationAdmin(leadId: string): Promise<strin
   }
 
   const insertedId = await convertLeadToQuotation(admin, data as CrmLeadRow);
+  await updatePipelineStatus(
+    admin,
+    { leadId: key, clientId: (data as { client_id?: unknown }).client_id as string | number | null, force: true },
+    'quote_stage',
+  ).catch((err) => console.warn('[convert-lead-quote] pipeline quote_stage:', err));
+
   if (normalizeQuotationId(insertedId) !== key) {
     return insertedId;
   }
@@ -463,10 +475,36 @@ export async function convertLeadToQuotationAdmin(leadId: string): Promise<strin
 export type ApproveQuotationAdminResult = {
   row: QuotationRow;
   intake: Awaited<ReturnType<typeof runQuoteAcceptedIntakeAutomation>>;
+  itinerary: CreateItineraryFromQuotationResult | null;
 };
+
+async function ensureActiveRouteFromApprovedQuote(
+  admin: SupabaseClient,
+  row: QuotationRow,
+): Promise<CreateItineraryFromQuotationResult | null> {
+  try {
+    const created = await createItineraryFromApprovedQuotation(row, admin, {
+      status: 'active',
+      forceBackfill: true,
+    });
+    if (created) {
+      console.log(
+        '[approve-quote] active itinerary ready:',
+        created.itineraryId,
+        'quote=',
+        row.id,
+      );
+    }
+    return created;
+  } catch (err) {
+    console.error('[approve-quote] itinerary auto-create failed:', err);
+    return null;
+  }
+}
 
 /**
  * اعتماد عرض السعر عبر service_role — يتجاوز RLS ويحدّث status إلى approved.
+ * Simultaneously pushes an active row into itineraries (المسارات الفردية).
  */
 export async function approveQuotationAdmin(id: string): Promise<ApproveQuotationAdminResult> {
   const key = normalizeQuotationId(id);
@@ -484,7 +522,11 @@ export async function approveQuotationAdmin(id: string): Promise<ApproveQuotatio
   if (!quotePk) throw new Error('معرّف العرض غير صالح.');
 
   if (isQuotationStatusApproved(quotation.status)) {
-    return { row: { ...quotation, status: 'approved' }, intake: null };
+    const itinerary = await ensureActiveRouteFromApprovedQuote(admin, {
+      ...quotation,
+      status: 'approved',
+    });
+    return { row: { ...quotation, status: 'approved' }, intake: null, itinerary };
   }
 
   const payloads: Record<string, unknown>[] = [
@@ -531,6 +573,8 @@ export async function approveQuotationAdmin(id: string): Promise<ApproveQuotatio
     ...updated,
     status: 'approved',
     clients: quotation.clients ?? updated.clients,
+    expert_id: updated.expert_id ?? quotation.expert_id,
+    expert_name: updated.expert_name ?? quotation.expert_name,
   };
 
   let intake: ApproveQuotationAdminResult['intake'] = null;
@@ -546,13 +590,27 @@ export async function approveQuotationAdmin(id: string): Promise<ApproveQuotatio
     }
   }
 
+  // EVENT C — quote approved → Kanban awaiting_payment
+  await updatePipelineStatus(
+    admin,
+    {
+      leadId: row.lead_id,
+      clientId: row.client_id,
+      clientNameHint: quotationClientName(row),
+      force: true,
+    },
+    'awaiting_payment',
+  ).catch((err) => console.warn('[approve-quote] pipeline awaiting_payment:', err));
+
   try {
     await processReferralRewardForQuotation(admin, quotePk);
   } catch (rewardError) {
     console.error('[referral-reward] after approval:', rewardError);
   }
 
-  return { row, intake };
+  const itinerary = await ensureActiveRouteFromApprovedQuote(admin, row);
+
+  return { row, intake, itinerary };
 }
 
 /** يتحقق أن quotations.id موجود فعلياً في قاعدة البيانات — للفواتير والملخص المالي */

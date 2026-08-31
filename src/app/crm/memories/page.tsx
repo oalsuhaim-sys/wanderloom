@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { toast } from "@/lib/crm-toast";
 import { supabase } from "@/lib/supabase";
 import { enrichClientMemories } from "@/lib/client-memories-merge";
 import {
@@ -636,7 +637,7 @@ export default function MemoriesPage() {
       return;
     }
     if (selectedClient.id === UNASSIGNED_CLIENT_KEY) {
-      window.alert("تعذر الاعتماد — اختر عميلاً مرتبطاً أولاً.");
+      toast.error("تعذر الاعتماد — اختر عميلاً مرتبطاً أولاً.");
       return;
     }
 
@@ -725,7 +726,7 @@ export default function MemoriesPage() {
 
       await fetchMemories();
       await loadTripPhotos(selectedClient.id, selectedTrip.id);
-      window.alert("تم اعتماد الصورة وربطها بالمسار بنجاح.");
+      toast.success("تم اعتماد الصورة وربطها بالمسار بنجاح.");
     } catch (err) {
       console.error("[memories-inbox] approve failed:", err);
       const message =
@@ -734,7 +735,7 @@ export default function MemoriesPage() {
           : typeof err === "object" && err != null
             ? JSON.stringify(err)
             : String(err);
-      window.alert(`تعذر اعتماد الصورة:\n${message}`);
+      toast.error(`تعذر اعتماد الصورة: ${message}`);
     } finally {
       setApprovingKey(null);
     }
@@ -851,7 +852,7 @@ export default function MemoriesPage() {
       );
     } catch (error) {
       console.error("Edit error:", error);
-      window.alert("حدث خطأ أثناء التعديل.");
+      toast.error("حدث خطأ أثناء التعديل.");
     }
   };
 
@@ -869,7 +870,7 @@ export default function MemoriesPage() {
       // ── Approved: Server Action dual-delete + revalidatePath + router.refresh ──
       if (photo.status === "saved") {
         if (photo.dbId == null) {
-          window.alert("تعذر الحذف — معرّف السجل غير موجود.");
+          toast.error("تعذر الحذف — معرّف السجل غير موجود.");
           return;
         }
 
@@ -923,7 +924,7 @@ export default function MemoriesPage() {
       // ── Pending: storage-only delete ─────────────────────────────────────
       if (!relativePath) {
         console.error("[memories-inbox] delete missing storage path", photo);
-        window.alert("تعذر تحديد مسار الملف في التخزين.");
+        toast.error("تعذر تحديد مسار الملف في التخزين.");
         return;
       }
 
@@ -958,7 +959,7 @@ export default function MemoriesPage() {
           : typeof error === "object" && error != null
             ? JSON.stringify(error)
             : String(error);
-      window.alert(`حدث خطأ أثناء الحذف:\n${message}`);
+      toast.error(`حدث خطأ أثناء الحذف: ${message}`);
 
       // Re-sync counts + grid with server truth
       await fetchMemories();
@@ -993,9 +994,10 @@ export default function MemoriesPage() {
               resetForm();
               setIsModalOpen(true);
             }}
-            className="flex items-center gap-2 rounded-xl bg-[#1E2720] px-6 py-3 font-bold text-[#D4AF37] shadow-lg transition hover:bg-[#2a362c]"
+            className="flex items-center gap-2 rounded-xl bg-[#D4AF37] px-5 py-2.5 text-sm font-extrabold text-black shadow-sm transition-all hover:bg-[#b8952d] active:scale-95"
           >
-            <span>➕</span> إضافة ذكرى يدوياً
+            <span className="text-base font-black">+</span>
+            <span>إضافة ذكرى يدوياً</span>
           </button>
         </div>
       </div>

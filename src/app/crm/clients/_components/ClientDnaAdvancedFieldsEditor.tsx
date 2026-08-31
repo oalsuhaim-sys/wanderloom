@@ -9,7 +9,7 @@ import {
 } from '@/lib/clientsTravelDna'
 
 const FIELD =
-  'w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm font-semibold text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-[#001f3f]/40 focus:ring-2 focus:ring-[#d4af37]/45 [color-scheme:light]'
+  'w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#D4AF37]/50 focus:ring-2 focus:ring-[#D4AF37]/30 dark:border-[#2D3F3A] dark:bg-[#1A2421] dark:text-gray-100 dark:placeholder:text-slate-500 dark:focus:border-[#D4AF37]/50'
 
 type ClientDnaAdvancedFieldsProps = {
   value: ClientDnaAdvancedFields
@@ -35,11 +35,21 @@ export default function ClientDnaAdvancedFieldsEditor({
   const selected = parseDnaInterests(value.dna_interests)
 
   return (
-    <div dir="rtl" className="space-y-4 rounded-2xl border border-[#d4af37]/15 bg-stone-50/60 p-4">
-      <p className="text-xs font-black text-[#001f3f]">🧬 DNA متقدم — Solo · Groups · Leaders</p>
+    <div
+      dir="rtl"
+      className="space-y-4 rounded-xl border border-slate-200 bg-slate-100 p-4 text-slate-900 dark:border-[#2D3F3A] dark:bg-[#22302C] dark:text-white"
+    >
+      <p className="flex items-center gap-2 text-sm font-bold text-[#D4AF37]">
+        <span className="inline-block select-none fill-none" aria-hidden>
+          🧬
+        </span>
+        DNA متقدم — Solo · Groups · Leaders
+      </p>
 
       <label className="block">
-        <span className="mb-1.5 block text-xs font-bold text-[#001f3f]">اهتمامات السفر</span>
+        <span className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-slate-300">
+          اهتمامات السفر
+        </span>
         <input
           value={value.dna_interests}
           onChange={(e) => onChange({ ...value, dna_interests: e.target.value })}
@@ -54,11 +64,13 @@ export default function ClientDnaAdvancedFieldsEditor({
               <button
                 key={tag}
                 type="button"
-                onClick={() => onChange({ ...value, dna_interests: toggleInterest(value.dna_interests, tag) })}
+                onClick={() =>
+                  onChange({ ...value, dna_interests: toggleInterest(value.dna_interests, tag) })
+                }
                 className={`rounded-full border px-2.5 py-1 text-[11px] font-bold transition ${
                   active
-                    ? 'border-[#001f3f] bg-[#001f3f] text-white'
-                    : 'border-gray-200 bg-white text-gray-600 hover:border-[#d4af37]/50'
+                    ? 'border-[#D4AF37]/60 bg-[#D4AF37]/20 text-slate-900 dark:text-[#D4AF37]'
+                    : 'border-slate-200 bg-white text-slate-600 hover:border-[#D4AF37]/50 dark:border-[#2D3F3A] dark:bg-[#1A2421] dark:text-slate-300'
                 }`}
               >
                 {tag}
@@ -69,7 +81,9 @@ export default function ClientDnaAdvancedFieldsEditor({
       </label>
 
       <label className="block">
-        <span className="mb-1.5 block text-xs font-bold text-[#001f3f]">مستوى النشاط</span>
+        <span className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-slate-300">
+          مستوى النشاط
+        </span>
         <select
           value={value.dna_activity_level}
           onChange={(e) => onChange({ ...value, dna_activity_level: e.target.value })}
@@ -85,7 +99,9 @@ export default function ClientDnaAdvancedFieldsEditor({
       </label>
 
       <label className="block">
-        <span className="mb-1.5 block text-xs font-bold text-[#001f3f]">طلبات خاصة</span>
+        <span className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-slate-300">
+          طلبات خاصة
+        </span>
         <textarea
           value={value.dna_special_requests}
           onChange={(e) => onChange({ ...value, dna_special_requests: e.target.value })}

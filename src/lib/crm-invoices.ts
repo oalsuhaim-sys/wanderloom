@@ -2,7 +2,13 @@ import { siteOrigin } from '@/lib/bank-checkout';
 import { formatWhatsAppPhone } from '@/lib/crm-lead-actions';
 
 export type InvoiceType = 'deposit' | 'full';
-export type InvoiceStatus = 'pending' | 'paid';
+/** حالات عمود invoices.status — بما فيها مسار المراجعة القديم في التطبيق */
+export type InvoiceStatus =
+  | 'pending'
+  | 'payment_review'
+  | 'paid'
+  | 'draft'
+  | 'rejected';
 
 /** ملخص مالي لعرض السعر — يُحسب من الفواتير المدفوعة */
 export type QuoteLedgerSummary = {
@@ -81,6 +87,9 @@ export type InvoiceRow = {
   created_at: string;
   updated_at: string;
   paid_at: string | null;
+  receipt_url?: string | null;
+  /** سبب رفض الإيصال من الإدارة */
+  rejection_reason?: string | null;
   client_name?: string | null;
   client_phone?: string | null;
 };
@@ -92,15 +101,33 @@ export const INVOICE_TYPE_LABEL: Record<InvoiceType, string> = {
 
 export const INVOICE_STATUS_LABEL: Record<InvoiceStatus, string> = {
   pending: 'بانتظار الدفع',
+  payment_review: 'بانتظار التحقق',
   paid: 'تم الدفع',
+  draft: 'مسودة',
+  rejected: 'إيصال مرفوض',
 };
 
-/** حالات الفاتورة التي تُحسب كمبالغ مستحقة في التقارير */
-export const INVOICE_RECEIVABLE_DB_STATUSES = ['pending', 'awaiting_payment', 'issued'] as const;
+/** أسباب رفض سريعة لاعتماد الإيصال البنكي */
+export const INVOICE_REJECTION_PRESETS = [
+  'صورة غير واضحة',
+  'المبلغ ناقص',
+  'المبلغ لا يطابق الفاتورة',
+  'الحوالة لحساب خاطئ',
+  'إيصال مكرر / سبق استخدامه',
+] as const;
+
+/** حالات تُحسب كمبالغ بانتظار التحصيل (لا تشمل draft / rejected) */
+export const INVOICE_RECEIVABLE_DB_STATUSES = [
+  'pending',
+  'awaiting_payment',
+  'issued',
+  'payment_review',
+  'awaiting_confirmation',
+] as const;
 
 export function isInvoiceReceivableStatus(raw: unknown): boolean {
-  const s = String(raw ?? '').trim().toLowerCase();
-  return s === 'pending' || s === 'awaiting_payment' || s === 'issued';
+  const status = parseInvoiceStatus(raw);
+  return status === 'pending' || status === 'payment_review';
 }
 
 export function parseInvoiceType(raw: unknown): InvoiceType {
@@ -108,7 +135,15 @@ export function parseInvoiceType(raw: unknown): InvoiceType {
 }
 
 export function parseInvoiceStatus(raw: unknown): InvoiceStatus {
-  return String(raw ?? '').trim() === 'paid' ? 'paid' : 'pending';
+  const s = String(raw ?? '').trim().toLowerCase();
+  if (s === 'paid' || s === 'fully_paid' || s === 'approved') return 'paid';
+  if (s === 'payment_review' || s === 'awaiting_confirmation') return 'payment_review';
+  if (s === 'draft') return 'draft';
+  if (s === 'rejected' || s === 'cancelled' || s === 'canceled' || s === 'void') {
+    return 'rejected';
+  }
+  if (s === 'pending' || s === 'awaiting_payment' || s === 'issued') return 'pending';
+  return 'pending';
 }
 
 export function mapInvoiceRow(raw: Record<string, unknown>): InvoiceRow {
@@ -123,6 +158,9 @@ export function mapInvoiceRow(raw: Record<string, unknown>): InvoiceRow {
     created_at: String(raw.created_at ?? ''),
     updated_at: String(raw.updated_at ?? ''),
     paid_at: raw.paid_at != null ? String(raw.paid_at) : null,
+    receipt_url: raw.receipt_url != null ? String(raw.receipt_url).trim() || null : null,
+    rejection_reason:
+      raw.rejection_reason != null ? String(raw.rejection_reason).trim() || null : null,
   };
 }
 
@@ -146,7 +184,104 @@ export function buildInvoicePublicUrl(invoiceId: string, origin?: string): strin
 
 export function formatInvoiceAmount(amount: number): string {
   const value = Number.isFinite(amount) ? amount : 0;
-  return `${value.toLocaleString('ar-SA')} ر.س`;
+  return new Intl.NumberFormat('ar-SA', {
+    style: 'currency',
+    currency: 'SAR',
+    maximumFractionDigits: 0,
+  }).format(value);
+}
+
+/** إيرادات محققة: status === paid | approved */
+export function isInvoicePaidOrApprovedStatus(raw: unknown): boolean {
+  return parseInvoiceStatus(raw) === 'paid';
+}
+
+export type InvoiceFinanceMetrics = {
+  /** مجموع amount حيث status = paid / approved */
+  totalRevenue: number;
+  /** مجموع amount حيث status = pending (أو مراجعة دفع) */
+  pendingAmount: number;
+  totalInvoices: number;
+  paidCount: number;
+  pendingCount: number;
+  draftCount: number;
+  rejectedCount: number;
+  /** (paidCount / totalInvoices) * 100 */
+  paidRatio: number;
+};
+
+/**
+ * حساب KPIs المالية بدقة من حالات الفاتورة:
+ * - إجمالي الإيرادات ← paid / approved فقط
+ * - بانتظار الدفع ← pending (+ payment_review كمسار تحصيل)
+ * - draft / rejected لا يدخلان في الإيرادات ولا في المستحقات
+ */
+export function computeInvoiceFinanceMetrics(
+  invoices: Array<{ amount?: number | null; status?: unknown }>,
+): InvoiceFinanceMetrics {
+  let totalRevenue = 0;
+  let pendingAmount = 0;
+  let paidCount = 0;
+  let pendingCount = 0;
+  let draftCount = 0;
+  let rejectedCount = 0;
+
+  for (const inv of invoices) {
+    const amount = Math.max(0, Number(inv.amount) || 0);
+    const status = parseInvoiceStatus(inv.status);
+
+    if (status === 'paid') {
+      totalRevenue += amount;
+      paidCount += 1;
+      continue;
+    }
+
+    if (status === 'pending' || status === 'payment_review') {
+      pendingAmount += amount;
+      pendingCount += 1;
+      continue;
+    }
+
+    if (status === 'draft') {
+      draftCount += 1;
+      continue;
+    }
+
+    if (status === 'rejected') {
+      rejectedCount += 1;
+    }
+  }
+
+  const totalInvoices = invoices.length;
+  const paidRatio =
+    totalInvoices > 0 ? Math.round((paidCount / totalInvoices) * 1000) / 10 : 0;
+
+  return {
+    totalRevenue: Math.round(totalRevenue * 100) / 100,
+    pendingAmount: Math.round(pendingAmount * 100) / 100,
+    totalInvoices,
+    paidCount,
+    pendingCount,
+    draftCount,
+    rejectedCount,
+    paidRatio,
+  };
+}
+
+/** Green paid · Amber pending · Gray draft · Red rejected */
+export function invoiceStatusBadgeClass(status: InvoiceStatus | string): string {
+  const s = parseInvoiceStatus(status);
+  if (s === 'paid') {
+    return 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400';
+  }
+  if (s === 'pending' || s === 'payment_review') {
+    return 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400';
+  }
+  if (s === 'rejected') {
+    return 'bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-400';
+  }
+  // draft (+ fallback)
+  return 'bg-slate-100 text-slate-600 dark:bg-[#1A2421] dark:text-slate-400';
 }
 
 /** رسالة واتساب لإرسال رابط الفاتورة للعميل */

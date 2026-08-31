@@ -143,7 +143,10 @@ export function parseLeadIdFromDirectoryId(id: string): string | null {
  */
 export function normalizeDirectoryPhone(phone: unknown): string {
   if (phone == null) return ''
-  let p = String(phone).replace(/[^0-9]/g, '')
+  let p = String(phone)
+    .replace(/[\u0660-\u0669]/g, (d) => String(d.charCodeAt(0) - 0x0660))
+    .replace(/[\u06f0-\u06f9]/g, (d) => String(d.charCodeAt(0) - 0x06f0))
+    .replace(/[^0-9]/g, '')
   if (!p) return ''
   if (p.startsWith('00966')) p = p.slice(5)
   else if (p.startsWith('966')) p = p.slice(3)

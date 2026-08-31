@@ -2,21 +2,56 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Bell, Plane, RefreshCw, UsersRound } from 'lucide-react';
+import {
+  Bell,
+  Cake,
+  Luggage,
+  Plane,
+  RefreshCw,
+  UsersRound,
+  Wallet,
+} from 'lucide-react';
+import toast from 'react-hot-toast';
 
-import { countNewCrmLeads } from '@/lib/crm-leads';
+import {
+  filterUpcomingBirthdays,
+  formatBirthdayDisplayDate,
+  type BirthdayRadarClient,
+} from '@/lib/birthday-radar';
+import { subscribeCrmRealtimeRefresh } from '@/lib/crm-realtime-events';
+import { countGroupOnboardingLeads, countNewCrmLeads } from '@/lib/crm-leads';
 import { getClientAccessToken } from '@/lib/crm-session-token';
+import { formatInvoiceAmount } from '@/lib/crm-invoices';
 import { supabase } from '@/lib/supabase';
+
+type PaymentReviewItem = {
+  invoiceId: string;
+  quoteId: string;
+  clientName: string;
+  tripTitle: string;
+  amount: number;
+  href: string;
+};
 
 type NotificationCounts = {
   pendingPartners: number;
   pendingTrips: number;
+  pendingGroupTrips: number;
+  pendingPayments: number;
+  pendingPaymentItems: PaymentReviewItem[];
+  upcomingBirthdays: BirthdayRadarClient[];
+  upcomingBirthdayCount: number;
   totalPending: number;
 };
 
 const EMPTY_COUNTS: NotificationCounts = {
   pendingPartners: 0,
   pendingTrips: 0,
+  pendingGroupTrips: 0,
+  pendingPayments: 0,
+  pendingPaymentItems: [],
+  upcomingBirthdays: [],
+  upcomingBirthdayCount: 0,
   totalPending: 0,
 };
 
@@ -25,6 +60,9 @@ const REALTIME_TABLES = [
   'experts',
   'partner_applications',
   'leads',
+  'clients',
+  'group_members',
+  'invoices',
 ] as const;
 
 export function AdminNotificationBell({
@@ -42,13 +80,14 @@ export function AdminNotificationBell({
   const refresh = useCallback(async (showSpinner = false) => {
     if (showSpinner) setRefreshing(true);
     try {
-      // Leads count: same client query as Radar «صندوق الوارد» (never diverge via API)
       let pendingTrips = 0;
-      if (supabase) {
-        pendingTrips = await countNewCrmLeads(supabase);
-      }
-
+      let pendingGroupTrips = 0;
       let pendingPartners = 0;
+      let pendingPayments = 0;
+      let pendingPaymentItems: PaymentReviewItem[] = [];
+      let upcomingBirthdays: BirthdayRadarClient[] = [];
+      let upcomingBirthdayCount = 0;
+
       try {
         const accessToken = await getClientAccessToken();
         const response = await fetch('/api/crm/notifications/counts', {
@@ -62,20 +101,58 @@ export function AdminNotificationBell({
         };
         if (response.ok && payload.ok) {
           pendingPartners = Number(payload.pendingPartners) || 0;
-          // Prefer API trips only if client count failed to zero while API has data
-          const apiTrips = Number(payload.pendingTrips) || 0;
-          if (pendingTrips === 0 && apiTrips > 0) {
-            pendingTrips = apiTrips;
-          }
+          pendingTrips = Number(payload.pendingTrips) || 0;
+          pendingGroupTrips = Number(payload.pendingGroupTrips) || 0;
+          pendingPayments = Number(payload.pendingPayments) || 0;
+          pendingPaymentItems = Array.isArray(payload.pendingPaymentItems)
+            ? payload.pendingPaymentItems
+            : [];
+          upcomingBirthdays = Array.isArray(payload.upcomingBirthdays)
+            ? payload.upcomingBirthdays
+            : [];
+          upcomingBirthdayCount =
+            Number(payload.upcomingBirthdayCount) || upcomingBirthdays.length;
         }
       } catch {
-        /* Partners count is best-effort; lead count already loaded from Inbox query. */
+        /* Fall back to client-side counts when API is unavailable. */
+      }
+
+      // Client-side birthday fallback
+      if (supabase && upcomingBirthdayCount === 0) {
+        const { data: clients } = await supabase
+          .from('clients')
+          .select('id, name, birth_date, phone_wa')
+          .not('birth_date', 'is', null)
+          .limit(500);
+        if (clients?.length) {
+          upcomingBirthdays = filterUpcomingBirthdays(
+            clients as Record<string, unknown>[],
+            7,
+          );
+          upcomingBirthdayCount = upcomingBirthdays.length;
+        }
+      }
+
+      // Client counts as fallback when API returns zero (RLS / offline)
+      if (supabase && pendingTrips === 0 && pendingGroupTrips === 0) {
+        const [tripsCount, groupCount] = await Promise.all([
+          countNewCrmLeads(supabase),
+          countGroupOnboardingLeads(supabase),
+        ]);
+        pendingTrips = Math.max(pendingTrips, tripsCount);
+        pendingGroupTrips = Math.max(pendingGroupTrips, groupCount);
       }
 
       setCounts({
         pendingPartners,
         pendingTrips,
-        totalPending: pendingPartners + pendingTrips,
+        pendingGroupTrips,
+        pendingPayments,
+        pendingPaymentItems,
+        upcomingBirthdays,
+        upcomingBirthdayCount,
+        totalPending:
+          pendingPartners + pendingTrips + pendingPayments + upcomingBirthdayCount,
       });
     } catch {
       /* Keep the last successful counts during temporary network failures. */
@@ -84,7 +161,9 @@ export function AdminNotificationBell({
     }
   }, []);
 
-  refreshRef.current = () => refresh();
+  useEffect(() => {
+    refreshRef.current = () => refresh();
+  }, [refresh]);
 
   useEffect(() => {
     void refresh();
@@ -101,6 +180,18 @@ export function AdminNotificationBell({
   }, [refresh]);
 
   useEffect(() => {
+    return subscribeCrmRealtimeRefresh((detail) => {
+      void refreshRef.current();
+      if (detail.source === 'leads' && detail.reason === 'insert') {
+        toast('🔔 طلب جديد وصل للرادار', { icon: '🚨', duration: 4500 });
+      }
+      if (detail.source === 'group_members') {
+        toast('🔔 طلب انضمام مجموعة جديد', { icon: '🧳', duration: 4500 });
+      }
+    });
+  }, []);
+
+  useEffect(() => {
     if (!supabase) return;
 
     const channel = supabase.channel('crm-admin-notification-bell');
@@ -109,7 +200,14 @@ export function AdminNotificationBell({
       channel.on(
         'postgres_changes',
         { event: '*', schema: 'public', table },
-        () => {
+        (payload) => {
+          if (table === 'leads' && payload.eventType === 'INSERT') {
+            const row = payload.new as Record<string, unknown>;
+            const name = String(row.full_name ?? row.name ?? '').trim();
+            toast(name ? `🔔 طلب جديد من: ${name}` : '🔔 طلب جديد من عميل', {
+              duration: 4500,
+            });
+          }
           void refreshRef.current();
         },
       );
@@ -153,13 +251,13 @@ export function AdminNotificationBell({
       <button
         type="button"
         onClick={() => setOpen((current) => !current)}
-        className="relative flex h-10 w-10 items-center justify-center rounded-xl border border-[#D4AF37]/35 bg-[#10251B] text-[#D4AF37] shadow-lg transition hover:border-[#D4AF37]/70 hover:bg-[#183529]"
+        className="relative flex h-10 w-10 items-center justify-center rounded-xl border border-transparent bg-slate-900 text-white shadow-lg transition-colors duration-200 hover:opacity-90 dark:border dark:border-[#D4AF37]/30 dark:bg-[#22302C] dark:text-[#D4AF37]"
         aria-label={`الإشعارات: ${counts.totalPending} معلّقة`}
         aria-expanded={open}
       >
         <Bell className="h-5 w-5" aria-hidden />
         {counts.totalPending > 0 ? (
-          <span className="absolute -left-2 -top-2 flex min-h-5 min-w-5 animate-pulse items-center justify-center rounded-full bg-rose-600 px-1 text-[10px] font-black leading-none text-white ring-2 ring-[#F6F4F0]">
+          <span className="absolute -left-2 -top-2 flex min-h-5 min-w-5 animate-pulse items-center justify-center rounded-full bg-rose-600 px-1 text-[10px] font-black leading-none text-white ring-2 ring-white dark:ring-[#1A2421]">
             {badge}
           </span>
         ) : null}
@@ -189,7 +287,67 @@ export function AdminNotificationBell({
             </button>
           </div>
 
-          <div className="space-y-2 p-3">
+          <div className="max-h-[min(70vh,32rem)] space-y-2 overflow-y-auto p-3">
+            <div
+              className={`rounded-xl border p-3 ${
+                counts.pendingPayments > 0
+                  ? 'border-rose-200 bg-rose-50/60'
+                  : 'border-slate-100'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-rose-50 text-rose-700">
+                  <Wallet className="h-5 w-5" aria-hidden />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <strong className="block text-sm font-black text-slate-900">
+                    حوالات بانتظار الاعتماد
+                  </strong>
+                  <span className="text-xs font-semibold text-slate-500">
+                    لديك {counts.pendingPayments} حوالة تحتاج مراجعة
+                  </span>
+                </span>
+                <span
+                  className={`rounded-full px-2.5 py-1 text-xs font-black ${
+                    counts.pendingPayments > 0
+                      ? 'animate-pulse bg-rose-600 text-white'
+                      : 'bg-slate-100 text-slate-600'
+                  }`}
+                >
+                  {counts.pendingPayments}
+                </span>
+              </div>
+
+              {counts.pendingPaymentItems.length > 0 ? (
+                <ul className="mt-3 space-y-1.5 border-t border-rose-100 pt-3">
+                  {counts.pendingPaymentItems.map((item) => (
+                    <li key={item.invoiceId}>
+                      <Link
+                        href={item.href}
+                        onClick={() => setOpen(false)}
+                        className="flex items-center justify-between gap-2 rounded-lg px-2 py-2 transition hover:bg-white"
+                      >
+                        <span className="min-w-0">
+                          <span className="block truncate text-xs font-black text-slate-900">
+                            {item.clientName}
+                          </span>
+                          <span className="block truncate text-[10px] font-semibold text-slate-500">
+                            {item.tripTitle}
+                          </span>
+                        </span>
+                        <span
+                          className="shrink-0 text-[10px] font-black text-rose-700"
+                          dir="ltr"
+                        >
+                          {formatInvoiceAmount(item.amount)}
+                        </span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </div>
+
             <Link
               href="/crm/partners-radar"
               onClick={() => setOpen(false)}
@@ -231,6 +389,88 @@ export function AdminNotificationBell({
                 {counts.pendingTrips}
               </span>
             </Link>
+
+            <Link
+              href="/crm/radar"
+              onClick={() => setOpen(false)}
+              className="flex items-center gap-3 rounded-xl border border-slate-100 p-3 transition hover:border-sky-200 hover:bg-sky-50"
+            >
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#D4AF37]/15 text-[#1E2720]">
+                <Luggage className="h-5 w-5" aria-hidden />
+              </span>
+              <span className="min-w-0 flex-1">
+                <strong className="block text-sm font-black text-slate-900">
+                  🧳 طلبات انضمام المجموعات
+                </strong>
+                <span className="text-xs font-semibold text-slate-500">
+                  لديك {counts.pendingGroupTrips} طلبات معلّقة
+                </span>
+              </span>
+              <span className="rounded-full bg-[#D4AF37]/25 px-2.5 py-1 text-xs font-black text-[#1E2720]">
+                {counts.pendingGroupTrips}
+              </span>
+            </Link>
+
+            <div
+              className={`rounded-xl border p-3 ${
+                counts.upcomingBirthdayCount > 0
+                  ? 'border-pink-200 bg-pink-50/60'
+                  : 'border-slate-100'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-pink-50 text-pink-700">
+                  <Cake className="h-5 w-5" aria-hidden />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <strong className="block text-sm font-black text-slate-900">
+                    🎂 أعياد ميلاد خلال 7 أيام
+                  </strong>
+                  <span className="text-xs font-semibold text-slate-500">
+                    {counts.upcomingBirthdayCount > 0
+                      ? `${counts.upcomingBirthdayCount} عميل — جهّز رسالة تهنئة`
+                      : 'لا توجد أعياد ميلاد قريبة'}
+                  </span>
+                </span>
+                <span
+                  className={`rounded-full px-2.5 py-1 text-xs font-black ${
+                    counts.upcomingBirthdayCount > 0
+                      ? 'animate-pulse bg-pink-600 text-white'
+                      : 'bg-slate-100 text-slate-600'
+                  }`}
+                >
+                  {counts.upcomingBirthdayCount}
+                </span>
+              </div>
+
+              {counts.upcomingBirthdays.length > 0 ? (
+                <ul className="mt-3 space-y-1.5 border-t border-pink-100 pt-3">
+                  {counts.upcomingBirthdays.slice(0, 6).map((client) => (
+                    <li key={client.id}>
+                      <Link
+                        href={`/crm/clients/${encodeURIComponent(client.id)}`}
+                        onClick={() => setOpen(false)}
+                        className="flex items-center justify-between gap-2 rounded-lg px-2 py-2 transition hover:bg-white"
+                      >
+                        <span className="min-w-0">
+                          <span className="block truncate text-xs font-black text-slate-900">
+                            {client.name}
+                          </span>
+                          <span className="block truncate text-[10px] font-semibold text-slate-500">
+                            {formatBirthdayDisplayDate(client.birth_date)}
+                            {client.daysUntilBirthday === 0
+                              ? ' — اليوم! 🎉'
+                              : client.daysUntilBirthday === 1
+                                ? ' — غداً'
+                                : ` — بعد ${client.daysUntilBirthday} أيام`}
+                          </span>
+                        </span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </div>
 
             {counts.totalPending === 0 ? (
               <p className="px-3 py-2 text-center text-xs font-bold text-slate-400">

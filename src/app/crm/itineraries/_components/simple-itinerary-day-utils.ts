@@ -24,6 +24,7 @@ export type SimpleItineraryPlace = {
   name?: string;
   category?: string;
   city?: string;
+  branch_name?: string | null;
   rating?: string | number;
   /** وقت الزيارة (HH:MM) — يظهر في بوابة العميل */
   visit_time?: string;
@@ -118,6 +119,26 @@ export function withTransportDefaults(place: Record<string, unknown>): SimpleIti
       place.supplier_paid === true ||
       String(place.supplier_paid ?? '').toLowerCase() === 'paid',
   } as SimpleItineraryPlace;
+}
+
+function normalizeVisitTime(raw: unknown): string {
+  const s = String(raw ?? '').trim();
+  if (!s) return '';
+  const match = /^(\d{1,2}):(\d{2})(?::\d{2})?$/.exec(s);
+  if (!match) return s;
+  return `${match[1]!.padStart(2, '0')}:${match[2]}`;
+}
+
+/** Sort places by visit_time (HH:MM). Missing times sink to the bottom. */
+export function sortPlacesByVisitTime(places: SimpleItineraryPlace[]): SimpleItineraryPlace[] {
+  return [...places].sort((a, b) => {
+    const ta = normalizeVisitTime(a.visit_time ?? a.time_slot);
+    const tb = normalizeVisitTime(b.visit_time ?? b.time_slot);
+    if (!ta && !tb) return 0;
+    if (!ta) return 1;
+    if (!tb) return -1;
+    return ta.localeCompare(tb);
+  });
 }
 
 export const PLACES_BANK_DROPPABLE_ID = 'places-bank';

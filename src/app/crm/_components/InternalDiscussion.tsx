@@ -117,7 +117,7 @@ function highlightMentions(body: string): ReactNode {
   const parts = body.split(/(@[\u0600-\u06FFa-zA-Z0-9_.-]+)/g);
   return parts.map((part, i) =>
     part.startsWith('@') ? (
-      <span key={i} className="font-bold text-[#1A3B2A]">
+      <span key={i} className="font-bold text-slate-900 dark:text-[#D4AF37]">
         {part}
       </span>
     ) : (
@@ -388,15 +388,15 @@ export default function InternalDiscussion({
           role="dialog"
           aria-label={headerTitle}
           aria-modal="false"
-          className="fixed bottom-24 left-6 z-50 flex h-[500px] w-[340px] flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl sm:w-[380px] animate-[wl-chat-slide-in_0.3s_ease-out]"
+          className="fixed bottom-24 left-6 z-50 flex h-[500px] w-[340px] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl sm:w-[380px] animate-[wl-chat-slide-in_0.3s_ease-out] dark:border-[#2D3F3A] dark:bg-[#22302C]"
         >
-          <header className="flex items-center justify-between bg-[#1A3B2A] p-4 text-[#F9F9F6]">
+          <header className="flex items-center justify-between rounded-t-xl bg-slate-900 p-4 text-white dark:border-b dark:border-[#2D3F3A] dark:bg-[#1A2421]">
             <div className="flex min-w-0 items-center gap-2">
-              <MessageCircle className="h-5 w-5 shrink-0 text-[#C5A059]" aria-hidden />
+              <MessageCircle className="h-5 w-5 shrink-0 text-white/80 dark:text-[#D4AF37]" aria-hidden />
               <div className="min-w-0">
-                <h3 className="truncate text-base font-black">{headerTitle}</h3>
+                <h3 className="truncate text-base font-bold">{headerTitle}</h3>
                 {!context.isGlobal ? (
-                  <p className="truncate text-[10px] font-semibold text-white/50">
+                  <p className="truncate text-[10px] font-medium text-white/50">
                     {activeRecordType} · {activeRecordId}
                   </p>
                 ) : null}
@@ -410,7 +410,7 @@ export default function InternalDiscussion({
             <button
               type="button"
               onClick={() => setIsOpen(false)}
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[#F9F9F6]/80 transition hover:bg-white/10 hover:text-white"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white/80 transition hover:bg-white/10 hover:text-white"
               aria-label="إغلاق النقاش"
             >
               <X className="h-4 w-4" aria-hidden />
@@ -419,17 +419,17 @@ export default function InternalDiscussion({
 
           <div
             ref={listRef}
-            className="min-h-0 flex-1 space-y-1 overflow-y-auto bg-[#F9F9F6] p-4"
+            className="min-h-0 flex-1 space-y-1 overflow-y-auto bg-[#F9FAFB] p-4 dark:bg-[#1A2421]/40"
           >
             {loading ? (
-              <div className="flex h-full items-center justify-center gap-2 text-sm font-bold text-gray-400">
-                <Loader2 className="h-5 w-5 animate-spin text-[#C5A059]" aria-hidden />
+              <div className="flex h-full items-center justify-center gap-2 text-sm font-medium text-slate-400">
+                <Loader2 className="h-5 w-5 animate-spin text-slate-400 dark:text-[#D4AF37]" aria-hidden />
                 جاري تحميل النقاشات…
               </div>
             ) : comments.length === 0 ? (
               <div className="flex h-full flex-col items-center justify-center gap-2 px-4 text-center">
-                <p className="text-sm font-bold text-[#1A3B2A]/70">لا تعليقات بعد</p>
-                <p className="text-xs font-semibold text-gray-400">{emptyHint}</p>
+                <p className="text-sm font-medium text-slate-600 dark:text-slate-300">لا تعليقات بعد</p>
+                <p className="text-xs font-medium text-slate-400">{emptyHint}</p>
               </div>
             ) : (
               comments.map((comment) => {
@@ -444,19 +444,19 @@ export default function InternalDiscussion({
                     className={`mb-4 flex gap-3 ${isMine ? 'flex-row-reverse' : ''}`}
                   >
                     <div
-                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#1A3B2A] text-xs font-bold text-white"
+                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-900 text-xs font-bold text-white dark:bg-[#D4AF37]/20 dark:text-[#D4AF37]"
                       aria-hidden
                     >
                       {employeeInitials(comment.authorName)}
                     </div>
                     <div className={`min-w-0 flex-1 ${isMine ? 'text-left' : 'text-right'}`}>
-                      <p className="mb-1 text-xs text-gray-400">
-                        <span className="font-bold text-gray-500">{comment.authorName}</span>
+                      <p className="mb-1 text-xs text-slate-400">
+                        <span className="font-bold text-slate-500 dark:text-slate-300">{comment.authorName}</span>
                         {' · '}
                         {formatArabicRelativeTime(comment.createdAt)}
                       </p>
                       <div
-                        className={`border border-gray-100 bg-white p-3 text-sm text-gray-800 ${
+                        className={`border border-slate-100 bg-white p-3 text-sm text-slate-800 dark:border-[#2D3F3A] dark:bg-[#22302C] dark:text-gray-200 ${
                           isMine
                             ? 'rounded-2xl rounded-tl-none'
                             : 'rounded-2xl rounded-tr-none'
@@ -472,18 +472,18 @@ export default function InternalDiscussion({
           </div>
 
           {error ? (
-            <p className="mx-4 mb-2 rounded-lg bg-amber-50 px-3 py-2 text-xs font-bold text-amber-900">
+            <p className="mx-4 mb-2 rounded-lg bg-amber-50 px-3 py-2 text-xs font-bold text-amber-900 dark:bg-amber-950/40 dark:text-amber-300">
               {error}
             </p>
           ) : null}
 
           <form
             onSubmit={(e) => void handleSubmit(e)}
-            className="relative flex shrink-0 items-center gap-2 border-t border-gray-100 bg-white p-3"
+            className="relative flex shrink-0 items-center gap-2 border-t border-slate-100 bg-white p-3 dark:border-[#2D3F3A] dark:bg-[#22302C]"
           >
             {mentionQuery != null && mentionCandidates.length > 0 ? (
               <ul
-                className="absolute bottom-full left-3 right-14 z-20 mb-2 max-h-40 overflow-y-auto rounded-xl border border-gray-100 bg-white py-1 shadow-lg"
+                className="absolute bottom-full left-3 right-14 z-20 mb-2 max-h-40 overflow-y-auto rounded-xl border border-slate-100 bg-white py-1 shadow-lg dark:border-[#2D3F3A] dark:bg-[#1A2421]"
                 role="listbox"
               >
                 {mentionCandidates.map((emp, idx) => (
@@ -495,16 +495,16 @@ export default function InternalDiscussion({
                       onClick={() => applyMention(emp)}
                       className={`flex w-full items-center gap-2 px-3 py-2 text-right text-sm transition ${
                         idx === mentionIndex
-                          ? 'bg-[#1A3B2A]/5 font-bold text-[#1A3B2A]'
-                          : 'text-gray-700 hover:bg-gray-50'
+                          ? 'bg-slate-900 font-bold text-white dark:bg-[#D4AF37]/20 dark:text-[#D4AF37]'
+                          : 'text-slate-700 hover:bg-slate-100 dark:text-gray-300 dark:hover:bg-[#22302C]'
                       }`}
                     >
-                      <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#1A3B2A] text-[10px] font-bold text-white">
+                      <span className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-900 text-[10px] font-bold text-white dark:bg-[#D4AF37]/20 dark:text-[#D4AF37]">
                         {employeeInitials(emp.fullName)}
                       </span>
                       <span className="min-w-0 flex-1 truncate">{emp.fullName}</span>
                       {emp.role ? (
-                        <span className="text-[10px] font-semibold text-gray-400">{emp.role}</span>
+                        <span className="text-[10px] font-semibold text-slate-400">{emp.role}</span>
                       ) : null}
                     </button>
                   </li>
@@ -524,13 +524,13 @@ export default function InternalDiscussion({
               }}
               onKeyDown={onKeyDown}
               placeholder={setupRequired ? 'فعّل جدول النقاشات أولاً…' : 'اكتب ملاحظة أو @اسم الزميل…'}
-              className="flex-1 rounded-full border border-gray-200 bg-gray-50 px-4 py-2 text-sm text-[#1A3B2A] outline-none transition focus:ring-2 focus:ring-[#C5A059]/50 disabled:opacity-60"
+              className="flex-1 rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-900 outline-none transition focus:ring-2 focus:ring-slate-200 disabled:opacity-60 dark:border-[#2D3F3A] dark:bg-[#1A2421] dark:text-gray-100 dark:focus:ring-[#D4AF37]/20"
               aria-label="نص التعليق"
             />
             <button
               type="submit"
               disabled={sending || !draft.trim() || setupRequired}
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#1A3B2A] text-[#C5A059] transition-transform hover:scale-105 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:scale-100"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-transparent bg-slate-900 text-white transition-colors duration-200 hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40 dark:border dark:border-[#D4AF37]/30 dark:bg-[#22302C] dark:text-[#D4AF37]"
               aria-label="إرسال"
             >
               {sending ? (
@@ -546,7 +546,7 @@ export default function InternalDiscussion({
       <button
         type="button"
         onClick={() => setIsOpen((open) => !open)}
-        className="fixed bottom-6 left-6 z-50 flex h-14 w-14 cursor-pointer items-center justify-center rounded-full bg-[#1A3B2A] text-[#C5A059] shadow-[0_4px_14px_rgba(26,59,42,0.3)] transition-transform hover:scale-105"
+        className="fixed bottom-6 left-6 z-50 flex h-14 w-14 cursor-pointer items-center justify-center rounded-full border border-transparent bg-slate-900 text-white shadow-lg transition-colors duration-200 hover:opacity-90 dark:border dark:border-[#D4AF37]/30 dark:bg-[#22302C] dark:text-[#D4AF37]"
         aria-label={isOpen ? 'إغلاق نقاشات الفريق' : 'فتح نقاشات الفريق'}
         aria-expanded={isOpen}
       >
@@ -556,7 +556,7 @@ export default function InternalDiscussion({
           <MessageCircle className="h-6 w-6" aria-hidden />
         )}
         {!isOpen && badgeCount > 0 ? (
-          <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full border-2 border-[#F9F9F6] bg-red-500 text-[10px] font-bold text-white">
+          <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full border-2 border-white bg-red-500 text-[10px] font-bold text-white dark:border-[#1A2421]">
             {badgeCount > 99 ? '99+' : badgeCount}
           </span>
         ) : null}

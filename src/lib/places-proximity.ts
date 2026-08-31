@@ -81,16 +81,14 @@ export function formatDistanceKmAr(km: number): string {
   return `يبعد ${Math.round(km)} كم`;
 }
 
-type PlacesQuery = ReturnType<NonNullable<typeof supabase>['from']> extends (
-  table: string,
-) => infer Q
-  ? Q
-  : never;
+/** Postgrest filter chain — keep loose to avoid infinite generic instantiation. */
+ 
+type PlacesFilterQuery = any;
 
 function applyProximityFilters(
-  q: PlacesQuery,
+  q: PlacesFilterQuery,
   filters: ProximityPlaceFilters,
-): PlacesQuery {
+): PlacesFilterQuery {
   let next = q;
   if (filters.search?.trim()) {
     next = next.ilike('name', `%${filters.search.trim()}%`);
@@ -128,7 +126,7 @@ export async function fetchPlacesForProximityEngine(
 
   let q = supabase.from('places').select(PROXIMITY_PLACES_SELECT).limit(PROXIMITY_FETCH_LIMIT);
   q = applyProximityFilters(q, filters);
-  let { data: bulk, error: bulkErr } = await q;
+  const { data: bulk, error: bulkErr } = await q;
 
   if (bulkErr && isPlacesCoordinateSchemaError(bulkErr.message)) {
     throw new PlacesProximityUnavailableError(bulkErr.message);

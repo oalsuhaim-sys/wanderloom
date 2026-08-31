@@ -16,6 +16,9 @@ const config = {
   darkMode: 'class' as const,
   theme: {
     extend: {
+      fontFamily: {
+        sans: ['var(--font-tajawal)', 'Tajawal', 'sans-serif'],
+      },
       colors: {
         brand: {
           primary: '#1A3B2A',
@@ -25,6 +28,15 @@ const config = {
           charcoal: '#0A0F0C',
           offwhite: '#F9F9F6',
           muted: '#8FA396',
+        },
+        amber: {
+          50: '#FDFBF7',
+          100: '#F7F0E1',
+          200: '#E8D2A7',
+          500: '#C5A059',
+          600: '#B38E46',
+          700: '#8C6D23',
+          900: '#4A3910',
         },
       },
     },

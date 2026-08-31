@@ -59,11 +59,13 @@
       "namePlaceholder": "الاسم الثلاثي",
       "waLabel": "رقم الواتساب *",
       "waPlaceholder": "05XXXXXXXX",
-      "emailLabel": "البريد الإلكتروني *",
+      "emailLabel": "البريد الإلكتروني",
+      "optionalHint": "اختياري",
       "emailPlaceholder": "example@email.com",
       "ageLabel": "العمر *",
       "agePlaceholder": "مثال: 28",
-      "submit": "حجز المقعد",
+      "birthDateLabel": "تاريخ الميلاد",
+      "submit": "تقديم طلب انضمام",
       "close": "إغلاق"
     },
     "errors": {
@@ -73,6 +75,8 @@
       "invalidEmail": "يرجى إدخال بريد إلكتروني صحيح.",
       "ageRequired": "يرجى إدخال العمر.",
       "invalidAge": "يرجى إدخال عمر صحيح.",
+      "birthDateRequired": "يرجى إدخال تاريخ الميلاد.",
+      "invalidBirthDate": "يرجى إدخال تاريخ ميلاد صحيح.",
       "generic": "عذراً، حدث خطأ أثناء التسجيل. يرجى المحاولة مرة أخرى."
     },
     "success": "تم تسجيل مجموعتك بنجاح! سيتواصل فريق Wanderloom معك قريباً على الواتساب."

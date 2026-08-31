@@ -6,7 +6,7 @@ import { siteOrigin } from '@/lib/bank-checkout';
 import { formatWhatsAppPhone } from '@/lib/crm-lead-actions';
 import type { CrmLeadRow } from '@/lib/crm-leads';
 
-/** نوع الرحلة لصيغة رسالة واتساب فقط — الرابط دائماً /welcome/{clients.id} */
+/** نوع الرحلة — يؤثر على صيغة واتساب ووسم الرابط (?flow=group) */
 export type DnaInviteTripType = 'private' | 'group';
 
 export const DNA_INVITE_TRIP_TYPE_OPTIONS: Array<{
@@ -17,15 +17,23 @@ export const DNA_INVITE_TRIP_TYPE_OPTIONS: Array<{
   { id: 'group', label: 'رحلة جماعية — Group' },
 ];
 
-/** رابط نموذج DNA الموحّد — /welcome/{clients.id} (SSOT) */
-export function buildClientDnaWelcomeUrlByClientId(clientId: number | string, origin?: string): string {
+/** رابط نموذج DNA الموحّد — /welcome/{clients.id} (SSOT)؛ Group يُوسَم بـ ?flow=group */
+export function buildClientDnaWelcomeUrlByClientId(
+  clientId: number | string,
+  origin?: string,
+  tripType?: DnaInviteTripType,
+): string {
   const id = String(clientId ?? '').trim();
   if (!id || (!/^\d+$/.test(id) && !/^[0-9a-f-]{36}$/i.test(id))) {
     throw new Error('معرّف العميل غير صالح لبناء رابط DNA.');
   }
   const base = (origin ?? siteOrigin()).replace(/\/$/, '');
-  // /welcome/{id} → middleware redirects numeric ids to /welcome/client/{id}
-  return `${base}/welcome/${encodeURIComponent(id)}`;
+  // /welcome/{id} → redirects numeric ids to /welcome/client/{id} (preserves ?flow=)
+  const url = `${base}/welcome/${encodeURIComponent(id)}`;
+  if (tripType === 'group') {
+    return `${url}?flow=group`;
+  }
+  return url;
 }
 
 /**
@@ -176,14 +184,14 @@ export function buildLuxuryOnboardingEmailPayload(
   };
 }
 
-/** يبني رسالة + رابط واتساب — الرابط دائماً /welcome/{clients.id} */
+/** يبني رسالة + رابط واتساب — الرابط /welcome/{id} مع ?flow=group للرحلات الجماعية */
 export function buildDnaInviteWhatsAppPayload(
   phone: string,
   clientId: number | string,
   tripType: DnaInviteTripType,
   origin?: string,
 ): { dnaUrl: string; whatsAppMessage: string; whatsAppUrl: string } {
-  const dnaUrl = buildClientDnaWelcomeUrlByClientId(clientId, origin);
+  const dnaUrl = buildClientDnaWelcomeUrlByClientId(clientId, origin, tripType);
   const whatsAppMessage = buildDnaInviteWhatsAppMessage(tripType, dnaUrl);
   return {
     dnaUrl,
@@ -195,26 +203,20 @@ export function buildDnaInviteWhatsAppPayload(
 export function whatsAppHrefWithText(phone: string, text: string): string {
   const message = String(text ?? '').trim();
   const encoded = encodeURIComponent(message);
-  const digits = formatWhatsAppPhone(phone).replace(/\D/g, '');
+  const digits = formatWhatsAppPhone(phone);
 
-  let normalizedDigits = digits;
-  if (normalizedDigits.startsWith('05')) {
-    normalizedDigits = `966${normalizedDigits.slice(1)}`;
-  } else if (normalizedDigits.startsWith('5') && normalizedDigits.length === 9) {
-    normalizedDigits = `966${normalizedDigits}`;
-  } else if (normalizedDigits.startsWith('00')) {
-    normalizedDigits = normalizedDigits.slice(2);
-  }
-
-  if (normalizedDigits.length >= 8) {
-    return `https://api.whatsapp.com/send?phone=${normalizedDigits}&text=${encoded}`;
+  if (digits.length >= 8) {
+    return `https://api.whatsapp.com/send?phone=${digits}&text=${encoded}`;
   }
   return `https://api.whatsapp.com/send?text=${encoded}`;
 }
 
 /** تطبيع رقم الجوال لصيغة موحّدة (966…) لتفادي تكرار العملاء */
 export function canonicalizePhoneWa(phoneRaw: string): string {
-  let digits = String(phoneRaw ?? '').replace(/\D/g, '');
+  let digits = String(phoneRaw ?? '')
+    .replace(/[\u0660-\u0669]/g, (d) => String(d.charCodeAt(0) - 0x0660))
+    .replace(/[\u06f0-\u06f9]/g, (d) => String(d.charCodeAt(0) - 0x06f0))
+    .replace(/\D/g, '');
   if (!digits) return String(phoneRaw ?? '').trim();
   if (digits.startsWith('00')) digits = digits.slice(2);
   if (digits.startsWith('05')) digits = `966${digits.slice(1)}`;
@@ -540,12 +542,10 @@ async function createClientFromLeadIntake(
 
   (payload as Record<string, unknown>).onboarding_token = token;
   (payload as Record<string, unknown>).onboarding_completed = false;
-  // Minimal stub — avoid optional columns that vary by schema
+  // Minimal stub — avoid optional influencer/leader columns that vary by schema
   delete (payload as Record<string, unknown>).is_leader;
   delete (payload as Record<string, unknown>).is_influencer;
-  delete (payload as Record<string, unknown>).client_tier;
-  delete (payload as Record<string, unknown>).total_trips;
-  delete (payload as Record<string, unknown>).referrals_count;
+  // Keep client_tier / total_trips / sales_stage — required for Clients DB UI defaults
   delete (payload as Record<string, unknown>).birth_date;
   // clients table uses phone_wa only — never write `phone`
 

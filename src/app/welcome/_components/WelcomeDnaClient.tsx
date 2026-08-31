@@ -73,20 +73,30 @@ export function WelcomeDnaClient({
     setSubmitting(true);
     setError(null);
     try {
-      const result = await submitOnboardingProfileAction(token, {
-        birth_date: '',
-        anniversary_date: '',
-        passport_expiry: form.passport_expiry,
-        dna_activity_level: form.dna_activity_level,
-        dna_special_requests: form.dna_special_requests,
-        interests: form.interests,
-        travelDna,
-      });
+      const result = await submitOnboardingProfileAction(
+        token,
+        {
+          birth_date: '',
+          anniversary_date: '',
+          passport_expiry: form.passport_expiry,
+          dna_activity_level: form.dna_activity_level,
+          dna_special_requests: form.dna_special_requests,
+          interests: form.interests,
+          travelDna,
+        },
+        { origin: typeof window !== 'undefined' ? window.location.origin : null },
+      );
       if (!result.ok) {
         setError(result.error);
         return;
       }
-      router.push('/dna-success');
+      const params = new URLSearchParams();
+      const leadId = String(result.leadId ?? '').trim();
+      const quoteId = String(result.quoteId ?? '').trim();
+      if (leadId) params.set('leadId', leadId);
+      if (quoteId) params.set('quoteId', quoteId);
+      if (result.quotationUrl) params.set('quoteUrl', result.quotationUrl);
+      router.push(params.toString() ? `/dna-success?${params.toString()}` : '/dna-success');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'تعذر حفظ التفضيلات.');
     } finally {

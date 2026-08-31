@@ -10,14 +10,36 @@ import {
   normalizeQuotationId,
   type QuotationRow,
 } from '@/lib/crm-quotations';
+import {
+  createEmptyActivityOption,
+  createEmptyCostLine,
+  createEmptyHotelOption,
+  createEmptyItineraryDay,
+  createEmptyTransportOption,
+  emptyClientFeedback,
+} from '@/lib/interactive-quotation';
 import type { CrmLeadRow } from '@/lib/crm-leads';
+import { updatePipelineStatus } from '@/lib/lead-pipeline-automation';
 
 export function formatWhatsAppPhone(phone: string): string {
-  return phone.replace(/[\s+\-()]/g, '');
+  return canonicalizePhoneWa(String(phone ?? '').trim());
 }
 
 export function whatsAppHref(phone: string): string {
-  return `https://wa.me/${formatWhatsAppPhone(phone)}`;
+  const digits = formatWhatsAppPhone(phone);
+  if (digits.length >= 8) {
+    return `https://wa.me/${digits}`;
+  }
+  return 'https://wa.me/';
+}
+
+export function whatsAppHrefWithMessage(phone: string, text: string): string {
+  const encoded = encodeURIComponent(String(text ?? '').trim());
+  const digits = formatWhatsAppPhone(phone);
+  if (digits.length >= 8) {
+    return `https://wa.me/${digits}?text=${encoded}`;
+  }
+  return `https://wa.me/?text=${encoded}`;
 }
 
 export function quoteErrorMessage(error: unknown): string {
@@ -172,6 +194,11 @@ function buildQuotationInsertPayload(lead: CrmLeadRow, clientId: number) {
   const startDate = defaultStartDate(lead);
   const endDate = addDaysIso(startDate, Math.max(1, lead.travel_days) - 1);
   const destinations = Array.isArray(lead.destinations) ? [...lead.destinations] : [];
+  const expertId = String(
+    (lead as { expert_id?: unknown; assigned_expert_id?: unknown }).expert_id ??
+      (lead as { assigned_expert_id?: unknown }).assigned_expert_id ??
+      '',
+  ).trim();
 
   return {
     client_id: clientId,
@@ -189,6 +216,7 @@ function buildQuotationInsertPayload(lead: CrmLeadRow, clientId: number) {
     lead_source: 'trip_log',
     lead_id: lead.id,
     ...(lead.referral_code?.trim() ? { referral_code: lead.referral_code.trim() } : {}),
+    ...(expertId ? { expert_id: expertId } : {}),
   };
 }
 
@@ -210,6 +238,34 @@ async function insertQuotationForLead(
     const retry = await supabase
       .from('quotations')
       .insert([withoutLeadId as never])
+      .select('id, lead_id')
+      .single();
+    if (retry.error) {
+      // Retry without optional expert_id if column missing
+      if (/expert_id|column|schema cache/i.test(retry.error.message ?? '')) {
+        const { expert_id: _e, ...lean } = withoutLeadId as Record<string, unknown>;
+        const leanRetry = await supabase
+          .from('quotations')
+          .insert([lean as never])
+          .select('id, lead_id')
+          .single();
+        if (leanRetry.error) {
+          console.error('Quote Creation Error:', leanRetry.error);
+          throw leanRetry.error;
+        }
+        return assertInsertedQuotationId(leanRetry.data, lead.id);
+      }
+      console.error('Quote Creation Error:', retry.error);
+      throw retry.error;
+    }
+    return assertInsertedQuotationId(retry.data, lead.id);
+  }
+
+  if (error && /expert_id|column|schema cache/i.test(error.message ?? '')) {
+    const { expert_id: _e, ...withoutExpert } = fullPayload as Record<string, unknown>;
+    const retry = await supabase
+      .from('quotations')
+      .insert([withoutExpert as never])
       .select('id, lead_id')
       .single();
     if (retry.error) {
@@ -246,24 +302,20 @@ function assertInsertedQuotationId(
   return quotationId;
 }
 
+/** After a quotation is created from a lead → Kanban `quote_stage` (not legacy `converted`) */
 export async function markCrmLeadConverted(supabase: SupabaseClient, leadId: string): Promise<void> {
-  const { error: convertedError } = await supabase
-    .from('leads')
-    .update({ status: 'converted' })
-    .eq('id', leadId);
-
-  if (!convertedError) return;
-
-  console.error('Quote Creation Error:', convertedError);
-
-  const { error: processingError } = await supabase
-    .from('leads')
-    .update({ status: 'processing' })
-    .eq('id', leadId);
-
-  if (processingError) {
-    console.error('Quote Creation Error:', processingError);
-    throw processingError;
+  try {
+    await updatePipelineStatus(supabase, { leadId, force: true }, 'quote_stage');
+  } catch (err) {
+    console.error('Quote Creation Error:', err);
+    const { error: processingError } = await supabase
+      .from('leads')
+      .update({ status: 'quote_stage' })
+      .eq('id', leadId);
+    if (processingError) {
+      console.error('Quote Creation Error:', processingError);
+      throw processingError;
+    }
   }
 }
 
@@ -316,7 +368,15 @@ export function mapLeadRowToQuotationDraft(
     referral_code:
       lead.referral_code != null ? String(lead.referral_code).trim() || null : null,
     is_referral_paid: false,
+    expert_name: null,
+    expert_id: null,
     created_at: String(lead.created_at ?? ''),
+    itinerary_days: [createEmptyItineraryDay(1)],
+    hotel_options: [createEmptyHotelOption()],
+    transport_options: [createEmptyTransportOption()],
+    activity_options: [createEmptyActivityOption()],
+    cost_breakdown: [createEmptyCostLine()],
+    client_feedback: emptyClientFeedback(),
     clients: client
       ? {
           id: client.id,

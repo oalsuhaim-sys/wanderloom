@@ -160,7 +160,7 @@ export default function SmartPlaceSearch({ value, onQueryChange, onPlaceSelect, 
         value={value}
         onChange={(e) => onQueryChange(e.target.value)}
         placeholder="مثال: برج إيفل، متحف اللوفر..."
-        className="w-full rounded-xl border border-[#D4AF37]/40 bg-[#1E2720] p-3 text-white placeholder:text-white/30 focus:border-[#D4AF37] focus:outline-none"
+        className="w-full rounded-xl border border-slate-300 bg-slate-50 p-3 font-bold text-slate-900 placeholder:text-slate-600 focus:border-[#D4AF37] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#D4AF37]"
         autoComplete="off"
       />
 
@@ -182,10 +182,10 @@ export default function SmartPlaceSearch({ value, onQueryChange, onPlaceSelect, 
                 type="button"
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => selectPlace(place)}
-                className="w-full border-b border-[#D4AF37]/10 p-3 text-right text-sm text-white transition-colors last:border-0 hover:bg-[#D4AF37]/20"
+                className="w-full border-b border-slate-100 p-3 text-right text-sm text-slate-800 transition-colors last:border-0 hover:bg-slate-50"
               >
-                <div className="font-bold text-[#D4AF37]">{place.text}</div>
-                <div className="text-xs text-white/60">{place.place_name}</div>
+                <div className="font-bold text-slate-900">{place.text}</div>
+                <div className="text-xs font-bold text-slate-700">{place.place_name}</div>
               </button>
             </li>
           ))}

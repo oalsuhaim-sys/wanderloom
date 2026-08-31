@@ -382,15 +382,15 @@ export default function MarketingHubClient() {
       <Toaster position="top-center" toastOptions={{ duration: 2500, style: { fontWeight: 700 } }} />
 
       <div className="min-h-full bg-[#FDFBF7] pb-24 font-[family-name:var(--font-tajawal),system-ui,sans-serif]" dir="rtl">
-        <header className="mb-6 rounded-[1.5rem] border border-[#1e3f20]/10 bg-white p-4 shadow-[0_16px_48px_rgba(30,63,32,0.07)] sm:mb-8 sm:rounded-[2rem] sm:p-6 md:p-8">
+        <header className="mb-6 rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm sm:mb-8 sm:p-6 md:p-8">
           <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between sm:gap-6">
             <div className="min-w-0">
-              <p className="inline-flex items-center gap-2 rounded-full border border-[#cda04c]/35 bg-[#cda04c]/10 px-3 py-1.5 text-[10px] font-black text-[#9a7b45] sm:px-4 sm:text-[11px]">
+              <p className="inline-flex items-center gap-2 rounded-full border border-[#D4AF37]/35 bg-[#D4AF37]/10 px-3 py-1.5 text-[10px] font-bold text-[#b8952d] sm:px-4 sm:text-[11px]">
                 <Megaphone className="h-3.5 w-3.5" aria-hidden />
                 Marketing Hub · إدارة ديناميكية
               </p>
-              <h1 className="mt-3 text-2xl font-black text-[#1e3f20] sm:mt-4 sm:text-3xl md:text-4xl">مركز التسويق</h1>
-              <p className="mt-2 text-sm font-bold leading-relaxed text-gray-600 sm:mt-3">
+              <h1 className="mt-3 text-2xl font-extrabold text-[#b8952d] sm:mt-4 sm:text-3xl md:text-4xl">مركز التسويق</h1>
+              <p className="mt-2 text-sm font-medium leading-relaxed text-slate-600 sm:mt-3">
                 بيانات حية من Supabase · حقن الهوية البصرية · CRUD كامل
               </p>
             </div>
@@ -399,19 +399,19 @@ export default function MarketingHubClient() {
                 type="button"
                 onClick={() => void loadFromSupabase()}
                 disabled={loading || busy}
-                className="inline-flex items-center gap-2 rounded-xl border border-[#1e3f20]/20 bg-white px-4 py-2.5 text-xs font-black text-[#1e3f20] shadow-sm transition hover:bg-[#f4f0e6] disabled:opacity-50"
+                className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-100 px-4 py-2 text-xs font-semibold text-slate-700 transition-all hover:bg-slate-200 disabled:opacity-50"
                 title="تحديث من Supabase"
               >
                 <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} aria-hidden />
                 تحديث
               </button>
-              <div className="rounded-2xl border border-[#1e3f20]/12 bg-[#f4f0e6]/60 px-5 py-4 text-center">
-                <p className="text-2xl font-black text-[#cda04c]">{stats.total}</p>
-                <p className="text-[11px] font-black text-[#1e3f20]">عنصر</p>
+              <div className="rounded-2xl border border-slate-200/80 bg-white px-5 py-4 text-center shadow-sm">
+                <p className="text-2xl font-extrabold text-[#b8952d]">{stats.total}</p>
+                <p className="text-[11px] font-medium text-slate-600">عنصر</p>
               </div>
-              <div className="rounded-2xl border border-[#cda04c]/30 bg-[#cda04c]/10 px-5 py-4 text-center">
-                <p className="text-2xl font-black text-[#1e3f20]">{stats.ready}</p>
-                <p className="text-[11px] font-black text-[#7a5f28]">جاهز للتنفيذ</p>
+              <div className="rounded-2xl border border-[#D4AF37]/35 bg-[#D4AF37]/10 px-5 py-4 text-center shadow-sm">
+                <p className="text-2xl font-extrabold text-slate-900">{stats.ready}</p>
+                <p className="text-[11px] font-medium text-[#b8952d]">جاهز للتنفيذ</p>
               </div>
             </div>
           </div>
@@ -427,14 +427,14 @@ export default function MarketingHubClient() {
         ) : null}
 
         {loading ? (
-          <div className="flex min-h-[320px] flex-col items-center justify-center gap-4 rounded-2xl border border-gray-100 bg-white p-12 shadow-sm">
-            <Loader2 className="h-10 w-10 animate-spin text-[#cda04c]" aria-hidden />
-            <p className="text-sm font-black text-[#1e3f20]">جاري تحميل البيانات...</p>
-            <p className="text-xs font-bold text-gray-500">Supabase · marketing_ai_prompts · human_scripts · calendar · brand_identity</p>
+          <div className="flex min-h-[320px] flex-col items-center justify-center gap-4 rounded-2xl border border-slate-200/80 bg-white p-12 shadow-sm">
+            <Loader2 className="h-10 w-10 animate-spin text-[#b8952d]" aria-hidden />
+            <p className="text-sm font-extrabold text-slate-900">جاري تحميل البيانات...</p>
+            <p className="text-xs font-medium text-slate-600">Supabase · marketing_ai_prompts · human_scripts · calendar · brand_identity</p>
           </div>
         ) : (
           <>
-        <nav className="mb-6 flex flex-col gap-2 rounded-2xl border border-[#1e3f20]/10 bg-white p-2 shadow-sm sm:mb-8 sm:flex-row sm:flex-wrap">
+        <nav className="mb-6 flex flex-col gap-2 rounded-2xl border border-slate-200/80 bg-white p-2 shadow-sm sm:mb-8 sm:flex-row sm:flex-wrap">
           {TABS.map((tab) => {
             const Icon = tab.icon;
             const active = activeTab === tab.id;
@@ -444,14 +444,22 @@ export default function MarketingHubClient() {
                 key={tab.id}
                 type="button"
                 onClick={() => setActiveTab(tab.id)}
-                className={`inline-flex w-full min-h-10 items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-black transition sm:w-auto sm:flex-none sm:px-5 ${
-                  active ? 'bg-[#1e3f20] text-white shadow-md' : 'text-[#1e3f20] hover:bg-[#f4f0e6]'
+                className={`inline-flex w-full min-h-10 items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm transition-all sm:w-auto sm:flex-none sm:px-5 ${
+                  active
+                    ? 'border border-slate-800 bg-[#1A2421] font-bold text-[#D4AF37]'
+                    : 'bg-slate-100 font-semibold text-slate-700 hover:bg-slate-200'
                 }`}
               >
-                <Icon className={`h-4 w-4 ${active ? 'text-[#cda04c]' : 'text-[#cda04c]/70'}`} />
+                <Icon className={`h-4 w-4 ${active ? 'text-[#D4AF37]' : 'text-[#b8952d]'}`} />
                 {tab.label}
                 {tab.id !== 'brand' ? (
-                  <span className={`rounded-full px-2 py-0.5 text-[10px] ${active ? 'bg-white/20' : 'bg-[#1e3f20]/8'}`}>
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                      active
+                        ? 'bg-white/10 text-[#D4AF37]'
+                        : 'bg-white text-slate-600 ring-1 ring-slate-200'
+                    }`}
+                  >
                     {count}
                   </span>
                 ) : null}
@@ -852,7 +860,7 @@ function ModalShell({
 }) {
   return (
     <div
-      className="fixed inset-0 z-[200] flex items-end justify-center bg-black/60 p-0 backdrop-blur-sm sm:items-center sm:p-4"
+      className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 p-0 backdrop-blur-sm sm:p-4"
       dir="rtl"
       lang="ar"
       onClick={onClose}

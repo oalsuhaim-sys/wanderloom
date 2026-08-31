@@ -24,6 +24,7 @@ import {
   moveActivityBetweenDays,
   patchDayActivities,
   pickPlaceBankCoordinates,
+  sortActivitiesByVisitTime,
 } from '@/lib/itinerary-day-activities';
 import { placeBankCategoryLabel } from '@/lib/places-bank';
 import type { ItineraryDayDraft } from '@/lib/itinerary-builder-model';
@@ -94,11 +95,17 @@ function ActivityCard({
               <p className="text-sm font-black text-[#1E2720]">
                 {act.place_name || kindLabel(act.kind)}
               </p>
-              {act.kind === 'place' && act.category ? (
-                <p className="text-[10px] font-medium text-[#1E2720]/50">
-                  {placeBankCategoryLabel(act.category)}
-                  {act.city ? ` · ${act.city}` : ''}
-                </p>
+              {act.kind === 'place' && (act.category || act.city) ? (
+                <div className="mt-0.5 space-y-0.5">
+                  {act.category ? (
+                    <p className="text-[10px] font-bold text-slate-700">
+                      {placeBankCategoryLabel(act.category)}
+                    </p>
+                  ) : null}
+                  {act.city ? (
+                    <span className="block text-xs font-bold text-slate-700">• {act.city}</span>
+                  ) : null}
+                </div>
               ) : null}
             </div>
             <button
@@ -111,7 +118,7 @@ function ActivityCard({
           </div>
           {(act.kind === 'place' || act.kind === 'transport') ? (
             <div className="mt-2 flex items-center gap-2">
-              <label className="text-[10px] font-bold text-[#1E2720]/60">وقت الزيارة:</label>
+              <label className="text-[10px] font-bold text-slate-700">وقت الزيارة:</label>
               <input
                 type="time"
                 value={act.visit_time || act.time_slot || ''}
@@ -124,7 +131,7 @@ function ActivityCard({
             </div>
           ) : null}
           {index > 0 && act.kind !== 'transport' ? (
-            <div className="mt-2 grid grid-cols-2 gap-2">
+            <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
               <select
                 value={act.transit_mode || 'car'}
                 onChange={(e) =>
@@ -307,7 +314,11 @@ export default function ItineraryBuilderDaysPanel({
   ) => {
     patchDay(dayId, (day) => {
       const acts = dayToActivities(day).map((a) => (a.id === activityId ? { ...a, ...patch } : a));
-      return patchDayActivities(day, acts);
+      const next =
+        'visit_time' in patch || 'time_slot' in patch
+          ? sortActivitiesByVisitTime(acts)
+          : acts;
+      return patchDayActivities(day, next);
     });
   };
 
@@ -363,7 +374,7 @@ export default function ItineraryBuilderDaysPanel({
         }`}
       >
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-            <p className={`text-sm font-black ${isLight ? 'text-[#1E2720]' : 'text-gray-100'}`}>
+            <p className={`text-sm font-black ${isLight ? 'text-[#1E2720]' : 'text-slate-800'}`}>
               جدول اليوم — اسحب لإعادة الترتيب
             </p>
             <div className="flex gap-2">
@@ -393,7 +404,12 @@ export default function ItineraryBuilderDaysPanel({
           <DragDropContext onDragEnd={onDragEnd}>
             <div className="min-h-0 flex-1 space-y-3 overflow-y-auto pe-1">
               {activeDay ? (
-                <Droppable droppableId={activeDay.id}>
+                <Droppable
+                  droppableId={activeDay.id}
+                  key={`${activeDay.id}:${mapableActivities(dayToActivities(activeDay))
+                    .map((a) => a.id)
+                    .join(',')}`}
+                >
                   {(provided, snapshot) => {
                     const acts = mapableActivities(dayToActivities(activeDay));
                     return (
@@ -410,7 +426,7 @@ export default function ItineraryBuilderDaysPanel({
                       >
                         {acts.length === 0 ? (
                           <p
-                            className={`py-8 text-center text-xs ${isLight ? 'text-[#1E2720]/40' : 'text-white/40'}`}
+                            className={`py-8 text-center text-xs font-semibold ${isLight ? 'text-slate-600' : 'text-white/70'}`}
                           >
                             لا أنشطة — اضغط «إضافة نشاط» واختر من جدول places
                           </p>
@@ -459,7 +475,7 @@ export default function ItineraryBuilderDaysPanel({
                         }`}
                       >
                         <p
-                          className={`text-[10px] font-bold ${isLight ? 'text-[#1E2720]/45' : 'text-white/45'}`}
+                          className={`text-[10px] font-bold ${isLight ? 'text-slate-700' : 'text-white/80'}`}
                         >
                           إفلات في اليوم {dayIndex + 1}
                           {day.city ? ` (${day.city})` : ''}

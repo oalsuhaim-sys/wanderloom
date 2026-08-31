@@ -93,7 +93,7 @@ export default function ItineraryEditDashboardHeader({
               disabled={lockSaving}
               onClick={() => void toggleLock(!bypass24hLock)}
               className={`relative h-6 w-11 rounded-full transition ${
-                bypass24hLock ? 'bg-[#1E2720]' : 'bg-gray-300'
+                bypass24hLock ? 'bg-slate-100' : 'bg-gray-300'
               }`}
             >
               <span

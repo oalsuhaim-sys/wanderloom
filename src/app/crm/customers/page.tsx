@@ -98,16 +98,16 @@ export default function CustomersPage() {
   }
 
   if (loading) {
-    return <div className="min-h-screen p-8 text-center text-gray-500">جاري تحميل بيانات العملاء...</div>
+    return <div className="min-h-screen p-4 text-center text-gray-500 sm:p-6">جاري تحميل بيانات العملاء...</div>
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8 font-sans" dir="rtl">
+    <div className="min-h-screen bg-gray-50 p-4 font-sans sm:p-6" dir="rtl">
       {error ? (
         <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-900">{error}</div>
       ) : null}
 
-      <div className="mb-10 flex items-center justify-between">
+      <div className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="mb-2 text-3xl font-extrabold text-gray-900">إدارة العملاء 👥</h1>
           <p className="text-gray-500">ابنِ ملفاً شخصياً (DNA) لكل عميل لتقديم خدمة لا تُنسى</p>
@@ -128,7 +128,7 @@ export default function CustomersPage() {
                 </div>
                 <div className="min-w-0 flex-1">
                   <h3 className="text-lg font-bold text-gray-900">{displayName}</h3>
-                  <p className="text-sm text-gray-500" dir="ltr">
+                  <p className="whitespace-nowrap text-sm text-gray-500" dir="ltr">
                     {customer.phone_wa || '—'}
                   </p>
                 </div>
@@ -189,7 +189,7 @@ export default function CustomersPage() {
 
       {isModalOpen && selectedCustomer ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-md rounded-3xl bg-white p-8 shadow-2xl">
+          <div className="w-[95%] max-h-[90vh] max-w-md overflow-y-auto rounded-3xl bg-white p-4 shadow-2xl sm:p-6">
             <h2 className="mb-2 text-xl font-bold">إضافة وسم للعميل: {selectedCustomer.full_name?.trim() || '—'}</h2>
             <p className="mb-6 text-sm text-gray-500">اختر الصفات التي تميز هذا العميل لتسهيل خدمته مستقبلاً.</p>
 

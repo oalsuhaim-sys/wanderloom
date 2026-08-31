@@ -182,7 +182,7 @@ export function CrmReportsDashboard() {
 
   const { kpis, revenueBreakdown, recentTransactions, recentReceivables, clientTripHistory } =
     snapshot;
-  const breakdownTotal = revenueBreakdown.privateTrips + revenueBreakdown.groupTours;
+  const breakdownTotal = revenueBreakdown.privateTrips + revenueBreakdown.groupTrips;
 
   return (
     <div className={PAGE_BG} dir="rtl">
@@ -204,16 +204,18 @@ export function CrmReportsDashboard() {
           <div className="flex flex-wrap items-center gap-2">
             <Link
               href="/crm/finance"
-              className="rounded-xl border border-[#1A3B2A]/20 bg-[#1A3B2A] px-4 py-2 text-xs font-black text-white transition hover:bg-[#152e21]"
+              className="flex items-center gap-2 rounded-xl bg-[#D4AF37] px-5 py-2.5 text-sm font-extrabold text-black shadow-sm transition-all hover:bg-[#b8952d]"
             >
-              الذكاء المالي
+              <span aria-hidden>🤖</span>
+              <span>الذكاء المالي</span>
             </Link>
             <button
               type="button"
               onClick={() => void load()}
-              className="rounded-xl border border-[#C5A059]/35 bg-[#C5A059]/10 px-4 py-2 text-xs font-black text-[#C5A059] transition hover:bg-[#C5A059]/20"
+              className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 shadow-sm transition-all hover:bg-slate-50"
             >
-              تحديث
+              <span aria-hidden>🔄</span>
+              <span>تحديث</span>
             </button>
           </div>
         </header>
@@ -262,7 +264,7 @@ export function CrmReportsDashboard() {
             />
             <RevenueBar
               label="رحلات جماعية"
-              amount={revenueBreakdown.groupTours}
+              amount={revenueBreakdown.groupTrips}
               total={breakdownTotal}
               tone="emerald"
             />
@@ -276,15 +278,15 @@ export function CrmReportsDashboard() {
               {clientTripHistory.length} رحلة — المسارات · الطلبات · عروض الأسعار · السجل التاريخي
             </p>
           </div>
-          <div className="max-h-[560px] overflow-auto">
+          <div className="max-h-[560px] w-full overflow-x-auto overflow-y-auto">
             <table className="w-full min-w-[880px] text-right text-xs">
               <thead className="sticky top-0 z-10">
                 <tr className={TABLE_HEAD}>
                   <th className="px-4 py-3">العميل</th>
                   <th className="px-4 py-3">عنوان الرحلة</th>
                   <th className="px-4 py-3">الوجهة</th>
-                  <th className="px-4 py-3">تواريخ السفر</th>
-                  <th className="px-4 py-3">الحالة</th>
+                  <th className="whitespace-nowrap px-4 py-3">تواريخ السفر</th>
+                  <th className="whitespace-nowrap px-4 py-3">الحالة</th>
                 </tr>
               </thead>
               <tbody>
@@ -305,15 +307,15 @@ export function CrmReportsDashboard() {
                           {row.destinations}
                         </span>
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="whitespace-nowrap px-4 py-3">
                         <span className="inline-flex items-center gap-1 font-semibold text-[#0F172A]/70">
                           <CalendarDays className="h-3 w-3 shrink-0 text-[#C5A059]" aria-hidden />
                           {row.dateRange}
                         </span>
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="whitespace-nowrap px-4 py-3">
                         <span
-                          className={`inline-flex rounded-full px-2.5 py-0.5 text-[10px] font-black ${tripStatusClass(row.statusTone)}`}
+                          className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-0.5 text-[10px] font-black ${tripStatusClass(row.statusTone)}`}
                         >
                           {row.statusLabel}
                         </span>
@@ -342,11 +344,11 @@ export function CrmReportsDashboard() {
               المبالغ المستحقة: {formatInvoiceAmount(kpis.expectedReceivables)}
             </p>
           </div>
-          <div className="max-h-[420px] overflow-auto">
+          <div className="max-h-[420px] w-full overflow-x-auto overflow-y-auto">
             <table className="w-full min-w-[720px] text-right text-xs">
               <thead className="sticky top-0 z-10">
                 <tr className={TABLE_HEAD}>
-                  <th className="px-4 py-3">التاريخ</th>
+                  <th className="whitespace-nowrap px-4 py-3">التاريخ</th>
                   <th className="px-4 py-3">العميل</th>
                   <th className="px-4 py-3">الرحلة</th>
                   <th className="px-4 py-3">المبلغ</th>
@@ -363,7 +365,7 @@ export function CrmReportsDashboard() {
                 ) : (
                   recentReceivables.map((row) => (
                     <tr key={row.id} className={TABLE_ROW}>
-                      <td className="px-4 py-3 font-semibold text-[#0F172A]/70">{row.dateLabel}</td>
+                      <td className="whitespace-nowrap px-4 py-3 font-semibold text-[#0F172A]/70">{row.dateLabel}</td>
                       <td className="px-4 py-3 font-bold text-[#0F172A]">{row.clientName}</td>
                       <td className="px-4 py-3 font-semibold text-amber-900/85">{row.tripTitle}</td>
                       <td className="px-4 py-3 font-black text-amber-900" dir="ltr">
@@ -385,11 +387,11 @@ export function CrmReportsDashboard() {
               فواتير مدفوعة — السجل الكامل
             </p>
           </div>
-          <div className="max-h-[420px] overflow-auto">
+          <div className="max-h-[420px] w-full overflow-x-auto overflow-y-auto">
             <table className="w-full min-w-[720px] text-right text-xs">
               <thead className="sticky top-0 z-10">
                 <tr className={TABLE_HEAD}>
-                  <th className="px-4 py-3">التاريخ</th>
+                  <th className="whitespace-nowrap px-4 py-3">التاريخ</th>
                   <th className="px-4 py-3">العميل</th>
                   <th className="px-4 py-3">الرحلة</th>
                   <th className="px-4 py-3">المبلغ</th>
@@ -406,7 +408,7 @@ export function CrmReportsDashboard() {
                 ) : (
                   recentTransactions.map((row) => (
                     <tr key={row.id} className={TABLE_ROW}>
-                      <td className="px-4 py-3 font-semibold text-[#0F172A]/70">{row.dateLabel}</td>
+                      <td className="whitespace-nowrap px-4 py-3 font-semibold text-[#0F172A]/70">{row.dateLabel}</td>
                       <td className="px-4 py-3 font-bold text-[#0F172A]">{row.clientName}</td>
                       <td className="px-4 py-3 font-semibold text-[#B8941F]">{row.tripTitle}</td>
                       <td className="px-4 py-3 font-black text-[#0F172A]" dir="ltr">

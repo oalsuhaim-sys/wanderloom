@@ -14,6 +14,39 @@ function newLocalId(): string {
   return `row-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
+function visitTimeKey(item: { visit_time?: string | null; time_slot?: string | null }): string {
+  const s = String(item.visit_time || item.time_slot || '').trim();
+  if (!s) return '';
+  const match = /^(\d{1,2}):(\d{2})(?::\d{2})?$/.exec(s);
+  if (!match) return s;
+  return `${match[1]!.padStart(2, '0')}:${match[2]}`;
+}
+
+/**
+ * Sort day activities by visit_time (HH:MM). Missing times sink to the bottom.
+ * Hotel / experience stay pinned at the top (day anchors).
+ */
+export function sortActivitiesByVisitTime(activities: DayActivityDraft[]): DayActivityDraft[] {
+  const pinned: DayActivityDraft[] = [];
+  const sortable: DayActivityDraft[] = [];
+
+  for (const act of activities) {
+    if (act.kind === 'hotel' || act.kind === 'experience') pinned.push(act);
+    else sortable.push(act);
+  }
+
+  sortable.sort((a, b) => {
+    const ta = visitTimeKey(a);
+    const tb = visitTimeKey(b);
+    if (!ta && !tb) return 0;
+    if (!ta) return 1;
+    if (!tb) return -1;
+    return ta.localeCompare(tb);
+  });
+
+  return [...pinned, ...sortable];
+}
+
 function emptyActivityFields(): Omit<DayActivityDraft, 'id' | 'kind'> {
   return {
     visit_time: '',
@@ -285,7 +318,10 @@ export function applyPickerToDay(
   payload: { place: PlaceBankRow },
 ): ItineraryDayDraft {
   const acts = dayToActivities(day);
-  return patchDayActivities(day, [...acts, activityFromPlaceBank(payload.place)]);
+  return patchDayActivities(
+    day,
+    sortActivitiesByVisitTime([...acts, activityFromPlaceBank(payload.place)]),
+  );
 }
 
 /** أنشطة تظهر على الخريطة (أماكن + انتقالات ذات إحداثيات) */
@@ -297,8 +333,8 @@ export function geocodeQueryForActivity(act: DayActivityDraft): string {
   if (act.kind === 'place' && act.places_bank_id) {
     return placeBankGeocodeQuery({
       name: act.place_name,
-      city: act.city,
-      country: act.country,
+      city: act.city ?? '',
+      country: act.country ?? '',
     });
   }
   return [act.place_name, act.city, act.country].filter(Boolean).join(', ');

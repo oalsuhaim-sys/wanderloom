@@ -7,7 +7,8 @@ const DEFAULT_IDLE_MS = 7_200_000; // 2 hours
 export function useVipSessionIdleLock(active: boolean, idleMs = DEFAULT_IDLE_MS) {
   const [sessionLocked, setSessionLocked] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const lastActivityRef = useRef(Date.now());
+  /** Seeded in effects / activity handlers — never call Date.now() during render. */
+  const lastActivityRef = useRef(0);
 
   const clearTimer = useCallback(() => {
     if (timerRef.current) {
@@ -19,7 +20,11 @@ export function useVipSessionIdleLock(active: boolean, idleMs = DEFAULT_IDLE_MS)
   const scheduleLock = useCallback(() => {
     clearTimer();
     if (!active || sessionLocked) return;
-    const elapsed = Date.now() - lastActivityRef.current;
+    const now = Date.now();
+    if (lastActivityRef.current === 0) {
+      lastActivityRef.current = now;
+    }
+    const elapsed = now - lastActivityRef.current;
     const remaining = Math.max(idleMs - elapsed, 0);
     timerRef.current = setTimeout(() => setSessionLocked(true), remaining);
   }, [active, clearTimer, idleMs, sessionLocked]);

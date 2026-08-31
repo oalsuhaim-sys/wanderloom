@@ -79,7 +79,7 @@ export async function notifyLeadKanbanStatusAction(
   }
 
   // Only automate these operational columns
-  if (status !== 'awaiting_payment' && status !== 'delivered') {
+  if (status !== 'awaiting_payment' && status !== 'payment_confirmed') {
     return {
       ok: true,
       sent: false,
@@ -122,7 +122,7 @@ export async function notifyLeadKanbanStatusAction(
     if (status === 'awaiting_payment') {
       const paymentLink = await resolvePaymentOrReviewLink(admin, lead, origin);
       message = buildKanbanAwaitingPaymentWhatsAppMessage(name, paymentLink);
-    } else if (status === 'delivered') {
+    } else if (status === 'payment_confirmed') {
       message = buildKanbanActiveTripWhatsAppMessage(name);
     }
 

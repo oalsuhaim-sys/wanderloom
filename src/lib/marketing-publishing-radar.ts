@@ -52,9 +52,8 @@ export function urgencyMeta(urgency: MarketingPublishUrgency): {
       emoji: '🔴',
       label: 'ينشر اليوم',
       badge: 'عاجل (اليوم)',
-      cardClass:
-        'border-red-300/70 bg-gradient-to-br from-red-50/90 via-[#FEFDF9] to-white shadow-[0_0_20px_rgba(239,68,68,0.12)] ring-1 ring-red-200/60',
-      dotClass: 'bg-red-500 animate-pulse shadow-[0_0_10px_rgba(239,68,68,0.65)]',
+      cardClass: 'border-rose-200 bg-rose-50/70 ring-1 ring-rose-100',
+      dotClass: 'bg-rose-500 animate-pulse shadow-[0_0_8px_rgba(244,63,94,0.35)]',
     };
   }
   if (urgency === 'tomorrow') {
@@ -62,17 +61,16 @@ export function urgencyMeta(urgency: MarketingPublishUrgency): {
       emoji: '🟡',
       label: 'مجدول لغد',
       badge: 'قريباً (غداً)',
-      cardClass:
-        'border-[#D4AF37]/45 bg-gradient-to-br from-[#FFFBF0] via-[#FEFDF9] to-white shadow-[0_0_16px_rgba(212,175,55,0.14)] ring-1 ring-[#D4AF37]/25',
-      dotClass: 'bg-[#D4AF37] shadow-[0_0_8px_rgba(212,175,55,0.5)]',
+      cardClass: 'border-[#D4AF37]/35 bg-[#D4AF37]/10 ring-1 ring-[#D4AF37]/15',
+      dotClass: 'bg-[#D4AF37] shadow-[0_0_8px_rgba(212,175,55,0.35)]',
     };
   }
   return {
     emoji: '⚪',
     label: 'لاحقاً',
     badge: 'لاحقاً',
-    cardClass: 'border-[#1E2720]/10 bg-[#F6F4F0]/80 ring-1 ring-[#1E2720]/8',
-    dotClass: 'bg-slate-300',
+    cardClass: 'border-slate-200 bg-slate-50/80 ring-1 ring-slate-100',
+    dotClass: 'bg-slate-400',
   };
 }
 

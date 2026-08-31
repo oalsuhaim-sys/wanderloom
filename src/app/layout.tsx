@@ -25,8 +25,8 @@ const geistMono = Geist_Mono({
 
 const tajawal = Tajawal({
   variable: "--font-tajawal",
-  subsets: ["arabic"],
-  weight: ["400", "500", "700", "800", "900"],
+  subsets: ["arabic", "latin"],
+  weight: ["300", "400", "500", "700", "800", "900"],
   display: "swap",
 });
 
@@ -86,7 +86,7 @@ export default function RootLayout({
         <meta name="description" content={VIP_APP_DESCRIPTION} />
         <link rel="apple-touch-icon" href="/icon-192.png" />
       </head>
-      <body className="no-scrollbar flex min-h-full flex-col font-[family-name:var(--font-tajawal),system-ui,sans-serif]">
+      <body className={`${tajawal.className} no-scrollbar flex min-h-full flex-col font-sans`}>
         <LanguageProvider>
           <LocaleHtmlSync />
           <PwaServiceWorkerRegister />

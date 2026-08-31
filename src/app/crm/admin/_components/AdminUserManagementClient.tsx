@@ -21,10 +21,10 @@ import {
   type AdminTeamMember,
 } from '@/app/actions/adminActions';
 import {
-  CRM_PERMISSION_KEYS,
-  CRM_PERMISSION_LABELS,
+  ACCOUNT_PERMISSION_OPTIONS,
   DEFAULT_CRM_PERMISSIONS,
-  type CrmPermissionKey,
+  FULL_CRM_PERMISSIONS,
+  type GranularPermissionKey,
   type CrmPermissions,
 } from '@/lib/crm-permissions';
 import { getClientAccessToken } from '@/lib/crm-session-token';
@@ -41,28 +41,28 @@ function PermissionCheckboxGrid({
   permissions: CrmPermissions;
   isAdmin: boolean;
   disabled?: boolean;
-  onTogglePermission: (key: CrmPermissionKey, value: boolean) => void;
+  onTogglePermission: (key: GranularPermissionKey, value: boolean) => void;
   onToggleAdmin: (value: boolean) => void;
 }) {
   return (
     <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-      {CRM_PERMISSION_KEYS.map((key) => (
+      {ACCOUNT_PERMISSION_OPTIONS.map((perm) => (
         <label
-          key={key}
-          className={`flex cursor-pointer items-center gap-2.5 rounded-xl border px-3 py-2.5 text-xs font-bold transition ${
-            isAdmin || permissions[key]
+          key={perm.id}
+          className={`flex cursor-pointer items-start gap-2.5 rounded-xl border px-3 py-2.5 text-xs font-bold transition ${
+            isAdmin || permissions[perm.id]
               ? 'border-[#cda04c]/45 bg-[#cda04c]/10 text-white'
               : 'border-white/10 bg-white/[0.03] text-white/70'
           } ${disabled ? 'pointer-events-none opacity-50' : 'hover:border-[#cda04c]/35'}`}
         >
           <input
             type="checkbox"
-            className="h-4 w-4 rounded border-white/20 accent-[#cda04c]"
-            checked={isAdmin || permissions[key]}
+            className="mt-0.5 h-4 w-4 shrink-0 rounded border-white/20 accent-[#cda04c]"
+            checked={isAdmin || permissions[perm.id]}
             disabled={disabled || isAdmin}
-            onChange={(e) => onTogglePermission(key, e.target.checked)}
+            onChange={(e) => onTogglePermission(perm.id, e.target.checked)}
           />
-          <span>{CRM_PERMISSION_LABELS[key]}</span>
+          <span className="leading-snug">{perm.label}</span>
         </label>
       ))}
       <label
@@ -158,7 +158,7 @@ export default function AdminUserManagementClient() {
     }
   }
 
-  function handleCreatePermissionToggle(key: CrmPermissionKey, value: boolean) {
+  function handleCreatePermissionToggle(key: GranularPermissionKey, value: boolean) {
     if (createIsAdmin) return;
     setCreatePermissions((prev) => ({ ...prev, [key]: value }));
   }
@@ -166,9 +166,7 @@ export default function AdminUserManagementClient() {
   function handleCreateAdminToggle(value: boolean) {
     setCreateIsAdmin(value);
     if (value) {
-      setCreatePermissions(
-        Object.fromEntries(CRM_PERMISSION_KEYS.map((k) => [k, true])) as CrmPermissions,
-      );
+      setCreatePermissions({ ...FULL_CRM_PERMISSIONS });
     }
   }
 
@@ -220,7 +218,7 @@ export default function AdminUserManagementClient() {
     }
   }
 
-  function handleRowPermissionToggle(profile: TeamProfile, key: CrmPermissionKey, value: boolean) {
+  function handleRowPermissionToggle(profile: TeamProfile, key: GranularPermissionKey, value: boolean) {
     if (profile.is_admin) return;
     const next = { ...profile.permissions, [key]: value };
     setProfiles((prev) => prev.map((p) => (p.id === profile.id ? { ...p, permissions: next } : p)));
@@ -228,9 +226,7 @@ export default function AdminUserManagementClient() {
   }
 
   function handleRowAdminToggle(profile: TeamProfile, value: boolean) {
-    const nextPermissions = value
-      ? (Object.fromEntries(CRM_PERMISSION_KEYS.map((k) => [k, true])) as CrmPermissions)
-      : profile.permissions;
+    const nextPermissions = value ? { ...FULL_CRM_PERMISSIONS } : profile.permissions;
     setProfiles((prev) =>
       prev.map((p) =>
         p.id === profile.id ? { ...p, is_admin: value, permissions: nextPermissions } : p,
@@ -340,7 +336,7 @@ export default function AdminUserManagementClient() {
           </div>
 
           <div>
-            <p className="mb-3 text-xs font-black text-white/50">صلاحيات الوصول</p>
+            <p className="mb-3 text-xs font-black text-amber-300/90">الصلاحيات حسب أقسام اللوحة:</p>
             <PermissionCheckboxGrid
               permissions={createPermissions}
               isAdmin={createIsAdmin}
@@ -376,9 +372,13 @@ export default function AdminUserManagementClient() {
               <thead>
                 <tr className="border-b border-slate-200 text-xs font-black text-slate-500">
                   <th className="px-3 py-3">العضو</th>
-                  {CRM_PERMISSION_KEYS.map((key) => (
-                    <th key={key} className="px-2 py-3 text-center">
-                      {CRM_PERMISSION_LABELS[key]}
+                  {ACCOUNT_PERMISSION_OPTIONS.map((perm) => (
+                    <th
+                      key={perm.id}
+                      className="max-w-[7.5rem] px-2 py-3 text-center text-[10px] font-black leading-snug"
+                      title={perm.label}
+                    >
+                      {perm.label}
                     </th>
                   ))}
                   <th className="px-2 py-3 text-center">مدير</th>
@@ -408,14 +408,14 @@ export default function AdminUserManagementClient() {
                           </span>
                         ) : null}
                       </td>
-                      {CRM_PERMISSION_KEYS.map((key) => (
-                        <td key={key} className="px-2 py-4 text-center">
+                      {ACCOUNT_PERMISSION_OPTIONS.map((perm) => (
+                        <td key={perm.id} className="px-2 py-4 text-center">
                           <input
                             type="checkbox"
                             className="h-4 w-4 accent-[#cda04c] disabled:opacity-40"
-                            checked={profile.is_admin || profile.permissions[key]}
+                            checked={profile.is_admin || profile.permissions[perm.id]}
                             disabled={isSelf || rowBusy || profile.is_suspended || profile.is_admin}
-                            onChange={(e) => handleRowPermissionToggle(profile, key, e.target.checked)}
+                            onChange={(e) => handleRowPermissionToggle(profile, perm.id, e.target.checked)}
                           />
                         </td>
                       ))}

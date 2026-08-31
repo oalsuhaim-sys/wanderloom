@@ -3,7 +3,7 @@ import {
   formatInterestsForDnaColumn,
 } from '@/lib/client-dna-columns';
 import { CLIENT_DNA_ACTIVITY_OPTIONS, CLIENT_DNA_INTEREST_SUGGESTIONS, parseTravelDnaForm } from '@/lib/clientsTravelDna';
-import { setLeadPipelineStatus } from '@/lib/lead-pipeline-automation';
+import { updatePipelineStatus } from '@/lib/lead-pipeline-automation';
 import { normalizeLeadStatus, type LeadStatus } from '@/lib/lead-status';
 import { supabase } from '@/lib/supabase';
 
@@ -489,7 +489,7 @@ async function advanceLeadToMeetingAfterDna(
 ): Promise<void> {
   try {
     // DNA submitted (+ calendar already on the form) → Kanban «اجتماع العميل»
-    await setLeadPipelineStatus(sb, { clientId, force: false }, 'meeting');
+    await updatePipelineStatus(sb, { clientId, force: true }, 'meeting');
     // Belt-and-suspenders: direct update if pipeline helper no-ops
     const { error } = await sb
       .from('leads')

@@ -142,10 +142,10 @@ export async function fetchItineraryTemplates(
       .from('itinerary_templates')
       .select(basicSelect)
       .order('created_at', { ascending: false });
-    data = (basic.data as Record<string, unknown>[]) ?? null;
+    data = (basic.data as unknown as Record<string, unknown>[]) ?? null;
     error = basic.error;
   } else {
-    data = (extended.data as Record<string, unknown>[]) ?? null;
+    data = (extended.data as unknown as Record<string, unknown>[]) ?? null;
     error = extended.error;
   }
 
@@ -158,8 +158,11 @@ export async function fetchItineraryTemplates(
         destination: String(row.destination ?? '').trim() || null,
         days_data: row.days_data,
         hotel_details: row.hotel_details,
-        source_itinerary_id: row.source_itinerary_id as string | number | null | undefined,
-        created_at: row.created_at as string | undefined,
+        source_itinerary_id:
+          row.source_itinerary_id != null
+            ? (row.source_itinerary_id as string | number)
+            : null,
+        created_at: row.created_at != null ? String(row.created_at) : undefined,
       })),
       usedFallback: false,
     };
@@ -179,14 +182,14 @@ export async function fetchItineraryTemplates(
   if (fallback.error) throw new Error(formatSupabaseTemplateError(fallback.error));
 
   return {
-    templates: ((fallback.data as Record<string, unknown>[]) ?? []).map((row) => ({
+    templates: ((fallback.data as unknown as Record<string, unknown>[]) ?? []).map((row) => ({
       id: String(row.id),
       title: String(row.title ?? 'قالب'),
       destination: String(row.destination ?? '').trim() || null,
       days_data: row.days_data,
       hotel_details: row.hotel_details,
-      source_itinerary_id: row.id,
-      created_at: row.created_at as string | undefined,
+      source_itinerary_id: (row.id as string | number | null | undefined) ?? null,
+      created_at: row.created_at != null ? String(row.created_at) : undefined,
     })),
     usedFallback: true,
   };

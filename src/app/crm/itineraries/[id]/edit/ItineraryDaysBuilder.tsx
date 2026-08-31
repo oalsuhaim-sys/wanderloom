@@ -26,6 +26,7 @@ import {
   mapableActivities,
   moveActivityBetweenDays,
   patchDayActivities,
+  sortActivitiesByVisitTime,
 } from '@/lib/itinerary-day-activities';
 import type { ProximityOrigin } from '@/lib/places-proximity';
 import { placeBankCategoryLabel } from '@/lib/places-bank';
@@ -75,7 +76,7 @@ function TimelineCard({
       <div className="flex w-9 shrink-0 flex-col items-center pt-1">
         <span
           className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold ${
-            isOrigin ? 'bg-[#D4AF37] text-[#1E2720] ring-2 ring-[#1E2720]' : 'bg-[#1E2720] text-[#D4AF37]'
+            isOrigin ? 'bg-[#D4AF37] text-[#1E2720] ring-2 ring-[#1E2720]' : 'bg-slate-100 text-[#D4AF37]'
           }`}
         >
           {index + 1}
@@ -117,10 +118,18 @@ function TimelineCard({
                   {act.place_name || kindLabel(act.kind)}
                 </h3>
                 {act.kind === 'place' ? (
-                  <p className="text-[10px] font-medium text-[#1E2720]/55">
-                    {placeBankCategoryLabel(act.category)}
-                    {act.city ? ` · ${act.city}` : ''}
-                  </p>
+                  <div className="mt-0.5 space-y-0.5">
+                    {act.category ? (
+                      <p className="text-[10px] font-bold text-slate-700">
+                        {placeBankCategoryLabel(act.category)}
+                      </p>
+                    ) : null}
+                    {act.city ? (
+                      <span className="block text-xs font-bold text-slate-700">
+                        • {act.city}
+                      </span>
+                    ) : null}
+                  </div>
                 ) : null}
               </div>
               <button
@@ -135,7 +144,7 @@ function TimelineCard({
 
             {act.kind === 'place' || act.kind === 'transport' ? (
               <div className="mt-2 flex items-center gap-2">
-                <label className="text-[10px] font-bold text-[#1E2720]/70">وقت الزيارة:</label>
+                <label className="text-[10px] font-bold text-slate-700">وقت الزيارة:</label>
                 <input
                   type="time"
                   className={VIP_INPUT}
@@ -174,7 +183,7 @@ function TimelineCard({
             {index > 0 && act.kind !== 'transport' ? (
               <div className="mt-3 rounded-lg border border-[#D4AF37] bg-[#FAFAFA] p-2.5">
                 <p className="mb-2 text-[10px] font-bold text-[#1E2720]">الانتقال</p>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                   <label>
                     <span className="mb-0.5 block text-[10px] font-bold text-[#1E2720]/70">
                       الوسيلة
@@ -275,7 +284,11 @@ export default function ItineraryDaysBuilder({
   const update = (dayId: string, id: string, patch: Partial<Act>) => {
     patchDay(dayId, (day) => {
       const acts = dayToActivities(day).map((a) => (a.id === id ? { ...a, ...patch } : a));
-      return patchDayActivities(day, acts);
+      const next =
+        'visit_time' in patch || 'time_slot' in patch
+          ? sortActivitiesByVisitTime(acts)
+          : acts;
+      return patchDayActivities(day, next);
     });
   };
 
@@ -285,7 +298,7 @@ export default function ItineraryDaysBuilder({
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
             <h2 className="text-sm font-bold text-[#1E2720]">منصة بناء المسار</h2>
-            <p className="text-[11px] font-medium text-[#1E2720]/55">The Builder — اسحب المحطات لإعادة الترتيب</p>
+            <p className="text-[11px] font-medium text-slate-600">The Builder — اسحب المحطات لإعادة الترتيب</p>
           </div>
           {activeDay ? (
             <button
@@ -340,7 +353,12 @@ export default function ItineraryDaysBuilder({
       <DragDropContext onDragEnd={onDragEnd}>
         <div className={`${VIP_PANEL_BODY} bg-[#FAFAFA]`}>
           {activeDay ? (
-            <Droppable droppableId={activeDay.id}>
+            <Droppable
+              droppableId={activeDay.id}
+              key={`${activeDay.id}:${mapableActivities(dayToActivities(activeDay))
+                .map((a) => a.id)
+                .join(',')}`}
+            >
               {(provided, snap) => {
                 const acts = mapableActivities(dayToActivities(activeDay));
                 return (
@@ -350,7 +368,7 @@ export default function ItineraryDaysBuilder({
                     className={`min-h-[240px] rounded-lg p-1 ${snap.isDraggingOver ? 'bg-[#D4AF37]/10' : ''}`}
                   >
                     {acts.length === 0 ? (
-                      <p className="py-24 text-center text-sm font-semibold text-[#1E2720]/45">
+                      <p className="py-24 text-center text-sm font-semibold text-slate-600">
                         اضغط «إضافة للمسار ➕» من الخزنة (يمين) لبناء اليوم
                       </p>
                     ) : (
@@ -394,7 +412,7 @@ export default function ItineraryDaysBuilder({
                         : 'border-[#D4AF37]/50'
                     }`}
                   >
-                    <p className="text-[10px] font-bold text-[#1E2720]/40">
+                    <p className="text-[10px] font-bold text-slate-600">
                       إفلات في اليوم {i + 1}
                     </p>
                     {provided.placeholder}

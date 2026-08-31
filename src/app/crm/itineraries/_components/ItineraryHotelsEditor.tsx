@@ -18,6 +18,10 @@ import {
 import { type SupplierBriefClientContext } from '@/lib/supplier-whatsapp-brief';
 import { supabase } from '@/lib/supabase';
 
+const labelClass = 'mb-2 block text-xs font-semibold text-slate-700';
+const inputClass =
+  'w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-900 outline-none transition focus:border-[#D4AF37] placeholder:text-slate-600 [color-scheme:light]';
+
 type Props = {
   hotels: ItineraryHotelEntry[];
   onChange: (hotels: ItineraryHotelEntry[]) => void;
@@ -91,51 +95,54 @@ export default function ItineraryHotelsEditor({
         return (
           <div
             key={hotel.id}
-            className="rounded-xl border border-[#1e3f20]/10 bg-[#FAFAFA] p-4"
+            className="mb-6 rounded-2xl border border-slate-200 bg-slate-50 p-6 shadow-xl"
           >
             <div className="mb-3 flex items-center justify-between gap-2">
-              <span className="text-sm font-bold text-[#1E2720]">فندق {index + 1}</span>
+              <span className="flex items-center gap-2 text-base font-bold text-[#D4AF37]">
+                فندق {index + 1}
+              </span>
               {hotels.length > 1 ? (
                 <button
                   type="button"
                   onClick={() => removeHotel(hotel.id)}
-                  className="text-xs font-bold text-red-600 hover:underline"
+                  className="text-xs font-bold text-red-400 hover:text-red-300 hover:underline"
                 >
                   حذف
                 </button>
               ) : null}
             </div>
 
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
-              <label className="flex flex-col gap-1.5 md:col-span-2">
-                <span className="text-sm font-bold text-gray-600">اسم الفندق</span>
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-4">
+              <label className="block md:col-span-2 lg:col-span-2">
+                <span className={labelClass}>اسم الفندق</span>
                 <input
                   type="text"
                   value={hotel.name}
                   onChange={(e) => updateHotel(hotel.id, { name: e.target.value })}
                   placeholder="فندق الريتز كارلتون"
-                  className="rounded-lg border border-gray-300 bg-white p-2.5 text-sm text-gray-900 outline-none focus:border-[#cda04c]"
+                  className={inputClass}
                 />
               </label>
-              <label className="flex flex-col gap-1.5">
-                <span className="text-sm font-bold text-gray-600">رقم التأكيد (PNR)</span>
+              <label className="block">
+                <span className={labelClass}>رقم التأكيد (PNR)</span>
                 <input
                   type="text"
                   value={hotel.pnr}
                   onChange={(e) => updateHotel(hotel.id, { pnr: e.target.value })}
                   placeholder="ABC12X"
-                  className="rounded-lg border border-gray-300 bg-white p-2.5 text-sm text-gray-900 outline-none focus:border-[#cda04c]"
+                  dir="ltr"
+                  className={inputClass}
                 />
               </label>
-              <label className="flex flex-col gap-1.5">
-                <span className="text-sm font-bold text-gray-600">تسجيل الدخول</span>
+              <label className="block">
+                <span className={labelClass}>تسجيل الدخول</span>
                 <VipDateField
                   value={hotel.checkIn}
                   onChange={(v) => updateHotel(hotel.id, { checkIn: v })}
                 />
               </label>
-              <label className="flex flex-col gap-1.5">
-                <span className="text-sm font-bold text-gray-600">تسجيل الخروج</span>
+              <label className="block">
+                <span className={labelClass}>تسجيل الخروج</span>
                 <VipDateField
                   value={hotel.checkOut}
                   onChange={(v) => updateHotel(hotel.id, { checkOut: v })}
@@ -143,7 +150,7 @@ export default function ItineraryHotelsEditor({
               </label>
             </div>
 
-            <div className="mt-3 border-t border-gray-200 pt-3">
+            <div className="mt-5 border-t border-slate-200 pt-5">
               <SupplierContactActions
                 hotel={{
                   name: hotel.name,
@@ -179,7 +186,7 @@ export default function ItineraryHotelsEditor({
       <button
         type="button"
         onClick={addHotel}
-        className="self-start rounded-lg border border-dashed border-[#cda04c]/60 bg-[#FFFBF0] px-4 py-2 text-sm font-bold text-[#1e3f20] transition hover:border-[#cda04c]"
+        className="self-start rounded-xl border border-dashed border-[#D4AF37]/50 bg-white px-4 py-2.5 text-sm font-bold text-[#D4AF37] transition hover:border-[#D4AF37] hover:bg-slate-50"
       >
         + إضافة فندق آخر
       </button>

@@ -11,6 +11,13 @@ export type GetFinancialAnalyticsResult =
   | { ok: true; snapshot: FinancialAnalyticsSnapshot }
   | { ok: false; error: string };
 
+const INVOICE_SELECTS = [
+  'id, client_id, quote_id, trip_title, amount, type, status, created_at, updated_at, paid_at, receipt_url',
+  'id, client_id, quote_id, trip_title, amount, type, status, created_at, updated_at, paid_at',
+  'id, quote_id, amount, type, status, created_at, paid_at',
+  '*',
+] as const;
+
 async function fetchAdmin(
   table: string,
   select: string,
@@ -31,6 +38,26 @@ async function fetchAdmin(
   return (data ?? []) as unknown as Record<string, unknown>[];
 }
 
+async function fetchAllInvoicesAdmin(): Promise<Record<string, unknown>[]> {
+  const admin = createSupabaseAdminClient();
+  for (const select of INVOICE_SELECTS) {
+    const { data, error } = await admin
+      .from('invoices')
+      .select(select)
+      .order('created_at', { ascending: false })
+      .limit(5000);
+
+    if (!error) {
+      return (data ?? []) as unknown as Record<string, unknown>[];
+    }
+    console.warn('[financial-analytics-admin] invoices:', error.message);
+    if (!/column|schema cache|does not exist/i.test(error.message ?? '')) {
+      break;
+    }
+  }
+  return [];
+}
+
 export async function getFinancialAnalyticsAction(): Promise<GetFinancialAnalyticsResult> {
   const serviceKeyError = assertServiceRoleKeyConfigured();
   if (serviceKeyError) return { ok: false, error: serviceKeyError };
@@ -45,10 +72,7 @@ export async function getFinancialAnalyticsAction(): Promise<GetFinancialAnalyti
         'quotations',
         'id, title, destinations, status, total_estimated_cost, expected_profit, grand_total, paid_amount, created_at',
       ),
-      fetchAdmin(
-        'invoices',
-        'id, quote_id, amount, status, paid_at, created_at, type',
-      ),
+      fetchAllInvoicesAdmin(),
       fetchAdmin('experts', 'id, name, status'),
       fetchAdmin(
         'client_trips',
@@ -56,17 +80,10 @@ export async function getFinancialAnalyticsAction(): Promise<GetFinancialAnalyti
       ),
     ]);
 
-    const paidInvoices = invoices.filter((row) => {
-      const s = String(row.status ?? '')
-        .trim()
-        .toLowerCase();
-      return s === 'paid' || s === 'fully_paid' || s.includes('paid') || s.includes('مدفوع');
-    });
-
     const snapshot = buildFinancialAnalyticsSnapshot({
       itineraries,
       quotations,
-      paidInvoices,
+      invoices,
       experts,
       legacyClientTrips: clientTrips,
     });

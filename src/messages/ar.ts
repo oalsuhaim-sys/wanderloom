@@ -273,6 +273,8 @@ export const ar = {
       invalidEmail: 'يرجى إدخال بريد إلكتروني صحيح.',
       ageRequired: 'يرجى إدخال العمر.',
       invalidAge: 'يرجى إدخال عمر صحيح.',
+      birthDateRequired: 'يرجى إدخال تاريخ الميلاد.',
+      invalidBirthDate: 'يرجى إدخال تاريخ ميلاد صالح.',
     },
   },
 
@@ -284,4 +286,13 @@ export const ar = {
   },
 } as const;
 
-export type AppMessages = typeof ar;
+type DeepStringify<T> = T extends string
+  ? string
+  : T extends ReadonlyArray<infer U>
+    ? ReadonlyArray<DeepStringify<U>>
+    : T extends object
+      ? { [K in keyof T]: DeepStringify<T[K]> }
+      : T;
+
+/** Shared message shape — string values (not Arabic string literals) so `en` can assign. */
+export type AppMessages = DeepStringify<typeof ar>;

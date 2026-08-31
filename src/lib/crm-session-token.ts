@@ -1,3 +1,7 @@
+import {
+  isJwtClockSkewError,
+  recoverSupabaseSessionFromClockSkew,
+} from '@/lib/supabase/auth-clock-skew';
 import { supabase } from '@/lib/supabase';
 
 /** يجلب access_token للجلسة الحالية — مع محاولة refresh قبل Server Actions */
@@ -16,7 +20,27 @@ export async function getClientAccessToken(): Promise<string> {
     return refreshed.session.access_token;
   }
 
-  const { data: userData } = await supabase.auth.getUser();
+  if (isJwtClockSkewError(refreshError)) {
+    const recovered = await recoverSupabaseSessionFromClockSkew(supabase);
+    if (recovered) {
+      const { data: afterSkew } = await supabase.auth.getSession();
+      if (afterSkew.session?.access_token) {
+        return afterSkew.session.access_token;
+      }
+    }
+  }
+
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+  if (isJwtClockSkewError(userError)) {
+    const recovered = await recoverSupabaseSessionFromClockSkew(supabase);
+    if (recovered) {
+      const { data: afterSkew } = await supabase.auth.getSession();
+      if (afterSkew.session?.access_token) {
+        return afterSkew.session.access_token;
+      }
+    }
+  }
+
   if (!userData.user) {
     throw new Error('انتهت الجلسة — يرجى تسجيل الدخول مرة أخرى.');
   }

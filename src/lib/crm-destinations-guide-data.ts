@@ -15,6 +15,15 @@ export type CrmGuideCountryDef = {
 
 export const CRM_DESTINATIONS_GUIDE = [
   {
+    id: 'indonesia',
+    labelAr: 'إندونيسيا',
+    cities: [
+      { id: 'bali', labelAr: 'بالي' },
+      { id: 'jakarta', labelAr: 'جاكرتا' },
+      { id: 'yogyakarta', labelAr: 'يوجياكارتا' },
+    ],
+  },
+  {
     id: 'japan',
     labelAr: 'اليابان',
     cities: [

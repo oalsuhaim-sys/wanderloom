@@ -65,15 +65,15 @@ export function CrmSlideOver({
         role="dialog"
         aria-modal="true"
         aria-labelledby={labelledBy}
-        className={`${CRM_DRAWER_PANEL} flex flex-col`}
+        className={`${CRM_DRAWER_PANEL} flex flex-col overflow-hidden`}
       >
-        <header className="sticky top-0 z-10 flex items-start justify-between gap-3 border-b border-gray-100 bg-[#F9F9F6]/95 px-5 py-4 backdrop-blur-md">
+        <header className="sticky top-0 z-10 flex shrink-0 items-start justify-between gap-3 rounded-t-2xl border-b border-[#2D3F3A] bg-[#1A2421] p-6 text-white">
           <div className="min-w-0 text-right">
-            <h2 id={labelledBy} className="text-lg font-black text-[#1A3B2A]">
+            <h2 id={labelledBy} className="text-xl font-bold text-white">
               {title}
             </h2>
             {subtitle ? (
-              <p className="mt-1 text-xs font-semibold text-gray-500">{subtitle}</p>
+              <p className="mt-1 text-sm text-slate-400">{subtitle}</p>
             ) : null}
           </div>
           <button
@@ -82,17 +82,19 @@ export function CrmSlideOver({
               if (!busy) onClose();
             }}
             disabled={busy}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 transition hover:border-[#C5A059]/40 hover:text-[#1A3B2A] disabled:opacity-50"
+            className="rounded-xl border border-[#2D3F3A] bg-[#22302C] p-2 text-slate-300 transition hover:text-white disabled:opacity-50"
             aria-label="إغلاق"
           >
             <X className="h-4 w-4" aria-hidden />
           </button>
         </header>
 
-        <div className="flex-1 overflow-y-auto px-5 py-5">{children}</div>
+        <div className="min-h-0 flex-1 overflow-y-auto bg-[#22302C] px-5 py-5">
+          {children}
+        </div>
 
         {footer ? (
-          <footer className="sticky bottom-0 border-t border-gray-100 bg-[#F9F9F6]/95 px-5 py-4 backdrop-blur-md">
+          <footer className="sticky bottom-0 shrink-0 border-t border-[#2D3F3A] bg-[#1A2421] px-5 py-4">
             {footer}
           </footer>
         ) : null}

@@ -5,6 +5,7 @@ import { Loader2 } from 'lucide-react';
 
 import { createSession, updateSession } from '@/app/crm/services/sessions';
 import type { Session, SessionInsert } from '@/types/session-tables';
+import { CRM_BTN_PRIMARY, CRM_INPUT, CRM_TEXTAREA } from '@/lib/crm-luxury-ui';
 
 type SessionFormProps = {
   mode?: 'create' | 'edit';
@@ -92,18 +93,20 @@ export function SessionForm({ mode = 'create', initialSession = null, onSaved, o
     <form
       onSubmit={handleSubmit}
       dir="rtl"
-      className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm"
+      className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-[#2D3F3A] dark:bg-[#22302C]"
     >
-      <h2 className="text-sm font-black text-[#1C4532]">{mode === 'edit' ? 'تعديل جلسة' : 'إضافة جلسة جديدة'}</h2>
-      <p className="mt-1 text-xs font-bold text-stone-500">
+      <h2 className="text-sm font-bold text-slate-900 dark:text-white">
+        {mode === 'edit' ? 'تعديل جلسة' : 'إضافة جلسة جديدة'}
+      </h2>
+      <p className="mt-1 text-xs font-medium text-slate-500">
         {mode === 'edit' ? 'عدّل تفاصيل الجلسة في الحقول أدناه.' : 'أدخل تفاصيل الجلسة الجديدة أدناه.'}
       </p>
 
       <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-6 lg:gap-x-4 lg:gap-y-3">
         <div className="sm:col-span-2 lg:col-span-6">
-          <label className="mb-1 block text-xs font-black text-[#1C4532]">عنوان الجلسة *</label>
+          <label className="mb-1 block text-xs font-semibold text-slate-500">عنوان الجلسة *</label>
           <input
-            className="w-full rounded-xl border border-stone-200 bg-stone-50 px-3 py-2 text-sm font-bold text-stone-800 outline-none ring-[#C9A84C] focus:border-[#C9A84C] focus:ring-2"
+            className={CRM_INPUT}
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="مثال: جلسة تعريفية عن التخطيط للسفر"
@@ -111,19 +114,19 @@ export function SessionForm({ mode = 'create', initialSession = null, onSaved, o
         </div>
 
         <div className="lg:col-span-2">
-          <label className="mb-1 block text-xs font-black text-[#1C4532]">تاريخ الجلسة *</label>
+          <label className="mb-1 block text-xs font-semibold text-slate-500">تاريخ الجلسة *</label>
           <input
             type="date"
-            className="w-full rounded-xl border border-stone-200 bg-stone-50 px-3 py-2 text-sm font-bold text-stone-800 outline-none ring-[#C9A84C] focus:border-[#C9A84C] focus:ring-2"
+            className={CRM_INPUT}
             value={date}
             onChange={(e) => setDate(e.target.value)}
           />
         </div>
 
         <div className="lg:col-span-2">
-          <label className="mb-1 block text-xs font-black text-[#1C4532]">نوع الجلسة *</label>
+          <label className="mb-1 block text-xs font-semibold text-slate-500">نوع الجلسة *</label>
           <select
-            className="w-full rounded-xl border border-stone-200 bg-stone-50 px-3 py-2 text-sm font-bold text-stone-800 outline-none ring-[#C9A84C] focus:border-[#C9A84C] focus:ring-2"
+            className={CRM_INPUT}
             value={sessionType}
             onChange={(e) => setSessionType(e.target.value as 'online' | 'inperson')}
           >
@@ -133,11 +136,11 @@ export function SessionForm({ mode = 'create', initialSession = null, onSaved, o
         </div>
 
         <div className="sm:col-span-2 lg:col-span-2">
-          <label className="mb-1 block text-xs font-black text-[#1C4532]">عدد المقاعد *</label>
+          <label className="mb-1 block text-xs font-semibold text-slate-500">عدد المقاعد *</label>
           <input
             type="number"
             min={1}
-            className="w-full rounded-xl border border-stone-200 bg-stone-50 px-3 py-2 text-sm font-bold text-stone-800 outline-none ring-[#C9A84C] focus:border-[#C9A84C] focus:ring-2"
+            className={CRM_INPUT}
             value={spots}
             onChange={(e) => setSpots(parseInt(e.target.value, 10) || 1)}
           />
@@ -145,10 +148,12 @@ export function SessionForm({ mode = 'create', initialSession = null, onSaved, o
 
         {sessionType === 'inperson' && (
           <div className="sm:col-span-2 lg:col-span-6">
-            <label className="mb-1 block text-xs font-black text-[#1C4532]">رابط الموقع (Google Maps)</label>
+            <label className="mb-1 block text-xs font-semibold text-slate-500">
+              رابط الموقع (Google Maps)
+            </label>
             <input
               type="url"
-              className="w-full rounded-xl border border-stone-200 bg-stone-50 px-3 py-2 text-sm font-bold text-stone-800 outline-none ring-[#C9A84C] focus:border-[#C9A84C] focus:ring-2"
+              className={CRM_INPUT}
               value={locationUrl}
               onChange={(e) => setLocationUrl(e.target.value)}
               placeholder="https://maps.google.com/..."
@@ -157,22 +162,22 @@ export function SessionForm({ mode = 'create', initialSession = null, onSaved, o
         )}
 
         <div className="flex flex-col gap-3 sm:col-span-2 lg:col-span-6 lg:flex-row lg:flex-wrap lg:items-end lg:gap-x-6">
-          <label className="flex shrink-0 items-center gap-2 text-xs font-black text-[#1C4532] lg:pt-2">
+          <label className="flex shrink-0 items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-300 lg:pt-2">
             <input
               type="checkbox"
               checked={priceFree}
               onChange={(e) => setPriceFree(e.target.checked)}
-              className="rounded border-stone-300"
+              className="rounded border-slate-300"
             />
             جلسة مجانية
           </label>
           {!priceFree && (
             <div className="min-w-[12rem] flex-1">
-              <label className="mb-1 block text-xs font-black text-stone-600">السعر (ريال)</label>
+              <label className="mb-1 block text-xs font-semibold text-slate-500">السعر (ريال)</label>
               <input
                 type="number"
                 min={0}
-                className="w-full max-w-xs rounded-xl border border-stone-200 bg-stone-50 px-3 py-2 text-sm font-bold text-stone-800 outline-none ring-[#C9A84C] focus:border-[#C9A84C] focus:ring-2"
+                className={`${CRM_INPUT} max-w-xs`}
                 value={price || ''}
                 onChange={(e) => setPrice(parseFloat(e.target.value) || 0)}
               />
@@ -181,10 +186,10 @@ export function SessionForm({ mode = 'create', initialSession = null, onSaved, o
         </div>
 
         <div className="sm:col-span-2 lg:col-span-6">
-          <label className="mb-1 block text-xs font-black text-[#1C4532]">الوصف</label>
+          <label className="mb-1 block text-xs font-semibold text-slate-500">الوصف</label>
           <textarea
             rows={3}
-            className="w-full resize-y rounded-xl border border-stone-200 bg-stone-50 px-3 py-2 text-sm font-bold text-stone-800 outline-none ring-[#C9A84C] focus:border-[#C9A84C] focus:ring-2"
+            className={CRM_TEXTAREA}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder="وصف مختصر للجلسة…"
@@ -194,10 +199,10 @@ export function SessionForm({ mode = 'create', initialSession = null, onSaved, o
 
       {message && (
         <div
-          className={`mt-3 rounded-xl border px-3 py-2 text-xs font-black ${
+          className={`mt-3 rounded-xl border px-3 py-2 text-xs font-medium ${
             message.type === 'ok'
-              ? 'border-emerald-200 bg-emerald-50 text-emerald-900'
-              : 'border-red-200 bg-red-50 text-red-900'
+              ? 'border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-900/40 dark:bg-emerald-950/30 dark:text-emerald-400'
+              : 'border-rose-200 bg-rose-50 text-rose-900 dark:border-rose-900/40 dark:bg-rose-950/30 dark:text-rose-300'
           }`}
         >
           {message.text}
@@ -208,7 +213,7 @@ export function SessionForm({ mode = 'create', initialSession = null, onSaved, o
         <button
           type="submit"
           disabled={submitting}
-          className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-l from-[#8A6B2A] to-[#C9A84C] py-3 text-sm font-black text-[#1C4532] shadow-sm disabled:opacity-60 sm:w-auto sm:min-w-[200px] sm:px-8"
+          className={`${CRM_BTN_PRIMARY} w-full sm:w-auto sm:min-w-[200px]`}
         >
           {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
           {mode === 'edit' ? 'تحديث الجلسة' : 'حفظ الجلسة'}
@@ -217,7 +222,7 @@ export function SessionForm({ mode = 'create', initialSession = null, onSaved, o
           <button
             type="button"
             onClick={onCancelEdit}
-            className="w-full rounded-xl border border-stone-300 py-2 text-xs font-black text-stone-700 sm:mt-0 sm:w-auto sm:px-6"
+            className="w-full rounded-xl border border-slate-200 py-2 text-xs font-semibold text-slate-700 dark:border-[#2D3F3A] dark:text-slate-300 sm:w-auto sm:px-6"
           >
             إلغاء التعديل
           </button>

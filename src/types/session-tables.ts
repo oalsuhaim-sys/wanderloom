@@ -14,7 +14,6 @@ export interface Session {
   description: string;
   location_url?: string;
   created_at?: string;
-  [key: string]: any;
 }
 
 export type SessionInsert = Omit<Session, 'id' | 'created_at'>;
@@ -26,7 +25,6 @@ export interface SessionRegistration {
   whatsapp: string;
   /** وقت تسجيل العميل؛ يُعاد من Supabase بعد الإدراج أو من العمود الافتراضي في قاعدة البيانات. */
   created_at?: string;
-  [key: string]: any;
 }
 
 /** إدراج تسجيل جديد — عادة بدون `id` و`created_at` (يولّدهما الخادم). */

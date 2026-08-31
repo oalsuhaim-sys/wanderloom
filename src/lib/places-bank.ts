@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { TRIP_DESTINATIONS, type TripCountryDef } from '@/lib/trip-destination-data';
+import { isPlacesCoordinateSchemaError } from '@/lib/places-proximity';
 import type { PlaceBankRow } from '@/types/place';
 
 /** سقف جلب بنك الأماكن — يتجاوز حد PostgREST الافتراضي (1000) عبر التجزئة */
@@ -11,6 +12,24 @@ export const PLACES_BANK_PAGE_SIZE = 200;
 
 /** جدول Supabase الوحيد لبنك الأماكن — لا mock ولا marketing_content */
 export const PLACES_BANK_TABLE = 'places';
+
+/** أعمدة قائمة البنك — لا تستخدم select('*') في واجهات التصفح */
+export const PLACES_BANK_LIST_SELECT =
+  'id, name, country, city, branch_name, map_url, maps_url, category, image_url, sub_tag, latitude, longitude';
+export const PLACES_BANK_LIST_SELECT_MINIMAL =
+  'id, name, country, city, category, image_url, sub_tag';
+
+/** Progressive selects when optional columns are missing from schema */
+const PLACES_BANK_SELECT_FALLBACKS = [
+  PLACES_BANK_LIST_SELECT,
+  'id, name, country, city, branch_name, map_url, category, image_url, sub_tag, latitude, longitude',
+  'id, name, country, city, category, image_url, sub_tag, latitude, longitude',
+  PLACES_BANK_LIST_SELECT_MINIMAL,
+  'id, name, country, city, category, image_url',
+  'id, name, country, city, category',
+  'id, name, country, city',
+  'id, name',
+] as const;
 
 export type PlacesBankFetchFilters = {
   search?: string;
@@ -23,6 +42,16 @@ export type PlacesBankViewFilters = {
   cityFilter?: string;
   search?: string;
   category?: string;
+};
+
+export type PlacesBankPageParams = PlacesBankViewFilters & {
+  page?: number;
+  pageSize?: number;
+};
+
+export type PlacesBankPageResult = {
+  rows: PlaceBankRow[];
+  total: number;
 };
 
 /** تسميات الفئات — رموز DB القصيرة (r/c/l/f/o/d) + تراثية */
@@ -49,6 +78,7 @@ export const PLACE_CATEGORY_OPTIONS = [
 
 /** أسماء إنجليزية / DB شائعة لكل دولة في TRIP_DESTINATIONS */
 const COUNTRY_ENGLISH_ALIASES: Record<string, string[]> = {
+  indonesia: ['Indonesia', 'ID'],
   japan: ['Japan', 'JP'],
   korea: ['South Korea', 'Korea', 'KR'],
   china: ['China', 'CN'],
@@ -177,9 +207,16 @@ export function filterPlacesBankInventory<T extends PlaceBankRow>(
   });
 }
 
+function isPlacesSelectSchemaError(message: string): boolean {
+  return (
+    isPlacesCoordinateSchemaError(message) ||
+    /column|schema cache|does not exist/i.test(message)
+  );
+}
+
 /**
- * يجلب المخزون الكامل من جدول `places` (حتى 10,000) — بدون limit(12) وبدون mock.
- * فلاتر الدولة/المدينة تُطبَّق على العميل عبر filterPlacesBankInventory.
+ * يجلب المخزون الكامل من جدول `places` (حتى 10,000) — للاستخدامات المجمّعة فقط
+ * (مثل محرك القرب). لواجهات التصفح استخدم fetchPlacesBankPage.
  */
 export async function fetchAllPlacesBank(
   client: SupabaseClient,
@@ -187,31 +224,216 @@ export async function fetchAllPlacesBank(
 ): Promise<PlaceBankRow[]> {
   const all: PlaceBankRow[] = [];
   const pageSize = 1000;
+  let columns: string = PLACES_BANK_LIST_SELECT;
+  let selectIdx = 0;
 
   for (let offset = 0; offset < PLACES_BANK_FETCH_LIMIT; offset += pageSize) {
-    let q = client.from(PLACES_BANK_TABLE).select('*').order('name', { ascending: true });
+    let q = client
+      .from(PLACES_BANK_TABLE)
+      .select(columns)
+      .order('name', { ascending: true });
     if (filters?.search?.trim()) q = q.ilike('name', `%${filters.search.trim()}%`);
     if (filters?.category?.trim()) q = q.eq('category', filters.category.trim());
 
     const { data, error } = await q.range(offset, offset + pageSize - 1);
-    if (error) throw error;
+    if (
+      error &&
+      isPlacesSelectSchemaError(error.message ?? '') &&
+      selectIdx < PLACES_BANK_SELECT_FALLBACKS.length - 1
+    ) {
+      selectIdx += 1;
+      columns = PLACES_BANK_SELECT_FALLBACKS[selectIdx];
+      console.warn('[fetchAllPlacesBank] select fallback →', columns, error.message);
+      offset -= pageSize;
+      continue;
+    }
+    if (error) {
+      console.error('[fetchAllPlacesBank] Supabase error:', error.message);
+      throw error;
+    }
     if (!data?.length) break;
-    all.push(...(data as PlaceBankRow[]));
+    all.push(...((data ?? []) as unknown as PlaceBankRow[]));
     if (data.length < pageSize) break;
   }
 
   return all.slice(0, PLACES_BANK_FETCH_LIMIT);
 }
 
+function applyPlacesBankFilters(
+   
+  q: any,
+  filters: PlacesBankViewFilters,
+  opts?: { skipCountry?: boolean },
+) {
+  const search = filters.search?.trim();
+  const category = filters.category?.trim();
+  const cityFilter = filters.cityFilter?.trim();
+  const countries = (filters.countries ?? []).map((c) => c.trim()).filter(Boolean);
+  const countryTerms = expandCountryMatchTerms(countries);
+
+  if (search) {
+    const escaped = search.replace(/[%_,.()]/g, ' ').trim();
+    if (escaped) {
+      q = q.or(`name.ilike.%${escaped}%,city.ilike.%${escaped}%`);
+    }
+  }
+  if (category) q = q.eq('category', category);
+  if (cityFilter) {
+    const cityEscaped = cityFilter.replace(/[%_,.()]/g, ' ').trim();
+    if (cityEscaped) q = q.ilike('city', `%${cityEscaped}%`);
+  }
+  /**
+   * Country: use `.in()` with expanded aliases.
+   * Do NOT call a second `.or()` here — it overwrites the search `.or()` in PostgREST.
+   * If `.in` matches nothing, fetchPlacesBankPage retries with skipCountry.
+   */
+  if (!opts?.skipCountry && countryTerms.length) {
+    const unique = [...new Set(countryTerms)].slice(0, 40);
+    q = q.in('country', unique);
+  }
+  return q;
+}
+
+/**
+ * صفحة واحدةحد من بنك الأماكن مع أعمدة ضيقة + count — للاستخدام في Timeline / Modal / Explorer.
+ */
+export async function fetchPlacesBankPage(
+  client: SupabaseClient,
+  params: PlacesBankPageParams = {},
+): Promise<PlacesBankPageResult> {
+  const page = Math.max(0, params.page ?? 0);
+  const pageSize = Math.max(1, Math.min(params.pageSize ?? PLACES_BANK_PAGE_SIZE, 500));
+  const from = page * pageSize;
+  const to = from + pageSize - 1;
+  const countries = (params.countries ?? []).map((c) => c.trim()).filter(Boolean);
+
+  const run = async (columns: string, skipCountry = false) => {
+    let q = client
+      .from(PLACES_BANK_TABLE)
+      .select(columns, { count: 'exact' })
+      .order('name', { ascending: true });
+    q = applyPlacesBankFilters(q, params, { skipCountry });
+    return q.range(from, to);
+  };
+
+  let data: unknown[] | null = null;
+  let count: number | null = null;
+  let error: { message?: string } | null = null;
+  let usedColumns: string = PLACES_BANK_SELECT_FALLBACKS[0];
+
+  for (let i = 0; i < PLACES_BANK_SELECT_FALLBACKS.length; i++) {
+    usedColumns = PLACES_BANK_SELECT_FALLBACKS[i];
+    const result = await run(usedColumns, false);
+    data = result.data as unknown[] | null;
+    count = result.count;
+    error = result.error;
+
+    if (!error) break;
+
+    console.error('[fetchPlacesBankPage] Supabase error:', error.message, {
+      columns: usedColumns,
+    });
+
+    if (!isPlacesSelectSchemaError(error.message ?? '')) {
+      break;
+    }
+  }
+
+  // Country filter matched nothing — retry without country so the bank is not empty
+  if (!error && countries.length > 0 && (count ?? 0) === 0 && !(data?.length)) {
+    console.warn('[fetchPlacesBankPage] country filter returned 0 — retrying without country');
+    const result = await run(usedColumns, true);
+    if (!result.error) {
+      data = result.data as unknown[] | null;
+      count = result.count;
+      error = null;
+    } else {
+      console.error('[fetchPlacesBankPage] retry without country failed:', result.error.message);
+      error = result.error;
+    }
+  }
+
+  if (error) {
+    console.error('[fetchPlacesBankPage] final failure:', error.message);
+    throw error;
+  }
+
+  const rows = (data ?? []) as unknown as PlaceBankRow[];
+  const filtered =
+    countries.length > 0
+      ? filterPlacesBankInventory(rows, { countries })
+      : rows;
+
+  // If soft filter wiped the page but DB had rows, keep DB rows (avoid empty UI)
+  const finalRows = filtered.length > 0 || countries.length === 0 ? filtered : rows;
+
+  return {
+    rows: finalRows,
+    total: count ?? finalRows.length,
+  };
+}
+
+/** مدن مميزة لفلتر الواجهة — مسح خفيف لعمود city فقط */
+export async function fetchPlacesBankCityOptions(
+  client: SupabaseClient,
+  countries?: string[],
+): Promise<string[]> {
+  const countryTerms = expandCountryMatchTerms(
+    (countries ?? []).map((c) => c.trim()).filter(Boolean),
+  );
+  const cities = new Set<string>();
+  const pageSize = 1000;
+
+  for (let offset = 0; offset < 4000; offset += pageSize) {
+    let q = client.from(PLACES_BANK_TABLE).select('city').order('city', { ascending: true });
+    if (countryTerms.length) {
+      q = q.in('country', [...new Set(countryTerms)].slice(0, 40));
+    }
+    const { data, error } = await q.range(offset, offset + pageSize - 1);
+    if (error) {
+      console.error('[fetchPlacesBankCityOptions]', error.message);
+      if (countryTerms.length) {
+        const fallback = await client
+          .from(PLACES_BANK_TABLE)
+          .select('city')
+          .order('city', { ascending: true })
+          .range(offset, offset + pageSize - 1);
+        if (fallback.error) throw fallback.error;
+        for (const row of fallback.data ?? []) {
+          const city = String((row as { city?: string }).city ?? '').trim();
+          if (city) cities.add(city);
+        }
+        if ((fallback.data?.length ?? 0) < pageSize) break;
+        continue;
+      }
+      throw error;
+    }
+    if (!data?.length) break;
+    for (const row of data) {
+      const city = String((row as { city?: string }).city ?? '').trim();
+      if (city) cities.add(city);
+    }
+    if (data.length < pageSize) break;
+  }
+
+  return [...cities].sort((a, b) => a.localeCompare(b, 'ar'));
+}
+
 export function placeBankCategoryLabel(code: string): string {
   return PLACES_BANK_CATEGORIES[code] ?? PLACES_BANK_CATEGORIES.o ?? '🧭 أخرى';
 }
 
-export function placeBankMapsSearchUrl(place: Pick<PlaceBankRow, 'name' | 'city' | 'country'>): string {
-  const q = [place.name, place.city, place.country].filter(Boolean).join(' ');
+export function placeBankMapsSearchUrl(
+  place: Pick<PlaceBankRow, 'name' | 'city' | 'country' | 'branch_name' | 'map_url' | 'maps_url' | 'google_maps_url'>,
+): string {
+  const direct = String(place.map_url || place.maps_url || place.google_maps_url || '').trim();
+  if (direct) return direct;
+  const q = [place.name, place.branch_name, place.city, place.country].filter(Boolean).join(' ');
   return `https://www.google.com/maps/search/${encodeURIComponent(q)}`;
 }
 
-export function placeBankGeocodeQuery(place: Pick<PlaceBankRow, 'name' | 'city' | 'country'>): string {
-  return [place.name, place.city, place.country].filter(Boolean).join(', ');
+export function placeBankGeocodeQuery(
+  place: Pick<PlaceBankRow, 'name' | 'city' | 'country' | 'branch_name'>,
+): string {
+  return [place.name, place.branch_name, place.city, place.country].filter(Boolean).join(', ');
 }

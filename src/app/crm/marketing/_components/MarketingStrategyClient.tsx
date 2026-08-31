@@ -188,7 +188,7 @@ export default function MarketingStrategyClient() {
                   <Sparkles className="h-5 w-5 text-[#cda04c]" aria-hidden />
                   <h2 className="text-xl font-black text-white">مصنع الـ AI</h2>
                 </div>
-                <div className="rounded-[1.75rem] border border-white/8 bg-[#FDFBF7] p-4 shadow-2xl sm:p-6 md:p-8">
+                <div className="rounded-2xl border border-slate-200 bg-[#F9FAFB] p-4 shadow-sm dark:border-[#2D3F3A] dark:bg-[#1A2421] sm:p-6 md:p-8">
                   <MarketingProductionStudio />
                 </div>
               </section>

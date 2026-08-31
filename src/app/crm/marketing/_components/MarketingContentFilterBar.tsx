@@ -26,9 +26,10 @@ export const EDIT_CATEGORY_OPTIONS = [
   'أخرى',
 ] as const;
 
-const PILL_ACTIVE = 'border-[#1e3f20] bg-[#1e3f20] text-white shadow-md';
+const PILL_ACTIVE =
+  'bg-slate-900 text-white dark:bg-[#D4AF37]/20 dark:text-[#D4AF37] border-transparent shadow-sm';
 const PILL_INACTIVE =
-  'border-[#1e3f20]/15 bg-white text-[#1e3f20] hover:border-[#cda04c]/45 hover:bg-[#f4f0e6]';
+  'bg-white dark:bg-[#1A2421] text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-[#2D3F3A] hover:bg-slate-50 dark:hover:bg-[#22302C] transition-all';
 
 export default function MarketingContentFilterBar({
   selectedMediaType,
@@ -43,12 +44,14 @@ export default function MarketingContentFilterBar({
 }) {
   return (
     <section
-      className="mb-6 space-y-4 rounded-[1.75rem] border border-[#1e3f20]/10 bg-white p-4 shadow-[0_12px_40px_rgba(30,63,32,0.06)] sm:p-5"
+      className="mb-6 space-y-5 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-[#2D3F3A] dark:bg-[#22302C] sm:p-5"
       dir="rtl"
       aria-label="تصفية المحتوى التسويقي"
     >
       <div>
-        <p className="mb-2 text-xs font-black text-[#cda04c]">نوع الوسائط</p>
+        <p className="mb-3 text-sm font-semibold text-slate-500 dark:text-[#D4AF37]">
+          نوع الوسائط
+        </p>
         <div className="flex flex-wrap gap-2 overflow-x-auto pb-1">
           {MEDIA_TYPE_FILTERS.map((option) => {
             const isActive = selectedMediaType === option;
@@ -57,7 +60,7 @@ export default function MarketingContentFilterBar({
                 key={option}
                 type="button"
                 onClick={() => onSelectMediaType(option.trim())}
-                className={`shrink-0 rounded-full border px-4 py-2 text-xs font-black transition sm:px-5 sm:text-sm ${
+                className={`shrink-0 rounded-lg border px-4 py-2 text-xs font-semibold transition-all active:scale-[0.98] sm:px-5 sm:text-sm ${
                   isActive ? PILL_ACTIVE : PILL_INACTIVE
                 }`}
               >
@@ -69,7 +72,9 @@ export default function MarketingContentFilterBar({
       </div>
 
       <div>
-        <p className="mb-2 text-xs font-black text-[#cda04c]">تصنيف المحتوى</p>
+        <p className="mb-3 text-sm font-semibold text-slate-500 dark:text-[#D4AF37]">
+          تصنيف المحتوى
+        </p>
         <div className="flex flex-wrap gap-2 overflow-x-auto pb-1">
           {CATEGORY_FILTERS.map((option) => {
             const isActive = selectedCategory === option;
@@ -78,7 +83,7 @@ export default function MarketingContentFilterBar({
                 key={option}
                 type="button"
                 onClick={() => onSelectCategory(option.trim())}
-                className={`shrink-0 rounded-full border px-4 py-2 text-xs font-black transition sm:px-5 sm:text-sm ${
+                className={`shrink-0 rounded-lg border px-4 py-2 text-xs font-semibold transition-all active:scale-[0.98] sm:px-5 sm:text-sm ${
                   isActive ? PILL_ACTIVE : PILL_INACTIVE
                 }`}
               >

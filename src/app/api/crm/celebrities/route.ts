@@ -4,6 +4,8 @@ import { mapCelebrityRow } from '@/lib/partner-entities';
 import { fetchCelebritiesAdmin } from '@/lib/partner-entities-server';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 
+const INFLUENCERS_TABLE = 'influencers';
+
 export async function GET() {
   let admin;
   try {
@@ -31,7 +33,9 @@ export async function POST(request: Request) {
   const name = String(body.name ?? '').trim();
   const phone = String(body.phone ?? '').trim();
   const platforms = String(body.platforms ?? '').trim();
-  const contentFocus = String(body.content_focus ?? body.contentFocus ?? '').trim();
+  const contentType = String(
+    body.content_type ?? body.contentType ?? body.content_focus ?? body.contentFocus ?? '',
+  ).trim();
   const profileUrl = String(body.profile_url ?? body.profileUrl ?? '').trim();
   const email = String(body.email ?? '').trim();
 
@@ -46,30 +50,73 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: 'server_config' }, { status: 503 });
   }
 
-  const payload = {
-    name,
-    phone: phone || null,
-    platforms: platforms || null,
-    content_focus: contentFocus || null,
-    profile_url: profileUrl || null,
-    email: email || null,
-    status: 'active' as const,
-  };
+  const attempts: Record<string, unknown>[] = [
+    {
+      name,
+      phone: phone || null,
+      platforms: platforms || null,
+      content_type: contentType || null,
+      content_focus: contentType || null,
+      profile_url: profileUrl || null,
+      email: email || null,
+      status: 'active',
+    },
+    {
+      name,
+      phone: phone || null,
+      platforms: platforms || null,
+      content_type: contentType || null,
+      email: email || null,
+      status: 'active',
+    },
+    {
+      name,
+      phone: phone || null,
+      platforms: platforms || null,
+      content_focus: contentType || null,
+      email: email || null,
+      status: 'active',
+    },
+    {
+      name,
+      phone: phone || null,
+      platforms: platforms || null,
+      email: email || null,
+      status: 'active',
+    },
+  ];
 
-  const { data, error } = await admin
-    .from('celebrities')
-    .insert(payload)
-    .select('*')
-    .single();
+  let data: Record<string, unknown> | null = null;
+  let lastError = '';
 
-  if (error) {
-    console.error('[crm/celebrities] insert failed:', error);
+  for (const payload of attempts) {
+    const result = await admin
+      .from(INFLUENCERS_TABLE)
+      .insert(payload)
+      .select('*')
+      .single();
+
+    if (!result.error && result.data) {
+      data = result.data as Record<string, unknown>;
+      break;
+    }
+
+    lastError = result.error?.message || 'insert_failed';
+    console.warn('[crm/celebrities→influencers] insert retry:', lastError);
+
+    if (!/column|schema cache|does not exist/i.test(lastError)) {
+      break;
+    }
+  }
+
+  if (!data) {
+    console.error('[crm/celebrities→influencers] insert failed:', lastError);
     return NextResponse.json(
-      { ok: false, error: error.message || 'insert_failed' },
+      { ok: false, error: lastError || 'insert_failed' },
       { status: 500 },
     );
   }
 
-  const row = mapCelebrityRow((data ?? {}) as Record<string, unknown>);
+  const row = mapCelebrityRow(data);
   return NextResponse.json({ ok: true, row });
 }
