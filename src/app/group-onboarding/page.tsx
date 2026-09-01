@@ -5,13 +5,11 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 
-import { submitGroupTripLead } from '@/app/actions/groupOnboardingActions';
 import { GroupOnboardingStepNav } from '@/app/group-onboarding/_components/GroupOnboardingStepNav';
 import { ReferralCodeField } from '@/components/ReferralCodeField';
 import {
   brandGoldBadgeStyle,
   brandGoldButtonStyle,
-  brandGoldCalloutStyle,
   brandOliveHeadingStyle,
   brandOliveLabelStyle,
 } from '@/lib/brand-gold';
@@ -19,6 +17,10 @@ import {
   normalizeAffiliateRef,
   persistAffiliateRef,
 } from '@/lib/referral-url';
+import {
+  buildGroupConfirmHref,
+  persistGroupRegistrationDraft,
+} from '@/lib/group-registration-contact';
 import { supabaseClient } from '@/lib/supabaseClient';
 
 type TripInfo = {
@@ -52,7 +54,6 @@ function GroupOnboardingForm() {
   const [referralCode, setReferralCode] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
-  const [waitlistSuccess, setWaitlistSuccess] = useState<string | null>(null);
 
   useEffect(() => {
     if (!tripId) {
@@ -121,7 +122,7 @@ function GroupOnboardingForm() {
     };
   }, [tripId]);
 
-  async function onSubmit(e: React.FormEvent) {
+  function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!trip) return;
 
@@ -141,30 +142,18 @@ function GroupOnboardingForm() {
     const referral = normalizeAffiliateRef(referralCode);
     if (referral) persistAffiliateRef(referral);
 
-    const res = await submitGroupTripLead({
+    persistGroupRegistrationDraft({
       full_name: fullName.trim(),
       phone_wa: whatsapp.trim(),
-      email: emailTrimmed || null,
+      email: emailTrimmed,
       birth_date: birthDate.trim(),
-      trip_label: trip.title_ar,
+      referral_code: referral ?? '',
       preferred_trip_id: trip.id,
-      referral_code: referral,
+      trip_label: trip.title_ar,
     });
 
     setSubmitting(false);
-
-    if (!res.ok) {
-      setFormError(res.error);
-      return;
-    }
-
-    if (res.placement === 'waitlisted' || !res.leadId) {
-      setFormError(null);
-      setWaitlistSuccess(res.message);
-      return;
-    }
-
-    router.push(`/dna/${res.leadId}?flow=group_onboarding`);
+    router.push(buildGroupConfirmHref());
   }
 
   return (
@@ -212,22 +201,6 @@ function GroupOnboardingForm() {
               className="mt-4 inline-flex rounded-xl bg-[#1e3f20] px-5 py-2.5 text-xs font-black text-[#cda04c]"
             >
               تصفّح الرحلات المتاحة
-            </Link>
-          </div>
-        ) : waitlistSuccess ? (
-          <div
-            style={brandGoldCalloutStyle}
-            className="rounded-2xl border px-6 py-10 text-center shadow-sm"
-          >
-            <p className="text-lg font-black">قائمة الانتظار</p>
-            <p className="mt-3 text-sm font-semibold leading-relaxed">
-              {waitlistSuccess}
-            </p>
-            <Link
-              href="/#groups"
-              className="mt-6 inline-flex rounded-xl bg-[#1e3f20] px-5 py-2.5 text-xs font-black text-[#cda04c]"
-            >
-              العودة للرحلات
             </Link>
           </div>
         ) : (
@@ -354,7 +327,7 @@ function GroupOnboardingForm() {
                     جاري التسجيل…
                   </>
                 ) : (
-                  'ابدأ التسجيل في هذه الرحلة'
+                  'التالي — تأكيد الحجز'
                 )}
               </button>
             </form>

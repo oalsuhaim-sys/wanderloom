@@ -25,9 +25,25 @@ import {
   resolveLeadBookedTripId,
 } from '@/lib/crm-leads';
 import { isInboxPendingLeadStatus } from '@/lib/lead-status';
+import {
+  buildGroupLeadClientDnaPatch,
+  extractLeadFoodPreferences,
+  extractLeadInterests,
+  linkGroupMemberToTrip,
+  patchClientDnaWithFallback,
+  resolveGroupLeadContact,
+  upsertClientPreferencesInterests,
+  upsertPrimaryGroupClient,
+} from '@/lib/group-client-dna-sync';
 
 export type GroupTripLeadState =
-  | { ok: true; message: string; leadId: string; placement: 'pipeline' | 'waitlisted' }
+  | {
+      ok: true;
+      message: string;
+      leadId: string;
+      clientId: string;
+      placement: 'pipeline' | 'waitlisted';
+    }
   | { ok: false; error: string };
 
 export type GroupLeadDnaPayload = {
@@ -35,6 +51,10 @@ export type GroupLeadDnaPayload = {
   daily_pace: string;
   food_preferences: string[];
   final_thoughts: string;
+  /** Fallback from Step 1 when leads.phone_wa is empty */
+  phone_wa?: string;
+  full_name?: string;
+  email?: string;
 };
 
 function s(v: unknown): string {
@@ -82,6 +102,62 @@ function preserveGroupOnboardingThoughts(
   return out.trim();
 }
 
+function isLeadColumnError(message: string | undefined): boolean {
+  return /column|schema cache|does not exist|could not find/i.test(message ?? '');
+}
+
+/** Progressive `leads` select — skips missing columns (e.g. client_id before migration). */
+async function fetchLeadRowById(
+  admin: SupabaseClient,
+  leadId: string,
+  selectAttempts: readonly string[],
+): Promise<
+  | { ok: true; row: Record<string, unknown> }
+  | { ok: false; error: string }
+> {
+  let lastError = '';
+  for (const cols of selectAttempts) {
+    const { data, error } = await admin.from('leads').select(cols).eq('id', leadId).maybeSingle();
+    if (error) {
+      lastError = error.message ?? 'select failed';
+      if (isLeadColumnError(lastError)) continue;
+      return { ok: false, error: lastError };
+    }
+    if (!data) return { ok: false, error: 'لم يتم العثور على الطلب.' };
+    return { ok: true, row: data as Record<string, unknown> };
+  }
+  return { ok: false, error: lastError || 'لم يتم العثور على الطلب.' };
+}
+
+/** Optional link — no-op when leads.client_id column is not migrated yet. */
+async function safeLinkLeadClientId(
+  admin: SupabaseClient,
+  leadId: string,
+  clientId: string | number,
+): Promise<void> {
+  const key = /^\d+$/.test(String(clientId)) ? Number(clientId) : clientId;
+  const { error } = await admin.from('leads').update({ client_id: key }).eq('id', leadId);
+  if (error && !isLeadColumnError(error.message)) {
+    console.warn('[groupOnboarding] leads.client_id link:', error.message);
+  }
+}
+
+const DNA_LEAD_FETCH_SELECTS = [
+  'id, full_name, phone_wa, email, destinations, interests, daily_pace, food_preferences, final_thoughts, status, form_type',
+  'id, full_name, phone_wa, email, destinations, interests, daily_pace, food_preferences, final_thoughts, status',
+  'id, full_name, phone_wa, destinations, interests, status, final_thoughts',
+  'id, full_name, phone_wa, destinations, status',
+  'id, full_name, phone_wa, email, client_id, destinations, interests, daily_pace, food_preferences, final_thoughts, status, form_type',
+] as const;
+
+const DNA_LEAD_SUBMIT_SELECTS = [
+  'final_thoughts, preferred_trip_id, form_type, travel_style, interests, status, full_name, phone_wa, email, birth_date, destinations',
+  'final_thoughts, preferred_trip_id, interests, status, full_name, phone_wa, email, destinations',
+  'final_thoughts, interests, status, full_name, phone_wa, destinations, preferred_trip_id',
+  'interests, status, full_name, phone_wa, destinations, final_thoughts',
+  'final_thoughts, preferred_trip_id, form_type, travel_style, interests, status, full_name, phone_wa, email, birth_date, destinations, client_id',
+] as const;
+
 function leadHasBookedInterviewSlot(row: Record<string, unknown> | null | undefined): boolean {
   if (!row) return false;
   const meetingDate = String(row.meeting_date ?? '').trim();
@@ -119,7 +195,7 @@ function ageFromBirthDate(iso: string): number | null {
 }
 
 /**
- * Trip at capacity → create client + group_members.waitlisted (no interview pipeline).
+ * Trip at capacity → clients SSOT first, then group_members.waitlisted.
  */
 async function placePublicRegistrantOnWaitlist(input: {
   fullName: string;
@@ -135,128 +211,26 @@ async function placePublicRegistrantOnWaitlist(input: {
   if (serviceKeyError) return { ok: false, error: serviceKeyError };
 
   const admin = createSupabaseAdminClient();
-  const cleanPhone = sanitizePhoneDigits(input.phoneWa);
-  if (!cleanPhone) return { ok: false, error: 'رقم الجوال غير صالح.' };
-  const phoneWa = canonicalizePhoneWa(cleanPhone) || cleanPhone;
-  const tripKey = /^\d+$/.test(input.tripId) ? Number(input.tripId) : input.tripId;
-  const birthDate = String(input.birthDate ?? '').trim().slice(0, 10) || null;
-  const referralCode =
-    String(input.referralCode ?? '')
-      .trim()
-      .toUpperCase()
-      .slice(0, 64) || null;
+  const clientResult = await upsertPrimaryGroupClient(admin, {
+    fullName: input.fullName,
+    phoneWa: input.phoneWa,
+    email: input.email,
+    birthDate: input.birthDate,
+    tripLabel: input.tripTitle,
+    referralCode: input.referralCode,
+  });
+  if (!clientResult.ok) return clientResult;
 
-  const upsertPayloads: Record<string, unknown>[] = [
-    {
-      name: input.fullName,
-      phone_wa: phoneWa,
-      email: input.email || null,
-      birth_date: birthDate,
-      client_type: 'عميل',
-      intake_trip_type: 'group',
-      lead_source: 'group_waitlist',
-      target_trip: input.tripTitle,
-      ...(referralCode
-        ? { used_code: referralCode, referral_code: referralCode }
-        : {}),
-    },
-    {
-      name: input.fullName,
-      phone_wa: phoneWa,
-      email: input.email || null,
-      birth_date: birthDate,
-      client_type: 'عميل',
-      intake_trip_type: 'group',
-      ...(referralCode ? { used_code: referralCode } : {}),
-    },
-    {
-      name: input.fullName,
-      phone_wa: phoneWa,
-      email: input.email || null,
-      client_type: 'عميل',
-      intake_trip_type: 'group',
-    },
-    { name: input.fullName, phone_wa: phoneWa, email: input.email || null, client_type: 'عميل' },
-    { name: input.fullName, phone_wa: phoneWa, client_type: 'عميل' },
-    { name: input.fullName, phone_wa: phoneWa },
-  ];
+  const link = await linkGroupMemberToTrip(admin, {
+    clientId: clientResult.clientId,
+    tripId: input.tripId,
+    customerName: input.fullName,
+    customerPhone: input.phoneWa,
+    status: 'waitlisted',
+  });
+  if (!link.ok) return { ok: false, error: link.error };
 
-  let clientId: string | null = null;
-  let lastError = '';
-  for (const payload of upsertPayloads) {
-    const { data, error } = await admin
-      .from('clients')
-      .upsert(payload, { onConflict: 'phone_wa', ignoreDuplicates: false })
-      .select('id');
-    if (error) {
-      lastError = error.message ?? '';
-      if (/column|schema cache|does not exist|check constraint/i.test(lastError)) continue;
-      continue;
-    }
-    const row = Array.isArray(data) ? data[0] : data;
-    const id = row && typeof row === 'object' ? String((row as { id?: unknown }).id ?? '').trim() : '';
-    if (id) {
-      clientId = id;
-      break;
-    }
-  }
-  if (!clientId) {
-    return { ok: false, error: lastError || 'تعذر إنشاء ملف العميل لقائمة الانتظار.' };
-  }
-
-  const clientKey = /^\d+$/.test(clientId) ? Number(clientId) : clientId;
-  const memberPayloads: Record<string, unknown>[] = [
-    {
-      client_id: clientKey,
-      group_id: tripKey,
-      status: 'waitlisted',
-      payment_status: 'pending',
-      customer_name: input.fullName,
-      customer_phone: phoneWa,
-    },
-    {
-      client_id: clientKey,
-      group_id: tripKey,
-      status: 'waitlisted',
-      customer_name: input.fullName,
-      customer_phone: phoneWa,
-    },
-    { client_id: clientKey, group_id: tripKey, status: 'waitlisted' },
-  ];
-
-  let memberOk = false;
-  for (const payload of memberPayloads) {
-    const { error } = await admin.from('group_members').insert(payload);
-    if (!error) {
-      memberOk = true;
-      break;
-    }
-    if (error.code === '23505' || /duplicate|unique/i.test(error.message ?? '')) {
-      const { error: updErr } = await admin
-        .from('group_members')
-        .update({
-          group_id: tripKey,
-          status: 'waitlisted',
-          customer_name: input.fullName,
-          customer_phone: phoneWa,
-        })
-        .eq('client_id', clientKey);
-      if (!updErr || /column|schema cache/i.test(updErr.message ?? '')) {
-        memberOk = true;
-        break;
-      }
-      lastError = updErr?.message ?? error.message;
-      continue;
-    }
-    if (/column|schema cache|does not exist/i.test(error.message ?? '')) continue;
-    lastError = error.message ?? '';
-  }
-
-  if (!memberOk) {
-    return { ok: false, error: lastError || 'تعذر إضافة العميل لقائمة الانتظار.' };
-  }
-
-  return { ok: true, clientId };
+  return { ok: true, clientId: String(clientResult.clientId) };
 }
 
 /**
@@ -321,12 +295,27 @@ export async function submitGroupTripLead(input: {
 
     const ageNum = age as number;
 
+    const serviceKeyError = assertServiceRoleKeyConfigured();
+    if (serviceKeyError) return { ok: false, error: serviceKeyError };
+
+    const admin = createSupabaseAdminClient();
+
+    // 1. SSOT — upsert primary clients row first (name, phone_wa, email, birth_date)
+    const clientResult = await upsertPrimaryGroupClient(admin, {
+      fullName: full_name,
+      phoneWa: phone_wa,
+      email,
+      birthDate: birth_date,
+      tripLabel: trip_label,
+      referralCode: referral_code,
+    });
+    if (!clientResult.ok) {
+      return { ok: false, error: clientResult.error };
+    }
+    const clientId = String(clientResult.clientId);
+
     // Capacity gate when registering against a concrete trip
     if (preferred_trip_id) {
-      const serviceKeyError = assertServiceRoleKeyConfigured();
-      if (serviceKeyError) return { ok: false, error: serviceKeyError };
-
-      const admin = createSupabaseAdminClient();
       const capacity = await fetchGroupTripCapacity(admin, preferred_trip_id);
       if (!capacity.ok) {
         console.warn('[submitGroupTripLead] capacity:', capacity.error);
@@ -340,39 +329,51 @@ export async function submitGroupTripLead(input: {
           };
         }
 
-        const wait = await placePublicRegistrantOnWaitlist({
-          fullName: full_name,
-          phoneWa: phone_wa,
-          email,
+        const memberLink = await linkGroupMemberToTrip(admin, {
+          clientId: clientResult.clientId,
           tripId: capacity.data.tripId,
-          tripTitle: capacity.data.titleAr || trip_label,
-          birthDate: birth_date,
-          age: ageNum,
-          referralCode: referral_code,
+          customerName: full_name,
+          customerPhone: phone_wa,
+          status: 'waitlisted',
         });
-        if (!wait.ok) {
-          console.error('Supabase Form Error:', wait.error);
+        if (!memberLink.ok) {
+          console.error('Supabase Form Error:', memberLink.error);
           return {
             ok: false,
-            error: `${ar.errors.trip.dbSaveFailed}\n${ar.errors.trip.dbSaveFailedDetail.replace('{detail}', wait.error)}`,
+            error: `${ar.errors.trip.dbSaveFailed}\n${ar.errors.trip.dbSaveFailedDetail.replace('{detail}', memberLink.error)}`,
           };
         }
 
         revalidatePath('/');
         revalidatePath('/crm/radar');
+        revalidatePath('/crm/clients');
+        revalidatePath(`/crm/clients/${clientId}`);
         revalidatePath('/crm/groups');
         revalidatePath(`/crm/groups/${capacity.data.tripId}`);
 
         return {
           ok: true,
           leadId: '',
+          clientId,
           placement: 'waitlisted',
           message: `المقاعد المؤكدة مكتملة (${capacity.data.confirmedCount}/${capacity.data.maxSeats || '∞'}) — تم إضافتك إلى قائمة انتظار «${capacity.data.titleAr}». سنتواصل معك عند توفر مقعد.`,
         };
       }
+
+      // 2. Lightweight group_members pivot (pending interview / approval queue)
+      const memberLink = await linkGroupMemberToTrip(admin, {
+        clientId: clientResult.clientId,
+        tripId: preferred_trip_id,
+        customerName: full_name,
+        customerPhone: phone_wa,
+        status: 'pending_interview',
+      });
+      if (!memberLink.ok) {
+        console.warn('[submitGroupTripLead] group_members link:', memberLink.error);
+      }
     }
 
-    // Normal pipeline — interview / DNA (not waitlisted)
+    // 3. Secondary — leads inbox row for DNA URL + radar (linked to clients.id)
     const leadResult = await insertGroupTripLeadAdmin({
       fullName: full_name,
       phoneWa: phone_wa,
@@ -392,12 +393,20 @@ export async function submitGroupTripLead(input: {
       };
     }
 
+    await safeLinkLeadClientId(admin, leadResult.leadId, clientResult.clientId);
+
     revalidatePath('/');
     revalidatePath('/crm/radar');
+    revalidatePath('/crm/clients');
+    revalidatePath(`/crm/clients/${clientId}`);
+    if (preferred_trip_id) {
+      revalidatePath(`/crm/groups/${preferred_trip_id}`);
+    }
 
     return {
       ok: true,
       leadId: leadResult.leadId,
+      clientId,
       placement: 'pipeline',
       message: ar.success.groupTripRegistered,
     };
@@ -411,6 +420,164 @@ export async function submitGroupTripLead(input: {
   }
 }
 
+export type GroupRegistrationDraftPayload = {
+  full_name: string;
+  phone_wa: string;
+  email?: string | null;
+  birth_date?: string | null;
+  trip_label: string;
+  preferred_trip_id: string;
+  referral_code?: string | null;
+  interview_date?: string | null;
+  interview_time?: string | null;
+  media_consent?: boolean;
+};
+
+function validateGroupRegistrationDraft(
+  input: GroupRegistrationDraftPayload,
+): { ok: true; age: number; birth_date: string | null } | { ok: false; error: string } {
+  const full_name = s(input.full_name);
+  const phone_wa = s(input.phone_wa);
+  const emailRaw = s(input.email ?? '');
+  const email = emailRaw || null;
+  const trip_label = s(input.trip_label);
+  const preferred_trip_id = s(input.preferred_trip_id);
+  const birth_date = s(input.birth_date ?? '').slice(0, 10) || null;
+
+  let age =
+    birth_date != null ? ageFromBirthDate(birth_date) : null;
+
+  if (!full_name || !phone_wa) {
+    return { ok: false, error: ar.errors.trip.namePhone };
+  }
+  if (!preferred_trip_id || !trip_label) {
+    return { ok: false, error: ar.errors.groupTrip.missingPackage };
+  }
+  if (email && !isValidEmail(email)) {
+    return { ok: false, error: ar.errors.groupTrip.invalidEmail };
+  }
+  if (birth_date) {
+    if (!age || age < 1 || age > 120) {
+      return { ok: false, error: ar.errors.groupTrip.invalidBirthDate };
+    }
+  } else {
+    return { ok: false, error: ar.errors.groupTrip.invalidBirthDate };
+  }
+
+  return { ok: true, age, birth_date };
+}
+
+/**
+ * Creates clients + leads rows only — no group_members until terms confirmation finalizes.
+ */
+async function registerGroupTripLeadAtConfirmation(
+  input: GroupRegistrationDraftPayload,
+): Promise<{ ok: true; leadId: string; clientId: ClientId } | { ok: false; error: string }> {
+  const validated = validateGroupRegistrationDraft(input);
+  if (!validated.ok) return validated;
+
+  const full_name = s(input.full_name);
+  const phone_wa = s(input.phone_wa);
+  const email = s(input.email ?? '') || null;
+  const trip_label = s(input.trip_label);
+  const preferred_trip_id = s(input.preferred_trip_id);
+  const birth_date = validated.birth_date;
+  const referral_code =
+    s(input.referral_code ?? '')
+      .toUpperCase()
+      .slice(0, 64) || null;
+
+  const serviceKeyError = assertServiceRoleKeyConfigured();
+  if (serviceKeyError) return { ok: false, error: serviceKeyError };
+
+  const admin = createSupabaseAdminClient();
+
+  const capacity = await fetchGroupTripCapacity(admin, preferred_trip_id);
+  if (capacity.ok && !capacity.data.isActive) {
+    return { ok: false, error: 'هذه الرحلة غير مفعّلة حالياً.' };
+  }
+
+  const clientResult = await upsertPrimaryGroupClient(admin, {
+    fullName: full_name,
+    phoneWa: phone_wa,
+    email,
+    birthDate: birth_date,
+    tripLabel: trip_label,
+    referralCode: referral_code,
+  });
+  if (!clientResult.ok) {
+    return { ok: false, error: clientResult.error };
+  }
+
+  const leadResult = await insertGroupTripLeadAdmin({
+    fullName: full_name,
+    phoneWa: phone_wa,
+    email: email || '',
+    age: validated.age,
+    birthDate: birth_date,
+    tripLabel: trip_label,
+    preferredTripId: preferred_trip_id,
+    referralCode: referral_code,
+  });
+
+  if (!leadResult.ok) {
+    return { ok: false, error: leadResult.error };
+  }
+
+  await safeLinkLeadClientId(admin, leadResult.leadId, clientResult.clientId);
+
+  return {
+    ok: true,
+    leadId: leadResult.leadId,
+    clientId: clientResult.clientId,
+  };
+}
+
+/**
+ * Final group onboarding submit — ALL database writes happen here after terms acceptance.
+ */
+export async function confirmGroupRegistrationFromDraft(
+  draft: GroupRegistrationDraftPayload,
+  agreedToTerms: boolean,
+): Promise<GroupDirectBookingResult> {
+  if (!agreedToTerms) {
+    return {
+      ok: false,
+      error: 'يرجى الموافقة على شروط وأحكام الرحلة الجماعية قبل المتابعة.',
+    };
+  }
+
+  const reg = await registerGroupTripLeadAtConfirmation(draft);
+  if (!reg.ok) return reg;
+
+  const interviewDate = String(draft.interview_date ?? '').trim().slice(0, 10);
+  const interviewTime = String(draft.interview_time ?? '').trim();
+  if (interviewDate && interviewTime) {
+    const saved = await saveInterviewDate(reg.leadId, interviewDate, interviewTime);
+    if (!saved.ok) {
+      console.warn('[confirmGroupRegistrationFromDraft] interview slot:', saved.error);
+    }
+  }
+
+  const result = await confirmGroupDirectBooking(
+    reg.leadId,
+    true,
+    draft.media_consent ?? true,
+  );
+
+  if (result.ok) {
+    revalidatePath('/');
+    revalidatePath('/crm/radar');
+    revalidatePath('/crm/clients');
+    revalidatePath(`/crm/clients/${result.clientId}`);
+    if (draft.preferred_trip_id) {
+      revalidatePath(`/crm/groups/${draft.preferred_trip_id}`);
+    }
+  }
+
+  return result;
+}
+
 export async function fetchGroupLeadForDnaAction(
   leadId: string,
 ): Promise<
@@ -419,6 +586,9 @@ export async function fetchGroupLeadForDnaAction(
       lead: {
         id: string;
         full_name: string;
+        phone_wa: string;
+        email: string;
+        client_id: string;
         destinations: string[];
         interests: string[];
         daily_pace: string | null;
@@ -436,25 +606,21 @@ export async function fetchGroupLeadForDnaAction(
   if (serviceKeyError) return { ok: false, error: serviceKeyError };
 
   const admin = createSupabaseAdminClient();
-  const { data, error } = await admin
-    .from('leads')
-    .select(
-      'id, full_name, destinations, interests, daily_pace, food_preferences, final_thoughts, status, form_type',
-    )
-    .eq('id', id)
-    .maybeSingle();
-
-  if (error || !data) {
-    console.error('Supabase Form Error:', error?.message ?? 'lead not found');
-    return { ok: false, error: error?.message ?? 'تعذّر تحميل الطلب' };
+  const loaded = await fetchLeadRowById(admin, id, DNA_LEAD_FETCH_SELECTS);
+  if (!loaded.ok) {
+    console.error('Supabase Form Error:', loaded.error);
+    return { ok: false, error: loaded.error || 'تعذّر تحميل الطلب' };
   }
 
-  const row = data as Record<string, unknown>;
+  const row = loaded.row;
   return {
     ok: true,
     lead: {
       id: String(row.id),
       full_name: String(row.full_name ?? ''),
+      phone_wa: String(row.phone_wa ?? row.phone ?? ''),
+      email: String(row.email ?? ''),
+      client_id: row.client_id != null ? String(row.client_id) : '',
       destinations: Array.isArray(row.destinations)
         ? (row.destinations as unknown[]).map(String)
         : [],
@@ -481,13 +647,12 @@ export async function submitGroupLeadDnaAction(
 
   const admin = createSupabaseAdminClient();
 
-  const existing = await admin
-    .from('leads')
-    .select('final_thoughts, preferred_trip_id, form_type, travel_style, interests, status')
-    .eq('id', id)
-    .maybeSingle();
+  const loaded = await fetchLeadRowById(admin, id, DNA_LEAD_SUBMIT_SELECTS);
+  if (!loaded.ok) {
+    return { ok: false, error: loaded.error || 'تعذّر تحميل الطلب' };
+  }
 
-  const existingRow = (existing.data ?? null) as Record<string, unknown> | null;
+  const existingRow = loaded.row;
   const currentStatus = String(existingRow?.status ?? '').trim().toLowerCase();
   const isInboxPending =
     !currentStatus ||
@@ -522,13 +687,62 @@ export async function submitGroupLeadDnaAction(
   }
 
   const preferredFromExisting = String(existingRow?.preferred_trip_id ?? '').trim();
-  if (
-    preferredFromExisting &&
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-      preferredFromExisting,
-    )
-  ) {
+  if (preferredFromExisting) {
     baseUpdate.preferred_trip_id = preferredFromExisting;
+  }
+
+  const leadContact = existingRow;
+  const destinations = Array.isArray(leadContact?.destinations)
+    ? (leadContact.destinations as unknown[]).map((v) => String(v).trim()).filter(Boolean)
+    : [];
+
+  const resolvedContact = await resolveGroupLeadContact(admin, leadContact, {
+    phone_wa: payload.phone_wa,
+    full_name: payload.full_name,
+    email: payload.email,
+  });
+
+  if (!resolvedContact.phoneWa) {
+    console.error('[group-dna] phone missing for lead', id, {
+      leadPhone: leadContact?.phone_wa,
+      payloadPhone: payload.phone_wa,
+      clientId: leadContact?.client_id,
+    });
+    return { ok: false, error: 'رقم الجوال غير صالح أو مفقود.' };
+  }
+
+  // Back-fill lead contact columns when Step 1 wrote clients but not leads.phone_wa
+  if (!String(leadContact?.phone_wa ?? '').trim()) {
+    await admin
+      .from('leads')
+      .update({
+        phone_wa: resolvedContact.phoneWa,
+        ...(resolvedContact.email ? { email: resolvedContact.email } : {}),
+      } as never)
+      .eq('id', id)
+      .then(({ error: patchErr }) => {
+        if (patchErr && !/column|schema cache|does not exist/i.test(patchErr.message ?? '')) {
+          console.warn('[group-dna] leads.phone_wa backfill:', patchErr.message);
+        }
+      });
+  }
+
+  // 1. SSOT — write DNA directly to clients (upsert by phone_wa) BEFORE secondary lead patch
+  const clientResult = await upsertPrimaryGroupClient(admin, {
+    fullName: resolvedContact.fullName,
+    phoneWa: resolvedContact.phoneWa,
+    email: resolvedContact.email,
+    birthDate:
+      leadContact?.birth_date != null ? String(leadContact.birth_date).slice(0, 10) : null,
+    tripLabel: destinations[0] ?? null,
+    interests,
+    dailyPace: payload.daily_pace || null,
+    foodPreferences: payload.food_preferences,
+    specialNotes: mergedThoughts || null,
+  });
+  if (!clientResult.ok) {
+    console.error('[group-dna] clients upsert:', clientResult.error);
+    return { ok: false, error: clientResult.error };
   }
 
   const { error } = await admin.from('leads').update(baseUpdate as never).eq('id', id);
@@ -552,6 +766,8 @@ export async function submitGroupLeadDnaAction(
     }
   }
 
+  await safeLinkLeadClientId(admin, id, clientResult.clientId);
+
   // EVENT A — DNA submitted → Kanban meeting (only when already approved)
   if (!isInboxPending) {
     const { updatePipelineStatus } = await import('@/lib/lead-pipeline-automation');
@@ -560,15 +776,26 @@ export async function submitGroupLeadDnaAction(
     );
   }
 
-  const clientSync = await syncClientRecordOnGroupDnaSubmit(id);
-  if (!clientSync.ok) {
-    console.error('[group-dna] client upsert:', clientSync.error);
-    return { ok: false, error: clientSync.error };
+  const preferredTripId = preferredFromExisting;
+  if (preferredTripId) {
+    const memberLink = await linkGroupMemberToTrip(admin, {
+      clientId: clientResult.clientId,
+      tripId: preferredTripId,
+      customerName: resolvedContact.fullName,
+      customerPhone: resolvedContact.phoneWa,
+      status: 'pending_interview',
+    });
+    if (!memberLink.ok) {
+      console.warn('[group-dna] group_members link:', memberLink.error);
+    }
   }
 
   revalidatePath('/crm/radar');
   revalidatePath('/crm/clients');
-  revalidatePath(`/crm/clients/${clientSync.clientId}`);
+  revalidatePath(`/crm/clients/${clientResult.clientId}`);
+  if (preferredTripId) {
+    revalidatePath(`/crm/groups/${preferredTripId}`);
+  }
   return { ok: true };
 }
 
@@ -773,7 +1000,7 @@ export type GroupLeadDecisionResult =
   | { ok: true; message: string; clientId?: string | number }
   | { ok: false; error: string };
 
-type GroupLeadDecisionKind = 'approved' | 'marketing_archive' | 'dna_submitted';
+type GroupLeadDecisionKind = 'approved' | 'marketing_archive' | 'dna_submitted' | 'registration';
 
 /** clients.id may be integer OR uuid depending on environment. */
 type ClientId = string | number;
@@ -969,26 +1196,15 @@ async function loadLeadDecisionRow(
   const admin = createSupabaseAdminClient();
   const id = String(leadId ?? '').trim();
   const selectAttempts = [
-    'id, full_name, phone_wa, email, birth_date, destinations, interests, daily_pace, food_preferences, final_thoughts, status, form_type, interview_date, preferred_trip_id, media_consent, client_id, referral_code',
-    'id, full_name, phone_wa, email, birth_date, destinations, interests, daily_pace, food_preferences, final_thoughts, status, form_type, interview_date, preferred_trip_id, client_id',
-    'id, full_name, phone_wa, email, destinations, interests, daily_pace, food_preferences, final_thoughts, status, form_type, interview_date, preferred_trip_id, media_consent',
+    'id, full_name, phone_wa, email, birth_date, destinations, interests, daily_pace, food_preferences, final_thoughts, status, form_type, interview_date, preferred_trip_id, media_consent, referral_code',
+    'id, full_name, phone_wa, email, birth_date, destinations, interests, daily_pace, food_preferences, final_thoughts, status, form_type, interview_date, preferred_trip_id, media_consent',
     'id, full_name, phone_wa, email, destinations, interests, daily_pace, food_preferences, final_thoughts, status, form_type, interview_date, preferred_trip_id',
     'id, full_name, phone_wa, email, destinations, interests, daily_pace, food_preferences, final_thoughts, status, form_type, interview_date',
+    'id, full_name, phone_wa, email, client_id, birth_date, destinations, interests, daily_pace, food_preferences, final_thoughts, status, form_type, interview_date, preferred_trip_id, media_consent, referral_code',
+    'id, full_name, phone_wa, email, client_id, destinations, interests, daily_pace, food_preferences, final_thoughts, status, form_type, interview_date, preferred_trip_id',
   ];
 
-  let lastError = '';
-  for (const cols of selectAttempts) {
-    const { data, error } = await admin.from('leads').select(cols).eq('id', id).maybeSingle();
-    if (error && /column|schema cache|does not exist|preferred_trip/i.test(error.message ?? '')) {
-      lastError = error.message;
-      continue;
-    }
-    if (error) return { ok: false, error: error.message };
-    if (!data) return { ok: false, error: 'لم يتم العثور على الطلب.' };
-    return { ok: true, row: data as unknown as Record<string, unknown> };
-  }
-
-  return { ok: false, error: lastError || 'لم يتم العثور على الطلب.' };
+  return fetchLeadRowById(admin, id, selectAttempts);
 }
 
 /**
@@ -1032,19 +1248,18 @@ async function patchClientGroupMetadata(
   const destinations = Array.isArray(leadRow.destinations)
     ? (leadRow.destinations as unknown[]).map((v) => String(v).trim()).filter(Boolean)
     : [];
-  const interests = Array.isArray(leadRow.interests)
-    ? (leadRow.interests as unknown[]).map((v) => String(v).trim()).filter(Boolean)
-    : [];
-  const food = Array.isArray(leadRow.food_preferences)
-    ? (leadRow.food_preferences as unknown[]).map((v) => String(v).trim()).filter(Boolean)
-    : [];
+  const interests = extractLeadInterests(leadRow);
+  const includeDnaFields = decision === 'approved' || decision === 'dna_submitted';
+  const dnaPatch = includeDnaFields ? buildGroupLeadClientDnaPatch(leadRow) : {};
 
   const tags =
     decision === 'approved'
       ? ['group_trip_client', 'group_onboarding_approved']
       : decision === 'dna_submitted'
         ? ['group_trip_client', 'group_onboarding_dna']
-        : ['marketing_archive', 'group_onboarding_archive'];
+        : decision === 'registration'
+          ? ['group_trip_client', 'group_onboarding_registration']
+          : ['marketing_archive', 'group_onboarding_archive'];
 
   // Merge with existing tags when reusing a returning customer
   let mergedTags = tags;
@@ -1070,10 +1285,7 @@ async function patchClientGroupMetadata(
     // DB check: client_type ∈ (عميل, مؤثر, ليدر) — never use English labels
     client_type: 'عميل',
     target_trip: destinations.join(' · ') || null,
-    dna_interests: interests.join('، ') || null,
-    dna_activity_level: String(leadRow.daily_pace ?? '').trim() || null,
-    food_allergies: food.join('، ') || null,
-    secret_notes: String(leadRow.final_thoughts ?? '').trim() || null,
+    ...(includeDnaFields ? dnaPatch : {}),
   };
 
   if (decision === 'approved') {
@@ -1087,6 +1299,12 @@ async function patchClientGroupMetadata(
     updatePayload.birth_date = birthDate;
   }
 
+  const email = String(leadRow.email ?? '').trim();
+  if (email) updatePayload.email = email;
+
+  const leadName = String(leadRow.full_name ?? leadRow.name ?? '').trim();
+  if (leadName) updatePayload.name = leadName;
+
   // Persist the referral code the lead used (do not overwrite client's own referral_code)
   if (decision === 'approved' || decision === 'dna_submitted') {
     const usedCode = extractReferralCodeFromLead(leadRow);
@@ -1097,21 +1315,29 @@ async function patchClientGroupMetadata(
 
   const { error } = await admin.from('clients').update(updatePayload).eq('id', clientId);
   if (error) {
-    // Schema may vary per environment; avoid failing core migration for non-critical columns.
     console.warn('[groupLeadDecision] metadata patch skipped:', error.message);
-    // Lean fallback so the client profile still defaults to Group + shows group tools
     const lean: Record<string, unknown> = {
       intake_trip_type: 'group',
       client_type: 'عميل',
     };
-    if (decision === 'approved') {
+    if (decision === 'approved' || decision === 'dna_submitted') {
       lean.lead_source = 'group_onboarding';
       const usedCode = extractReferralCodeFromLead(leadRow);
       if (usedCode) lean.used_code = usedCode;
+      if (includeDnaFields) {
+        lean.dna_interests = dnaPatch.dna_interests;
+        lean.dna_activity_level = dnaPatch.dna_activity_level;
+        lean.food_allergies = dnaPatch.food_allergies;
+        if (dnaPatch.dna_special_requests) {
+          lean.dna_special_requests = dnaPatch.dna_special_requests;
+        }
+      }
     }
+    if (leadName) lean.name = leadName;
+    if (email) lean.email = email;
+    if (birthDate && /^\d{4}-\d{2}-\d{2}$/.test(birthDate)) lean.birth_date = birthDate;
     const fallback = await admin.from('clients').update(lean).eq('id', clientId);
     if (fallback.error) {
-      // Retry without used_code if that column is missing
       if (lean.used_code && /used_code|column|schema cache/i.test(fallback.error.message ?? '')) {
         delete lean.used_code;
         const retry = await admin.from('clients').update(lean).eq('id', clientId);
@@ -1123,20 +1349,36 @@ async function patchClientGroupMetadata(
       }
     }
   }
+
+  if (includeDnaFields) {
+    await patchClientDnaWithFallback(admin, clientId, leadRow);
+    await upsertClientPreferencesInterests(admin, clientId, interests);
+  }
 }
 
 /**
- * After DNA submit: upsert clients by phone_wa, sync DNA fields, link leads.client_id,
- * and touch group_members when a preferred trip is known (waitlist-safe — no seat bump).
+ * Upsert clients by phone_wa, sync DNA to CRM columns, link leads.client_id,
+ * and touch group_members when a preferred trip is known (waitlist-safe).
  */
-async function syncClientRecordOnGroupDnaSubmit(
+async function syncClientRecordFromGroupLead(
   leadId: string,
+  options?: {
+    phase?: 'registration' | 'dna';
+    leadOverrides?: Record<string, unknown>;
+  },
 ): Promise<{ ok: true; clientId: ClientId } | { ok: false; error: string }> {
   const id = String(leadId ?? '').trim();
   if (!id) return { ok: false, error: 'معرّف غير صالح' };
 
+  const phase = options?.phase ?? 'dna';
+
   const lead = await loadLeadDecisionRow(id);
   if (!lead.ok) return lead;
+
+  const mergedRow: Record<string, unknown> = {
+    ...lead.row,
+    ...(options?.leadOverrides ?? {}),
+  };
 
   let admin: SupabaseClient;
   try {
@@ -1148,18 +1390,23 @@ async function syncClientRecordOnGroupDnaSubmit(
     };
   }
 
-  const resolved = await resolveClientForGroupApproval(lead.row, admin);
+  const resolved = await resolveClientForGroupApproval(mergedRow, admin);
   if (!resolved.ok) return resolved;
 
   const { clientId, clientName } = resolved;
 
-  await patchClientGroupMetadata(admin, clientId, lead.row, 'dna_submitted');
+  await patchClientGroupMetadata(
+    admin,
+    clientId,
+    mergedRow,
+    phase === 'registration' ? 'registration' : 'dna_submitted',
+  );
 
-  const leadPhone = String(lead.row.phone_wa ?? '').trim();
+  const leadPhone = String(mergedRow.phone_wa ?? '').trim();
   const cleanPhone = leadPhone ? sanitizePhoneDigits(leadPhone) : '';
   const phoneWa = cleanPhone ? canonicalizePhoneWa(cleanPhone) || cleanPhone : '';
 
-  const preferredTripId = String(lead.row.preferred_trip_id ?? '').trim();
+  const preferredTripId = String(mergedRow.preferred_trip_id ?? '').trim();
   if (preferredTripId) {
     const tripKey = /^\d+$/.test(preferredTripId) ? Number(preferredTripId) : preferredTripId;
     const clientKey = /^\d+$/.test(String(clientId)) ? Number(clientId) : clientId;
@@ -1176,7 +1423,7 @@ async function syncClientRecordOnGroupDnaSubmit(
       group_id: tripKey,
       status: 'waitlisted',
       payment_status: 'pending',
-      customer_name: clientName || String(lead.row.full_name ?? '').trim(),
+      customer_name: clientName || String(mergedRow.full_name ?? '').trim(),
     };
     if (phoneWa) memberPayload.customer_phone = phoneWa;
 
@@ -1211,11 +1458,7 @@ async function syncClientRecordOnGroupDnaSubmit(
     }
   }
 
-  const leadPatch: Record<string, unknown> = { client_id: clientId };
-  const { error: linkErr } = await admin.from('leads').update(leadPatch).eq('id', id);
-  if (linkErr && !/column|schema cache|does not exist/i.test(linkErr.message ?? '')) {
-    console.warn('[group-dna] leads.client_id link:', linkErr.message);
-  }
+  await safeLinkLeadClientId(admin, id, clientId);
 
   revalidatePath('/crm/clients');
   revalidatePath(`/crm/clients/${clientId}`);

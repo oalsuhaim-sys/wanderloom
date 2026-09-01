@@ -137,11 +137,56 @@ export type ClientDnaAdvancedFields = {
 }
 
 export function pickClientDnaAdvanced(raw: Record<string, unknown>): ClientDnaAdvancedFields {
-  return {
-    dna_interests: pickText(raw, ['dna_interests', 'interests']),
-    dna_special_requests: pickText(raw, ['dna_special_requests', 'special_requests']),
-    dna_activity_level: pickText(raw, ['dna_activity_level', 'activity_level']),
+  const dnaObj = parseTravelDnaObject(raw.travel_dna)
+
+  let interests = pickText(raw, ['dna_interests', 'interests'])
+  if (!interests) {
+    const fromDna = dnaObj.interests
+    if (Array.isArray(fromDna)) {
+      interests = formatDnaInterests(
+        fromDna.map((item) => String(item).trim()).filter(Boolean),
+      )
+    } else if (typeof fromDna === 'string' && fromDna.trim()) {
+      interests = fromDna.trim()
+    }
   }
+
+  const activity = pickText(
+    { ...dnaObj, ...raw },
+    [
+      'dna_activity_level',
+      'activity_level',
+      'pace_preference',
+      'daily_pace',
+      'pace',
+    ],
+  )
+
+  const special = pickText(
+    { ...dnaObj, ...raw },
+    ['dna_special_requests', 'special_requests', 'final_thoughts', 'notes'],
+  )
+
+  return {
+    dna_interests: interests,
+    dna_special_requests: special,
+    dna_activity_level: activity,
+  }
+}
+
+/** Unified DNA fields for CRM cards & profile — reads directly from clients row + travel_dna fallbacks */
+export function resolveClientDnaDisplay(
+  client: Pick<
+    VipClientProfile,
+    'dna_interests' | 'dna_special_requests' | 'dna_activity_level' | 'travel_dna'
+  >,
+): ClientDnaAdvancedFields {
+  return pickClientDnaAdvanced({
+    dna_interests: client.dna_interests,
+    dna_special_requests: client.dna_special_requests,
+    dna_activity_level: client.dna_activity_level,
+    travel_dna: client.travel_dna,
+  })
 }
 
 export function clientDnaAdvancedPayload(fields: ClientDnaAdvancedFields): Record<string, string | null> {

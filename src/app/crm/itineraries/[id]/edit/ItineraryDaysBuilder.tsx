@@ -158,6 +158,18 @@ function TimelineCard({
             ) : null}
 
             {act.kind === 'place' ? (
+              <div className="mt-2">
+                <input
+                  type="text"
+                  placeholder="ملاحظات المحطة (اختياري)..."
+                  value={act.note || ''}
+                  onChange={(e) => onUpdate(day.id, act.id, { note: e.target.value })}
+                  className="w-full rounded border border-gray-200 p-2 text-xs focus:border-[#C5A059] focus:outline-none"
+                />
+              </div>
+            ) : null}
+
+            {act.kind === 'place' ? (
               <button
                 type="button"
                 disabled={!coords || !onFindNearby}

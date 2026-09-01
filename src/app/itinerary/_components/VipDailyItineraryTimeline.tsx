@@ -73,24 +73,34 @@ function countdownPillLabel(startDate: string | null | undefined): string | null
 }
 
 function ActivityNotes({ activity }: { activity: PublicItineraryActivity }) {
+  const stopNotes = activity.notes?.trim()
   const story = activity.story?.trim()
   const note = activity.description?.trim()
   const lines: string[] = []
-  if (note) lines.push(note)
-  if (story && story !== note) lines.push(story)
-  if (lines.length === 0) return null
+  if (note && note !== stopNotes) lines.push(note)
+  if (story && story !== note && story !== stopNotes) lines.push(story)
 
   return (
-    <div className="mt-1 space-y-1">
-      {lines.map((line, i) => (
-        <p
-          key={i}
-          className="line-clamp-2 text-sm font-medium leading-relaxed text-gray-500 transition-all group-hover:line-clamp-none"
-        >
-          {line}
-        </p>
-      ))}
-    </div>
+    <>
+      {stopNotes ? (
+        <div className="mt-1 flex items-center gap-1 rounded border border-amber-100/50 bg-amber-50/50 p-1.5 text-xs text-gray-500">
+          <span aria-hidden>💡</span>
+          <span>{stopNotes}</span>
+        </div>
+      ) : null}
+      {lines.length > 0 ? (
+        <div className="mt-1 space-y-1">
+          {lines.map((line, i) => (
+            <p
+              key={i}
+              className="line-clamp-2 text-sm font-medium leading-relaxed text-gray-500 transition-all group-hover:line-clamp-none"
+            >
+              {line}
+            </p>
+          ))}
+        </div>
+      ) : null}
+    </>
   )
 }
 

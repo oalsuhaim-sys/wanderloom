@@ -3,6 +3,25 @@ import type { NextRequest } from 'next/server';
 
 import { crmAuthMiddleware } from '@/lib/supabase/middleware';
 
+/** Legacy marketing URLs → canonical public client routes */
+function legacyPublicClientRedirect(request: NextRequest): NextResponse | null {
+  const { pathname } = request.nextUrl;
+
+  if (pathname === '/group-registration' || pathname.startsWith('/group-registration/')) {
+    const url = request.nextUrl.clone();
+    url.pathname = pathname.replace(/^\/group-registration/, '/group-onboarding');
+    return NextResponse.redirect(url);
+  }
+
+  if (pathname === '/trip-itinerary' || pathname.startsWith('/trip-itinerary/')) {
+    const url = request.nextUrl.clone();
+    url.pathname = pathname.replace(/^\/trip-itinerary/, '/itinerary');
+    return NextResponse.redirect(url);
+  }
+
+  return null;
+}
+
 function legacyWelcomeRedirect(request: NextRequest): NextResponse | null {
   const { pathname } = request.nextUrl;
   const match = pathname.match(/^\/welcome\/([^/]+)$/);
@@ -21,8 +40,12 @@ function legacyWelcomeRedirect(request: NextRequest): NextResponse | null {
 }
 
 export async function middleware(request: NextRequest) {
+  const publicLegacy = legacyPublicClientRedirect(request);
+  if (publicLegacy) return publicLegacy;
+
   const legacy = legacyWelcomeRedirect(request);
   if (legacy) return legacy;
+
   return crmAuthMiddleware(request);
 }
 

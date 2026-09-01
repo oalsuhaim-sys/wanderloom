@@ -1,6 +1,7 @@
 import {
   createEmptyDay,
   parseHotelsFromDetailsRaw,
+  readPlaceNotesFromStop,
   withTransportDefaults,
   type ItineraryHotelEntry,
   type SimpleItineraryDay,
@@ -53,6 +54,7 @@ export function templateDaysToSimpleDays(raw: unknown): SimpleItineraryDay[] {
         category: s.category,
         city: d.city ?? s.city,
         rating: s.rating,
+        notes: readPlaceNotesFromStop(s),
         transportToNext: transitModeToArabic(s.transit_mode ?? s.transport_type),
         transportDuration: String(s.transit_duration ?? '').trim(),
       }),

@@ -21,8 +21,10 @@ import {
   X,
 } from 'lucide-react'
 
-import { deleteClientAction, fetchClientDirectoryAction } from '@/app/actions/clientDirectoryActions'
+import { deleteClientAction, fetchClientDirectoryAction, syncLegacyGroupMemberDnaAction } from '@/app/actions/clientDirectoryActions'
 import ContactFilterTabs from '@/app/crm/clients/_components/ContactFilterTabs'
+import ClientCard from '@/app/crm/clients/_components/ClientCard'
+import { runGroupMembersClientSyncOnce } from '@/app/crm/clients/useClients'
 import ClientDnaAdvancedFieldsEditor from '@/app/crm/clients/_components/ClientDnaAdvancedFieldsEditor'
 import ClientDnaSmartEventRecommendations from '@/app/crm/clients/_components/ClientDnaSmartEventRecommendations'
 import ClientPaymentWhatsAppButton from '@/app/crm/clients/_components/ClientPaymentWhatsAppButton'
@@ -60,7 +62,7 @@ import {
 } from '@/lib/client-sales-stage'
 import { LEAD_SOURCE_OPTIONS } from '@/lib/lead-source'
 import { exportClientsToCSV } from '@/lib/export-clients-csv'
-import { CRM_BTN_PRIMARY, CRM_BTN_GHOST, CRM_CARD_GRID, CRM_CARD_INTERACTIVE, CRM_FILTER_BAR, CRM_INPUT, CRM_TABLE, CRM_TABLE_SCROLL, partnerInitials } from '@/lib/crm-luxury-ui'
+import { CRM_BTN_PRIMARY, CRM_BTN_GHOST, CRM_CARD_GRID, CRM_FILTER_BAR, CRM_INPUT, CRM_TABLE, CRM_TABLE_SCROLL } from '@/lib/crm-luxury-ui'
 import { toast } from '@/lib/crm-toast'
 
 const ar = {
@@ -319,6 +321,9 @@ export default function ClientsLoyaltyPage() {
     setLoading(true)
     try {
       const token = await getClientAccessToken()
+      await syncLegacyGroupMemberDnaAction(token).catch((err) =>
+        console.warn('[CRM clients] legacy DNA backfill:', err),
+      )
       const result = await fetchClientDirectoryAction(token)
       if (!result.ok) {
         throw new Error(result.error || ar.loadErr)
@@ -373,7 +378,29 @@ export default function ClientsLoyaltyPage() {
 
       try {
         const token = await getClientAccessToken()
-      const result = await fetchClientDirectoryAction(token)
+
+        const memberSync = await runGroupMembersClientSyncOnce().catch((err) => {
+          console.warn('[CRM clients] group_members → clients sync:', err)
+          return null
+        })
+        if (memberSync?.ok && (memberSync.created > 0 || memberSync.linked > 0)) {
+          console.info(
+            `[CRM clients] group_members → clients: created=${memberSync.created}, linked=${memberSync.linked}`,
+          )
+        } else if (memberSync && !memberSync.ok) {
+          console.warn('[CRM clients] group_members → clients:', memberSync.error)
+        }
+
+        const backfill = await syncLegacyGroupMemberDnaAction(token)
+        if (backfill.ok && backfill.synced > 0) {
+          console.info(
+            `[CRM clients] legacy group DNA backfill: synced=${backfill.synced}, linked=${backfill.linked}`,
+          )
+        } else if (!backfill.ok) {
+          console.warn('[CRM clients] legacy group DNA backfill:', backfill.error)
+        }
+
+        const result = await fetchClientDirectoryAction(token)
         if (!isMounted) return
 
         if (!result.ok) {
@@ -758,186 +785,28 @@ export default function ClientsLoyaltyPage() {
           </div>
         ) : viewMode === 'cards' ? (
           <div className={`crm-stagger ${CRM_CARD_GRID}`}>
-            {filtered.map((c) => {
-              const tier = clientDisplayTierBadge(c)
-              const trips = tripCounts[c?.id ?? ''] ?? c?.total_trips ?? 0
-              const clv = resolveClientLifetimeValue(c)
-              const displayName = c.name?.trim() || '—'
-              const dnaChips = parseTravelDnaChips({
-                travel_dna: c.travel_dna,
-                dna_interests: c.dna_interests,
-                tags: c.tags,
-              })
-              const engagement = c.engagement_status
-              const wa = c.phone_wa?.trim() ? whatsAppHref(c.phone_wa) : null
-
-              return (
-                <article
-                  key={String(c.id)}
-                  className={`group relative flex cursor-pointer flex-col items-center rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-sm dark:border-[#2D3F3A] dark:bg-[#22302C] ${CRM_CARD_INTERACTIVE}`}
-                  onClick={() => openClientProfile(c)}
-                >
-                  <div className="relative mb-4">
-                    <div
-                      className="flex h-20 w-20 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-xl font-bold text-slate-700 dark:border-[#D4AF37]/30 dark:bg-[#1A2421] dark:text-[#D4AF37]"
-                      aria-hidden
-                    >
-                      {partnerInitials(displayName)}
-                    </div>
-                    {engagement ? (
-                      <span
-                        className={`absolute bottom-1 left-1 h-3.5 w-3.5 rounded-full ring-2 ring-white dark:ring-[#22302C] ${engagementDotClass(engagement)} animate-pulse`}
-                        title={engagementStatusLabel(engagement)}
-                        aria-label={`التفاعل: ${engagementStatusLabel(engagement)}`}
-                      />
-                    ) : null}
-                  </div>
-
-                  <h2 className="mb-1 max-w-full truncate text-lg font-bold text-slate-900 dark:text-white">
-                    {displayName}
-                  </h2>
-
-                  <div className="mt-1 flex flex-col items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
-                    {c?.phone_wa ? (
-                      <a
-                        href={`tel:${c.phone_wa.replace(/\s+/g, '')}`}
-                        dir="ltr"
-                        className="inline-flex items-center gap-1.5 transition hover:text-slate-800 dark:hover:text-[#D4AF37]"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <Phone className="h-3 w-3 shrink-0" aria-hidden />
-                        {c.phone_wa}
-                      </a>
-                    ) : null}
-                    {c?.email ? (
-                      <a
-                        href={`mailto:${c.email}`}
-                        dir="ltr"
-                        title={c.email}
-                        className="inline-flex max-w-full items-center gap-1.5 truncate transition hover:text-slate-800 dark:hover:text-[#D4AF37]"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <Mail className="h-3 w-3 shrink-0" aria-hidden />
-                        {c.email}
-                      </a>
-                    ) : null}
-                    {!c?.phone_wa && !c?.email ? <span>{ar.noContact}</span> : null}
-                  </div>
-
-                  <div className="mt-3 mb-3 flex flex-wrap items-center justify-center gap-2">
-                    <span
-                      className="rounded-md border border-emerald-200/80 bg-emerald-50 px-2 py-1 text-[10px] font-bold text-emerald-800 dark:border-emerald-800/40 dark:bg-emerald-950/30 dark:text-emerald-300"
-                      dir="ltr"
-                      title="Lifetime Value"
-                    >
-                      {formatSarClv(clv)}
-                    </span>
-                    <span className={`inline-flex items-center gap-1 ${tier.className}`}>
-                      {(c.client_tier === 'vip' || c.client_tier === 'vvip' || tier.label.includes('VIP')) ? (
-                        <Crown className="h-3 w-3" aria-hidden />
-                      ) : null}
-                      {tier.label}
-                    </span>
-                    <span className="rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-[10px] font-medium text-slate-600 dark:border-[#2D3F3A] dark:bg-[#1A2421] dark:text-slate-300">
-                      {trips} رحلات
-                    </span>
-                    <div onClick={(e) => e.stopPropagation()}>
-                      <ClientSalesStageControl
-                        clientId={c.id}
-                        value={c.sales_stage ?? ''}
-                        compact
-                        className="min-w-0"
-                        onUpdated={(stage) => {
-                          setClients((prev) =>
-                            prev.map((row) =>
-                              row.id === c.id ? { ...row, sales_stage: stage || '' } : row,
-                            ),
-                          )
-                        }}
-                      />
-                    </div>
-                  </div>
-
-                  {dnaChips.length > 0 ? (
-                    <div className="mb-4 flex w-full flex-wrap justify-center gap-1.5">
-                      {dnaChips.map((chip) => (
-                        <span
-                          key={chip.key}
-                          className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] font-medium text-slate-700 dark:border-[#2D3F3A] dark:bg-[#1A2421] dark:text-slate-300"
-                        >
-                          {chip.label}
-                        </span>
-                      ))}
-                    </div>
-                  ) : null}
-
-                  <div
-                    className="mt-auto flex w-full gap-2 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <button
-                      type="button"
-                      onClick={() => openClientProfile(c)}
-                      className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white py-2.5 text-sm font-semibold text-slate-900 transition-all hover:bg-slate-900 hover:text-white dark:border-[#D4AF37]/50 dark:bg-transparent dark:text-[#D4AF37] dark:hover:bg-[#D4AF37]/10"
-                    >
-                      {ar.manageProfile}
-                    </button>
-                    {wa ? (
-                      <a
-                        href={wa}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        title="واتساب"
-                        aria-label={`واتساب ${displayName}`}
-                        className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700 transition hover:bg-emerald-600 hover:text-white dark:border-emerald-800/50 dark:bg-emerald-950/40 dark:text-emerald-300"
-                      >
-                        <MessageCircle className="h-4 w-4" aria-hidden />
-                      </a>
-                    ) : (
-                      <ClientPaymentWhatsAppButton
-                        clientId={c.id}
-                        clientName={c.name ?? '—'}
-                        phone={c.phone_wa}
-                        targetTrip={c.target_trip}
-                        salesStage={c.sales_stage}
-                        compact
-                        className="!h-11 !w-11 shrink-0 !rounded-full"
-                      />
-                    )}
-                  </div>
-
-                  <div
-                    className="mt-2 flex items-center justify-center gap-1"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <button
-                      type="button"
-                      onClick={() => openEdit(c)}
-                      disabled={deletingId === c?.id}
-                      title={ar.edit}
-                      aria-label={`${ar.edit} ${c?.name ?? ''}`}
-                      className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 disabled:opacity-50 dark:hover:bg-[#1A2421] dark:hover:text-[#D4AF37]"
-                    >
-                      <Pencil className="h-4 w-4" aria-hidden />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => void handleDeleteClient(c)}
-                      disabled={deletingId === c?.id}
-                      title={ar.delete}
-                      aria-label={`${ar.delete} ${c?.name ?? ''}`}
-                      className="rounded-lg p-2 text-slate-400 transition hover:bg-rose-50 hover:text-red-600 disabled:opacity-50 dark:hover:bg-rose-950/30 dark:hover:text-red-400"
-                    >
-                      {deletingId === c?.id ? (
-                        <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-                      ) : (
-                        <Trash2 className="h-4 w-4" aria-hidden />
-                      )}
-                    </button>
-                  </div>
-                </article>
-              )
-            })}
+            {filtered.map((c) => (
+              <ClientCard
+                key={String(c.id)}
+                client={c}
+                trips={tripCounts[c?.id ?? ''] ?? c?.total_trips ?? 0}
+                deletingId={deletingId}
+                manageProfileLabel={ar.manageProfile}
+                noContactLabel={ar.noContact}
+                editLabel={ar.edit}
+                deleteLabel={ar.delete}
+                onOpenProfile={openClientProfile}
+                onEdit={openEdit}
+                onDelete={(client) => void handleDeleteClient(client)}
+                onSalesStageUpdated={(clientId, stage) => {
+                  setClients((prev) =>
+                    prev.map((row) =>
+                      row.id === clientId ? { ...row, sales_stage: stage || '' } : row,
+                    ),
+                  )
+                }}
+              />
+            ))}
           </div>
         ) : (
           <div className={CRM_TABLE_SCROLL}>
@@ -981,6 +850,10 @@ export default function ClientsLoyaltyPage() {
                               {parseTravelDnaChips({
                                 travel_dna: c.travel_dna,
                                 dna_interests: c.dna_interests,
+                                dna_activity_level: c.dna_activity_level,
+                                food_allergies: c.food_allergies,
+                                dietary: c.dietary,
+                                tags: c.tags,
                               })
                                 .slice(0, 3)
                                 .map((chip) => (

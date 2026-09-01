@@ -700,6 +700,7 @@ export function buildStopsForSave(stops: ItineraryStopDraft[]) {
         visit_time: visit_time || undefined,
         time_slot: visit_time || undefined,
         note: note || story || undefined,
+        ...(note ? { notes: note } : {}),
         story: story || undefined,
         description: story || undefined,
         ...(index > 0 ? { transit_mode, transit_duration } : {}),

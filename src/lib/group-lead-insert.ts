@@ -57,7 +57,10 @@ export async function insertGroupTripLeadAdmin(
   const preferredTripId = String(input.preferredTripId ?? '').trim() || null;
   const preferredTripIdSafe =
     preferredTripId &&
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(preferredTripId)
+    (/^\d+$/.test(preferredTripId) ||
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        preferredTripId,
+      ))
       ? preferredTripId
       : null;
   const preferredNote = preferredTripIdSafe ? ` · preferred_trip:${preferredTripIdSafe}` : '';

@@ -76,6 +76,8 @@ export type PublicItineraryActivity = {
   locationLabel: string | null
   transitMode: VipTransitIconKind | null
   transitDuration: string | null
+  /** ملاحظات المحطة الاختيارية — من stop.notes / stop.note */
+  notes: string | null
 }
 
 export type PublicItineraryDay = {
@@ -972,11 +974,16 @@ function pickStopStory(s: Record<string, unknown>): string | null {
 }
 
 function pickStopShortNote(s: Record<string, unknown>): string {
-  const note = pickStr(s, ['note'])
+  const note = pickStr(s, ['notes', 'note'])
   const story = pickStr(s, ['story'])
   if (note && note !== story) return note
   if (!story && note) return note
   return ''
+}
+
+function pickStopClientNotes(s: Record<string, unknown>): string | null {
+  const notes = pickStr(s, ['notes', 'note'])
+  return notes || null
 }
 
 function pickStopCategoryCode(s: Record<string, unknown>): string {
@@ -1075,7 +1082,8 @@ function parseActivitiesFromPlaceStops(
     const name = pickStr(s, ['place_name', 'name', 'title'])
     const story = pickStopStory(s)
     const note = pickStopShortNote(s)
-    if (!name && !note && !story) continue
+    const clientNotes = pickStopClientNotes(s)
+    if (!name && !note && !story && !clientNotes) continue
 
     const transit = placeOrdinal > 0 ? extractTransitFromStop(s) : null
     const placeName = name || 'محطة في البرنامج'
@@ -1107,6 +1115,7 @@ function parseActivitiesFromPlaceStops(
       locationLabel: pickStopLocationLabel(s, dayCity),
       transitMode: transit?.mode ?? null,
       transitDuration: transit?.duration ?? null,
+      notes: clientNotes,
     })
     seq += 1
     placeOrdinal += 1
@@ -1157,6 +1166,7 @@ function parseActivitiesFromDayRecord(
     locationLabel?: string | null
     transitMode?: VipTransitIconKind | null
     transitDuration?: string | null
+    notes?: string | null
   }
 
   const push = (activity: LegacyActivityInput, timeSource?: Record<string, unknown> | null) => {
@@ -1176,6 +1186,10 @@ function parseActivitiesFromDayRecord(
       (src ? pickStr(src, ['place_name', 'name', 'title']) || null : null) ??
       (activity.title?.trim() || null)
 
+    const clientNotes =
+      activity.notes ??
+      (src ? pickStopClientNotes(src) : null)
+
     activities.push({
       id: `day-act-${seq}`,
       title: activity.title,
@@ -1190,6 +1204,7 @@ function parseActivitiesFromDayRecord(
       locationLabel: activity.locationLabel ?? null,
       transitMode: activity.transitMode ?? null,
       transitDuration: activity.transitDuration ?? null,
+      notes: clientNotes,
       booking_url: rawBooking,
       bookingUrl: activity.bookingUrl ?? (src ? pickStopBookingUrl(src) : null),
       googleMapsUrl: activity.googleMapsUrl ?? pickGoogleMapsUrl(src) ?? null,

@@ -31,6 +31,8 @@ async function DnaPageContent({ params }: Props) {
     <GroupOnboardingDnaClient
       leadId={lead.id}
       leadName={lead.full_name || 'ضيفنا'}
+      leadPhone={lead.phone_wa}
+      leadEmail={lead.email}
       tripLabel={tripLabel}
       initialInterests={lead.interests}
       initialPace={lead.daily_pace}

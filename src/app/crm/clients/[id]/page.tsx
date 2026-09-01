@@ -1054,6 +1054,7 @@ export default function ClientDetailPage() {
                 dna_interests: dnaAdvancedForm.dna_interests,
                 dna_special_requests: dnaAdvancedForm.dna_special_requests,
                 dna_activity_level: dnaAdvancedForm.dna_activity_level,
+                travel_dna: client?.travel_dna,
               }}
               className="mb-4"
             />

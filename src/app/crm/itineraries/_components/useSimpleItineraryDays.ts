@@ -132,6 +132,21 @@ export function useSimpleItineraryDays(initialDays?: SimpleItineraryDay[]) {
     [],
   );
 
+  const updatePlaceNotes = useCallback((dayId: number, placeIndex: number, notes: string) => {
+    const normalized = String(notes ?? '').trim();
+    setItineraryDays((prev) =>
+      prev.map((day) => {
+        if (day.id !== dayId) return day;
+        return {
+          ...day,
+          places: day.places.map((p, index) =>
+            index === placeIndex ? { ...p, notes: normalized || undefined } : p,
+          ),
+        };
+      }),
+    );
+  }, []);
+
   const updateVisitTime = useCallback(
     (dayId: number, placeIndex: number, visit_time: string) => {
       const normalized = String(visit_time || '').trim();
@@ -259,6 +274,7 @@ export function useSimpleItineraryDays(initialDays?: SimpleItineraryDay[]) {
     handleAddPlace,
     handleRemovePlace,
     updateTransport,
+    updatePlaceNotes,
     updateVisitTime,
     updateDayHotel,
     updateDayCity,

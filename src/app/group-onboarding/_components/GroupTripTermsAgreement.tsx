@@ -5,8 +5,12 @@ import { useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 
-import { confirmGroupDirectBooking } from '@/app/actions/groupOnboardingActions';
+import { confirmGroupRegistrationFromDraft } from '@/app/actions/groupOnboardingActions';
 import { brandGoldButtonStyle } from '@/lib/brand-gold';
+import {
+  clearGroupRegistrationDraft,
+  type GroupRegistrationDraft,
+} from '@/lib/group-registration-contact';
 
 import { GroupOnboardingStepNav } from './GroupOnboardingStepNav';
 import {
@@ -26,13 +30,13 @@ type SuccessState = {
 };
 
 type Props = {
-  leadId: string;
+  draft: GroupRegistrationDraft;
   backHref: string;
   onWaitlisted?: () => void;
   onBooked?: () => void;
 };
 
-export function GroupTripTermsAgreement({ leadId, backHref, onWaitlisted, onBooked }: Props) {
+export function GroupTripTermsAgreement({ draft, backHref, onWaitlisted, onBooked }: Props) {
   const router = useRouter();
   const [mediaConsent, setMediaConsent] = useState(true);
   const [pending, startTransition] = useTransition();
@@ -44,11 +48,28 @@ export function GroupTripTermsAgreement({ leadId, backHref, onWaitlisted, onBook
 
   function handleFinalSubmit() {
     startTransition(async () => {
-      const result = await confirmGroupDirectBooking(leadId, true, mediaConsent);
+      const result = await confirmGroupRegistrationFromDraft(
+        {
+          full_name: draft.full_name,
+          phone_wa: draft.phone_wa,
+          email: draft.email || null,
+          birth_date: draft.birth_date,
+          trip_label: draft.trip_label,
+          preferred_trip_id: draft.preferred_trip_id,
+          referral_code: draft.referral_code || null,
+          interview_date: draft.interview_date ?? null,
+          interview_time: draft.interview_time ?? null,
+          media_consent: mediaConsent,
+        },
+        true,
+      );
+
       if (!result.ok) {
         toast.error(result.error || 'حدث خطأ أثناء حفظ البيانات، يرجى المحاولة مجدداً');
         return;
       }
+
+      clearGroupRegistrationDraft();
 
       if (onWaitlisted && result.placement === 'waitlisted') {
         onWaitlisted();

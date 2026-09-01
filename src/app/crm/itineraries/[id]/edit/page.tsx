@@ -37,6 +37,8 @@ import {
   sortPlacesByVisitTime,
   type ItineraryHotelEntry,
   type SimpleItineraryDay,
+  placeNotesToStopPayload,
+  readPlaceNotesFromStop,
   withTransportDefaults,
 } from '@/app/crm/itineraries/_components/simple-itinerary-day-utils';
 import { useSimpleItineraryDays } from '@/app/crm/itineraries/_components/useSimpleItineraryDays';
@@ -190,6 +192,7 @@ function daysDataToItineraryDays(raw: unknown): SimpleItineraryDay[] {
           category: s.category,
           city: row.city ?? s.city,
           rating: s.rating,
+          notes: readPlaceNotesFromStop(s),
           transportToNext: transitModeToArabic(s.transit_mode ?? s.transport_type),
           transportDuration: String(s.transit_duration ?? '').trim(),
           visit_time: String(s.visit_time ?? s.time_slot ?? s.time ?? '').trim(),
@@ -217,6 +220,7 @@ function itineraryDaysToDaysData(days: SimpleItineraryDay[]): unknown[] {
       place_name: p.name,
       category: p.category,
       places_bank_id: p.id != null ? String(p.id) : undefined,
+      ...placeNotesToStopPayload(p.notes),
       ...(p.visit_time?.trim()
         ? { visit_time: p.visit_time.trim(), time_slot: p.visit_time.trim() }
         : {}),
@@ -384,6 +388,7 @@ export default function EditItineraryPage() {
     handleRemovePlace,
     updateTransport,
     updateVisitTime,
+    updatePlaceNotes,
     updateDayHotel,
     updateDayCity,
     updateDayTitle,
@@ -2061,6 +2066,7 @@ export default function EditItineraryPage() {
           onUpdateDayTitle={updateDayTitle}
           onUpdateTransport={updateTransport}
           onUpdateVisitTime={updateVisitTime}
+          onUpdatePlaceNotes={updatePlaceNotes}
           dayDroppableId={dayDroppableId}
           supplierBrief={supplierBrief}
           predictiveWishContext={

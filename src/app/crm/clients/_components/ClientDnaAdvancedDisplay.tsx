@@ -5,24 +5,29 @@ import { Activity, MessageSquareText } from 'lucide-react'
 import {
   activityLevelBadgeClass,
   parseDnaInterests,
+  resolveClientDnaDisplay,
   type VipClientProfile,
 } from '@/lib/clientsTravelDna'
 
 type ClientDnaAdvancedDisplayProps = {
-  client: Pick<VipClientProfile, 'dna_interests' | 'dna_special_requests' | 'dna_activity_level'>
+  client: Pick<
+    VipClientProfile,
+    'dna_interests' | 'dna_special_requests' | 'dna_activity_level' | 'travel_dna'
+  >
   className?: string
   compact?: boolean
 }
 
-/** عرض DNA المتقدم — اهتمامات · نشاط · طلبات خاصة */
+/** عرض DNA المتقدم — اهتمامات · نشاط · طلبات خاصة (من جدول clients مباشرة) */
 export default function ClientDnaAdvancedDisplay({
   client,
   className = '',
   compact = false,
 }: ClientDnaAdvancedDisplayProps) {
-  const interests = parseDnaInterests(client.dna_interests)
-  const activity = client.dna_activity_level?.trim()
-  const special = client.dna_special_requests?.trim()
+  const resolved = resolveClientDnaDisplay(client)
+  const interests = parseDnaInterests(resolved.dna_interests)
+  const activity = resolved.dna_activity_level?.trim()
+  const special = resolved.dna_special_requests?.trim()
 
   if (!interests.length && !activity && !special) {
     return compact ? null : (

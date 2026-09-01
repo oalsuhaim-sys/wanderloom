@@ -10,6 +10,11 @@ import {
   shouldApplyAssignedScope,
 } from '@/lib/crm-assigned-scope';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
+import { runGroupClientDnaBackfill, type GroupDnaBackfillResult } from '@/lib/group-client-dna-backfill';
+import {
+  syncExistingGroupMembers,
+  type SyncExistingGroupMembersResult,
+} from '@/lib/sync-existing-group-members';
 import {
   assertServiceRoleKeyConfigured,
   requireCrmServerAction,
@@ -330,6 +335,76 @@ export async function fetchClientDirectoryAction(
     return {
       ok: false,
       error: err instanceof Error ? err.message : 'تعذر تحميل قاعدة العملاء.',
+    };
+  }
+}
+
+export type SyncExistingGroupMembersActionResult =
+  | ({ ok: true } & SyncExistingGroupMembersResult)
+  | { ok: false; error: string };
+
+/**
+ * One-time repair: create missing `clients` rows from `group_members` (by phone)
+ * and back-fill group_members.client_id pointers.
+ */
+export async function syncExistingGroupMembersAction(
+  accessToken?: string | null,
+): Promise<SyncExistingGroupMembersActionResult> {
+  const serviceKeyError = assertServiceRoleKeyConfigured();
+  if (serviceKeyError) return { ok: false, error: serviceKeyError };
+
+  const auth = await requireCrmServerAction(accessToken);
+  if (!auth.ok) return { ok: false, error: auth.error };
+
+  try {
+    const admin = createSupabaseAdminClient();
+    const result = await syncExistingGroupMembers(admin);
+
+    if (result.created > 0 || result.linked > 0) {
+      revalidatePath('/crm/clients');
+    }
+
+    return { ok: true, ...result };
+  } catch (err) {
+    console.error('[syncExistingGroupMembersAction]', err);
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : 'تعذر مزامنة أعضاء المجموعات مع قاعدة العملاء.',
+    };
+  }
+}
+
+export type LegacyGroupDnaSyncResult =
+  | ({ ok: true } & GroupDnaBackfillResult)
+  | { ok: false; error: string };
+
+/**
+ * One-shot backfill: copy legacy group DNA (leads / group_members / lead_applications)
+ * into clients when dna_interests is empty. Safe to run on every CRM clients page load.
+ */
+export async function syncLegacyGroupMemberDnaAction(
+  accessToken?: string | null,
+): Promise<LegacyGroupDnaSyncResult> {
+  const serviceKeyError = assertServiceRoleKeyConfigured();
+  if (serviceKeyError) return { ok: false, error: serviceKeyError };
+
+  const auth = await requireCrmServerAction(accessToken);
+  if (!auth.ok) return { ok: false, error: auth.error };
+
+  try {
+    const admin = createSupabaseAdminClient();
+    const result = await runGroupClientDnaBackfill(admin);
+
+    if (result.synced > 0 || result.linked > 0) {
+      revalidatePath('/crm/clients');
+    }
+
+    return { ok: true, ...result };
+  } catch (err) {
+    console.error('[syncLegacyGroupMemberDnaAction]', err);
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : 'تعذر مزامنة DNA للعملاء القدامى.',
     };
   }
 }

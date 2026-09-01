@@ -4,8 +4,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { Loader2, Users } from 'lucide-react';
-
-import { submitGroupTripLead } from '@/app/actions/groupOnboardingActions';
 import { GroupOnboardingStepNav } from '@/app/group-onboarding/_components/GroupOnboardingStepNav';
 import GroupTripLeaderBadge from '@/app/crm/groups/_components/GroupTripLeaderBadge';
 import { ReferralCodeField } from '@/components/ReferralCodeField';
@@ -17,6 +15,10 @@ import {
   brandOliveLabelStyle,
 } from '@/lib/brand-gold';
 import { normalizeAffiliateRef, persistAffiliateRef } from '@/lib/referral-url';
+import {
+  buildGroupConfirmHref,
+  persistGroupRegistrationDraft,
+} from '@/lib/group-registration-contact';
 import { supabaseClient } from '@/lib/supabaseClient';
 import type { GroupTripRow } from '@/types/group-trip';
 
@@ -206,34 +208,20 @@ export function GroupTripsSection() {
     setMsg(null);
     try {
       if (referralCode) persistAffiliateRef(referralCode);
-      const res = await submitGroupTripLead({
+
+      persistGroupRegistrationDraft({
         full_name: formData.fullName.trim(),
         phone_wa: formData.whatsapp.trim(),
-        email: emailTrimmed || null,
+        email: emailTrimmed,
         birth_date: birthDate,
-        trip_label: open.title,
+        referral_code: referralCode ?? '',
         preferred_trip_id: open.id,
-        referral_code: referralCode,
+        trip_label: open.title,
       });
 
-      if (!res.ok) {
-        setMsg({ type: 'err', text: res.error ?? g.errors.generic });
-        return;
-      }
-
-      if (res.placement === 'pipeline' && res.leadId) {
-        closeModal();
-        resetRegForm();
-        router.push(`/dna/${res.leadId}?flow=group_onboarding`);
-        return;
-      }
-
-      setMsg({ type: 'ok', text: res.message ?? g.success });
-      setTimeout(() => {
-        closeModal();
-        resetRegForm();
-        setMsg(null);
-      }, res.placement === 'waitlisted' ? 4000 : 2200);
+      closeModal();
+      resetRegForm();
+      router.push(buildGroupConfirmHref());
     } catch (err) {
       setMsg({
         type: 'err',

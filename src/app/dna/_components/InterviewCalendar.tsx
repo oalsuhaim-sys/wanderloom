@@ -15,13 +15,19 @@ import { GroupOnboardingStepNav } from '@/app/group-onboarding/_components/Group
 import { BRAND_GOLD_BUTTON_CLASS, BRAND_OLIVE_HEADING_CLASS } from '@/lib/brand-gold';
 import { DEFAULT_INTAKE_BOOKING_URL } from '@/lib/client-intake-pipeline';
 import { parseInterviewSlotFromIso } from '@/lib/crm-leads';
+import {
+  buildGroupTermsHref,
+  patchGroupRegistrationDraft,
+} from '@/lib/group-registration-contact';
 
 type Props = {
-  leadId: string;
+  leadId?: string;
   onBooked: () => void;
   onWaitlisted?: () => void;
   /** Group onboarding — show direct booking fast track + optional calendar accordion */
   enableDirectBooking?: boolean;
+  /** Hold interview slot in localStorage until terms confirmation (no lead row yet). */
+  draftMode?: boolean;
   onBack?: () => void;
 };
 
@@ -238,10 +244,11 @@ function CalEmbed({
 }
 
 export function InterviewCalendar({
-  leadId,
+  leadId = '',
   onBooked,
   onWaitlisted,
   enableDirectBooking = false,
+  draftMode = false,
   onBack,
 }: Props) {
   const router = useRouter();
@@ -257,6 +264,24 @@ export function InterviewCalendar({
       setCapturedSlot(slot);
       setError('');
       setSavingSlot(true);
+
+      if (draftMode) {
+        patchGroupRegistrationDraft({
+          interview_date: String(slot.interviewDate ?? ''),
+          interview_time: String(slot.interviewTime ?? ''),
+        });
+        setSlotSaved(true);
+        setSavingSlot(false);
+        return;
+      }
+
+      if (!leadId) {
+        setError('معرّف الطلب غير متوفر.');
+        setSlotSaved(false);
+        setSavingSlot(false);
+        return;
+      }
+
       const saved = await saveInterviewDate(
         leadId,
         String(slot.interviewDate ?? ''),
@@ -270,11 +295,22 @@ export function InterviewCalendar({
       }
       setSavingSlot(false);
     })();
-  }, [leadId]);
+  }, [draftMode, leadId]);
 
   function handleConfirmBooked() {
     setError('');
     startTransition(async () => {
+      if (draftMode) {
+        if (capturedSlot) {
+          patchGroupRegistrationDraft({
+            interview_date: String(capturedSlot.interviewDate ?? ''),
+            interview_time: String(capturedSlot.interviewTime ?? ''),
+          });
+        }
+        onBooked();
+        return;
+      }
+
       const payload: ConfirmInterviewBookedPayload | undefined = capturedSlot
         ? {
             interviewDate: capturedSlot.interviewDate,
@@ -299,6 +335,17 @@ export function InterviewCalendar({
     }
 
     startTransition(async () => {
+      if (draftMode) {
+        if (capturedSlot) {
+          patchGroupRegistrationDraft({
+            interview_date: String(capturedSlot.interviewDate ?? ''),
+            interview_time: String(capturedSlot.interviewTime ?? ''),
+          });
+        }
+        router.push(buildGroupTermsHref());
+        return;
+      }
+
       const payload: ConfirmInterviewBookedPayload | undefined = capturedSlot
         ? {
             interviewDate: capturedSlot.interviewDate,
@@ -318,7 +365,7 @@ export function InterviewCalendar({
 
   function handleGoToTermsPage() {
     setError('');
-    router.push(`/group-onboarding/terms?leadId=${encodeURIComponent(leadId)}`);
+    router.push(draftMode ? buildGroupTermsHref() : `/group-onboarding/terms?leadId=${encodeURIComponent(leadId)}`);
   }
 
   if (enableDirectBooking) {

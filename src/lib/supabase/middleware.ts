@@ -3,27 +3,55 @@ import { NextResponse, type NextRequest } from 'next/server';
 
 import { supabaseAnonKey, supabaseUrl } from '@/lib/supabase/credentials';
 
+/**
+ * Public client routes — skip Supabase session refresh and CRM auth gate.
+ * Keep `/join` exact (not prefix) so `/join-leader` stays distinct.
+ */
+export const PUBLIC_CLIENT_ROUTES = [
+  '/welcome',
+  '/onboarding',
+  '/dna',
+  '/dna-survey',
+  '/dna-success',
+  '/expert-dna',
+  '/partner-dna',
+  '/join-leader',
+  '/join-partner',
+  '/join',
+  '/leader-calendar',
+  '/quote',
+  '/proposal',
+  '/itinerary',
+  '/trip-itinerary',
+  '/invoice',
+  '/checkout',
+  '/portal',
+  '/profile',
+  '/group-onboarding',
+  '/group-registration',
+  '/referral',
+  '/groups',
+  '/sessions',
+  '/discover',
+  '/forgot-password',
+  '/update-password',
+  '/login',
+] as const;
+
+function routeMatchesPublicPrefix(pathname: string, route: string): boolean {
+  const path = pathname.replace(/\/$/, '') || '/';
+  const base = route.replace(/\/$/, '') || '/';
+
+  if (base === '/join') {
+    return path === '/join' || path.startsWith('/join/');
+  }
+
+  return path === base || path.startsWith(`${base}/`);
+}
+
 /** مسارات عامة — لا جلسة Supabase ولا إعادة توجيه CRM */
-function isPublicClientPath(pathname: string): boolean {
-  if (pathname === '/welcome' || pathname.startsWith('/welcome/')) return true;
-  if (pathname === '/onboarding' || pathname.startsWith('/onboarding/')) return true;
-  if (pathname === '/dna' || pathname.startsWith('/dna/')) return true;
-  if (pathname === '/dna-survey' || pathname.startsWith('/dna-survey')) return true;
-  if (pathname === '/dna-success') return true;
-  if (pathname === '/expert-dna' || pathname.startsWith('/expert-dna/')) return true;
-  if (pathname === '/partner-dna' || pathname.startsWith('/partner-dna/')) return true;
-  if (pathname === '/join-leader' || pathname.startsWith('/join-leader/')) return true;
-  if (pathname === '/join-partner' || pathname.startsWith('/join-partner/')) return true;
-  if (pathname === '/leader-calendar' || pathname.startsWith('/leader-calendar/')) return true;
-  if (pathname.startsWith('/quote/')) return true;
-  if (pathname.startsWith('/proposal/')) return true;
-  if (pathname.startsWith('/itinerary/')) return true;
-  if (pathname.startsWith('/invoice/')) return true;
-  if (pathname === '/checkout' || pathname.startsWith('/checkout/')) return true;
-  if (pathname.startsWith('/portal/')) return true;
-  if (pathname === '/forgot-password' || pathname.startsWith('/forgot-password/')) return true;
-  if (pathname === '/update-password' || pathname.startsWith('/update-password/')) return true;
-  return false;
+export function isPublicClientPath(pathname: string): boolean {
+  return PUBLIC_CLIENT_ROUTES.some((route) => routeMatchesPublicPrefix(pathname, route));
 }
 
 /**

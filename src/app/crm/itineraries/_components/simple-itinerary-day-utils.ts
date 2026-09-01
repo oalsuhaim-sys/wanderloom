@@ -28,6 +28,8 @@ export type SimpleItineraryPlace = {
   rating?: string | number;
   /** وقت الزيارة (HH:MM) — يظهر في بوابة العميل */
   visit_time?: string;
+  /** ملاحظات المحطة (اختياري) — تظهر للعميل في المسار */
+  notes?: string;
   transportToNext?: string;
   transportDuration?: string;
   /** حالة سداد المورد — للموظف فقط */
@@ -35,6 +37,19 @@ export type SimpleItineraryPlace = {
   _dragId: string;
   [key: string]: unknown;
 };
+
+/** قراءة ملاحظات المحطة من JSON محفوظ — يدعم notes و note للتوافق */
+export function readPlaceNotesFromStop(raw: Record<string, unknown>): string | undefined {
+  const notes = String(raw.notes ?? raw.note ?? '').trim();
+  return notes || undefined;
+}
+
+/** كتابة ملاحظات المحطة في payload الحفظ — notes + note للتوافق مع البيانات القديمة */
+export function placeNotesToStopPayload(notes: string | undefined): Record<string, string> {
+  const trimmed = String(notes ?? '').trim();
+  if (!trimmed) return {};
+  return { notes: trimmed, note: trimmed };
+}
 
 export const TRANSPORT_MODES = [
   { value: 'سيارة', icon: '🚗' },

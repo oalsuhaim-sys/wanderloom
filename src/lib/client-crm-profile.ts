@@ -1,4 +1,5 @@
 import type { ClientTier, VipClientProfile } from '@/lib/clientsTravelDna'
+import { resolveClientDnaDisplay } from '@/lib/clientsTravelDna'
 import type { VipSpendingTier } from '@/lib/vip-spending-tier'
 
 export type EngagementStatus = 'active' | 'warm' | 'cold'
@@ -133,16 +134,19 @@ export function engagementStatusLabel(status: EngagementStatus | null): string {
   return '—'
 }
 
-/** Extract visual DNA chips from travel_dna (array or object) + dna_interests — no invented tags */
+/** Extract visual DNA chips from clients row — travel_dna, dna_* columns, dietary fallbacks */
 export function parseTravelDnaChips(raw: {
   travel_dna?: unknown
   dna_interests?: string | null
+  dna_activity_level?: string | null
+  food_allergies?: string | null
+  dietary?: string | null
   tags?: string[]
 }): TravelDnaChip[] {
   const chips: TravelDnaChip[] = []
   const seen = new Set<string>()
 
-  const push = (value: unknown) => {
+  const push = (value: unknown, prefix = '') => {
     const key = String(value ?? '')
       .trim()
       .toLowerCase()
@@ -151,7 +155,7 @@ export function parseTravelDnaChips(raw: {
     const mapped = TRAVEL_DNA_CHIP_MAP[key]
     const label =
       mapped ??
-      (key.length <= 24 ? String(value).trim() : null)
+      (key.length <= 24 ? `${prefix}${String(value).trim()}` : null)
     if (!label) return
     chips.push({ key, label: mapped ? mapped : label })
   }
@@ -168,6 +172,8 @@ export function parseTravelDnaChips(raw: {
         for (const part of v.split(/[,،|/]/)) push(part)
       }
     }
+    const pace = String(obj.daily_pace ?? obj.pace_preference ?? obj.pace ?? '').trim()
+    if (pace) push(pace, '⚡ ')
   } else if (typeof dna === 'string' && dna.trim().startsWith('[')) {
     try {
       const parsed = JSON.parse(dna) as unknown
@@ -177,8 +183,34 @@ export function parseTravelDnaChips(raw: {
     }
   }
 
-  if (raw.dna_interests) {
-    for (const part of String(raw.dna_interests).split(/[,،|/]/)) push(part)
+  const resolved = resolveClientDnaDisplay({
+    dna_interests: raw.dna_interests ?? '',
+    dna_special_requests: '',
+    dna_activity_level: raw.dna_activity_level ?? '',
+    travel_dna: raw.travel_dna,
+  })
+
+  if (resolved.dna_interests) {
+    for (const part of resolved.dna_interests.split(/[,،|/]/)) push(part)
+  }
+
+  if (resolved.dna_activity_level) {
+    push(resolved.dna_activity_level, '⚡ ')
+  }
+
+  const food = String(raw.food_allergies ?? raw.dietary ?? '').trim()
+  if (food) {
+    for (const part of food.split(/[·,،|/]/)) {
+      const trimmed = part.replace(/^مشروب:\s*/i, '').trim()
+      if (trimmed) push(trimmed, '🍽️ ')
+    }
+  }
+
+  if (Array.isArray(raw.tags)) {
+    for (const tag of raw.tags) {
+      const t = String(tag).trim()
+      if (t && !t.toLowerCase().startsWith('target:')) push(t)
+    }
   }
 
   return chips.slice(0, 8)

@@ -14,6 +14,10 @@ import {
 } from '@/app/dna/_components/InterviewCalendar';
 import { ONBOARDING_INTEREST_OPTIONS } from '@/lib/client-onboarding';
 import { BRAND_GOLD_TAG_CLASS } from '@/lib/brand-gold';
+import {
+  persistGroupRegistrationContact,
+  readGroupRegistrationContact,
+} from '@/lib/group-registration-contact';
 
 type Step = 'dna' | 'schedule_interview' | 'done';
 type DoneVariant = 'interview' | 'waitlisted';
@@ -21,6 +25,8 @@ type DoneVariant = 'interview' | 'waitlisted';
 type Props = {
   leadId: string;
   leadName: string;
+  leadPhone?: string;
+  leadEmail?: string;
   tripLabel: string;
   initialInterests: string[];
   initialPace: string | null;
@@ -39,6 +45,8 @@ function toggle(list: string[], item: string) {
 export function GroupOnboardingDnaClient({
   leadId,
   leadName,
+  leadPhone = '',
+  leadEmail = '',
   tripLabel,
   initialInterests,
   initialPace,
@@ -49,11 +57,13 @@ export function GroupOnboardingDnaClient({
   const router = useRouter();
   const searchParams = useSearchParams();
   const isGroupFlow = searchParams.get('flow') === 'group_onboarding';
-  const confirmStep = searchParams.get('step') === 'confirm';
 
-  const [step, setStep] = useState<Step>(() =>
-    isGroupFlow && confirmStep ? 'schedule_interview' : 'dna',
-  );
+  const [contactPhone, setContactPhone] = useState(leadPhone);
+  const [contactName, setContactName] = useState(leadName);
+  const [contactEmail, setContactEmail] = useState(leadEmail);
+
+  // Group onboarding skips the DNA preferences UI — lands on confirmation / optional dates.
+  const [step, setStep] = useState<Step>(() => (isGroupFlow ? 'schedule_interview' : 'dna'));
   const [doneVariant, setDoneVariant] = useState<DoneVariant>('interview');
   const [interests, setInterests] = useState(initialInterests);
   const [dailyPace, setDailyPace] = useState(initialPace ?? '');
@@ -63,6 +73,25 @@ export function GroupOnboardingDnaClient({
   const [pending, startTransition] = useTransition();
 
   const interestOptions = useMemo(() => ONBOARDING_INTEREST_OPTIONS.slice(0, 12), []);
+
+  useEffect(() => {
+    const fromUrl = searchParams.get('phone')?.trim() ?? '';
+    const nameFromUrl = searchParams.get('name')?.trim() ?? '';
+    const emailFromUrl = searchParams.get('email')?.trim() ?? '';
+    const stored = readGroupRegistrationContact();
+
+    const phone = fromUrl || leadPhone || stored.phone;
+    const name = nameFromUrl || leadName || stored.fullName;
+    const email = emailFromUrl || leadEmail || stored.email;
+
+    if (phone) setContactPhone(phone);
+    if (name) setContactName(name);
+    if (email) setContactEmail(email);
+
+    if (phone || name || email) {
+      persistGroupRegistrationContact({ phone, fullName: name, email });
+    }
+  }, [leadEmail, leadName, leadPhone, searchParams]);
 
   useEffect(() => {
     const outcome = searchParams.get('outcome');
@@ -89,6 +118,9 @@ export function GroupOnboardingDnaClient({
       daily_pace: dailyPace,
       food_preferences: foodPrefs,
       final_thoughts: notes.trim() || `ملف DNA — رحلة جماعية: ${tripLabel}`,
+      phone_wa: contactPhone.trim() || undefined,
+      full_name: contactName.trim() || undefined,
+      email: contactEmail.trim() || undefined,
     };
 
     startTransition(async () => {
@@ -117,7 +149,7 @@ export function GroupOnboardingDnaClient({
         <InterviewCalendar
           leadId={leadId}
           enableDirectBooking={isGroupFlow}
-          onBack={() => setStep('dna')}
+          onBack={handleGoBack}
           onBooked={() => {
             setDoneVariant('interview');
             setStep('done');
@@ -162,7 +194,7 @@ export function GroupOnboardingDnaClient({
             <Sparkles className="h-3.5 w-3.5 text-[#cda04c]" aria-hidden />
             ملف DNA — رحلة جماعية
           </div>
-          <h1 className="text-2xl font-black text-[#1e3f20]">مرحباً {leadName}</h1>
+          <h1 className="text-2xl font-black text-[#1e3f20]">مرحباً {contactName || leadName}</h1>
           <p className="mt-2 text-sm font-semibold text-gray-600">
             {tripLabel} — ساعدنا على تخصيص تجربتك في المجموعة
           </p>

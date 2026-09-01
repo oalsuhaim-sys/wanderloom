@@ -66,6 +66,7 @@ export type SimpleItineraryDayCardProps = {
     value: string,
   ) => void;
   onUpdateVisitTime: (dayId: number, placeIndex: number, visit_time: string) => void;
+  onUpdatePlaceNotes: (dayId: number, placeIndex: number, notes: string) => void;
   dayDroppableId: (dayId: number) => string;
   supplierBrief?: SupplierBriefClientContext | null;
 };
@@ -89,6 +90,7 @@ function SimpleItineraryDayCardInner({
   onUpdateDayCity,
   onUpdateTransport,
   onUpdateVisitTime,
+  onUpdatePlaceNotes,
   dayDroppableId,
   supplierBrief,
 }: SimpleItineraryDayCardProps) {
@@ -303,6 +305,17 @@ function SimpleItineraryDayCardInner({
                                         onUpdateVisitTime(day.id, placeIndex, e.target.value)
                                       }
                                       className="rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-sm font-bold text-slate-800 outline-none focus:ring-2 focus:ring-[#D4AF37] [color-scheme:light]"
+                                    />
+                                  </div>
+                                  <div className="mt-2">
+                                    <input
+                                      type="text"
+                                      placeholder="ملاحظات المحطة (اختياري)..."
+                                      value={place.notes || ''}
+                                      onChange={(e) =>
+                                        onUpdatePlaceNotes(day.id, placeIndex, e.target.value)
+                                      }
+                                      className="w-full rounded border border-gray-200 p-2 text-xs focus:border-[#C5A059] focus:outline-none"
                                     />
                                   </div>
                                   <div className="mt-2 flex flex-wrap items-center gap-2">

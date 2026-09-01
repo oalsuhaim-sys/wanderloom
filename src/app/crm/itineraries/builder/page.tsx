@@ -29,6 +29,8 @@ import {
   hotelsToDetailsPayload,
   type ItineraryHotelEntry,
   type SimpleItineraryDay,
+  placeNotesToStopPayload,
+  readPlaceNotesFromStop,
   withTransportDefaults,
 } from '@/app/crm/itineraries/_components/simple-itinerary-day-utils';
 import { useSimpleItineraryDays } from '@/app/crm/itineraries/_components/useSimpleItineraryDays';
@@ -154,6 +156,7 @@ function itineraryDaysToDaysData(days: SimpleItineraryDay[]): unknown[] {
       place_name: p.name,
       category: p.category,
       places_bank_id: p.id != null ? String(p.id) : undefined,
+      ...placeNotesToStopPayload(p.notes),
       ...(p.visit_time?.trim()
         ? { visit_time: p.visit_time.trim(), time_slot: p.visit_time.trim() }
         : {}),
@@ -303,6 +306,7 @@ function ItineraryBuilderPageContent() {
     handleRemovePlace,
     updateTransport,
     updateVisitTime,
+    updatePlaceNotes,
     updateDayHotel,
     updateDayCity,
     updateDayTitle,
@@ -1861,6 +1865,7 @@ function ItineraryBuilderPageContent() {
           onUpdateDayTitle={updateDayTitle}
           onUpdateTransport={updateTransport}
           onUpdateVisitTime={updateVisitTime}
+          onUpdatePlaceNotes={updatePlaceNotes}
           dayDroppableId={dayDroppableId}
           supplierBrief={supplierBrief}
           predictiveWishContext={predictiveWishContext}
