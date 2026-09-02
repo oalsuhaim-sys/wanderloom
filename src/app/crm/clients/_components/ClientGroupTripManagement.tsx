@@ -8,7 +8,7 @@ import {
   assignClientToGroupTrip,
   getClientGroupMember,
   listActiveGroupTripsForAssign,
-  removeClientFromConfirmedSeat,
+  removeGroupMemberFromConfirmedSeatById,
   unlinkClientFromGroupTrip,
   updateGroupMemberPaymentDeadline,
   type ActiveGroupTripOption,
@@ -116,11 +116,15 @@ export default function ClientGroupTripManagement({
   };
 
   const onRemoveSeat = async () => {
+    if (!application?.id) {
+      toast.error('تعذر تحديد سجل العضوية.');
+      return;
+    }
     if (!window.confirm('إزالة العميل من المقعد المؤكد وتحرير السعة؟')) return;
     setBusy('removeSeat');
     try {
       const token = await getClientAccessToken();
-      const result = await removeClientFromConfirmedSeat(clientId, token);
+      const result = await removeGroupMemberFromConfirmedSeatById(application.id, token);
       if (!result.ok) {
         toast.error(result.error);
         return;

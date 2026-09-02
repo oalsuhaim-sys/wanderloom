@@ -22,7 +22,7 @@ import toast from 'react-hot-toast';
 import {
   getGroupTripManifest,
   promoteWaitlistedClient,
-  removeClientFromConfirmedSeat,
+  removeGroupMemberFromConfirmedSeatById,
   updateGroupMemberPaymentDeadline,
   updateGroupMemberPaymentStatus,
   type GroupTripManifest,
@@ -524,7 +524,7 @@ export default function GroupTripManifestView({ tripId }: Props) {
                       }
                       void runAction(`remove-${member.id}`, async () => {
                         const token = await getClientAccessToken();
-                        return removeClientFromConfirmedSeat(member.clientId, token);
+                        return removeGroupMemberFromConfirmedSeatById(member.id, token);
                       });
                     }}
                   />

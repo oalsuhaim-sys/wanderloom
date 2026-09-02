@@ -22,6 +22,7 @@ type Props = {
   onAddDay: (opts?: { title?: string; city?: string }) => void;
   onMoveDay?: (dayId: number, direction: 'up' | 'down') => void;
   onRemovePlace: (dayId: number, placeIndex: number) => void;
+  onMovePlaceToDay: (currentDayId: number, placeIndex: number, targetDayId: number) => void;
   onUpdateDayHotel: (dayId: number, hotelName: string) => void;
   onUpdateDayCity: (dayId: number, city: string) => void;
   onUpdateDayTitle: (dayId: number, title: string) => void;
@@ -47,6 +48,7 @@ export default function SimpleItineraryDayPlanner({
   onAddDay,
   onMoveDay,
   onRemovePlace,
+  onMovePlaceToDay,
   onUpdateDayHotel,
   onUpdateDayCity,
   onUpdateDayTitle,
@@ -180,6 +182,7 @@ export default function SimpleItineraryDayPlanner({
             day={day}
             dayIdx={dayIdx}
             daysCount={days.length}
+            allDays={days}
             isActive={day.id === activeDayId}
             hotelOptions={hotelOptions}
             editingDayId={editingDayId}
@@ -191,6 +194,7 @@ export default function SimpleItineraryDayPlanner({
             onSaveDayTitle={handleSaveDayTitle}
             onCancelEditTitle={cancelEditDayTitle}
             onRemovePlace={onRemovePlace}
+            onMovePlaceToDay={onMovePlaceToDay}
             onUpdateDayHotel={onUpdateDayHotel}
             onUpdateDayCity={onUpdateDayCity}
             onUpdateTransport={onUpdateTransport}

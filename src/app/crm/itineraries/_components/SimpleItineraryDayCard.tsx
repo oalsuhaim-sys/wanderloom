@@ -46,6 +46,7 @@ export type SimpleItineraryDayCardProps = {
   day: SimpleItineraryDay;
   dayIdx: number;
   daysCount: number;
+  allDays: SimpleItineraryDay[];
   isActive: boolean;
   hotelOptions: string[];
   editingDayId: number | null;
@@ -57,6 +58,7 @@ export type SimpleItineraryDayCardProps = {
   onSaveDayTitle: (dayId: number) => void;
   onCancelEditTitle: () => void;
   onRemovePlace: (dayId: number, placeIndex: number) => void;
+  onMovePlaceToDay: (currentDayId: number, placeIndex: number, targetDayId: number) => void;
   onUpdateDayHotel: (dayId: number, hotelName: string) => void;
   onUpdateDayCity: (dayId: number, city: string) => void;
   onUpdateTransport: (
@@ -75,6 +77,7 @@ function SimpleItineraryDayCardInner({
   day,
   dayIdx,
   daysCount,
+  allDays,
   isActive,
   hotelOptions,
   editingDayId,
@@ -86,6 +89,7 @@ function SimpleItineraryDayCardInner({
   onSaveDayTitle,
   onCancelEditTitle,
   onRemovePlace,
+  onMovePlaceToDay,
   onUpdateDayHotel,
   onUpdateDayCity,
   onUpdateTransport,
@@ -318,6 +322,33 @@ function SimpleItineraryDayCardInner({
                                       className="w-full rounded border border-gray-200 p-2 text-xs focus:border-[#C5A059] focus:outline-none"
                                     />
                                   </div>
+                                  {daysCount > 1 ? (
+                                    <div
+                                      className="mt-2 flex items-center gap-1.5 text-xs"
+                                      onClick={(e) => e.stopPropagation()}
+                                      onKeyDown={(e) => e.stopPropagation()}
+                                    >
+                                      <span className="font-semibold text-gray-500">نقل إلى:</span>
+                                      <select
+                                        value={day.id}
+                                        onChange={(e) => {
+                                          const targetDayId = Number(e.target.value);
+                                          if (Number.isFinite(targetDayId)) {
+                                            onMovePlaceToDay(day.id, placeIndex, targetDayId);
+                                          }
+                                        }}
+                                        aria-label={`نقل ${place.name ?? 'المحطة'} إلى يوم آخر`}
+                                        className="rounded border border-gray-200 bg-gray-50 p-1 text-xs text-gray-700 focus:border-[#C5A059] focus:outline-none"
+                                      >
+                                        {allDays.map((d, idx) => (
+                                          <option key={d.id} value={d.id}>
+                                            اليوم {idx + 1}
+                                            {d.title?.trim() ? ` (${d.title.trim()})` : ''}
+                                          </option>
+                                        ))}
+                                      </select>
+                                    </div>
+                                  ) : null}
                                   <div className="mt-2 flex flex-wrap items-center gap-2">
                                     {supplierBrief ? (
                                       <SupplierWhatsAppButton

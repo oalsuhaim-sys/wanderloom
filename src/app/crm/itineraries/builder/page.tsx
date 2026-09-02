@@ -304,6 +304,7 @@ function ItineraryBuilderPageContent() {
     moveDay,
     handleAddPlace,
     handleRemovePlace,
+    movePlaceToDay,
     updateTransport,
     updateVisitTime,
     updatePlaceNotes,
@@ -1860,6 +1861,7 @@ function ItineraryBuilderPageContent() {
           onAddDay={handleAddDay}
           onMoveDay={moveDay}
           onRemovePlace={handleRemovePlace}
+          onMovePlaceToDay={movePlaceToDay}
           onUpdateDayHotel={updateDayHotel}
           onUpdateDayCity={updateDayCity}
           onUpdateDayTitle={updateDayTitle}

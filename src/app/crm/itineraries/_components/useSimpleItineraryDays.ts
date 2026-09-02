@@ -110,6 +110,35 @@ export function useSimpleItineraryDays(initialDays?: SimpleItineraryDay[]) {
     );
   }, []);
 
+  const movePlaceToDay = useCallback(
+    (currentDayId: number, placeIndex: number, targetDayId: number) => {
+      if (!targetDayId || currentDayId === targetDayId) return;
+
+      setItineraryDays((prev) => {
+        const sourceDay = prev.find((d) => d.id === currentDayId);
+        const placeToMove = sourceDay?.places[placeIndex];
+        if (!placeToMove || !prev.some((d) => d.id === targetDayId)) return prev;
+
+        return prev.map((day) => {
+          if (day.id === currentDayId) {
+            return {
+              ...day,
+              places: day.places.filter((_, index) => index !== placeIndex),
+            };
+          }
+          if (day.id === targetDayId) {
+            return {
+              ...day,
+              places: sortPlacesByVisitTime([...day.places, placeToMove]),
+            };
+          }
+          return day;
+        });
+      });
+    },
+    [],
+  );
+
   const updateTransport = useCallback(
     (
       dayId: number,
@@ -273,6 +302,7 @@ export function useSimpleItineraryDays(initialDays?: SimpleItineraryDay[]) {
     moveDay,
     handleAddPlace,
     handleRemovePlace,
+    movePlaceToDay,
     updateTransport,
     updatePlaceNotes,
     updateVisitTime,

@@ -386,6 +386,7 @@ export default function EditItineraryPage() {
     moveDay,
     handleAddPlace,
     handleRemovePlace,
+    movePlaceToDay,
     updateTransport,
     updateVisitTime,
     updatePlaceNotes,
@@ -2061,6 +2062,7 @@ export default function EditItineraryPage() {
           onAddDay={handleAddDay}
           onMoveDay={moveDay}
           onRemovePlace={handleRemovePlace}
+          onMovePlaceToDay={movePlaceToDay}
           onUpdateDayHotel={updateDayHotel}
           onUpdateDayCity={updateDayCity}
           onUpdateDayTitle={updateDayTitle}

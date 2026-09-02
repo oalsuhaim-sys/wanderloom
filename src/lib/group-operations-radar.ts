@@ -147,16 +147,18 @@ export function parseGroupFulfillmentMember(raw: Record<string, unknown>): Group
         ? String(client.id)
         : ''
 
+  // Prefer live clients.name — customer_name on group_members can be stale after CRM edits
   const name =
+    String(client?.name ?? '').trim() ||
     String(raw.customer_name ?? '').trim() ||
-    String(client?.name ?? '').trim()
+    (clientId ? `عميل #${clientId}` : '')
 
   const phone_wa =
-    String(raw.customer_phone ?? '').trim() ||
-    String(client?.phone_wa ?? '').trim()
+    String(client?.phone_wa ?? '').trim() ||
+    String(raw.customer_phone ?? '').trim()
 
   const target_trip = pickTripTitle(trip)
-  if (!memberId || !clientId || !name || !target_trip) return null
+  if (!memberId || !clientId || !target_trip) return null
 
   return {
     member_id: memberId,

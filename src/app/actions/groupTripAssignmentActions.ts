@@ -850,6 +850,157 @@ export async function ensureGroupDnaApplicationFromWelcome(
   }
 }
 
+async function selectMemberRowById(admin: AdminClient, memberId: string) {
+  const attempts = [
+    MEMBER_SELECT_COLS,
+    MEMBER_SELECT_COLS_LEAN,
+    MEMBER_SELECT_GROUP_ID,
+    MEMBER_SELECT_GROUP_ID_LEAN,
+    MEMBER_SELECT_LEGACY,
+    MEMBER_SELECT_LEGACY_LEAN,
+    'id, client_id, group_id, group_trip_id, status',
+    'id, client_id, group_id, status',
+    'id, client_id, status',
+  ];
+
+  let last = await admin
+    .from('group_members')
+    .select(attempts[0])
+    .eq('id', memberId)
+    .maybeSingle();
+
+  for (let i = 1; i < attempts.length; i++) {
+    if (
+      last.error &&
+      /column|schema cache|does not exist|payment_/i.test(last.error.message ?? '')
+    ) {
+      last = await admin
+        .from('group_members')
+        .select(attempts[i])
+        .eq('id', memberId)
+        .maybeSingle();
+      continue;
+    }
+    break;
+  }
+  return last;
+}
+
+/**
+ * Admin: حذف عضوية بالمعرّف الفريد group_members.id (لا يعتمد على اسم العميل).
+ */
+export async function deleteGroupMemberById(
+  memberIdRaw: string,
+  accessToken?: string | null,
+): Promise<GroupTripActionResult> {
+  const denied = await requireAdmin(accessToken);
+  if (denied) return denied;
+
+  const memberId = String(memberIdRaw ?? '').trim();
+  if (!memberId) return { ok: false, error: 'معرّف العضوية غير صالح.' };
+
+  try {
+    const admin = createSupabaseAdminClient();
+    const { data: existing, error } = await selectMemberRowById(admin, memberId);
+    if (error) {
+      return {
+        ok: false,
+        error: formatGroupTripDbError('deleteGroupMemberById', error.message ?? ''),
+      };
+    }
+    if (!existing) return { ok: false, error: 'لم يتم العثور على سجل العضوية.' };
+
+    const current = mapGroupMemberRow(existing as unknown as Record<string, unknown>);
+    if (!current) return { ok: false, error: 'تعذر قراءة سجل العضوية.' };
+
+    const tripId = current.group_trip_id;
+    if (current.status === 'confirmed_seat' && tripId) {
+      const clientId = parseClientId(current.client_id);
+      if (clientId) {
+        await releaseConfirmedSeat(admin, clientId, tripId);
+      }
+    }
+
+    const { error: deleteError } = await admin
+      .from('group_members')
+      .delete()
+      .eq('id', memberId);
+
+    if (deleteError) {
+      return {
+        ok: false,
+        error: formatGroupTripDbError('deleteGroupMemberById.delete', deleteError.message ?? ''),
+      };
+    }
+
+    const clientId = parseClientId(current.client_id);
+    if (clientId) revalidateClientPaths(clientId, tripId);
+    revalidatePath('/crm/groups');
+    revalidatePath('/crm/radar');
+    if (tripId) revalidatePath(`/crm/groups/${tripId}`);
+
+    return { ok: true, message: 'تم حذف العضو بنجاح.' };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : String(err) };
+  }
+}
+
+/**
+ * Admin: إزالة من المقعد بالمعرّف الفريد group_members.id.
+ */
+export async function removeGroupMemberFromConfirmedSeatById(
+  memberIdRaw: string,
+  accessToken?: string | null,
+): Promise<GroupTripActionResult<GroupMember>> {
+  const denied = await requireAdmin(accessToken);
+  if (denied) return denied;
+
+  const memberId = String(memberIdRaw ?? '').trim();
+  if (!memberId) return { ok: false, error: 'معرّف العضوية غير صالح.' };
+
+  try {
+    const admin = createSupabaseAdminClient();
+    const { data: existing, error } = await selectMemberRowById(admin, memberId);
+    if (error) {
+      return {
+        ok: false,
+        error: formatGroupTripDbError(
+          'removeGroupMemberFromConfirmedSeatById',
+          error.message ?? '',
+        ),
+      };
+    }
+    if (!existing) return { ok: false, error: 'لا يوجد سجل عضوية لهذا العضو.' };
+
+    const current = mapGroupMemberRow(existing as unknown as Record<string, unknown>);
+    if (!current) return { ok: false, error: 'تعذر قراءة سجل العضوية.' };
+
+    const clientId = parseClientId(current.client_id);
+    if (!clientId) return { ok: false, error: 'معرّف العميل غير صالح.' };
+
+    if (current.status === 'confirmed_seat' && current.group_trip_id) {
+      await releaseConfirmedSeat(admin, clientId, current.group_trip_id);
+    }
+
+    const tripIdForRevalidate = current.group_trip_id;
+
+    const result = await upsertMemberStatus(clientId, 'approved', {
+      group_trip_id: null,
+      clearPayment: true,
+    });
+    if (!result.ok) return result;
+
+    revalidateClientPaths(clientId, tripIdForRevalidate);
+    return {
+      ok: true,
+      message: 'تم إزالة العميل من المقعد وتحرير السعة.',
+      data: result.data,
+    };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : String(err) };
+  }
+}
+
 /**
  * Admin: إزالة من المقعد — frees inventory + clears payment deadline.
  * Safe regardless of scarcity threshold.
@@ -1063,12 +1214,12 @@ function mapManifestMember(
   const denormName = String(denorm?.customer_name ?? '').trim();
   const denormPhone = String(denorm?.customer_phone ?? '').trim();
   const clientName =
-    denormName ||
     String(client?.name ?? '').trim() ||
+    denormName ||
     `عميل #${member.client_id}`;
   const phone =
-    denormPhone ||
     (client?.phone_wa != null ? String(client.phone_wa).trim() : '') ||
+    denormPhone ||
     null;
 
   const passportRaw = client?.passport_expiry;
