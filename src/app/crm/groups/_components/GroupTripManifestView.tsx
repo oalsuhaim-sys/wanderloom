@@ -183,6 +183,26 @@ export default function GroupTripManifestView({ tripId }: Props) {
     });
   }, [load]);
 
+  const patchMemberPromoted = useCallback((memberId: string) => {
+    setManifest((prev) => {
+      if (!prev) return prev;
+      const member = prev.waitlisted.find((m) => m.id === memberId);
+      if (!member) return prev;
+      return {
+        ...prev,
+        waitlisted: prev.waitlisted.filter((m) => m.id !== memberId),
+        confirmed: [
+          ...prev.confirmed,
+          {
+            ...member,
+            status: 'confirmed_seat',
+            paymentStatus: 'pending',
+          },
+        ],
+      };
+    });
+  }, []);
+
   const runAction = async (
     key: string,
     action: () => Promise<{ ok: boolean; message?: string; error?: string }>,
@@ -192,6 +212,7 @@ export default function GroupTripManifestView({ tripId }: Props) {
       const result = await action();
       if (!result.ok) {
         toast.error(result.error ?? 'تعذر تنفيذ العملية.');
+        await load(true);
         return;
       }
       toast.success(result.message ?? 'تم التحديث.');
@@ -291,13 +312,18 @@ export default function GroupTripManifestView({ tripId }: Props) {
   }
 
   const { trip, confirmed, waitlisted, pending } = manifest;
-  const seatsLeft =
+  const confirmedCount = confirmed.length;
+  const availableCount =
     trip.maxSeats > 0 ? Math.max(0, trip.maxSeats - trip.bookedSeats) : null;
+  const totalCapacity =
+    availableCount == null
+      ? Math.max(trip.maxSeats, confirmedCount)
+      : confirmedCount + availableCount;
+  const reservedRatioText =
+    totalCapacity > 0 ? `${confirmedCount} / ${totalCapacity}` : `${confirmedCount} / ∞`;
   const fillPct =
-    trip.maxSeats > 0
-      ? Math.min(100, Math.round((trip.bookedSeats / trip.maxSeats) * 100))
-      : 0;
-  const canPromote = seatsLeft == null || seatsLeft > 0;
+    totalCapacity > 0 ? Math.min(100, Math.round((confirmedCount / totalCapacity) * 100)) : 0;
+  const canPromote = availableCount == null || availableCount > 0;
   const pendingList = pending ?? [];
 
   return (
@@ -353,21 +379,24 @@ export default function GroupTripManifestView({ tripId }: Props) {
       </header>
 
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="المقاعد المحجوزة" value={`${trip.bookedSeats} / ${trip.maxSeats || '∞'}`} />
+        <StatCard label="المقاعد المحجوزة" value={reservedRatioText} numeric />
         <StatCard
           label="الركاب المؤكدون"
-          value={String(confirmed.length)}
+          value={String(confirmedCount)}
           valueTone="emerald"
+          numeric
         />
         <StatCard
           label="قائمة الانتظار"
           value={String(waitlisted.length)}
           valueTone="amber"
+          numeric
         />
         <StatCard
           label="بانتظار التأكيد"
           value={String(pendingList.length)}
           valueTone={pendingList.length > 0 ? 'rose' : 'slate'}
+          numeric
         />
       </section>
 
@@ -375,16 +404,17 @@ export default function GroupTripManifestView({ tripId }: Props) {
         <StatCard
           label="مهلة السداد"
           value={
-            trip.bookedSeats >= SCARCITY_THRESHOLD
+            confirmedCount >= SCARCITY_THRESHOLD
               ? 'مفعّلة (3 أيام)'
               : `غير مفعّلة (< ${SCARCITY_THRESHOLD})`
           }
-          valueTone={trip.bookedSeats >= SCARCITY_THRESHOLD ? 'rose' : 'slate'}
+          valueTone={confirmedCount >= SCARCITY_THRESHOLD ? 'rose' : 'slate'}
         />
         <StatCard
           label="مقاعد شاغرة"
-          value={seatsLeft == null ? 'بدون حد' : String(seatsLeft)}
-          valueTone={seatsLeft === 0 ? 'rose' : 'emerald'}
+          value={availableCount == null ? 'بدون حد' : String(availableCount)}
+          valueTone={availableCount === 0 ? 'rose' : 'emerald'}
+          numeric={availableCount != null}
         />
       </section>
 
@@ -398,7 +428,7 @@ export default function GroupTripManifestView({ tripId }: Props) {
             className={`h-2.5 rounded-full transition-all ${
               fillPct >= 100 ? 'bg-red-500' : 'bg-[#C5A059]'
             }`}
-            style={{ width: `${trip.maxSeats > 0 ? fillPct : 0}%` }}
+            style={{ width: `${totalCapacity > 0 ? fillPct : 0}%` }}
           />
         </div>
       </div>
@@ -595,6 +625,7 @@ export default function GroupTripManifestView({ tripId }: Props) {
                         return;
                       }
                       void runAction(`promote-${member.id}`, async () => {
+                        patchMemberPromoted(member.id);
                         const token = await getClientAccessToken();
                         return promoteWaitlistedClient(member.id, tripId, token);
                       });
@@ -614,10 +645,12 @@ function StatCard({
   label,
   value,
   valueTone = 'slate',
+  numeric = false,
 }: {
   label: string;
   value: string;
   valueTone?: 'slate' | 'emerald' | 'amber' | 'rose';
+  numeric?: boolean;
 }) {
   const valueClass = {
     slate: 'text-slate-900 dark:text-white',
@@ -629,7 +662,12 @@ function StatCard({
   return (
     <div className="flex flex-col items-center justify-center rounded-2xl border border-slate-200 bg-white p-5 text-center shadow-sm transition-all hover:shadow-md dark:border-[#2D3F3A] dark:bg-[#22302C]">
       <p className="mb-2 text-xs font-semibold text-slate-500 dark:text-slate-400">{label}</p>
-      <p className={`text-3xl font-bold ${valueClass}`}>{value}</p>
+      <p
+        className={`text-3xl font-bold tabular-nums ${valueClass}`}
+        dir={numeric ? 'ltr' : undefined}
+      >
+        {value}
+      </p>
     </div>
   );
 }

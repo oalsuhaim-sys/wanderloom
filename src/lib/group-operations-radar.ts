@@ -3,9 +3,9 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import {
   GROUP_MEMBER_STATUSES,
   GROUP_PAYMENT_STATUSES,
+  normalizeGroupMemberStatus,
   type GroupMemberStatus,
   type GroupPaymentStatus,
-  isGroupMemberStatus,
   isGroupPaymentStatus,
 } from '@/lib/group-members'
 
@@ -124,7 +124,7 @@ export function normalizeRadarFulfillmentStatus(raw: unknown): RadarFulfillmentS
 }
 
 function parseMemberStatus(raw: unknown): GroupMemberStatus {
-  return isGroupMemberStatus(raw) ? raw : 'confirmed_seat'
+  return normalizeGroupMemberStatus(raw) ?? 'pending_interview'
 }
 
 function parsePaymentStatus(raw: unknown): GroupPaymentStatus | null {
@@ -242,7 +242,9 @@ async function hydrateTrips(
   const tripIds = [
     ...new Set(
       rows
-        .map((r) => String(r.group_id ?? '').trim())
+        .map((r) =>
+          String(r.group_id ?? r.group_trip_id ?? r.trip_id ?? '').trim(),
+        )
         .filter(Boolean),
     ),
   ]
@@ -261,7 +263,7 @@ async function hydrateTrips(
   }
 
   return rows.map((row) => {
-    const tripId = String(row.group_id ?? '').trim()
+    const tripId = String(row.group_id ?? row.group_trip_id ?? row.trip_id ?? '').trim()
     const trip = tripId ? byId.get(tripId) : undefined
     return trip ? { ...row, group_trips: trip } : row
   })
@@ -325,19 +327,21 @@ async function mapMemberRows(
     .filter((c): c is GroupFulfillmentClient => c != null)
 }
 
+function keepOperationsBoardMembers(clients: GroupFulfillmentClient[]): GroupFulfillmentClient[] {
+  const allowed = new Set<string>(GROUP_OPERATIONS_MEMBER_STATUSES)
+  return clients.filter((c) => allowed.has(c.status))
+}
+
 /**
- * Operations board: pending joins + confirmed seats in group_members
- * (FK column is group_id — never group_trip_id).
+ * Operations board: pending joins + confirmed seats in group_members.
+ * Fetch the pivot table without a status `.in()` so confirmed_seat / confirmed both load.
  */
 export async function fetchGroupFulfillmentClients(
   supabase: SupabaseClient,
 ): Promise<{ clients: GroupFulfillmentClient[]; error?: string }> {
-  const statuses = [...GROUP_OPERATIONS_MEMBER_STATUSES]
-
   const { data, error } = await supabase
     .from('group_members')
     .select(MEMBER_SELECT_WITH_EMBEDS)
-    .in('status', statuses)
 
   if (
     error &&
@@ -345,34 +349,41 @@ export async function fetchGroupFulfillmentClients(
       error.message ?? '',
     )
   ) {
-    const lean = await supabase
-      .from('group_members')
-      .select(MEMBER_SELECT_LEAN)
-      .in('status', statuses)
+    const lean = await supabase.from('group_members').select(MEMBER_SELECT_LEAN)
 
     if (lean.error) {
       const minimal = await supabase
         .from('group_members')
-        .select('id, status, payment_status, client_id, group_id')
-        .in('status', statuses)
+        .select('id, status, payment_status, client_id, group_id, group_trip_id, trip_id')
 
-      if (minimal.error) {
-        console.error('Error fetching operations:', minimal.error)
-        return { clients: [], error: minimal.error.message }
+      const retry =
+        minimal.error && /group_trip_id|trip_id|column|schema cache|does not exist/i.test(minimal.error.message ?? '')
+          ? await supabase
+              .from('group_members')
+              .select('id, status, payment_status, client_id, group_id')
+          : minimal
+
+      if (retry.error) {
+        console.error('Error fetching operations:', retry.error)
+        return { clients: [], error: retry.error.message }
       }
 
-      const clients = await mapMemberRows(
-        supabase,
-        (minimal.data ?? []) as Record<string, unknown>[],
-        { hydrateTrips: true },
+      const clients = keepOperationsBoardMembers(
+        await mapMemberRows(
+          supabase,
+          (retry.data ?? []) as Record<string, unknown>[],
+          { hydrateTrips: true },
+        ),
       )
       return { clients }
     }
 
-    const clients = await mapMemberRows(
-      supabase,
-      (lean.data ?? []) as Record<string, unknown>[],
-      { hydrateTrips: true },
+    const clients = keepOperationsBoardMembers(
+      await mapMemberRows(
+        supabase,
+        (lean.data ?? []) as Record<string, unknown>[],
+        { hydrateTrips: true },
+      ),
     )
     return { clients }
   }
@@ -382,7 +393,9 @@ export async function fetchGroupFulfillmentClients(
     return { clients: [], error: error.message }
   }
 
-  const clients = await mapMemberRows(supabase, (data ?? []) as Record<string, unknown>[])
+  const clients = keepOperationsBoardMembers(
+    await mapMemberRows(supabase, (data ?? []) as Record<string, unknown>[]),
+  )
   return { clients }
 }
 
@@ -481,10 +494,11 @@ export async function updateGroupFulfillmentMember(
     payload.customer_phone = String(updatedData.customer_phone).trim()
   }
   if (updatedData.status !== undefined) {
-    if (!GROUP_MEMBER_STATUSES.includes(updatedData.status)) {
+    const normalized = normalizeGroupMemberStatus(updatedData.status);
+    if (!normalized) {
       return { ok: false, error: 'حالة العضوية غير صالحة.' }
     }
-    payload.status = updatedData.status
+    payload.status = normalized
   }
   if (updatedData.payment_status !== undefined) {
     if (

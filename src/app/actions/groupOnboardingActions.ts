@@ -15,6 +15,7 @@ import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { getSupabaseUrl, resolveSupabaseServiceRoleKey } from '@/lib/supabase/env';
 import { assertServiceRoleKeyConfigured } from '@/lib/supabase/server-action-auth';
 import { canonicalizePhoneWa } from '@/lib/client-intake-pipeline';
+import { requireValidPhone } from '@/lib/phoneUtils';
 import {
   extractReferralCodeFromLead,
   processReferralCommissionOnLeadApproval,
@@ -253,7 +254,11 @@ export async function submitGroupTripLead(input: {
 }): Promise<GroupTripLeadState> {
   try {
     const full_name = s(input.full_name);
-    const phone_wa = s(input.phone_wa);
+    const phoneCheck = requireValidPhone(s(input.phone_wa));
+    if (!phoneCheck.isValid) {
+      return { ok: false, error: phoneCheck.error ?? ar.errors.trip.namePhone };
+    }
+    const phone_wa = phoneCheck.formattedPhone;
     const emailRaw = s(input.email ?? '');
     const email = emailRaw || null;
     const trip_label = s(input.trip_label);

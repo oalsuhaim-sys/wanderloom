@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 
 import { tripLeadInsertUserMessage } from '@/lib/i18n/db-error-message';
 import { canonicalizePhoneWa } from '@/lib/client-intake-pipeline';
+import { requireValidPhone } from '@/lib/phoneUtils';
 import { runRegistrationAutomationPipeline } from '@/lib/registration-automation';
 import { ar } from '@/messages/ar';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
@@ -213,7 +214,11 @@ export async function registerSessionAction(input: {
   const session_id = String(input.session_id || '').trim();
   const name = String(input.name || '').trim();
   const whatsappRaw = String(input.whatsapp || '').trim();
-  const whatsapp = canonicalizePhoneWa(whatsappRaw) || whatsappRaw;
+  const phoneCheck = requireValidPhone(whatsappRaw);
+  if (!phoneCheck.isValid) {
+    return { ok: false, error: phoneCheck.error ?? ar.errors.session.inputRequired };
+  }
+  const whatsapp = phoneCheck.formattedPhone;
 
   if (!session_id || !name || !whatsapp) {
     return { ok: false, error: ar.errors.session.inputRequired };

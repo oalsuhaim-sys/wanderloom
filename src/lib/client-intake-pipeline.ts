@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { generateOnboardingToken } from '@/lib/client-onboarding';
+import { sanitizePhoneDigits } from '@/lib/phoneUtils';
 import { buildClientInsertPayload } from '@/lib/clientsTravelDna';
 import { siteOrigin } from '@/lib/bank-checkout';
 import { formatWhatsAppPhone } from '@/lib/crm-lead-actions';
@@ -213,15 +214,8 @@ export function whatsAppHrefWithText(phone: string, text: string): string {
 
 /** تطبيع رقم الجوال لصيغة موحّدة (966…) لتفادي تكرار العملاء */
 export function canonicalizePhoneWa(phoneRaw: string): string {
-  let digits = String(phoneRaw ?? '')
-    .replace(/[\u0660-\u0669]/g, (d) => String(d.charCodeAt(0) - 0x0660))
-    .replace(/[\u06f0-\u06f9]/g, (d) => String(d.charCodeAt(0) - 0x06f0))
-    .replace(/\D/g, '');
-  if (!digits) return String(phoneRaw ?? '').trim();
-  if (digits.startsWith('00')) digits = digits.slice(2);
-  if (digits.startsWith('05')) digits = `966${digits.slice(1)}`;
-  else if (digits.startsWith('5') && digits.length === 9) digits = `966${digits}`;
-  return digits;
+  const digits = sanitizePhoneDigits(phoneRaw);
+  return digits || String(phoneRaw ?? '').trim();
 }
 
 /** Reject synthetic / UUID-as-phone garbage from earlier auto-heal bugs */

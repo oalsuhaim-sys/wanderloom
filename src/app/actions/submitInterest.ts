@@ -2,8 +2,8 @@
 
 import { revalidatePath } from 'next/cache';
 
-import { canonicalizePhoneWa } from '@/lib/client-intake-pipeline';
 import { insertInterestLeadAdmin } from '@/lib/interest-lead-insert';
+import { requireValidPhone } from '@/lib/phoneUtils';
 
 export type SubmitInterestResult =
   | { ok: true; success: true; message: string; leadId?: string }
@@ -25,11 +25,11 @@ export async function submitInterestAction(formData: FormData): Promise<SubmitIn
     return { ok: false, success: false, error: 'يرجى إدخال الاسم الكامل' };
   }
 
-  const phoneWa = canonicalizePhoneWa(phoneRaw);
-  const digits = phoneWa.replace(/\D/g, '');
-  if (digits.length < 8) {
-    return { ok: false, success: false, error: 'يرجى إدخال رقم واتساب صالح' };
+  const phoneCheck = requireValidPhone(phoneRaw);
+  if (!phoneCheck.isValid) {
+    return { ok: false, success: false, error: phoneCheck.error ?? 'يرجى إدخال رقم واتساب صالح' };
   }
+  const phoneWa = phoneCheck.formattedPhone;
 
   try {
     const result = await insertInterestLeadAdmin({

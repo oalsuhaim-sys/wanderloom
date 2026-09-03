@@ -4,13 +4,12 @@ import { useCallback, useState } from 'react';
 import Link from 'next/link';
 import { CheckCircle2, Loader2, X } from 'lucide-react';
 
-import { deleteGroupMemberById } from '@/app/actions/groupTripAssignmentActions';
+import { deleteGroupMemberById, updateGroupMemberById } from '@/app/actions/groupTripAssignmentActions';
 import {
   groupOperationsJoinBadge,
   isPendingGroupJoinStatus,
   RADAR_FULFILLMENT_DONE,
   RADAR_FULFILLMENT_PENDING,
-  updateGroupFulfillmentMember,
   updateRadarFulfillmentStatus,
   type GroupFulfillmentClient,
 } from '@/lib/group-operations-radar';
@@ -112,7 +111,7 @@ function EditMemberModal({
   const [error, setError] = useState('');
 
   async function handleSave() {
-    if (!supabase || saving) return;
+    if (saving) return;
     const trimmedName = name.trim();
     if (!trimmedName) {
       setError('الاسم مطلوب.');
@@ -122,42 +121,62 @@ function EditMemberModal({
     setSaving(true);
     setError('');
 
-    const result = await updateGroupFulfillmentMember(
-      supabase,
-      client.member_id,
-      { group_id: client.group_id, status: client.status },
-      {
-        customer_name: trimmedName,
-        customer_phone: phone.trim(),
-        status,
-        payment_status: paymentStatus === '' ? null : paymentStatus,
-      },
+    const nextStatus = status;
+    onMembersChange((prev) =>
+      prev.map((row) =>
+        row.member_id === client.member_id
+          ? {
+              ...row,
+              name: trimmedName,
+              phone_wa: phone.trim(),
+              status: nextStatus,
+              payment_status: paymentStatus === '' ? null : paymentStatus,
+            }
+          : row,
+      ),
     );
 
-    if (!result.ok) {
-      setError(result.error ?? 'تعذر الحفظ');
+    try {
+      const token = await getClientAccessToken();
+      const result = await updateGroupMemberById(
+        client.member_id,
+        {
+          customer_name: trimmedName,
+          customer_phone: phone.trim(),
+          status,
+          payment_status: paymentStatus === '' ? null : paymentStatus,
+        },
+        token,
+      );
+
+      if (!result.ok) {
+        setError(result.error ?? 'تعذر الحفظ');
+        onMembersChange((prev) =>
+          prev.map((row) => (row.member_id === client.member_id ? client : row)),
+        );
+        return;
+      }
+
+      const leftBoard = status === 'rejected';
+
+      if (leftBoard) {
+        onSaved(null);
+      } else {
+        onSaved({
+          ...client,
+          name: trimmedName,
+          phone_wa: phone.trim(),
+          status,
+          payment_status: paymentStatus === '' ? null : paymentStatus,
+        });
+      }
+      onClose();
+    } catch (err) {
+      console.error('Failed to update member:', err);
+      setError('تعذر تحديث حالة العضو.');
+    } finally {
       setSaving(false);
-      return;
     }
-
-    if (result.error) {
-      setError(result.error);
-    }
-
-    if (result.leftBoard) {
-      onSaved(null);
-    } else {
-      onSaved({
-        ...client,
-        name: trimmedName,
-        phone_wa: phone.trim(),
-        status,
-        payment_status: paymentStatus === '' ? null : paymentStatus,
-      });
-    }
-    setSaving(false);
-    if (!result.error) onClose();
-    else if (result.leftBoard) onClose();
   }
 
   return (

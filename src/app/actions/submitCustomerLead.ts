@@ -2,13 +2,14 @@
 
 import { revalidatePath } from 'next/cache';
 
-import { runWebsiteLeadIntakeAutomation, canonicalizePhoneWa } from '@/lib/client-intake-pipeline';
+import { runWebsiteLeadIntakeAutomation } from '@/lib/client-intake-pipeline';
 import { ensureLeadClientIntakeAdmin, ensureClientFromDirectoryFieldsAdmin } from '@/lib/client-intake-pipeline-server';
 import { escapeEmailHtml, sendEmailAlert } from '@/lib/emailAlert';
 import { mapTripFormSourceToLeadSource } from '@/lib/lead-source';
 import { normalizeLeadStatus, CLIENT_DATABASE_LEAD_STATUSES } from '@/lib/lead-status';
 import { labelForCityComposite, labelForCountryId } from '@/lib/trip-destination-data';
 import { normalizeAffiliateRef } from '@/lib/referral-url';
+import { requireValidPhone } from '@/lib/phoneUtils';
 import { runRegistrationAutomationPipeline } from '@/lib/registration-automation';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { assertServiceRoleKeyConfigured } from '@/lib/supabase/server-action-auth';
@@ -244,8 +245,11 @@ export async function submitCustomerLead(formData: FormData): Promise<CustomerLe
     const admin = createSupabaseAdminClient();
 
     const full_name = s(formData.get('full_name'));
-    const phone_wa_raw = s(formData.get('phone_wa'));
-    const phone_wa = canonicalizePhoneWa(phone_wa_raw) || phone_wa_raw;
+    const phoneCheck = requireValidPhone(s(formData.get('phone_wa')));
+    if (!phoneCheck.isValid) {
+      return { ok: false, error: phoneCheck.error ?? ar.errors.trip.namePhone };
+    }
+    const phone_wa = phoneCheck.formattedPhone;
     const sourceRaw = s(formData.get('source')) || null;
     const lead_source = mapTripFormSourceToLeadSource(sourceRaw);
     const referral_code = normalizeAffiliateRef(s(formData.get('referral_code')));

@@ -9,12 +9,14 @@ import {
   MEMBER_SELECT_GROUP_ID_LEAN,
   MEMBER_SELECT_LEGACY,
   MEMBER_SELECT_LEGACY_LEAN,
+  bucketGroupMemberManifestStatus,
   computePaymentDeadlineForBookedSeats,
   crossesScarcityThreshold,
   fetchGroupTripCapacity,
   isGroupMemberStatus,
   isGroupPaymentStatus,
   mapGroupMemberRow,
+  normalizeGroupMemberStatus,
   PAYMENT_GRACE_MS,
   resolveGroupMemberTripId,
   SCARCITY_THRESHOLD,
@@ -107,6 +109,156 @@ function nowIso(): string {
   return new Date().toISOString();
 }
 
+function tripIdsMatch(
+  a: string | null | undefined,
+  b: string | null | undefined,
+): boolean {
+  if (a == null || b == null) return false;
+  const sa = String(a).trim();
+  const sb = String(b).trim();
+  if (!sa || !sb) return false;
+  if (sa === sb) return true;
+  return String(coerceTripIdForQuery(sa)) === String(coerceTripIdForQuery(sb));
+}
+
+function attachTripFkToPayload(
+  payload: Record<string, unknown>,
+  tripId: string | null | undefined,
+): void {
+  if (tripId === undefined) return;
+  payload.group_id = tripId ?? null;
+}
+
+function stripMemberPayloadForSchemaError(
+  message: string,
+  payload: Record<string, unknown>,
+): Record<string, unknown> | null {
+  const msg = message ?? '';
+  const next = { ...payload };
+  let changed = false;
+
+  if (/group_id|group_trip_id/i.test(msg)) {
+    if ('group_id' in next) {
+      next.group_trip_id = next.group_id;
+      delete next.group_id;
+      changed = true;
+    } else if ('group_trip_id' in next) {
+      next.group_id = next.group_trip_id;
+      delete next.group_trip_id;
+      changed = true;
+    }
+  }
+  if (/payment_|column|schema cache|does not exist/i.test(msg)) {
+    if ('payment_deadline' in next) {
+      delete next.payment_deadline;
+      changed = true;
+    }
+    if ('payment_status' in next) {
+      delete next.payment_status;
+      changed = true;
+    }
+  }
+  if (/updated_at/i.test(msg)) {
+    delete next.updated_at;
+    changed = true;
+  }
+  if (/customer_name|customer_phone/i.test(msg)) {
+    delete next.customer_name;
+    delete next.customer_phone;
+    changed = true;
+  }
+
+  return changed ? next : null;
+}
+
+type MemberRowPatch = {
+  status?: GroupMemberStatus;
+  tripId?: string | null;
+  notes?: string | null;
+  payment_deadline?: string | null;
+  payment_status?: string | null;
+  clearPayment?: boolean;
+  customer_name?: string;
+  customer_phone?: string;
+};
+
+async function updateMemberById(
+  admin: AdminClient,
+  memberId: string,
+  patch: MemberRowPatch,
+): Promise<GroupTripActionResult<GroupMember>> {
+  const payload: Record<string, unknown> = { updated_at: nowIso() };
+
+  if (patch.status) {
+    payload.status = normalizeGroupMemberStatus(patch.status) ?? patch.status;
+  }
+  if (patch.notes !== undefined) payload.notes = patch.notes ?? null;
+  if (patch.customer_name !== undefined) {
+    payload.customer_name = String(patch.customer_name).trim();
+  }
+  if (patch.customer_phone !== undefined) {
+    payload.customer_phone = String(patch.customer_phone).trim();
+  }
+  if (patch.clearPayment) {
+    payload.payment_deadline = null;
+    payload.payment_status = 'pending';
+  } else {
+    if (patch.payment_deadline !== undefined) {
+      payload.payment_deadline = patch.payment_deadline ?? null;
+    }
+    if (patch.payment_status !== undefined) {
+      payload.payment_status = patch.payment_status ?? 'pending';
+    }
+  }
+  if ('tripId' in patch) {
+    attachTripFkToPayload(payload, patch.tripId);
+  }
+
+  const selectAttempts = [
+    MEMBER_SELECT_COLS,
+    MEMBER_SELECT_COLS_LEAN,
+    MEMBER_SELECT_GROUP_ID_LEAN,
+    'id, client_id, group_id, status',
+    'id, client_id, group_trip_id, status',
+    'id, client_id, status',
+  ];
+
+  let attemptPayload = { ...payload };
+  let data: Record<string, unknown> | null = null;
+  let lastError = '';
+
+  for (let i = 0; i < 8; i++) {
+    const select = selectAttempts[Math.min(i, selectAttempts.length - 1)]!;
+    const res = await admin
+      .from('group_members')
+      .update(attemptPayload)
+      .eq('id', memberId)
+      .select(select)
+      .maybeSingle();
+
+    if (!res.error && res.data) {
+      data = res.data as Record<string, unknown>;
+      break;
+    }
+
+    lastError = res.error?.message ?? 'تعذر تحديث سجل العضوية.';
+    const stripped = stripMemberPayloadForSchemaError(lastError, attemptPayload);
+    if (!stripped) break;
+    attemptPayload = stripped;
+  }
+
+  if (!data) {
+    return {
+      ok: false,
+      error: formatGroupTripDbError('updateMemberById', lastError),
+    };
+  }
+
+  const mapped = mapGroupMemberRow(data);
+  if (!mapped) return { ok: false, error: 'تعذر قراءة سجل العضوية بعد التحديث.' };
+  return { ok: true, message: 'ok', data: mapped };
+}
+
 const GENERIC_GROUP_TRIP_DB_ERROR =
   'حدث خطأ في جلب البيانات، تأكد من الاتصال بقاعدة البيانات.';
 
@@ -195,18 +347,33 @@ async function triggerRetroactiveScarcityDeadlines(
   if (!crossesScarcityThreshold(previousBooked, newBooked)) return;
 
   const deadline = new Date(Date.now() + PAYMENT_GRACE_MS).toISOString();
-  const { error } = await admin
+  const tripKey = coerceTripIdForQuery(tripId);
+  let { error } = await admin
     .from('group_members')
     .update({
       payment_deadline: deadline,
       updated_at: nowIso(),
     })
-    .eq('group_trip_id', tripId)
-    .eq('status', 'confirmed_seat')
+    .eq('group_id', tripKey)
+    .in('status', ['confirmed_seat', 'confirmed'])
     .eq('payment_status', 'pending')
     .is('payment_deadline', null);
 
-  if (error && !/payment_|column|schema cache|does not exist/i.test(error.message ?? '')) {
+  if (error && /group_id|column|schema cache|does not exist/i.test(error.message ?? '')) {
+    const retry = await admin
+      .from('group_members')
+      .update({
+        payment_deadline: deadline,
+        updated_at: nowIso(),
+      })
+      .eq('group_trip_id', tripId)
+      .in('status', ['confirmed_seat', 'confirmed'])
+      .eq('payment_status', 'pending')
+      .is('payment_deadline', null);
+    error = retry.error;
+  }
+
+  if (error && !/payment_|column|schema cache|does not exist|updated_at/i.test(error.message ?? '')) {
     console.warn('[scarcity] retroactive deadline update:', error.message);
   }
 }
@@ -331,7 +498,7 @@ async function upsertMemberStatus(
     updated_at: nowIso(),
   };
   if (extras && 'group_trip_id' in extras) {
-    payload.group_trip_id = extras.group_trip_id ?? null;
+    attachTripFkToPayload(payload, extras.group_trip_id ?? null);
   }
   if (extras && 'notes' in extras) {
     payload.notes = extras.notes ?? null;
@@ -353,6 +520,19 @@ async function upsertMemberStatus(
     .upsert(payload, { onConflict: 'client_id' })
     .select(MEMBER_SELECT_COLS)
     .single();
+
+  if (error) {
+    const stripped = stripMemberPayloadForSchemaError(error.message ?? '', payload);
+    if (stripped) {
+      const retry = await admin
+        .from('group_members')
+        .upsert(stripped, { onConflict: 'client_id' })
+        .select(MEMBER_SELECT_COLS)
+        .single();
+      data = retry.data as typeof data;
+      error = retry.error;
+    }
+  }
 
   if (error && /payment_|column|schema cache|does not exist/i.test(error.message ?? '')) {
     const leanPayload = { ...payload };
@@ -946,6 +1126,106 @@ export async function deleteGroupMemberById(
 }
 
 /**
+ * Admin: تحديث عضوية بالمعرّف الفريد group_members.id (الحالة، السداد، الاسم).
+ */
+export async function updateGroupMemberById(
+  memberIdRaw: string,
+  input: {
+    status?: GroupMemberStatus;
+    payment_status?: GroupPaymentStatus | null;
+    customer_name?: string;
+    customer_phone?: string;
+  },
+  accessToken?: string | null,
+): Promise<GroupTripActionResult<GroupMember>> {
+  const denied = await requireAdmin(accessToken);
+  if (denied) return denied;
+
+  const memberId = String(memberIdRaw ?? '').trim();
+  if (!memberId) return { ok: false, error: 'معرّف العضوية غير صالح.' };
+
+  if (input.status != null) {
+    const normalized = normalizeGroupMemberStatus(input.status);
+    if (!normalized) {
+      return { ok: false, error: 'حالة العضوية غير صالحة.' };
+    }
+  }
+  if (
+    input.payment_status != null &&
+    !isGroupPaymentStatus(input.payment_status)
+  ) {
+    return { ok: false, error: 'حالة السداد غير صالحة.' };
+  }
+
+  try {
+    const admin = createSupabaseAdminClient();
+    const { data: existing, error: loadError } = await selectMemberRowById(admin, memberId);
+    if (loadError) {
+      return {
+        ok: false,
+        error: formatGroupTripDbError('updateGroupMemberById', loadError.message ?? ''),
+      };
+    }
+    if (!existing) return { ok: false, error: 'لم يتم العثور على سجل العضوية.' };
+
+    const current = mapGroupMemberRow(existing as unknown as Record<string, unknown>);
+    if (!current) return { ok: false, error: 'تعذر قراءة سجل العضوية.' };
+
+    const clientId = parseClientId(current.client_id);
+    const nextStatus = input.status ?? current.status;
+    const wasConfirmed = current.status === 'confirmed_seat';
+    const nowConfirmed = nextStatus === 'confirmed_seat';
+
+    if (wasConfirmed && !nowConfirmed && current.group_trip_id && clientId) {
+      await releaseConfirmedSeat(admin, clientId, current.group_trip_id);
+    }
+
+    if (!wasConfirmed && nowConfirmed && current.group_trip_id && clientId) {
+      const capacity = await fetchGroupTripCapacity(admin, current.group_trip_id);
+      if (!capacity.ok) {
+        return {
+          ok: false,
+          error: formatGroupTripDbError('updateGroupMemberById', capacity.error),
+        };
+      }
+      if (!capacity.data.hasConfirmedCapacity) {
+        return { ok: false, error: 'لا توجد مقاعد شاغرة — الرحلة مكتملة.' };
+      }
+      const nextBooked = capacity.data.confirmedCount + 1;
+      const tripKey = coerceTripIdForQuery(current.group_trip_id);
+      await admin
+        .from('group_trips')
+        .update({ booked_seats: nextBooked })
+        .eq('id', tripKey);
+    }
+
+    const result = await updateMemberById(admin, memberId, {
+      status: input.status != null ? normalizeGroupMemberStatus(input.status) ?? undefined : undefined,
+      customer_name: input.customer_name,
+      customer_phone: input.customer_phone,
+      payment_status:
+        input.payment_status === undefined ? undefined : input.payment_status,
+    });
+    if (!result.ok) return result;
+
+    const clientIdAfter = parseClientId(result.data?.client_id);
+    const tripId = result.data?.group_trip_id ?? current.group_trip_id;
+    if (clientIdAfter) revalidateClientPaths(clientIdAfter, tripId);
+    revalidatePath('/crm/radar');
+    revalidatePath('/crm/groups');
+    if (tripId) revalidatePath(`/crm/groups/${tripId}`);
+
+    return {
+      ok: true,
+      message: 'تم تحديث بيانات العضو.',
+      data: result.data,
+    };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : String(err) };
+  }
+}
+
+/**
  * Admin: إزالة من المقعد بالمعرّف الفريد group_members.id.
  */
 export async function removeGroupMemberFromConfirmedSeatById(
@@ -984,8 +1264,9 @@ export async function removeGroupMemberFromConfirmedSeatById(
 
     const tripIdForRevalidate = current.group_trip_id;
 
-    const result = await upsertMemberStatus(clientId, 'approved', {
-      group_trip_id: null,
+    const result = await updateMemberById(admin, memberId, {
+      status: 'approved',
+      tripId: null,
       clearPayment: true,
     });
     if (!result.ok) return result;
@@ -1283,125 +1564,88 @@ async function fetchManifestTripRow(
   return { row: null, error: lastError || 'تعذر قراءة الرحلة.' };
 }
 
+function tripKeysForQuery(tripId: string): Array<string | number> {
+  const raw = String(tripId ?? '').trim();
+  const keys: Array<string | number> = [];
+  if (raw) keys.push(raw);
+  const coerced = coerceTripIdForQuery(raw);
+  if (coerced !== raw) keys.push(coerced);
+  return keys;
+}
+
+function isSchemaMissError(message: string): boolean {
+  return /column|schema cache|does not exist|could not find|enum|invalid input|operator/i.test(
+    message ?? '',
+  );
+}
+
 /**
- * Progressive member fetch — never requires nested client joins.
- * Empty result is success ([]). Schema misses fall through to leaner selects.
+ * Fetch every group_members row for this trip from the live pivot table.
+ * Do not short-circuit on an empty `group_id` match — production may store the
+ * trip FK in group_id, group_trip_id, or trip_id.
+ * Status is filtered in JS so confirmed_seat / confirmed both load.
  */
 async function fetchManifestMembers(
   admin: AdminClient,
   tripId: string,
 ): Promise<{ rows: Record<string, unknown>[]; warning?: string }> {
-  const tripKey = coerceTripIdForQuery(tripId);
-  const statuses = [
-    'confirmed_seat',
-    'waitlisted',
-    'pending_interview',
-    'approved',
-  ] as const;
-
-  const attempts: Array<{
-    select: string;
-    column: 'group_id' | 'group_trip_id';
-    orderBy?: string;
-    filterStatus?: boolean;
-  }> = [
-    {
-      select:
-        'id, client_id, group_id, status, payment_status, payment_deadline, customer_name, customer_phone, created_at',
-      column: 'group_id',
-      orderBy: 'created_at',
-      filterStatus: true,
-    },
-    {
-      select: 'id, client_id, group_id, status, customer_name, customer_phone, payment_status',
-      column: 'group_id',
-      filterStatus: true,
-    },
-    {
-      select: 'id, client_id, group_id, status, customer_name, customer_phone',
-      column: 'group_id',
-      filterStatus: true,
-    },
-    {
-      select: 'id, client_id, group_id, status',
-      column: 'group_id',
-      filterStatus: true,
-    },
-    // Drop status filter — some DBs reject unknown enum / check values in .in()
-    {
-      select: 'id, client_id, group_id, status, customer_name, customer_phone',
-      column: 'group_id',
-      filterStatus: false,
-    },
-    {
-      select: 'id, client_id, group_trip_id, status, customer_name, customer_phone',
-      column: 'group_trip_id',
-      filterStatus: true,
-    },
-    {
-      select: 'id, client_id, group_trip_id, status',
-      column: 'group_trip_id',
-      filterStatus: false,
-    },
-    { select: '*', column: 'group_id', filterStatus: false },
+  const keys = tripKeysForQuery(tripId);
+  const columns = ['group_id', 'group_trip_id', 'trip_id'] as const;
+  const selects = [
+    '*',
+    'id, client_id, group_id, group_trip_id, trip_id, status, payment_status, payment_deadline, customer_name, customer_phone, created_at',
+    'id, client_id, group_id, status, payment_status, payment_deadline, customer_name, customer_phone, created_at',
+    'id, client_id, group_trip_id, status, customer_name, customer_phone, created_at',
+    'id, client_id, group_id, status, customer_name, customer_phone',
+    'id, client_id, status, group_id',
+    'id, client_id, status',
   ];
 
   let lastError = '';
-  for (let i = 0; i < attempts.length; i++) {
-    const attempt = attempts[i]!;
-    const filterStatuses = attempt.filterStatus !== false;
+  const seen = new Set<string>();
+  const collected: Record<string, unknown>[] = [];
 
-    let q = admin
-      .from('group_members')
-      .select(attempt.select)
-      .eq(attempt.column, tripKey);
+  for (const column of columns) {
+    for (const tripKey of keys) {
+      for (const select of selects) {
+        const { data, error } = await admin
+          .from('group_members')
+          .select(select)
+          .eq(column, tripKey);
 
-    if (filterStatuses) {
-      q = q.in('status', [...statuses]);
-    }
-    if (attempt.orderBy) {
-      q = q.order(attempt.orderBy, { ascending: true });
-    }
+        if (error) {
+          lastError = error.message ?? '';
+          console.error('Supabase Query Error details:', {
+            context: 'fetchManifestMembers',
+            select,
+            column,
+            tripKey,
+            error: lastError,
+            code: error.code,
+            details: error.details,
+            hint: error.hint,
+          });
+          if (isSchemaMissError(lastError)) break;
+          continue;
+        }
 
-    const { data, error } = await q;
-
-    if (!error) {
-      let rows = (data ?? []) as unknown as Record<string, unknown>[];
-      if (!filterStatuses) {
-        rows = rows.filter((r) => {
-          const s = String(r.status ?? '');
-          return (statuses as readonly string[]).includes(s);
-        });
+        for (const row of (data ?? []) as Record<string, unknown>[]) {
+          const id = String(row.id ?? '').trim();
+          if (!id || seen.has(id)) continue;
+          seen.add(id);
+          collected.push(row);
+        }
+        // This FK+select worked — skip leaner selects for the same column/key
+        break;
       }
-      return { rows };
-    }
-
-    lastError = error.message ?? '';
-    console.error('Supabase Query Error details:', {
-      context: 'fetchManifestMembers',
-      attempt: i,
-      select: attempt.select,
-      column: attempt.column,
-      tripKey,
-      error: lastError,
-      code: error.code,
-      details: error.details,
-      hint: error.hint,
-    });
-
-    // Keep trying on schema / enum / column issues
-    if (
-      !/column|schema cache|does not exist|could not find|enum|invalid input|operator/i.test(
-        lastError,
-      )
-    ) {
-      // Non-schema failure — still degrade to empty list so the page loads
-      return { rows: [], warning: lastError };
     }
   }
 
-  console.error('Supabase Query Error details: all member select attempts failed', lastError);
-  return { rows: [], warning: lastError || 'تعذر جلب ركاب الرحلة.' };
+  if (collected.length === 0 && lastError && !isSchemaMissError(lastError)) {
+    return { rows: [], warning: lastError };
+  }
+
+  return { rows: collected, warning: collected.length === 0 && lastError ? lastError : undefined };
 }
 
 function sortConfirmedMembers(members: TripManifestMember[]): TripManifestMember[] {
@@ -1422,7 +1666,13 @@ function mapManifestMemberLoose(
 ): TripManifestMember | null {
   const id = String(raw.id ?? '').trim();
   if (!id) return null;
-  if (!isGroupMemberStatus(raw.status)) return null;
+  const status =
+    normalizeGroupMemberStatus(raw.status) ??
+    (String(raw.status ?? '').toLowerCase().includes('confirm')
+      ? 'confirmed_seat'
+      : String(raw.status ?? '').toLowerCase().includes('wait')
+        ? 'waitlisted'
+        : 'pending_interview');
 
   const clientId =
     raw.client_id != null && String(raw.client_id).trim() !== ''
@@ -1435,7 +1685,7 @@ function mapManifestMemberLoose(
     id,
     client_id: clientId === '—' ? 0 : clientId,
     group_trip_id: resolveGroupMemberTripId(raw),
-    status: raw.status,
+    status,
     notes: raw.notes != null ? String(raw.notes) : null,
     payment_status: isGroupPaymentStatus(raw.payment_status) ? raw.payment_status : null,
     payment_deadline:
@@ -1866,19 +2116,45 @@ export async function getGroupTripManifest(
     const pending: TripManifestMember[] = [];
 
     for (const raw of memberRows) {
+      const statusRaw = String(raw.status ?? '').trim();
+      const statusKey = statusRaw.toLowerCase();
+      const isConfirmed =
+        statusKey === 'confirmed_seat' ||
+        statusKey === 'confirmed' ||
+        bucketGroupMemberManifestStatus(raw.status) === 'confirmed';
+      const isWaitlisted =
+        statusKey === 'waitlisted' ||
+        statusKey === 'waiting' ||
+        bucketGroupMemberManifestStatus(raw.status) === 'waitlisted';
+
       const clientKey = raw.client_id != null ? String(raw.client_id) : '';
       const mapped = mapManifestMemberLoose(
         raw,
         clientKey ? clientsById.get(clientKey) ?? null : null,
       );
-      if (!mapped) continue;
+      if (!mapped) {
+        console.warn('[getGroupTripManifest] skipped member row', {
+          id: raw.id,
+          status: raw.status,
+          client_id: raw.client_id,
+        });
+        continue;
+      }
       mapped.source = 'group_member';
-      if (mapped.status === 'confirmed_seat') confirmed.push(mapped);
-      else if (mapped.status === 'waitlisted') waitlisted.push(mapped);
-      else if (mapped.status === 'pending_interview' || mapped.status === 'approved') {
+      if (isConfirmed) confirmed.push(mapped);
+      else if (isWaitlisted) waitlisted.push(mapped);
+      else if (bucketGroupMemberManifestStatus(mapped.status) === 'pending') {
         pending.push(mapped);
       }
     }
+
+    console.log('[getGroupTripManifest] group_members loaded', {
+      tripId: String(t.id ?? tripId),
+      rawCount: memberRows.length,
+      confirmed: confirmed.length,
+      waitlisted: waitlisted.length,
+      pendingMembers: pending.length,
+    });
 
     // Leads table (interview / DNA / quote) ∪ group_members pending — pre-confirmation
     const tripTitleAr = String(t.title_ar ?? 'رحلة جماعية');
@@ -1968,48 +2244,32 @@ export async function promoteWaitlistedClient(
   try {
     const admin = createSupabaseAdminClient();
 
-    let { data: memberRow, error: memberError } = await admin
-      .from('group_members')
-      .select(MEMBER_SELECT_COLS)
-      .eq('id', memberId)
-      .maybeSingle();
-
-    if (
-      memberError &&
-      /payment_|column|schema cache|does not exist/i.test(memberError.message ?? '')
-    ) {
-      const fallback = await admin
-        .from('group_members')
-        .select(MEMBER_SELECT_COLS_LEAN)
-        .eq('id', memberId)
-        .maybeSingle();
-      memberRow = fallback.data as typeof memberRow;
-      memberError = fallback.error;
-    }
+    const { data: memberRow, error: memberError } = await selectMemberRowById(admin, memberId);
 
     if (memberError) {
       return {
         ok: false,
-        error: formatGroupTripDbError('getGroupTripManifest.members', memberError.message ?? ''),
+        error: formatGroupTripDbError('promoteWaitlistedClient', memberError.message ?? ''),
       };
     }
     if (!memberRow) return { ok: false, error: 'سجل العضوية غير موجود.' };
 
     const member = mapGroupMemberRow(memberRow as unknown as Record<string, unknown>);
     if (!member) return { ok: false, error: 'تعذر قراءة سجل العضوية.' };
-    if (member.group_trip_id !== tripId) {
+    if (member.group_trip_id && !tripIdsMatch(member.group_trip_id, tripId)) {
       return { ok: false, error: 'العضوية لا تتبع هذه الرحلة.' };
     }
-    if (member.status !== 'waitlisted') {
+    if (normalizeGroupMemberStatus(member.status) !== 'waitlisted') {
       return { ok: false, error: 'الترقية متاحة فقط لأعضاء قائمة الانتظار.' };
     }
 
     const clientId = member.client_id;
+    const tripKey = coerceTripIdForQuery(tripId);
 
     const { data: trip, error: tripError } = await admin
       .from('group_trips')
       .select('id, title_ar, max_seats, booked_seats, is_active')
-      .eq('id', tripId)
+      .eq('id', tripKey)
       .maybeSingle();
 
     if (tripError) {
@@ -2039,7 +2299,7 @@ export async function promoteWaitlistedClient(
     let { data: updated, error: updateError } = await admin
       .from('group_trips')
       .update({ booked_seats: nextBooked })
-      .eq('id', tripId)
+      .eq('id', tripKey)
       .eq('booked_seats', Number(t.booked_seats) || 0)
       .select('id')
       .maybeSingle();
@@ -2048,7 +2308,7 @@ export async function promoteWaitlistedClient(
       const fallback = await admin
         .from('group_trips')
         .update({ booked_seats: nextBooked })
-        .eq('id', tripId)
+        .eq('id', tripKey)
         .select('id')
         .maybeSingle();
       updated = fallback.data;
@@ -2060,8 +2320,9 @@ export async function promoteWaitlistedClient(
       return { ok: false, error: 'تعذر حجز المقعد — قد تكون الرحلة امتلأت للتو.' };
     }
 
-    const app = await upsertMemberStatus(clientId, 'confirmed_seat', {
-      group_trip_id: tripId,
+    const app = await updateMemberById(admin, memberId, {
+      status: 'confirmed_seat',
+      tripId,
       payment_status: 'pending',
       payment_deadline: paymentDeadline,
     });

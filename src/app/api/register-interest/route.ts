@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 
 import { insertInterestLeadAdmin } from '@/lib/interest-lead-insert';
-import { canonicalizePhoneWa } from '@/lib/client-intake-pipeline';
+import { requireValidPhone } from '@/lib/phoneUtils';
 
 export async function POST(request: Request) {
   try {
@@ -14,15 +14,17 @@ export async function POST(request: Request) {
     const fullName = String(body.full_name ?? '').trim();
     const phoneRaw = String(body.phone_wa ?? '').trim();
     const destination = String(body.destination ?? '').trim();
-    const phoneWa = canonicalizePhoneWa(phoneRaw);
-    const digits = phoneWa.replace(/\D/g, '');
-
     if (!fullName || fullName.length < 2) {
       return NextResponse.json({ success: false, error: 'يرجى إدخال الاسم الكامل' }, { status: 400 });
     }
-    if (digits.length < 8) {
-      return NextResponse.json({ success: false, error: 'يرجى إدخال رقم واتساب صالح' }, { status: 400 });
+    const phoneCheck = requireValidPhone(phoneRaw);
+    if (!phoneCheck.isValid) {
+      return NextResponse.json(
+        { success: false, error: phoneCheck.error ?? 'يرجى إدخال رقم واتساب صالح' },
+        { status: 400 },
+      );
     }
+    const phoneWa = phoneCheck.formattedPhone;
 
     const result = await insertInterestLeadAdmin({ fullName, phoneWa, destination });
 

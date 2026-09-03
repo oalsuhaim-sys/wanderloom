@@ -42,6 +42,59 @@ export function isGroupMemberStatus(value: unknown): value is GroupMemberStatus 
   );
 }
 
+/** Legacy / shorthand values that may still exist in group_members.status */
+const GROUP_MEMBER_STATUS_ALIASES: Record<string, GroupMemberStatus> = {
+  confirmed: 'confirmed_seat',
+  'confirmed seat': 'confirmed_seat',
+  seat_confirmed: 'confirmed_seat',
+  confirmed_seats: 'confirmed_seat',
+  waitlist: 'waitlisted',
+  waiting: 'waitlisted',
+  wait_list: 'waitlisted',
+  waitlisted_seat: 'waitlisted',
+  pending: 'pending_interview',
+  interview: 'pending_interview',
+  approve: 'approved',
+  reject: 'rejected',
+};
+
+/** Values to include in `.in('status', …)` so legacy rows are not dropped from queries. */
+export const GROUP_MEMBER_STATUS_FETCH_VALUES: readonly string[] = [
+  ...GROUP_MEMBER_STATUSES,
+  ...Object.keys(GROUP_MEMBER_STATUS_ALIASES),
+];
+
+/**
+ * Normalize group_members.status to canonical enum (confirmed_seat, waitlisted, …).
+ * Returns null when the value cannot be mapped.
+ */
+export function normalizeGroupMemberStatus(raw: unknown): GroupMemberStatus | null {
+  if (raw == null || String(raw).trim() === '') return null;
+  if (isGroupMemberStatus(raw)) return raw;
+  const key = String(raw).trim().toLowerCase();
+  return GROUP_MEMBER_STATUS_ALIASES[key] ?? null;
+}
+
+export function isConfirmedGroupMemberStatus(raw: unknown): boolean {
+  return normalizeGroupMemberStatus(raw) === 'confirmed_seat';
+}
+
+export function isWaitlistedGroupMemberStatus(raw: unknown): boolean {
+  return normalizeGroupMemberStatus(raw) === 'waitlisted';
+}
+
+export type GroupMemberManifestBucket = 'confirmed' | 'waitlisted' | 'pending' | 'other';
+
+export function bucketGroupMemberManifestStatus(
+  raw: unknown,
+): GroupMemberManifestBucket {
+  const status = normalizeGroupMemberStatus(raw);
+  if (status === 'confirmed_seat') return 'confirmed';
+  if (status === 'waitlisted') return 'waitlisted';
+  if (status === 'pending_interview' || status === 'approved') return 'pending';
+  return 'other';
+}
+
 export type GroupTripCapacitySnapshot = {
   tripId: string;
   titleAr: string;
@@ -107,7 +160,7 @@ export async function fetchGroupTripCapacity(
       .from('group_members')
       .select('id', { count: 'exact', head: true })
       .eq(fk, tripKey)
-      .eq('status', 'confirmed_seat');
+      .in('status', ['confirmed_seat', 'confirmed']);
     if (error) {
       if (/column|schema cache|does not exist/i.test(error.message ?? '')) return null;
       console.warn('[fetchGroupTripCapacity]', error.message);
@@ -322,9 +375,9 @@ export {
   MEMBER_SELECT_LEGACY_LEAN,
 };
 
-/** Resolve trip FK whether DB column is group_id or group_trip_id. */
+/** Resolve trip FK whether DB column is group_id, group_trip_id, or trip_id. */
 export function resolveGroupMemberTripId(raw: Record<string, unknown>): string | null {
-  const v = raw.group_id ?? raw.group_trip_id;
+  const v = raw.group_id ?? raw.group_trip_id ?? raw.trip_id;
   if (v == null || String(v).trim() === '') return null;
   return String(v);
 }
@@ -346,14 +399,14 @@ function parseClientIdField(raw: unknown): string | number | null {
 export function mapGroupMemberRow(raw: Record<string, unknown>): GroupMember | null {
   const id = String(raw.id ?? '').trim();
   const clientId = parseClientIdField(raw.client_id);
-  if (!id || clientId == null) return null;
-  if (!isGroupMemberStatus(raw.status)) return null;
+  const status = normalizeGroupMemberStatus(raw.status);
+  if (!id || clientId == null || !status) return null;
 
   return {
     id,
     client_id: clientId,
     group_trip_id: resolveGroupMemberTripId(raw),
-    status: raw.status,
+    status,
     notes: raw.notes != null ? String(raw.notes) : null,
     payment_status: isGroupPaymentStatus(raw.payment_status) ? raw.payment_status : null,
     payment_deadline:
