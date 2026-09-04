@@ -6,6 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { CalendarClock, Loader2, MapPin, Ticket, Users, X } from 'lucide-react';
 
 import { registerSessionAction } from '@/app/actions/registerSession';
+import { requireValidPhone } from '@/lib/phoneUtils';
 import { useLanguage } from '@/context/LanguageContext';
 import type { Session } from '@/types/session-tables';
 
@@ -146,6 +147,11 @@ export function PublicSessionsCards({
       setFormMsg({ type: 'err', text: ev.clientNameWaRequired });
       return;
     }
+    const phoneCheck = requireValidPhone(whatsapp);
+    if (!phoneCheck.isValid) {
+      setFormMsg({ type: 'err', text: phoneCheck.error ?? ev.clientNameWaRequired });
+      return;
+    }
 
     setSubmitting(true);
     setFormMsg(null);
@@ -154,7 +160,7 @@ export function PublicSessionsCards({
       const res = await registerSessionAction({
         session_id: String(openFor.id),
         name: name.trim(),
-        whatsapp: whatsapp.trim(),
+        whatsapp: phoneCheck.formattedPhone,
       });
 
       if (!res.ok) {

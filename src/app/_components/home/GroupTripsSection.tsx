@@ -19,6 +19,7 @@ import {
   buildGroupConfirmHref,
   persistGroupRegistrationDraft,
 } from '@/lib/group-registration-contact';
+import { requireValidPhone } from '@/lib/phoneUtils';
 import { supabaseClient } from '@/lib/supabaseClient';
 import type { GroupTripRow } from '@/types/group-trip';
 
@@ -190,6 +191,11 @@ export function GroupTripsSection() {
       setMsg({ type: 'err', text: g.errors.namePhone });
       return;
     }
+    const phoneCheck = requireValidPhone(formData.whatsapp);
+    if (!phoneCheck.isValid) {
+      setMsg({ type: 'err', text: phoneCheck.error ?? g.errors.namePhone });
+      return;
+    }
     if (emailTrimmed && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailTrimmed)) {
       setMsg({ type: 'err', text: g.errors.invalidEmail });
       return;
@@ -211,7 +217,7 @@ export function GroupTripsSection() {
 
       persistGroupRegistrationDraft({
         full_name: formData.fullName.trim(),
-        phone_wa: formData.whatsapp.trim(),
+        phone_wa: phoneCheck.formattedPhone,
         email: emailTrimmed,
         birth_date: birthDate,
         referral_code: referralCode ?? '',

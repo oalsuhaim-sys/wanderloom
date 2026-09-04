@@ -3,7 +3,6 @@
 import { revalidatePath } from 'next/cache';
 
 import { tripLeadInsertUserMessage } from '@/lib/i18n/db-error-message';
-import { canonicalizePhoneWa } from '@/lib/client-intake-pipeline';
 import { requireValidPhone } from '@/lib/phoneUtils';
 import { runRegistrationAutomationPipeline } from '@/lib/registration-automation';
 import { ar } from '@/messages/ar';

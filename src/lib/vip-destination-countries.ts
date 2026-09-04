@@ -13,6 +13,7 @@ export type VipDestinationCountry = {
 const COUNTRY_ID_TO_ISO: Record<string, string> = {
   indonesia: 'ID',
   japan: 'JP',
+  korea: 'KR',
   south_korea: 'KR',
   china: 'CN',
   canada: 'CA',

@@ -14,6 +14,7 @@ import {
   persistAffiliateRef,
   readPersistedAffiliateRef,
 } from '@/lib/referral-url';
+import { requireValidPhone } from '@/lib/phoneUtils';
 import { getTripCountryById } from '@/lib/trip-destination-data';
 
 const INPUT_CLASS =
@@ -369,11 +370,17 @@ function TripDesignFormInner() {
       return;
     }
 
-    submitLockRef.current = true;
-    setIsSubmitting(true);
-
     const form = e.currentTarget;
     const fd = new FormData(form);
+    const phoneCheck = requireValidPhone(String(fd.get('phone_wa') ?? ''));
+    if (!phoneCheck.isValid) {
+      setState({ ok: false, error: phoneCheck.error ?? 'يرجى إدخال رقم جوال سعودي صحيح' });
+      return;
+    }
+    fd.set('phone_wa', phoneCheck.formattedPhone);
+
+    submitLockRef.current = true;
+    setIsSubmitting(true);
 
     // Sanitize "Other" placeholders → typed values (server also re-sanitizes before insert)
     if (isOtherCountry) {

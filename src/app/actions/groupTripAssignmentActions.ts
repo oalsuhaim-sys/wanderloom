@@ -1081,24 +1081,23 @@ export async function deleteGroupMemberById(
 
   try {
     const admin = createSupabaseAdminClient();
-    const { data: existing, error } = await selectMemberRowById(admin, memberId);
-    if (error) {
-      return {
-        ok: false,
-        error: formatGroupTripDbError('deleteGroupMemberById', error.message ?? ''),
-      };
-    }
-    if (!existing) return { ok: false, error: 'لم يتم العثور على سجل العضوية.' };
 
-    const current = mapGroupMemberRow(existing as unknown as Record<string, unknown>);
-    if (!current) return { ok: false, error: 'تعذر قراءة سجل العضوية.' };
-
-    const tripId = current.group_trip_id;
-    if (current.status === 'confirmed_seat' && tripId) {
-      const clientId = parseClientId(current.client_id);
-      if (clientId) {
-        await releaseConfirmedSeat(admin, clientId, tripId);
+    // Best-effort read for seat inventory + revalidation (never block the delete).
+    let clientId: ClientId | null = null;
+    let tripId: string | null = null;
+    try {
+      const { data: existing } = await selectMemberRowById(admin, memberId);
+      if (existing) {
+        const raw = existing as unknown as Record<string, unknown>;
+        clientId = parseClientId(raw.client_id);
+        tripId = resolveGroupMemberTripId(raw);
+        const status = normalizeGroupMemberStatus(raw.status);
+        if (status === 'confirmed_seat' && tripId && clientId) {
+          await releaseConfirmedSeat(admin, clientId, tripId);
+        }
       }
+    } catch (prefetchErr) {
+      console.error('Error prefetching member before delete:', prefetchErr);
     }
 
     const { error: deleteError } = await admin
@@ -1107,13 +1106,13 @@ export async function deleteGroupMemberById(
       .eq('id', memberId);
 
     if (deleteError) {
+      console.error('Error deleting member from group:', deleteError);
       return {
         ok: false,
-        error: formatGroupTripDbError('deleteGroupMemberById.delete', deleteError.message ?? ''),
+        error: `تعذر إلغاء الحجز: ${deleteError.message}`,
       };
     }
 
-    const clientId = parseClientId(current.client_id);
     if (clientId) revalidateClientPaths(clientId, tripId);
     revalidatePath('/crm/groups');
     revalidatePath('/crm/radar');
@@ -1121,6 +1120,7 @@ export async function deleteGroupMemberById(
 
     return { ok: true, message: 'تم حذف العضو بنجاح.' };
   } catch (err) {
+    console.error('Unexpected removal error:', err);
     return { ok: false, error: err instanceof Error ? err.message : String(err) };
   }
 }
@@ -1226,7 +1226,8 @@ export async function updateGroupMemberById(
 }
 
 /**
- * Admin: إزالة من المقعد بالمعرّف الفريد group_members.id.
+ * Admin: إزالة من المقعد — حذف مباشر بـ group_members.id (المفتاح الأساسي فقط).
+ * لا يعتمد على تحديث الحالة / FK columns التي قد تكون مفقودة في المخطط.
  */
 export async function removeGroupMemberFromConfirmedSeatById(
   memberIdRaw: string,
@@ -1240,44 +1241,49 @@ export async function removeGroupMemberFromConfirmedSeatById(
 
   try {
     const admin = createSupabaseAdminClient();
-    const { data: existing, error } = await selectMemberRowById(admin, memberId);
-    if (error) {
+
+    // Best-effort read for seat inventory + revalidation (never block the delete).
+    let clientId: ClientId | null = null;
+    let tripId: string | null = null;
+    try {
+      const { data: existing } = await selectMemberRowById(admin, memberId);
+      if (existing) {
+        const raw = existing as unknown as Record<string, unknown>;
+        clientId = parseClientId(raw.client_id);
+        tripId = resolveGroupMemberTripId(raw);
+        const status = normalizeGroupMemberStatus(raw.status);
+        if (status === 'confirmed_seat' && tripId && clientId) {
+          await releaseConfirmedSeat(admin, clientId, tripId);
+        }
+      }
+    } catch (prefetchErr) {
+      console.error('Error prefetching member before delete:', prefetchErr);
+    }
+
+    const { error: deleteError } = await admin
+      .from('group_members')
+      .delete()
+      .eq('id', memberId);
+
+    if (deleteError) {
+      console.error('Error deleting member from group:', deleteError);
       return {
         ok: false,
-        error: formatGroupTripDbError(
-          'removeGroupMemberFromConfirmedSeatById',
-          error.message ?? '',
-        ),
+        error: `تعذر إلغاء الحجز: ${deleteError.message}`,
       };
     }
-    if (!existing) return { ok: false, error: 'لا يوجد سجل عضوية لهذا العضو.' };
 
-    const current = mapGroupMemberRow(existing as unknown as Record<string, unknown>);
-    if (!current) return { ok: false, error: 'تعذر قراءة سجل العضوية.' };
+    if (clientId) revalidateClientPaths(clientId, tripId);
+    revalidatePath('/crm/groups');
+    revalidatePath('/crm/radar');
+    if (tripId) revalidatePath(`/crm/groups/${tripId}`);
 
-    const clientId = parseClientId(current.client_id);
-    if (!clientId) return { ok: false, error: 'معرّف العميل غير صالح.' };
-
-    if (current.status === 'confirmed_seat' && current.group_trip_id) {
-      await releaseConfirmedSeat(admin, clientId, current.group_trip_id);
-    }
-
-    const tripIdForRevalidate = current.group_trip_id;
-
-    const result = await updateMemberById(admin, memberId, {
-      status: 'approved',
-      tripId: null,
-      clearPayment: true,
-    });
-    if (!result.ok) return result;
-
-    revalidateClientPaths(clientId, tripIdForRevalidate);
     return {
       ok: true,
       message: 'تم إزالة العميل من المقعد وتحرير السعة.',
-      data: result.data,
     };
   } catch (err) {
+    console.error('Unexpected removal error:', err);
     return { ok: false, error: err instanceof Error ? err.message : String(err) };
   }
 }

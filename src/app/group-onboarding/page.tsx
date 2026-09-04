@@ -21,6 +21,7 @@ import {
   buildGroupConfirmHref,
   persistGroupRegistrationDraft,
 } from '@/lib/group-registration-contact';
+import { requireValidPhone } from '@/lib/phoneUtils';
 import { supabaseClient } from '@/lib/supabaseClient';
 
 type TripInfo = {
@@ -130,6 +131,11 @@ function GroupOnboardingForm() {
       setFormError('يرجى تعبئة كافة الحقول المطلوبة (الاسم، الواتساب، وتاريخ الميلاد)');
       return;
     }
+    const phoneCheck = requireValidPhone(whatsapp);
+    if (!phoneCheck.isValid) {
+      setFormError(phoneCheck.error ?? 'يرجى إدخال رقم جوال سعودي صحيح');
+      return;
+    }
     const emailTrimmed = email.trim();
     if (emailTrimmed && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailTrimmed)) {
       setFormError('أدخل بريداً إلكترونياً صالحاً، أو اترك الحقل فارغاً.');
@@ -144,7 +150,7 @@ function GroupOnboardingForm() {
 
     persistGroupRegistrationDraft({
       full_name: fullName.trim(),
-      phone_wa: whatsapp.trim(),
+      phone_wa: phoneCheck.formattedPhone,
       email: emailTrimmed,
       birth_date: birthDate.trim(),
       referral_code: referral ?? '',

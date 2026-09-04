@@ -6,6 +6,7 @@ import toast from 'react-hot-toast';
 
 import { submitInterestAction } from '@/app/actions/submitInterest';
 import { ReferralCodeField } from '@/components/ReferralCodeField';
+import { requireValidPhone } from '@/lib/phoneUtils';
 import { normalizeAffiliateRef, persistAffiliateRef } from '@/lib/referral-url';
 
 const INPUT_CLASS =
@@ -35,9 +36,17 @@ export function InterestForm({ variant = 'default', onSuccess }: InterestFormPro
     const referral = normalizeAffiliateRef(referralCode);
     if (referral) persistAffiliateRef(referral);
 
+    const phoneCheck = requireValidPhone(phone);
+    if (!phoneCheck.isValid) {
+      const message = phoneCheck.error ?? 'يرجى إدخال رقم جوال سعودي صحيح';
+      setError(message);
+      toast.error(message);
+      return;
+    }
+
     const fd = new FormData();
     fd.set('full_name', fullName);
-    fd.set('phone_wa', phone);
+    fd.set('phone_wa', phoneCheck.formattedPhone);
     if (destination.trim()) fd.set('destination', destination.trim());
     if (referral) fd.set('referral_code', referral);
 

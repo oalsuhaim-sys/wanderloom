@@ -14,7 +14,7 @@ export type CountryOption = {
 export const DEFAULT_COUNTRIES: CountryOption[] = [
   { id: 'indonesia', name: 'إندونيسيا', flag: '🇮🇩' },
   { id: 'japan', name: 'اليابان', flag: '🇯🇵' },
-  { id: 'south_korea', name: 'كوريا الجنوبية', flag: '🇰🇷' },
+  { id: 'korea', name: 'كوريا الجنوبية', flag: '🇰🇷' },
   { id: 'china', name: 'الصين', flag: '🇨🇳' },
   { id: 'canada', name: 'كندا', flag: '🇨🇦' },
   { id: 'south_africa', name: 'جنوب أفريقيا', flag: '🇿🇦' },
@@ -51,6 +51,21 @@ function slugifyCountryId(value: string): string {
     .replace(/[^\w\u0600-\u06FF-]/g, '');
 }
 
+/** `south_korea` (DB) and `korea` (trip destinations) are the same country. */
+function canonicalCountryId(id: string): string {
+  return id === 'south_korea' ? 'korea' : id;
+}
+
+function uniqueByName<T>(items: T[], nameOf: (item: T) => string): T[] {
+  const uniqueNames = Array.from(new Set(items.map((item) => nameOf(item))));
+  const firstByName = new Map<string, T>();
+  for (const item of items) {
+    const name = nameOf(item);
+    if (!firstByName.has(name)) firstByName.set(name, item);
+  }
+  return uniqueNames.map((name) => firstByName.get(name)!);
+}
+
 export function normalizeCountriesFromDb(rows: unknown): CountryOption[] {
   if (!Array.isArray(rows) || rows.length === 0) return [];
 
@@ -63,9 +78,10 @@ export function normalizeCountriesFromDb(rows: unknown): CountryOption[] {
     const name = String(row.name_ar ?? '').trim();
     if (!name) continue;
 
-    const id = String(row.id ?? '').trim() || slugifyCountryId(name);
-    if (!id || seen.has(id)) continue;
+    const id = canonicalCountryId(String(row.id ?? '').trim() || slugifyCountryId(name));
+    if (!id || seen.has(id) || seen.has(name)) continue;
     seen.add(id);
+    seen.add(name);
 
     out.push({
       id,
@@ -82,9 +98,13 @@ export function mergeCountryLists(
   fallback: CountryOption[] = DEFAULT_COUNTRIES,
 ): CountryOption[] {
   const byId = new Map<string, CountryOption>();
-  for (const country of fallback) byId.set(country.id, country);
-  for (const country of primary) byId.set(country.id, country);
-  return Array.from(byId.values()).sort((a, b) => a.name.localeCompare(b.name, 'ar'));
+  for (const country of [...fallback, ...primary]) {
+    const id = canonicalCountryId(country.id);
+    byId.set(id, { ...country, id });
+  }
+  return uniqueByName(Array.from(byId.values()), (c) => c.name).sort((a, b) =>
+    a.name.localeCompare(b.name, 'ar'),
+  );
 }
 
 /** يدمج الدول الديناميكية مع تعريفات المدن الثابتة في TRIP_DESTINATIONS */
@@ -92,26 +112,30 @@ export function mergeTripDestinationsWithCountries(
   countries: CountryOption[],
 ): TripCountryDef[] {
   const byId = new Map<string, TripCountryDef>(
-    TRIP_DESTINATIONS.map((country) => [country.id, { ...country, cities: [...country.cities] }]),
+    TRIP_DESTINATIONS.map((country) => {
+      const id = canonicalCountryId(country.id);
+      return [id, { ...country, id, cities: [...country.cities] }];
+    }),
   );
 
   for (const country of countries) {
-    const existing = byId.get(country.id);
+    const id = canonicalCountryId(country.id);
+    const existing = byId.get(id);
     if (existing) {
-      byId.set(country.id, {
+      byId.set(id, {
         ...existing,
         labelAr: country.name || existing.labelAr,
       });
       continue;
     }
-    byId.set(country.id, {
-      id: country.id,
+    byId.set(id, {
+      id,
       labelAr: country.name,
       cities: [],
     });
   }
 
-  return Array.from(byId.values()).sort((a, b) =>
+  return uniqueByName(Array.from(byId.values()), (c) => c.labelAr).sort((a, b) =>
     a.labelAr.localeCompare(b.labelAr, 'ar'),
   );
 }

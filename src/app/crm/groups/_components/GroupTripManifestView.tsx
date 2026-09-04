@@ -239,6 +239,26 @@ export default function GroupTripManifestView({ tripId }: Props) {
     [],
   );
 
+  const patchMemberRemoved = useCallback((memberId: string) => {
+    setManifest((prev) => {
+      if (!prev) return prev;
+      const drop = (list: TripManifestMember[]) => list.filter((m) => m.id !== memberId);
+      const wasConfirmed = prev.confirmed.some((m) => m.id === memberId);
+      return {
+        ...prev,
+        confirmed: drop(prev.confirmed),
+        waitlisted: drop(prev.waitlisted),
+        pending: drop(prev.pending ?? []),
+        trip: {
+          ...prev.trip,
+          bookedSeats: wasConfirmed
+            ? Math.max(0, prev.trip.bookedSeats - 1)
+            : prev.trip.bookedSeats,
+        },
+      };
+    });
+  }, []);
+
   const filteredConfirmed = useMemo(
     () =>
       (manifest?.confirmed ?? []).filter((m) =>
@@ -552,9 +572,11 @@ export default function GroupTripManifestView({ tripId }: Props) {
                       ) {
                         return;
                       }
-                      void runAction(`remove-${member.id}`, async () => {
+                      const memberId = member.id;
+                      patchMemberRemoved(memberId);
+                      void runAction(`remove-${memberId}`, async () => {
                         const token = await getClientAccessToken();
-                        return removeGroupMemberFromConfirmedSeatById(member.id, token);
+                        return removeGroupMemberFromConfirmedSeatById(memberId, token);
                       });
                     }}
                   />
