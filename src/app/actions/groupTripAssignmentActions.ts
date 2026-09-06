@@ -2213,7 +2213,8 @@ export async function getGroupTripManifest(
           titleAr: tripTitleAr,
           titleEn: t.title_en != null ? String(t.title_en) : null,
           maxSeats,
-          bookedSeats,
+          // Prefer live confirmed member count over drifting booked_seats column
+          bookedSeats: confirmed.length > 0 || memberRows.length > 0 ? confirmed.length : bookedSeats,
           allowWaitlist: t.allow_waitlist !== false,
           datesAr: t.dates_ar != null ? String(t.dates_ar) : null,
           price: t.price != null ? String(t.price) : null,
@@ -2232,7 +2233,7 @@ export async function getGroupTripManifest(
 
 /**
  * Admin: ترقية من قائمة الانتظار إلى مقعد مؤكد.
- * Applies dynamic scarcity deadline + retroactive trigger when crossing threshold.
+ * Updates strictly by group_members.id → status = confirmed_seat.
  */
 export async function promoteWaitlistedClient(
   memberIdRaw: string,
@@ -2250,104 +2251,181 @@ export async function promoteWaitlistedClient(
   try {
     const admin = createSupabaseAdminClient();
 
-    const { data: memberRow, error: memberError } = await selectMemberRowById(admin, memberId);
+    // Soft prefetch for validation / revalidation — never block the PK update.
+    let clientId: ClientId | null = null;
+    let customerName = '';
+    let customerPhone = '';
+    try {
+      const { data: existing } = await selectMemberRowById(admin, memberId);
+      if (existing) {
+        const raw = existing as unknown as Record<string, unknown>;
+        clientId = parseClientId(raw.client_id);
+        customerName = String(raw.customer_name ?? '').trim();
+        customerPhone = String(raw.customer_phone ?? '').trim();
 
-    if (memberError) {
-      return {
-        ok: false,
-        error: formatGroupTripDbError('promoteWaitlistedClient', memberError.message ?? ''),
-      };
+        const normalized = normalizeGroupMemberStatus(raw.status);
+        const statusKey = String(raw.status ?? '').trim().toLowerCase();
+        const isWaitlisted =
+          normalized === 'waitlisted' ||
+          statusKey === 'waiting' ||
+          statusKey === 'waitlist';
+        if (normalized === 'confirmed_seat' || statusKey === 'confirmed') {
+          return { ok: false, error: 'هذا العضو لديه مقعد مؤكد بالفعل.' };
+        }
+        if (normalized && !isWaitlisted) {
+          return { ok: false, error: 'الترقية متاحة فقط لأعضاء قائمة الانتظار.' };
+        }
+
+        const tripOnRow = resolveGroupMemberTripId(raw);
+        if (tripOnRow && !tripIdsMatch(tripOnRow, tripId)) {
+          return { ok: false, error: 'العضوية لا تتبع هذه الرحلة.' };
+        }
+      }
+    } catch (prefetchErr) {
+      console.error('Error prefetching member before promote:', prefetchErr);
     }
-    if (!memberRow) return { ok: false, error: 'سجل العضوية غير موجود.' };
 
-    const member = mapGroupMemberRow(memberRow as unknown as Record<string, unknown>);
-    if (!member) return { ok: false, error: 'تعذر قراءة سجل العضوية.' };
-    if (member.group_trip_id && !tripIdsMatch(member.group_trip_id, tripId)) {
-      return { ok: false, error: 'العضوية لا تتبع هذه الرحلة.' };
+    const capacity = await fetchGroupTripCapacity(admin, tripId);
+    if (!capacity.ok) {
+      return { ok: false, error: capacity.error };
     }
-    if (normalizeGroupMemberStatus(member.status) !== 'waitlisted') {
-      return { ok: false, error: 'الترقية متاحة فقط لأعضاء قائمة الانتظار.' };
-    }
-
-    const clientId = member.client_id;
-    const tripKey = coerceTripIdForQuery(tripId);
-
-    const { data: trip, error: tripError } = await admin
-      .from('group_trips')
-      .select('id, title_ar, max_seats, booked_seats, is_active')
-      .eq('id', tripKey)
-      .maybeSingle();
-
-    if (tripError) {
-      return {
-        ok: false,
-        error: formatGroupTripDbError('getGroupTripManifest', tripError.message ?? ''),
-      };
-    }
-    if (!trip) return { ok: false, error: 'الرحلة غير موجودة.' };
-
-    const t = trip as Record<string, unknown>;
-    if (t.is_active === false) {
+    if (!capacity.data.isActive) {
       return { ok: false, error: 'هذه الرحلة غير مفعّلة حالياً.' };
     }
-
-    const maxSeats = Math.max(0, Number(t.max_seats) || 0);
-    const bookedSeats = Math.max(0, Number(t.booked_seats) || 0);
-    const hasCapacity = maxSeats <= 0 || bookedSeats < maxSeats;
-
-    if (!hasCapacity) {
+    if (!capacity.data.hasConfirmedCapacity) {
       return { ok: false, error: 'لا توجد مقاعد شاغرة — الرحلة مكتملة.' };
     }
 
-    const nextBooked = bookedSeats + 1;
+    const confirmedBefore = capacity.data.confirmedCount;
+    const nextBooked = confirmedBefore + 1;
     const paymentDeadline = computePaymentDeadlineForBookedSeats(nextBooked);
 
-    let { data: updated, error: updateError } = await admin
-      .from('group_trips')
-      .update({ booked_seats: nextBooked })
-      .eq('id', tripKey)
-      .eq('booked_seats', Number(t.booked_seats) || 0)
-      .select('id')
-      .maybeSingle();
+    // Primary path: UPDATE by primary key only (exact DB status string).
+    const updatePayloads: Record<string, unknown>[] = [
+      {
+        status: 'confirmed_seat',
+        payment_status: 'pending',
+        payment_deadline: paymentDeadline,
+        updated_at: nowIso(),
+      },
+      {
+        status: 'confirmed_seat',
+        payment_status: 'pending',
+        updated_at: nowIso(),
+      },
+      {
+        status: 'confirmed_seat',
+        updated_at: nowIso(),
+      },
+      { status: 'confirmed_seat' },
+    ];
+    const selectAttempts = [
+      'id, client_id, status, payment_status, payment_deadline, group_id, group_trip_id, customer_name, customer_phone, created_at, updated_at',
+      'id, client_id, status, payment_status, payment_deadline, group_id, customer_name, customer_phone, created_at, updated_at',
+      'id, client_id, status, group_id, group_trip_id, customer_name, customer_phone',
+      'id, client_id, status, group_id',
+      'id, client_id, status',
+      'id, status',
+    ];
 
-    if (updateError && /booked_seats/i.test(updateError.message)) {
-      const fallback = await admin
-        .from('group_trips')
-        .update({ booked_seats: nextBooked })
-        .eq('id', tripKey)
-        .select('id')
+    let updatedRow: Record<string, unknown> | null = null;
+    let lastError = '';
+
+    for (const payload of updatePayloads) {
+      for (const select of selectAttempts) {
+        const res = await admin
+          .from('group_members')
+          .update(payload)
+          .eq('id', memberId)
+          .select(select)
+          .maybeSingle();
+
+        if (!res.error && res.data) {
+          updatedRow = res.data as Record<string, unknown>;
+          break;
+        }
+
+        lastError = res.error?.message ?? 'تعذر تحديث سجل العضوية.';
+        console.error('Promotion Error:', lastError, res.error?.details ?? '');
+        if (
+          !/column|schema cache|does not exist|could not find|payment_|updated_at/i.test(
+            lastError,
+          )
+        ) {
+          break;
+        }
+      }
+      if (updatedRow) break;
+    }
+
+    if (!updatedRow) {
+      return {
+        ok: false,
+        error: `تعذر ترقية المقعد: ${lastError || 'فشل التحديث'}`,
+      };
+    }
+
+    // Best-effort sync of cached booked_seats (capacity already checked via live count).
+    const tripKey = coerceTripIdForQuery(tripId);
+    try {
+      await admin.from('group_trips').update({ booked_seats: nextBooked }).eq('id', tripKey);
+    } catch (seatErr) {
+      console.error('Error syncing booked_seats after promote:', seatErr);
+    }
+
+    try {
+      await triggerRetroactiveScarcityDeadlines(admin, tripId, confirmedBefore, nextBooked);
+    } catch (scarcityErr) {
+      console.error('Error applying scarcity deadlines after promote:', scarcityErr);
+    }
+
+    if (!clientId) clientId = parseClientId(updatedRow.client_id);
+    if (!customerName) customerName = String(updatedRow.customer_name ?? '').trim();
+    if (!customerPhone) customerPhone = String(updatedRow.customer_phone ?? '').trim();
+
+    let clientRow: Record<string, unknown> | null = null;
+    if (clientId) {
+      const { data } = await admin
+        .from('clients')
+        .select('id, name, phone_wa, email, passport_expiry')
+        .eq('id', clientId)
         .maybeSingle();
-      updated = fallback.data;
-      updateError = fallback.error;
+      clientRow = (data as Record<string, unknown> | null) ?? null;
+      revalidateClientPaths(clientId, tripId);
     }
+    revalidatePath('/crm/groups');
+    revalidatePath('/crm/radar');
+    revalidatePath(`/crm/groups/${tripId}`);
 
-    if (updateError) return { ok: false, error: updateError.message };
-    if (!updated) {
-      return { ok: false, error: 'تعذر حجز المقعد — قد تكون الرحلة امتلأت للتو.' };
+    const promoted =
+      mapManifestMemberLoose(updatedRow, clientRow) ??
+      ({
+        id: memberId,
+        clientId: clientId ?? '—',
+        clientName:
+          String(clientRow?.name ?? '').trim() ||
+          customerName ||
+          (clientId ? `عميل #${clientId}` : 'عضو'),
+        phone:
+          (clientRow?.phone_wa != null ? String(clientRow.phone_wa).trim() : '') ||
+          customerPhone ||
+          null,
+        email: clientRow?.email != null ? String(clientRow.email).trim() || null : null,
+        status: 'confirmed_seat' as const,
+        paymentStatus: 'pending' as const,
+        paymentDeadline,
+        createdAt: String(updatedRow.created_at ?? ''),
+        updatedAt: String(updatedRow.updated_at ?? new Date().toISOString()),
+        passportExpiry: null,
+        visaStatus: null,
+        source: 'group_member' as const,
+      } satisfies TripManifestMember);
+
+    promoted.status = 'confirmed_seat';
+    if (!promoted.paymentStatus) promoted.paymentStatus = 'pending';
+    if (paymentDeadline && !promoted.paymentDeadline) {
+      promoted.paymentDeadline = paymentDeadline;
     }
-
-    const app = await updateMemberById(admin, memberId, {
-      status: 'confirmed_seat',
-      tripId,
-      payment_status: 'pending',
-      payment_deadline: paymentDeadline,
-    });
-    if (!app.ok) return app;
-
-    await triggerRetroactiveScarcityDeadlines(admin, tripId, bookedSeats, nextBooked);
-
-    const { data: clientRow } = await admin
-      .from('clients')
-      .select('id, name, phone_wa, email, passport_expiry')
-      .eq('id', clientId)
-      .maybeSingle();
-
-    revalidateClientPaths(clientId, tripId);
-
-    const promoted = mapManifestMember(
-      app.data!,
-      clientRow ? (clientRow as Record<string, unknown>) : null,
-    );
 
     const scarcityNote =
       nextBooked >= SCARCITY_THRESHOLD && paymentDeadline
@@ -2360,6 +2438,7 @@ export async function promoteWaitlistedClient(
       data: promoted,
     };
   } catch (err) {
+    console.error('Unexpected promotion error:', err);
     return { ok: false, error: err instanceof Error ? err.message : String(err) };
   }
 }

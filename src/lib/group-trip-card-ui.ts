@@ -11,6 +11,33 @@ export function parseGroupTripPriceNumber(raw: string | null | undefined): numbe
   return Number.isFinite(n) && n > 0 ? n : 0;
 }
 
+/** Prefer live confirmed member count; fall back to booked_seats / registered ids. */
+export function resolveConfirmedSeatCount(trip: {
+  confirmed_seats_count?: number | null;
+  booked_seats?: number | null;
+  registered_client_ids?: Array<string | number> | null;
+}): number {
+  if (
+    trip.confirmed_seats_count != null &&
+    Number.isFinite(Number(trip.confirmed_seats_count))
+  ) {
+    return Math.max(0, Math.trunc(Number(trip.confirmed_seats_count)));
+  }
+  const fromRegistered = Array.isArray(trip.registered_client_ids)
+    ? trip.registered_client_ids.length
+    : 0;
+  const fromBooked = Number(trip.booked_seats);
+  if (Number.isFinite(fromBooked)) {
+    return Math.max(0, Math.trunc(Math.max(fromBooked, fromRegistered)));
+  }
+  return Math.max(0, fromRegistered);
+}
+
+export function formatSeatRatio(confirmed: number, capacity: number): string {
+  if (capacity > 0) return `${confirmed} / ${capacity}`;
+  return `${confirmed} / —`;
+}
+
 export type GroupSeatStatus = 'open' | 'full' | 'ended' | 'hidden';
 
 export function resolveGroupSeatStatus(input: {

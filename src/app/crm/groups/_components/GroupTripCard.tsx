@@ -15,8 +15,10 @@ import toast from 'react-hot-toast';
 
 import GroupTripLeaderBadge from '@/app/crm/groups/_components/GroupTripLeaderBadge';
 import {
+  formatSeatRatio,
   groupSeatStatusBadge,
   parseGroupTripPriceNumber,
+  resolveConfirmedSeatCount,
   resolveGroupSeatStatus,
   resolveGroupTripBannerUrl,
 } from '@/lib/group-trip-card-ui';
@@ -43,13 +45,7 @@ export default function GroupTripCard({
   onFellowship,
 }: Props) {
   const [copying, setCopying] = useState(false);
-  const fromRegistered = Array.isArray(trip.registered_client_ids)
-    ? trip.registered_client_ids.length
-    : 0;
-  const fromBooked = Number(trip.booked_seats);
-  const booked = Number.isFinite(fromBooked)
-    ? Math.max(fromBooked, fromRegistered)
-    : fromRegistered;
+  const booked = resolveConfirmedSeatCount(trip);
   const capacity = Math.max(0, Number(trip.max_seats) || 0);
   const { to: endIso } = parseGroupTripStoredDates(trip.dates_ar, trip.dates_en);
   const status = resolveGroupSeatStatus({
@@ -168,8 +164,8 @@ export default function GroupTripCard({
         <div className="mt-5">
           <div className="mb-1.5 flex justify-between text-sm">
             <span className="text-slate-500">المقاعد المحجوزة</span>
-            <span className="font-semibold text-slate-900">
-              {booked} / {capacity || '—'}
+            <span className="font-semibold text-slate-900" dir="ltr">
+              {formatSeatRatio(booked, capacity)}
             </span>
           </div>
           <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100">

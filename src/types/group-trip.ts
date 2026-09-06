@@ -17,6 +17,11 @@ export type GroupTripRow = {
   is_active?: boolean | null;
   max_seats?: number | null;
   booked_seats?: number | null;
+  /**
+   * Live count of group_members with confirmed_seat / confirmed.
+   * Prefer this over booked_seats (which can drift after failed optimistic updates).
+   */
+  confirmed_seats_count?: number | null;
   allow_waitlist?: boolean | null;
   leader_id?: number | null;
   leader_name?: string | null;

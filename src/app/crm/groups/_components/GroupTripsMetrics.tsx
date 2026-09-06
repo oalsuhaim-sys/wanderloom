@@ -4,6 +4,7 @@ import { CalendarCheck2, Users, Wallet } from 'lucide-react';
 
 import {
   parseGroupTripPriceNumber,
+  resolveConfirmedSeatCount,
   resolveGroupSeatStatus,
 } from '@/lib/group-trip-card-ui';
 import { parseGroupTripStoredDates } from '@/lib/group-trip-dates';
@@ -48,13 +49,7 @@ export function computeGroupDashboardMetrics(trips: GroupTripRow[]) {
   let expectedRevenue = 0;
 
   for (const trip of trips) {
-    const fromRegistered = Array.isArray(trip.registered_client_ids)
-      ? trip.registered_client_ids.length
-      : 0;
-    const fromBooked = Number(trip.booked_seats);
-    const booked = Number.isFinite(fromBooked)
-      ? Math.max(fromBooked, fromRegistered)
-      : fromRegistered;
+    const booked = resolveConfirmedSeatCount(trip);
     const capacity = Math.max(0, Number(trip.max_seats) || 0);
     const { to: endIso } = parseGroupTripStoredDates(trip.dates_ar, trip.dates_en);
     const status = resolveGroupSeatStatus({

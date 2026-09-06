@@ -155,7 +155,51 @@ function normalizeGroupTripRow(raw: GroupTripRow): GroupTripRow {
     max_seats: typeof raw?.max_seats === 'number' ? raw.max_seats : Number(raw?.max_seats) || 0,
     booked_seats:
       typeof raw?.booked_seats === 'number' ? raw.booked_seats : Number(raw?.booked_seats) || 0,
+    confirmed_seats_count:
+      raw?.confirmed_seats_count != null && Number.isFinite(Number(raw.confirmed_seats_count))
+        ? Math.max(0, Math.trunc(Number(raw.confirmed_seats_count)))
+        : null,
   };
+}
+
+function isConfirmedMemberStatus(raw: unknown): boolean {
+  const status = String(raw ?? '').trim().toLowerCase();
+  return status === 'confirmed_seat' || status === 'confirmed';
+}
+
+/** Live confirmed_seat counts from group_members (not the drifting booked_seats column). */
+async function fetchConfirmedSeatCountsByTripId(
+  tripIds: string[],
+): Promise<Map<string, number>> {
+  const counts = new Map<string, number>();
+  if (!supabase || tripIds.length === 0) return counts;
+
+  const seenMemberIds = new Set<string>();
+  const columns = ['group_id', 'group_trip_id', 'trip_id'] as const;
+
+  for (const column of columns) {
+    const { data, error } = await supabase
+      .from('group_members')
+      .select(`id, status, ${column}`)
+      .in(column, tripIds);
+
+    if (error) continue;
+
+    for (const row of data ?? []) {
+      const record = row as Record<string, unknown>;
+      const memberId = String(record.id ?? '').trim();
+      if (!memberId || seenMemberIds.has(memberId)) continue;
+      if (!isConfirmedMemberStatus(record.status)) continue;
+
+      const tripKey = String(record[column] ?? '').trim();
+      if (!tripKey) continue;
+
+      seenMemberIds.add(memberId);
+      counts.set(tripKey, (counts.get(tripKey) ?? 0) + 1);
+    }
+  }
+
+  return counts;
 }
 
 function tripDateLabels(trip: GroupTripRow): { dates_ar: string; dates_en: string } {
@@ -307,10 +351,25 @@ export default function AdminGroupsPage() {
       return;
     }
 
+    const normalized = ((data ?? []) as GroupTripRow[])
+      .filter((row): row is GroupTripRow => row != null && row.id != null)
+      .map(normalizeGroupTripRow);
+
+    const confirmedCounts = await fetchConfirmedSeatCountsByTripId(
+      normalized.map((trip) => trip.id).filter(Boolean),
+    );
+
     setTrips(
-      ((data ?? []) as GroupTripRow[])
-        .filter((row): row is GroupTripRow => row != null && row.id != null)
-        .map(normalizeGroupTripRow),
+      normalized.map((trip) => ({
+        ...trip,
+        confirmed_seats_count: confirmedCounts.has(trip.id)
+          ? (confirmedCounts.get(trip.id) ?? 0)
+          : trip.confirmed_seats_count ?? null,
+        // Keep booked_seats aligned with live confirmed count when available
+        booked_seats: confirmedCounts.has(trip.id)
+          ? (confirmedCounts.get(trip.id) ?? 0)
+          : trip.booked_seats ?? 0,
+      })),
     );
     setIsLoading(false);
   }, []);

@@ -4,6 +4,31 @@ import type { VipSpendingTier } from '@/lib/vip-spending-tier'
 
 export type EngagementStatus = 'active' | 'warm' | 'cold'
 
+/**
+ * Exact age in full years from a birth date string (`YYYY-MM-DD` or parseable ISO).
+ * Returns null when missing / invalid / out of range.
+ */
+export function calculateAge(birthDateString?: string | null): number | null {
+  if (!birthDateString) return null
+  const trimmed = String(birthDateString).trim().slice(0, 10)
+  if (!trimmed) return null
+
+  const birthDate = /^\d{4}-\d{2}-\d{2}$/.test(trimmed)
+    ? new Date(`${trimmed}T12:00:00`)
+    : new Date(birthDateString)
+
+  if (Number.isNaN(birthDate.getTime())) return null
+
+  const today = new Date()
+  let age = today.getFullYear() - birthDate.getFullYear()
+  const monthDiff = today.getMonth() - birthDate.getMonth()
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+    age--
+  }
+  if (age < 1 || age > 120) return null
+  return age
+}
+
 export type TravelDnaChip = {
   key: string
   label: string

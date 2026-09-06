@@ -14,6 +14,7 @@ import ClientPaymentWhatsAppButton from '@/app/crm/clients/_components/ClientPay
 import ClientSalesStageControl from '@/app/crm/clients/_components/ClientSalesStageControl'
 import {
   clientDisplayTierBadge,
+  calculateAge,
   engagementDotClass,
   engagementStatusLabel,
   formatSarClv,
@@ -60,6 +61,7 @@ export default function ClientCard({
   const tier = clientDisplayTierBadge(client)
   const clv = resolveClientLifetimeValue(client)
   const displayName = client.name?.trim() || '—'
+  const clientAge = calculateAge(client.birth_date)
   const dna = resolveClientDnaDisplay(client)
   const interestTags = parseDnaInterests(dna.dna_interests)
   const activity = dna.dna_activity_level?.trim()
@@ -95,9 +97,16 @@ export default function ClientCard({
         ) : null}
       </div>
 
-      <h2 className="mb-1 max-w-full truncate text-lg font-bold text-slate-900 dark:text-white">
-        {displayName}
-      </h2>
+      <div className="mt-1 mb-1 flex max-w-full items-center justify-center gap-1.5">
+        <h2 className="truncate text-lg font-bold text-slate-900 dark:text-white">
+          {displayName}
+        </h2>
+        {clientAge != null ? (
+          <span className="shrink-0 rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600 dark:border-[#2D3F3A] dark:bg-[#1A2421] dark:text-slate-300">
+            {clientAge} سنة
+          </span>
+        ) : null}
+      </div>
 
       <div className="mt-1 flex flex-col items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
         {client.phone_wa ? (

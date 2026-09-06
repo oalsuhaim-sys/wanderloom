@@ -382,9 +382,15 @@ export function normalizeVipClient(raw: Record<string, unknown>): VipClientProfi
     phone_wa: pick(raw, ['phone_wa', 'phone_number', 'phone']),
     email: pick(raw, ['email']) || null,
     birth_date:
-      raw.birth_date != null && String(raw.birth_date).trim()
-        ? String(raw.birth_date).trim().slice(0, 10)
-        : '',
+      (() => {
+        const rawBirth =
+          raw.birth_date != null && String(raw.birth_date).trim()
+            ? String(raw.birth_date).trim()
+            : raw.dob != null && String(raw.dob).trim()
+              ? String(raw.dob).trim()
+              : ''
+        return rawBirth ? rawBirth.slice(0, 10) : ''
+      })(),
     flight_seat: pick(raw, ['flight_seat']) || dna.preferred_seat.trim(),
     food_allergies: pick(raw, ['food_allergies']) || dna.food_allergies.trim(),
     favorite_drink: pick(raw, ['favorite_drink']) || dna.drink_coffee.trim(),

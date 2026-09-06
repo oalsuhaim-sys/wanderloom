@@ -243,18 +243,13 @@ export default function GroupTripManifestView({ tripId }: Props) {
     setManifest((prev) => {
       if (!prev) return prev;
       const drop = (list: TripManifestMember[]) => list.filter((m) => m.id !== memberId);
-      const wasConfirmed = prev.confirmed.some((m) => m.id === memberId);
+      // Only drop the member row — reserved seats are derived from confirmed.length,
+      // never from a drifting bookedSeats counter.
       return {
         ...prev,
         confirmed: drop(prev.confirmed),
         waitlisted: drop(prev.waitlisted),
         pending: drop(prev.pending ?? []),
-        trip: {
-          ...prev.trip,
-          bookedSeats: wasConfirmed
-            ? Math.max(0, prev.trip.bookedSeats - 1)
-            : prev.trip.bookedSeats,
-        },
       };
     });
   }, []);
@@ -332,17 +327,20 @@ export default function GroupTripManifestView({ tripId }: Props) {
   }
 
   const { trip, confirmed, waitlisted, pending } = manifest;
+  // Always derive reserved seats from the live confirmed members array (DB-backed),
+  // not from trip.bookedSeats which can drift after failed optimistic updates.
   const confirmedCount = confirmed.length;
+  const totalMaxCapacity = trip.maxSeats > 0 ? trip.maxSeats : confirmedCount;
   const availableCount =
-    trip.maxSeats > 0 ? Math.max(0, trip.maxSeats - trip.bookedSeats) : null;
-  const totalCapacity =
-    availableCount == null
-      ? Math.max(trip.maxSeats, confirmedCount)
-      : confirmedCount + availableCount;
+    trip.maxSeats > 0 ? Math.max(0, trip.maxSeats - confirmedCount) : null;
   const reservedRatioText =
-    totalCapacity > 0 ? `${confirmedCount} / ${totalCapacity}` : `${confirmedCount} / ∞`;
+    totalMaxCapacity > 0
+      ? `${confirmedCount} / ${totalMaxCapacity}`
+      : `${confirmedCount} / ∞`;
   const fillPct =
-    totalCapacity > 0 ? Math.min(100, Math.round((confirmedCount / totalCapacity) * 100)) : 0;
+    totalMaxCapacity > 0
+      ? Math.min(100, Math.round((confirmedCount / totalMaxCapacity) * 100))
+      : 0;
   const canPromote = availableCount == null || availableCount > 0;
   const pendingList = pending ?? [];
 
@@ -448,7 +446,7 @@ export default function GroupTripManifestView({ tripId }: Props) {
             className={`h-2.5 rounded-full transition-all ${
               fillPct >= 100 ? 'bg-red-500' : 'bg-[#C5A059]'
             }`}
-            style={{ width: `${totalCapacity > 0 ? fillPct : 0}%` }}
+            style={{ width: `${totalMaxCapacity > 0 ? fillPct : 0}%` }}
           />
         </div>
       </div>
@@ -535,18 +533,18 @@ export default function GroupTripManifestView({ tripId }: Props) {
         }
       >
         {filteredConfirmed.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
-              <thead>
-                <tr className="border-b border-slate-100 text-right text-[11px] font-black uppercase tracking-wide text-slate-500">
-                  <th className="px-3 py-3">العميل</th>
-                  <th className="px-3 py-3">التواصل</th>
-                  <th className="px-3 py-3">حالة السداد</th>
-                  <th className="px-3 py-3">المهلة</th>
-                  <th className="px-3 py-3">إجراءات</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-50">
+          <div className="overflow-x-auto rounded-xl border border-slate-100 bg-white">
+            <div className="min-w-max">
+              <div className="flex items-center gap-2 border-b border-gray-100 bg-slate-50/80 px-4 py-3 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                <div className="w-36 shrink-0 text-right">العميل</div>
+                <div className="w-44 shrink-0 text-right">التواصل</div>
+                <div className="w-28 shrink-0 text-center">حالة السداد</div>
+                <div className="w-44 shrink-0 text-center">المهلة</div>
+                <div className="ms-auto flex min-w-[220px] shrink-0 items-center justify-end">
+                  إجراءات
+                </div>
+              </div>
+              <ul className="divide-y divide-slate-100">
                 {filteredConfirmed.map((member) => (
                   <ConfirmedRow
                     key={member.id}
@@ -581,8 +579,8 @@ export default function GroupTripManifestView({ tripId }: Props) {
                     }}
                   />
                 ))}
-              </tbody>
-            </table>
+              </ul>
+            </div>
           </div>
         ) : null}
       </ManifestSection>
@@ -621,17 +619,15 @@ export default function GroupTripManifestView({ tripId }: Props) {
         }
       >
         {filteredWaitlisted.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
-              <thead>
-                <tr className="border-b border-slate-100 text-right text-[11px] font-black uppercase tracking-wide text-slate-500">
-                  <th className="px-3 py-3">العميل</th>
-                  <th className="px-3 py-3">التواصل</th>
-                  <th className="px-3 py-3">تاريخ الانتظار</th>
-                  <th className="px-3 py-3">إجراءات</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-50">
+          <div className="overflow-x-auto rounded-xl border border-slate-100 bg-white">
+            <div className="min-w-[720px]">
+              <div className="grid grid-cols-12 gap-4 items-center border-b border-slate-100 bg-slate-50/80 px-4 py-3 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                <div className="col-span-4 text-right">العميل</div>
+                <div className="col-span-3 text-center">التواصل</div>
+                <div className="col-span-2 text-center">تاريخ الانتظار</div>
+                <div className="col-span-3 text-left">إجراءات</div>
+              </div>
+              <ul className="divide-y divide-slate-100">
                 {filteredWaitlisted.map((member) => (
                   <WaitlistRow
                     key={member.id}
@@ -654,8 +650,8 @@ export default function GroupTripManifestView({ tripId }: Props) {
                     }}
                   />
                 ))}
-              </tbody>
-            </table>
+              </ul>
+            </div>
           </div>
         ) : null}
       </ManifestSection>
@@ -687,6 +683,7 @@ function StatCard({
       <p
         className={`text-3xl font-bold tabular-nums ${valueClass}`}
         dir={numeric ? 'ltr' : undefined}
+        style={numeric ? { unicodeBidi: 'isolate' } : undefined}
       >
         {value}
       </p>
@@ -810,9 +807,19 @@ function PaymentStatusBadge({
 }: {
   status: GroupPaymentStatus | null | undefined;
 }) {
+  const tone =
+    status === 'paid'
+      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+      : status === 'expired'
+        ? 'bg-rose-50 text-rose-700 border-rose-200'
+        : status === 'waived'
+          ? 'bg-sky-50 text-sky-700 border-sky-200'
+          : 'bg-amber-50 text-amber-700 border-amber-200';
+
   return (
     <span
-      className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-black ring-1 ${groupPaymentStatusBadgeClass(status)}`}
+      className={`inline-block max-w-full truncate border px-2 py-0.5 rounded-md text-xs font-medium whitespace-nowrap ${tone}`}
+      title={groupPaymentStatusLabel(status)}
     >
       {status === 'paid' ? '✓ ' : status === 'expired' ? '! ' : ''}
       {groupPaymentStatusLabel(status)}
@@ -1054,6 +1061,13 @@ function PaymentUpdateModal({
   );
 }
 
+function formatClientIdHint(clientId: string | number): string {
+  const raw = String(clientId ?? '').trim();
+  if (!raw || raw === '—') return '';
+  if (raw.length <= 12) return `#${raw}`;
+  return `#${raw.slice(0, 8)}…`;
+}
+
 function ConfirmedRow({
   member,
   tripTitle,
@@ -1073,73 +1087,115 @@ function ConfirmedRow({
   const deadlineBadge = paymentDeadlineBadgeLabel(member.paymentDeadline);
   const isUrgent = deadlineBadge.tone === 'rose';
   const isPaid = member.paymentStatus === 'paid';
+  const idHint = formatClientIdHint(member.clientId);
 
   return (
-    <tr className={isUrgent && !isPaid ? 'bg-rose-50/40' : isPaid ? 'bg-emerald-50/30' : undefined}>
-      <td className="px-3 py-3">
-        <Link
-          href={`/crm/clients/${member.clientId}`}
-          className="font-black text-[#1A3B2A] hover:underline"
-        >
-          {member.clientName}
-        </Link>
-        <p className="mt-0.5 text-[10px] font-semibold text-slate-400">#{member.clientId}</p>
-      </td>
-      <td className="px-3 py-3 text-xs font-semibold text-slate-600">
-        {member.phone ? (
-          <p dir="ltr" className="text-left">
-            {member.phone}
-          </p>
-        ) : (
-          <span className="text-slate-400">—</span>
-        )}
-        {member.email ? (
-          <p className="mt-0.5 truncate text-[10px] text-slate-400" dir="ltr">
-            {member.email}
-          </p>
-        ) : null}
-      </td>
-      <td className="px-3 py-3">
-        <PaymentStatusBadge status={member.paymentStatus} />
-      </td>
-      <td className="px-3 py-3">
-        <DeadlineBadge badge={deadlineBadge} />
-      </td>
-      <td className="px-3 py-3">
-        <div className="flex flex-wrap gap-2">
-          <ActionButton
-            label="تسديد 💵"
-            icon={<Wallet className="h-3.5 w-3.5" aria-hidden />}
-            tone="emerald"
+    <li
+      className={
+        isUrgent && !isPaid
+          ? 'bg-rose-50/40'
+          : isPaid
+            ? 'bg-emerald-50/30'
+            : 'bg-white'
+      }
+    >
+      <div className="flex items-center gap-2 px-4 py-3 text-sm transition-colors hover:bg-slate-50/60">
+        {/* 1. العميل - Minimal width */}
+        <div className="w-36 shrink-0 text-right">
+          <Link
+            href={`/crm/clients/${member.clientId}`}
+            className="block truncate font-semibold text-gray-900 hover:text-[#1A3B2A] hover:underline"
+            title={member.clientName}
+          >
+            {member.clientName}
+          </Link>
+          {idHint ? (
+            <span
+              className="mt-0.5 block truncate font-mono text-[10px] text-gray-400"
+              title={String(member.clientId)}
+            >
+              {idHint}
+            </span>
+          ) : null}
+        </div>
+
+        {/* 2. التواصل - Minimal width right next to client */}
+        <div className="w-44 shrink-0 text-right">
+          {member.phone ? (
+            <p dir="ltr" className="truncate text-xs font-semibold text-gray-800">
+              {member.phone}
+            </p>
+          ) : (
+            <p className="text-xs text-gray-400">—</p>
+          )}
+          {member.email ? (
+            <p className="mt-0.5 truncate text-[11px] text-gray-400" dir="ltr" title={member.email}>
+              {member.email}
+            </p>
+          ) : null}
+        </div>
+
+        {/* 3. حالة السداد - Compact badge */}
+        <div className="w-28 shrink-0 text-center">
+          <PaymentStatusBadge status={member.paymentStatus} />
+        </div>
+
+        {/* 4. المهلة - Compact badge with FULL text */}
+        <div className="w-44 shrink-0 text-center">
+          <DeadlineBadge badge={deadlineBadge} />
+        </div>
+
+        {/* 5. الإجراءات - pinned to far edge, all 3 buttons visible */}
+        <div className="ms-auto flex min-w-[220px] shrink-0 items-center justify-end gap-1.5">
+          <button
+            type="button"
             disabled={busy !== null}
             onClick={() => setPayOpen(true)}
-          />
-          <ActionButton
-            label="تعديل المهلة"
-            icon={<Clock className="h-3.5 w-3.5" aria-hidden />}
-            tone="sky"
-            loading={busy === `extend-${member.id}`}
+            title="تسديد"
+            className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-md bg-emerald-600 px-2.5 py-1.5 text-xs font-medium text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Wallet className="h-3.5 w-3.5 shrink-0" aria-hidden />
+            تسديد
+          </button>
+          <button
+            type="button"
             disabled={busy !== null}
             onClick={onExtend}
-          />
-          <ActionButton
-            label="إزالة"
-            tone="rose"
-            loading={busy === `remove-${member.id}`}
+            title="تعديل المهلة"
+            className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-md bg-gray-100 px-2.5 py-1.5 text-xs text-gray-700 transition hover:bg-gray-200 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {busy === `extend-${member.id}` ? (
+              <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" aria-hidden />
+            ) : (
+              <Clock className="h-3.5 w-3.5 shrink-0" aria-hidden />
+            )}
+            تعديل المهلة
+          </button>
+          <button
+            type="button"
             disabled={busy !== null}
             onClick={onRemove}
-          />
+            title="إزالة"
+            className="inline-flex shrink-0 items-center whitespace-nowrap rounded-md bg-rose-50 px-2.5 py-1.5 text-xs font-medium text-rose-600 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {busy === `remove-${member.id}` ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+            ) : (
+              'إزالة'
+            )}
+          </button>
         </div>
-        {payOpen ? (
-          <PaymentUpdateModal
-            member={member}
-            tripTitle={tripTitle}
-            onClose={() => setPayOpen(false)}
-            onSaved={(status) => onPaymentUpdated(member.id, status)}
-          />
-        ) : null}
-      </td>
-    </tr>
+      </div>
+
+      {payOpen ? (
+        <PaymentUpdateModal
+          member={member}
+          tripTitle={tripTitle}
+          onClose={() => setPayOpen(false)}
+          onSaved={(status) => onPaymentUpdated(member.id, status)}
+        />
+      ) : null}
+    </li>
   );
 }
 
@@ -1157,33 +1213,65 @@ function WaitlistRow({
   const joined = member.createdAt
     ? new Date(member.createdAt).toLocaleDateString('ar-SA')
     : '—';
+  const idHint = formatClientIdHint(member.clientId);
 
   return (
-    <tr>
-      <td className="px-3 py-3">
-        <Link
-          href={`/crm/clients/${member.clientId}`}
-          className="font-black text-[#1A3B2A] hover:underline"
-        >
-          {member.clientName}
-        </Link>
-        <p className="mt-0.5 text-[10px] font-semibold text-slate-400">#{member.clientId}</p>
-      </td>
-      <td className="px-3 py-3 text-xs font-semibold text-slate-600">
-        {member.phone ?? '—'}
-      </td>
-      <td className="px-3 py-3 text-xs font-bold text-slate-500">{joined}</td>
-      <td className="px-3 py-3">
-        <ActionButton
-          label="ترقية لمقعد مؤكد"
-          icon={<UserCheck className="h-3.5 w-3.5" aria-hidden />}
-          tone="emerald"
-          loading={busy === `promote-${member.id}`}
-          disabled={!canPromote || busy !== null}
-          onClick={onPromote}
-        />
-      </td>
-    </tr>
+    <li className="bg-white">
+      <div className="grid grid-cols-12 gap-4 items-center p-4 text-sm transition-colors hover:bg-slate-50/60">
+        <div className="col-span-4 min-w-0 overflow-hidden text-right">
+          <Link
+            href={`/crm/clients/${member.clientId}`}
+            className="block truncate font-semibold text-slate-800 hover:underline"
+            title={member.clientName}
+          >
+            {member.clientName}
+          </Link>
+          {idHint ? (
+            <span
+              className="mt-0.5 block truncate font-mono text-[10px] text-slate-400"
+              title={String(member.clientId)}
+            >
+              {idHint}
+            </span>
+          ) : null}
+        </div>
+
+        <div className="col-span-3 min-w-0 overflow-hidden text-center">
+          {member.phone ? (
+            <p dir="ltr" className="truncate font-mono text-xs font-medium text-slate-700">
+              {member.phone}
+            </p>
+          ) : (
+            <p className="text-xs text-slate-400">—</p>
+          )}
+          {member.email ? (
+            <p className="mt-0.5 truncate text-[11px] text-slate-400" dir="ltr" title={member.email}>
+              {member.email}
+            </p>
+          ) : null}
+        </div>
+
+        <div className="col-span-2 text-center text-xs text-slate-500 whitespace-nowrap">
+          {joined}
+        </div>
+
+        <div className="col-span-3 flex items-center justify-end">
+          <button
+            type="button"
+            disabled={!canPromote || busy !== null}
+            onClick={onPromote}
+            className="inline-flex items-center gap-1 whitespace-nowrap rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {busy === `promote-${member.id}` ? (
+              <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" aria-hidden />
+            ) : (
+              <UserCheck className="h-3.5 w-3.5 shrink-0" aria-hidden />
+            )}
+            ترقية لمقعد مؤكد
+          </button>
+        </div>
+      </div>
+    </li>
   );
 }
 
@@ -1194,16 +1282,16 @@ function DeadlineBadge({
 }) {
   const className =
     badge.tone === 'slate'
-      ? 'bg-slate-100 text-slate-700 ring-slate-200'
+      ? 'bg-gray-100 text-gray-700'
       : badge.tone === 'amber'
-        ? 'bg-amber-100 text-amber-900 ring-amber-200'
-        : 'bg-rose-100 text-rose-900 ring-rose-300';
+        ? 'bg-amber-50 text-amber-700 border border-amber-200'
+        : 'bg-rose-50 text-rose-700 border border-rose-200';
 
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-black ring-1 ${className}`}
+      className={`inline-flex items-center gap-1 rounded-md px-3 py-1 text-xs font-medium whitespace-nowrap ${className}`}
     >
-      {badge.tone !== 'slate' ? <Clock className="h-3 w-3" aria-hidden /> : null}
+      {badge.tone !== 'slate' ? <Clock className="h-3 w-3 shrink-0" aria-hidden /> : null}
       {badge.label}
     </span>
   );
@@ -1225,9 +1313,9 @@ function ActionButton({
   onClick: () => void;
 }) {
   const tones = {
-    sky: 'border-sky-200 bg-sky-50 text-sky-900 hover:bg-sky-100',
-    rose: 'border-rose-200 bg-rose-50 text-rose-900 hover:bg-rose-100',
-    emerald: 'border-emerald-200 bg-emerald-50 text-emerald-900 hover:bg-emerald-100',
+    sky: 'bg-slate-100 hover:bg-slate-200 text-slate-700',
+    rose: 'bg-rose-50 hover:bg-rose-100 text-rose-600 font-medium',
+    emerald: 'bg-emerald-600 hover:bg-emerald-700 text-white font-medium',
   };
 
   return (
@@ -1235,7 +1323,7 @@ function ActionButton({
       type="button"
       disabled={disabled || loading}
       onClick={onClick}
-      className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[11px] font-black transition disabled:cursor-not-allowed disabled:opacity-50 ${tones[tone]}`}
+      className={`flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs transition disabled:cursor-not-allowed disabled:opacity-50 ${tones[tone]}`}
     >
       {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden /> : icon}
       {label}
