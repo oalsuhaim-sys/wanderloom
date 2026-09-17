@@ -10,12 +10,19 @@ import {
   Plus,
   Receipt,
   Save,
+  Sparkles,
   Trash2,
   X,
 } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 
 import { useCrmEmployee } from '@/app/crm/_components/CrmEmployeeProvider';
+import GenerateItineraryAiModal, {
+  type GenerateItineraryAiContext,
+} from '@/app/crm/itineraries/_components/GenerateItineraryAiModal';
+import { ExpertHandbookHelpLink } from '@/components/crm/ExpertHandbookHelpLink';
+import type { GeneratedItineraryDay } from '@/lib/ai-generate-itinerary';
+import { buildDnaHotelOptions } from '@/lib/dna-hotel-match';
 import { canEditItineraries } from '@/lib/crm-permissions';
 import { supabase } from '@/lib/supabase';
 import { getClientAccessToken } from '@/lib/crm-session-token';
@@ -67,6 +74,7 @@ import {
   createEmptyCostLine,
   createEmptyHotelOption,
   createEmptyItineraryDay,
+  createEmptyItineraryStop,
   createEmptyTransportOption,
   emptyClientFeedback,
   hasClientFeedback,
@@ -80,6 +88,7 @@ import {
   type QuotationCostLine,
   type QuotationHotelOption,
   type QuotationItineraryDay,
+  type QuotationItineraryStop,
   type QuotationTransportOption,
 } from '@/lib/interactive-quotation';
 import { type InvoiceRow } from '@/lib/crm-invoices';
@@ -723,6 +732,17 @@ function sanitizeItineraryDays(rows: QuotationItineraryDay[]): QuotationItinerar
       city: safeTrim(d?.city),
       title: safeTrim(d?.title),
       description: safeTrim(d?.description),
+      stops: Array.isArray(d?.stops)
+        ? d.stops.map((s) => ({
+            id: safeTrim(s?.id) || createEmptyItineraryStop().id,
+            time: safeTrim(s?.time).slice(0, 8),
+            title: safeTrim(s?.title),
+            category: safeTrim(s?.category) || 'o',
+            notes: safeTrim(s?.notes),
+            image_url: safeTrim(s?.image_url),
+            search_keyword: safeTrim(s?.search_keyword),
+          }))
+        : [],
     })),
     () => createEmptyItineraryDay(1),
   );
@@ -832,6 +852,7 @@ export function QuoteBuilderForm({
   const [itineraryDays, setItineraryDays] = useState<QuotationItineraryDay[]>([
     createEmptyItineraryDay(1),
   ]);
+  const [aiGenerateOpen, setAiGenerateOpen] = useState(false);
   const [hotelOptions, setHotelOptions] = useState<QuotationHotelOption[]>([
     createEmptyHotelOption(),
   ]);
@@ -1101,6 +1122,111 @@ export function QuoteBuilderForm({
     () => clients.find((c) => c.id === clientId),
     [clientId, clients],
   );
+
+  const applyAiGeneratedDays = useCallback((generated: GeneratedItineraryDay[]) => {
+    const next: QuotationItineraryDay[] = generated.map((day, idx) => {
+      const base = createEmptyItineraryDay(day.dayNumber || idx + 1);
+      const stops: QuotationItineraryStop[] = day.stops.map((stop) => ({
+        ...createEmptyItineraryStop(),
+        time: stop.time,
+        title: stop.title,
+        category: stop.category || 'o',
+        notes: stop.notes,
+        search_keyword: stop.search_keyword,
+        image_url: stop.image_url?.trim() || '',
+        // مرجع مخفي للخبير — لا يظهر للعميل أبداً
+        ...(stop.place_id ? { place_id: stop.place_id } : {}),
+        ...(stop.place_real_name ? { place_real_name: stop.place_real_name } : {}),
+      }));
+      return {
+        ...base,
+        dayNumber: day.dayNumber || idx + 1,
+        title: day.title || base.title,
+        city: day.city || destinations[0] || '',
+        description: '',
+        stops,
+      };
+    });
+    if (!next.length) {
+      toast.error('لم يُرجع Claude أي أيام.');
+      return;
+    }
+    setItineraryDays(next);
+    setSuccess('تم توليد أيام الرحلة بـ AI — راجع المحطات في كتيّب العرض قبل الحفظ ✨');
+  }, [destinations]);
+
+  const handleDnaHotelMatch = useCallback(() => {
+    if (!itineraryDays.some((d) => String(d.city ?? '').trim())) {
+      toast.error('ولّد المسار أولاً — نحتاج مدن الرحلة لمطابقة الفنادق.');
+      return;
+    }
+    if (!hotelPlaces.length) {
+      toast.error('بنك الفنادق غير محمّل بعد. حاول بعد لحظات.');
+      return;
+    }
+    const { options, citiesMatched, citiesWithoutHotels } = buildDnaHotelOptions({
+      itineraryDays,
+      hotelBank: hotelPlaces,
+      hotelPreference: clientContext?.hotelPreference ?? '',
+      startDate,
+    });
+    if (!options.length) {
+      toast.error('لم نجد فنادق مطابقة في البنك لمدن هذه الرحلة.');
+      return;
+    }
+    setHotelOptions(options);
+    const warn = citiesWithoutHotels.length
+      ? ` (لا فنادق في البنك لـ: ${citiesWithoutHotels.join('، ')})`
+      : '';
+    setSuccess(
+      `طوبقت الفنادق حسب DNA: ${options.length} خيار في ${citiesMatched} مدينة${warn} — راجع الأسعار قبل الحفظ 🏨`,
+    );
+  }, [itineraryDays, hotelPlaces, clientContext?.hotelPreference, startDate]);
+
+  const aiGenerateContext = useMemo((): GenerateItineraryAiContext => {
+    const dnaSummary: string[] = [];
+    if (clientContext?.favoriteDrink) dnaSummary.push(`القهوة: ${clientContext.favoriteDrink}`);
+    if (clientContext?.hotelPreference) dnaSummary.push(`الفندق: ${clientContext.hotelPreference}`);
+    if (clientContext?.flightSeat) dnaSummary.push(`المقعد: ${clientContext.flightSeat}`);
+    if (clientContext?.foodAllergies) dnaSummary.push(`حساسية: ${clientContext.foodAllergies}`);
+    if (clientContext?.dnaActivityLevel) dnaSummary.push(`مستوى النشاط: ${clientContext.dnaActivityLevel}`);
+    if (clientContext?.dnaSpecialRequests) dnaSummary.push(clientContext.dnaSpecialRequests);
+
+    return {
+      clientName: clientContext?.clientName || selectedClient?.name || 'عميل VIP',
+      destination:
+        (clientContext?.destinations ?? []).filter(Boolean)[0] ||
+        destinations[0] ||
+        clientContext?.targetTrip ||
+        '',
+      daysCount: Math.max(
+        1,
+        clientContext?.travelDays || itineraryDays.length || 1,
+      ),
+      interests: clientContext?.dnaInterests ?? [],
+      dnaSummary,
+      dietary: clientContext?.foodAllergies,
+      hotelPreferences: clientContext?.hotelPreference,
+      secretNotes: clientContext?.dnaSpecialRequests,
+      tripDateFrom: startDate || clientContext?.travelDate || '',
+      tripDateTo: endDate || '',
+      dna: {
+        drink_coffee: clientContext?.favoriteDrink ?? '',
+        hotel_style: clientContext?.hotelPreference ?? '',
+        preferred_seat: clientContext?.flightSeat ?? '',
+        food_allergies: clientContext?.foodAllergies ?? '',
+        dna_activity_level: clientContext?.dnaActivityLevel ?? '',
+        interests: clientContext?.dnaInterests ?? [],
+      },
+    };
+  }, [
+    clientContext,
+    selectedClient,
+    destinations,
+    itineraryDays.length,
+    startDate,
+    endDate,
+  ]);
 
   const feedbackLabels = useMemo(
     () =>
@@ -1991,8 +2117,31 @@ export function QuoteBuilderForm({
           <p className="mt-1 text-xs font-bold text-slate-500 sm:text-sm dark:text-slate-400">
             محرك تسعير ديناميكي — التكلفة تُحسب تلقائياً من أسعار الصفوف
           </p>
+          <div className="mt-2">
+            <ExpertHandbookHelpLink tab="proposals" />
+          </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setAiGenerateOpen(true)}
+            disabled={saving || readOnly}
+            title="توليد أيام الرحلة من DNA العميل عبر Claude"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-[#C9A84C]/50 bg-[#D4AF37] px-3 py-2 text-xs font-black text-[#1C4532] shadow-sm transition hover:bg-[#c4a030] disabled:opacity-50"
+          >
+            <Sparkles size={14} aria-hidden />
+            توليد المسار بـ AI
+          </button>
+          <button
+            type="button"
+            onClick={handleDnaHotelMatch}
+            disabled={saving || readOnly}
+            title="اختيار فندقين لكل مدينة حسب تفضيل إقامة العميل في DNA، بتواريخ محسوبة"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-[#C9A84C]/50 bg-[#FEFDF9] px-3 py-2 text-xs font-black text-[#1C4532] shadow-sm transition hover:bg-amber-50 disabled:opacity-50"
+          >
+            <Sparkles size={14} className="text-[#C9A84C]" aria-hidden />
+            مطابقة الفنادق حسب DNA
+          </button>
           {isQuoteSaved ? (
             <>
               <button
@@ -2614,6 +2763,13 @@ export function QuoteBuilderForm({
           }}
         />
       ) : null}
+
+      <GenerateItineraryAiModal
+        open={aiGenerateOpen}
+        onClose={() => setAiGenerateOpen(false)}
+        context={aiGenerateContext}
+        onGenerated={applyAiGeneratedDays}
+      />
       </fieldset>
     </div>
   );

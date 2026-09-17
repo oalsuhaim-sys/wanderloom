@@ -1,5 +1,23 @@
 /** Premium interactive quotation JSONB shapes (itinerary_days, hotel_options, …) */
 
+export type QuotationItineraryStop = {
+  id: string;
+  time: string;
+  title: string;
+  category: string;
+  notes: string;
+  image_url: string;
+  /** Optional Maps / places-bank lookup phrase from AI */
+  search_keyword?: string;
+  /**
+   * Hidden expert-only reference to the real row in the `places` bank.
+   * NEVER rendered to the client — used for pricing, execution and verification.
+   */
+  place_id?: string;
+  /** Hidden real name of the place (expert-only). The visible `title` stays sensory/anonymous. */
+  place_real_name?: string;
+};
+
 export type QuotationItineraryDay = {
   id: string;
   dayNumber: number;
@@ -7,6 +25,8 @@ export type QuotationItineraryDay = {
   city: string;
   title: string;
   description: string;
+  /** Detailed stops — same shape used by itinerary builder / client timeline */
+  stops: QuotationItineraryStop[];
 };
 
 export type QuotationHotelOption = {
@@ -84,6 +104,18 @@ function pickBool(row: Record<string, unknown>, keys: string[]): boolean {
   return false;
 }
 
+export function createEmptyItineraryStop(): QuotationItineraryStop {
+  return {
+    id: newId(),
+    time: '',
+    title: '',
+    category: 'l',
+    notes: '',
+    image_url: '',
+    search_keyword: '',
+  };
+}
+
 export function createEmptyItineraryDay(dayNumber = 1): QuotationItineraryDay {
   return {
     id: newId(),
@@ -92,6 +124,7 @@ export function createEmptyItineraryDay(dayNumber = 1): QuotationItineraryDay {
     city: '',
     title: '',
     description: '',
+    stops: [],
   };
 }
 
@@ -134,6 +167,57 @@ export function createEmptyCostLine(): QuotationCostLine {
   };
 }
 
+export function parseItineraryStops(raw: unknown): QuotationItineraryStop[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((item) => {
+      const row = asRecord(item);
+      if (!row) return null;
+      const title = pickStr(row, ['title', 'place_name', 'name']);
+      const time = pickStr(row, ['time', 'visit_time', 'time_slot']).slice(0, 8);
+      const category = pickStr(row, ['category']) || 'o';
+      const notes = pickStr(row, ['notes', 'note', 'story', 'description']);
+      const image_url = pickStr(row, ['image_url', 'photo', 'thumbnail_url', 'imageUrl']);
+      if (!title && !time && !notes && !image_url) return null;
+      const place_id = pickStr(row, ['place_id', 'placeId']);
+      const place_real_name = pickStr(row, ['place_real_name', 'placeRealName', 'real_name']);
+      return {
+        id: pickStr(row, ['id']) || newId(),
+        time,
+        title: title || 'محطة',
+        category,
+        notes,
+        image_url,
+        search_keyword: pickStr(row, ['search_keyword', 'keyword', 'query']),
+        ...(place_id ? { place_id } : {}),
+        ...(place_real_name ? { place_real_name } : {}),
+      } satisfies QuotationItineraryStop;
+    })
+    .filter((x): x is QuotationItineraryStop => x != null);
+}
+
+/**
+ * Resolve stops for display: prefer explicit stops; else one synthetic card from day title/description.
+ */
+export function resolveQuotationDayStops(day: QuotationItineraryDay): QuotationItineraryStop[] {
+  if (Array.isArray(day.stops) && day.stops.length > 0) {
+    return day.stops.filter((s) => s.title.trim() || s.notes.trim() || s.image_url.trim());
+  }
+  const title = day.title.trim() || (day.city.trim() ? `يوم في ${day.city}` : '');
+  const notes = day.description.trim();
+  if (!title && !notes) return [];
+  return [
+    {
+      id: `${day.id}-legacy`,
+      time: '',
+      title: title || 'برنامج اليوم',
+      category: 'd',
+      notes,
+      image_url: '',
+    },
+  ];
+}
+
 export function parseItineraryDays(raw: unknown): QuotationItineraryDay[] {
   if (!Array.isArray(raw)) return [];
   return raw
@@ -141,6 +225,9 @@ export function parseItineraryDays(raw: unknown): QuotationItineraryDay[] {
       const row = asRecord(item);
       if (!row) return null;
       const dayNumber = Math.max(1, Math.trunc(pickNum(row, ['dayNumber', 'day_number', 'day']) || index + 1));
+      const stops = parseItineraryStops(
+        row.stops ?? row.itinerary_stops ?? row.places ?? row.activities,
+      );
       return {
         id: pickStr(row, ['id']) || newId(),
         dayNumber,
@@ -148,6 +235,7 @@ export function parseItineraryDays(raw: unknown): QuotationItineraryDay[] {
         city: pickStr(row, ['city']),
         title: pickStr(row, ['title', 'name']),
         description: pickStr(row, ['description', 'desc', 'notes']),
+        stops,
       } satisfies QuotationItineraryDay;
     })
     .filter((x): x is QuotationItineraryDay => x != null);
@@ -277,15 +365,46 @@ export function serializeItineraryDaysForSave(
   rows: QuotationItineraryDay[],
 ): Record<string, unknown>[] {
   return rows
-    .map((r, i) => ({
-      id: (r.id && String(r.id).trim()) || newId(),
-      dayNumber: Math.max(1, Math.trunc(Number(r.dayNumber) || i + 1)),
-      date: String(r.date ?? '').trim().slice(0, 10),
-      city: String(r.city ?? '').trim(),
-      title: String(r.title ?? '').trim(),
-      description: String(r.description ?? '').trim(),
-    }))
-    .filter((r) => r.title || r.city || r.description || r.date);
+    .map((r, i) => {
+      const stops = (r.stops ?? [])
+        .map((s) => ({
+          id: (s.id && String(s.id).trim()) || newId(),
+          time: String(s.time ?? '').trim().slice(0, 8),
+          title: String(s.title ?? '').trim(),
+          category: String(s.category ?? '').trim() || 'o',
+          notes: String(s.notes ?? '').trim(),
+          image_url: String(s.image_url ?? '').trim(),
+          ...(String(s.search_keyword ?? '').trim()
+            ? { search_keyword: String(s.search_keyword).trim() }
+            : {}),
+          ...(String(s.place_id ?? '').trim()
+            ? { place_id: String(s.place_id).trim() }
+            : {}),
+          ...(String(s.place_real_name ?? '').trim()
+            ? { place_real_name: String(s.place_real_name).trim() }
+            : {}),
+        }))
+        .filter((s) => s.title || s.notes || s.image_url || s.time);
+
+      return {
+        id: (r.id && String(r.id).trim()) || newId(),
+        dayNumber: Math.max(1, Math.trunc(Number(r.dayNumber) || i + 1)),
+        date: String(r.date ?? '').trim().slice(0, 10),
+        city: String(r.city ?? '').trim(),
+        title: String(r.title ?? '').trim(),
+        description: String(r.description ?? '').trim(),
+        stops,
+        itinerary_stops: stops,
+      };
+    })
+    .filter(
+      (r) =>
+        r.title ||
+        r.city ||
+        r.description ||
+        r.date ||
+        (Array.isArray(r.stops) && r.stops.length > 0),
+    );
 }
 
 export function serializeHotelOptionsForSave(

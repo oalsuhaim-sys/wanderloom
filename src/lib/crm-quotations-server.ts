@@ -382,6 +382,34 @@ export async function fetchQuotationForEditAdmin(id: string): Promise<QuotationR
   return result?.row ?? null;
 }
 
+/**
+ * Public brochure lookup — service_role, direct id/lead_id (no full list scan).
+ */
+export async function fetchPublicQuotationByIdAdmin(id: string): Promise<QuotationRow | null> {
+  const key = normalizeQuotationId(id);
+  if (!key) return null;
+
+  const admin = createSupabaseAdminClient();
+
+  for (const dbId of quotationIdVariants(key)) {
+    const raw = await fetchQuotationRowAdmin(admin, 'id', dbId);
+    if (raw) {
+      const withClient = await attachClientRow(admin, raw);
+      return mapQuotationRow(withClient);
+    }
+  }
+
+  if (isQuotationUuid(key)) {
+    const byLead = await fetchQuotationRowAdmin(admin, 'lead_id', key);
+    if (byLead) {
+      const withClient = await attachClientRow(admin, byLead);
+      return mapQuotationRow(withClient);
+    }
+  }
+
+  return null;
+}
+
 export async function fetchQuotationForEditWithSourceAdmin(
   id: string,
 ): Promise<QuotationForEditResult | null> {
