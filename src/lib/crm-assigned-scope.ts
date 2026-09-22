@@ -83,9 +83,8 @@ function clientMatchesReferralScope(
   );
   const candidates = [
     (client as VipClientProfile).used_code,
-    (client as VipClientProfile).referral_code,
+    (client as VipClientProfile).ref_code,
     (client as Record<string, unknown>).used_code,
-    (client as Record<string, unknown>).referral_code,
     (client as Record<string, unknown>).ref_code,
   ]
     .map((v) => canonicalizeReferralCode(String(v ?? '')))

@@ -12,7 +12,7 @@ import {
   type OnboardingProfileRow,
   type WelcomeDnaPageData,
 } from '@/lib/client-onboarding';
-import { updatePipelineStatus } from '@/lib/lead-pipeline-automation';
+import { updatePipelineStatus, advanceLeadsToMeetingAfterDna } from '@/lib/lead-pipeline-automation';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 
 /** يضمن onboarding_token لعميل — service_role (للبوابة و /welcome/client/{id}) */
@@ -181,29 +181,22 @@ export async function ensureLeadMeetingAfterDnaAdmin(
     return { leadId: null, clientId: null };
   }
 
-  await updatePipelineStatus(admin, { clientId, force: true }, 'meeting').catch((err) => {
+  let leadIds: string[] = [];
+  try {
+    const result = await advanceLeadsToMeetingAfterDna(admin, clientId);
+    leadIds = result.leadIds;
+  } catch (err) {
     console.warn('[ensureLeadMeetingAfterDnaAdmin] pipeline:', err);
-  });
-
-  const { error } = await admin
-    .from('leads')
-    .update({ status: 'meeting' })
-    .eq('client_id', clientId)
-    .in('status', [
-      'radar_pending',
-      'new',
-      'pending_approval',
-      'awaiting_dna',
-      'dna_sent',
-      'dna_pending',
-      'meeting',
-    ]);
-
-  if (error && !/column|schema cache|does not exist|check/i.test(error.message ?? '')) {
-    console.warn('[ensureLeadMeetingAfterDnaAdmin] leads update:', error.message);
+    await updatePipelineStatus(admin, { clientId, force: true }, 'meeting').catch((e) =>
+      console.warn('[ensureLeadMeetingAfterDnaAdmin] fallback:', e),
+    );
   }
 
-  // Resolve lead id for interview calendar binding (prefer active meeting-stage row)
+  if (leadIds.length) {
+    return { leadId: leadIds[0]!, clientId };
+  }
+
+  // Resolve lead id for interview calendar binding (prefer meeting-stage row)
   let { data: leadRows } = await admin
     .from('leads')
     .select('id, status, created_at, phone_wa, client_id')
@@ -211,7 +204,6 @@ export async function ensureLeadMeetingAfterDnaAdmin(
     .order('created_at', { ascending: false })
     .limit(10);
 
-  // VIP individuals often lack client_id on the lead — fall back to phone match
   if (!leadRows?.length) {
     const { data: clientPhone } = await admin
       .from('clients')
@@ -231,15 +223,14 @@ export async function ensureLeadMeetingAfterDnaAdmin(
         .order('created_at', { ascending: false })
         .limit(10);
       leadRows = byPhone.data;
-      // Backfill client_id on the matched lead so future updates stick
       const top = byPhone.data?.[0];
       if (top?.id != null && (top as { client_id?: unknown }).client_id == null) {
         await admin
           .from('leads')
-          .update({ client_id: clientId })
+          .update({ client_id: clientId, status: 'meeting' })
           .eq('id', top.id)
           .then(({ error: linkErr }) => {
-            if (linkErr) console.warn('[ensureLeadMeetingAfterDnaAdmin] link client_id:', linkErr.message);
+            if (linkErr) console.warn('[ensureLeadMeetingAfterDnaAdmin] link:', linkErr.message);
           });
       }
     }

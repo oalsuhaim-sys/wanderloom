@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import Link from 'next/link';
 
@@ -9,12 +9,12 @@ export function PublicSessionsIntro() {
 
   return (
     <div className="mx-auto max-w-2xl text-center">
-      <h1 className="text-3xl font-black text-[#111111] sm:text-4xl">{t.sessions.title}</h1>
+      <h1 className="text-3xl font-black text-[#1C2E3A] sm:text-4xl">{t.sessions.title}</h1>
       <p className="mt-4 text-sm font-bold leading-relaxed text-gray-600 sm:text-base">
         {t.sessions.lead}
       </p>
       <p className="mt-3 text-xs font-bold text-gray-500">
-        <Link href="/" className="font-black text-[#cda04c] underline underline-offset-4">
+        <Link href="/" className="font-black text-[#9C7A3C] underline underline-offset-4">
           ← الصفحة الرئيسية
         </Link>
       </p>

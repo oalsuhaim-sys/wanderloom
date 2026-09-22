@@ -34,6 +34,7 @@ type Props = {
   ) => void;
   onUpdateVisitTime: (dayId: number, placeIndex: number, visit_time: string) => void;
   onUpdatePlaceNotes: (dayId: number, placeIndex: number, notes: string) => void;
+  onUpdatePlaceImageUrl: (dayId: number, placeIndex: number, imageUrl: string) => void;
   dayDroppableId: (dayId: number) => string;
   supplierBrief?: SupplierBriefClientContext | null;
   predictiveWishContext?: PredictiveWishContext | null;
@@ -55,6 +56,7 @@ export default function SimpleItineraryDayPlanner({
   onUpdateTransport,
   onUpdateVisitTime,
   onUpdatePlaceNotes,
+  onUpdatePlaceImageUrl,
   dayDroppableId,
   supplierBrief,
   predictiveWishContext,
@@ -200,6 +202,7 @@ export default function SimpleItineraryDayPlanner({
             onUpdateTransport={onUpdateTransport}
             onUpdateVisitTime={onUpdateVisitTime}
             onUpdatePlaceNotes={onUpdatePlaceNotes}
+            onUpdatePlaceImageUrl={onUpdatePlaceImageUrl}
             dayDroppableId={dayDroppableId}
             supplierBrief={supplierBrief}
           />

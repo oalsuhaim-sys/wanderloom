@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
@@ -210,8 +210,8 @@ export function PublicSessionsCards({
 
   if (initialLoading) {
     return (
-      <div className="flex min-h-[200px] flex-col items-center justify-center gap-3 rounded-[2rem] border border-[#1e3f20]/10 bg-white py-16">
-        <Loader2 className="h-9 w-9 animate-spin text-[#cda04c]" aria-hidden />
+      <div className="flex min-h-[200px] flex-col items-center justify-center gap-3 rounded-[2rem] border border-[#1C2E3A]/10 bg-white py-16">
+        <Loader2 className="h-9 w-9 animate-spin text-[#9C7A3C]" aria-hidden />
         <p className="text-sm font-bold text-gray-600">{ev.loading}</p>
       </div>
     );
@@ -227,11 +227,11 @@ export function PublicSessionsCards({
 
   if (displaySessions.length === 0) {
     return (
-      <div className="mx-auto max-w-xl rounded-[2rem] border border-[#1e3f20]/10 bg-white px-8 py-20 text-center shadow-sm">
-        <p className="text-base font-black leading-relaxed text-[#111111] sm:text-lg">{ev.emptyTitle}</p>
+      <div className="mx-auto max-w-xl rounded-[2rem] border border-[#1C2E3A]/10 bg-white px-8 py-20 text-center shadow-sm">
+        <p className="text-base font-black leading-relaxed text-[#1C2E3A] sm:text-lg">{ev.emptyTitle}</p>
         <p className="mt-4 text-sm font-bold text-gray-600">
           {ev.emptyLeadPrefix}{' '}
-          <Link href="/#lead" className="font-black text-[#cda04c] underline underline-offset-4">
+          <Link href="/#lead" className="font-black text-[#9C7A3C] underline underline-offset-4">
             {ev.emptyLeadLink}
           </Link>{' '}
           {ev.emptyLeadSuffix}
@@ -255,31 +255,33 @@ export function PublicSessionsCards({
           return (
             <article
               key={String(session.id ?? `${session.title}-${session.date}`)}
-              className="wl-lift-card group flex flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition-all duration-500 hover:-translate-y-2 hover:shadow-[0_20px_40px_rgba(0,0,0,0.06)]"
+              className="wl-lift-card group flex flex-col overflow-hidden rounded-3xl border border-[#1C2E3A]/10 bg-white/80 p-6 shadow-sm backdrop-blur-sm transition-all duration-300 hover:border-[#9C7A3C]/40 hover:shadow-xl"
             >
-              <div className="wl-card-media overflow-hidden border-b border-gray-50 bg-gradient-to-br from-[#F9F9F6] via-white to-[#f4efe6] px-5 py-6 sm:px-8">
-                <div className="wl-card-media-icon flex h-14 w-14 items-center justify-center rounded-2xl bg-[#1A3B2A] text-[#C5A059] shadow-md transition-transform duration-700 group-hover:scale-105">
-                  <Ticket className="h-6 w-6" aria-hidden />
+              <div className="wl-card-media overflow-hidden rounded-2xl bg-gradient-to-br from-[#F4EFE6] via-white to-[#F4EFE6]/60 px-5 py-5">
+                <div className="wl-card-media-icon flex h-12 w-12 items-center justify-center rounded-2xl bg-[#1C2E3A] text-[#9C7A3C] transition-transform duration-500 group-hover:scale-105">
+                  <Ticket className="h-5 w-5" aria-hidden />
                 </div>
               </div>
-              <div className="flex flex-1 flex-col p-5 sm:p-8 md:p-10">
-                <h3 className="text-xl font-black leading-snug text-[#111111]">{session.title}</h3>
-                <div className="mt-5 flex flex-wrap items-center gap-2 text-xs font-bold text-gray-600">
-                  <span className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-[#FDFBF7] px-3 py-1.5">
-                    <CalendarClock className="h-3.5 w-3.5 text-[#cda04c]" aria-hidden />
+              <div className="mt-5 flex flex-1 flex-col">
+                <h3 className="text-lg font-semibold leading-snug text-[#1C2E3A] sm:text-xl">
+                  {session.title}
+                </h3>
+                <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs font-medium tracking-wide text-[#9C7A3C]">
+                  <span className="inline-flex items-center gap-1.5">
+                    <CalendarClock className="h-3.5 w-3.5" aria-hidden />
                     {formatSessionDate(String(session.date), locale)}
                   </span>
-                  <span className="inline-flex items-center gap-1.5 rounded-full border border-[#cda04c]/30 bg-[#cda04c]/10 px-3 py-1.5 font-black text-[#9a7b45]">
+                  <span className="inline-flex items-center gap-1.5">
                     <Ticket className="h-3.5 w-3.5" aria-hidden />
                     {priceLabel(Number(session.price) || 0)}
                   </span>
-                  <span className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-[#FDFBF7] px-3 py-1.5">
-                    <Users className="h-3.5 w-3.5 text-[#cda04c]" aria-hidden />
+                  <span className="inline-flex items-center gap-1.5">
+                    <Users className="h-3.5 w-3.5" aria-hidden />
                     {full ? ev.full : formatSeatsRemaining(ev.seatsLeft, left)}
                   </span>
                 </div>
                 {session.description ? (
-                  <p className="mt-4 line-clamp-3 flex-1 text-sm font-bold leading-relaxed text-gray-600">
+                  <p className="mt-4 line-clamp-3 flex-1 text-sm font-medium leading-relaxed text-[#1C2E3A]/70">
                     {session.description}
                   </p>
                 ) : (
@@ -296,7 +298,7 @@ export function PublicSessionsCards({
                       setWhatsapp('');
                       setFormMsg(null);
                     }}
-                    className="flex w-full items-center justify-center rounded-full bg-[#cda04c] py-3.5 text-sm font-black text-white transition-all duration-300 hover:-translate-y-0.5 hover:bg-[#b3893d] hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-50"
+                    className="flex w-full items-center justify-center rounded-full bg-[#1C2E3A] py-3.5 text-sm font-medium tracking-wide text-[#F4EFE6] transition-all hover:bg-[#122029] hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {full ? ev.full : ev.register}
                   </button>
@@ -305,7 +307,7 @@ export function PublicSessionsCards({
                       href={session.location_url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-[#cda04c]/35 py-2.5 text-xs font-black text-[#cda04c] transition-colors duration-300 hover:border-[#cda04c] hover:bg-[#cda04c]/5"
+                      className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-[#9C7A3C]/35 py-2.5 text-xs font-medium tracking-wide text-[#9C7A3C] transition-colors duration-300 hover:border-[#9C7A3C] hover:bg-[#9C7A3C]/5"
                     >
                       <MapPin className="h-4 w-4" aria-hidden />
                       {ev.location}
@@ -327,13 +329,13 @@ export function PublicSessionsCards({
           onClick={() => !submitting && setOpenFor(null)}
         >
           <div
-            className="max-h-[92dvh] w-[95%] max-w-md overflow-y-auto rounded-t-3xl border border-[#cda04c]/25 bg-white p-4 shadow-2xl sm:max-h-[90vh] sm:w-full sm:rounded-3xl sm:p-6 md:w-3/4 md:max-w-lg lg:w-1/2 lg:max-w-xl"
+            className="max-h-[92dvh] w-[95%] max-w-md overflow-y-auto rounded-t-3xl border border-[#9C7A3C]/25 bg-white p-4 shadow-2xl sm:max-h-[90vh] sm:w-full sm:rounded-3xl sm:p-6 md:w-3/4 md:max-w-lg lg:w-1/2 lg:max-w-xl"
             onClick={(e) => e.stopPropagation()}
             dir={dir}
           >
             <div className="flex items-start justify-between gap-2">
               <div>
-                <h3 id="session-register-title" className="text-sm font-black text-[#cda04c]">
+                <h3 id="session-register-title" className="text-sm font-black text-[#9C7A3C]">
                   {ev.modalTitle}
                 </h3>
                 <p className="mt-1 text-xs font-bold text-gray-500">{openFor.title}</p>
@@ -353,7 +355,7 @@ export function PublicSessionsCards({
               <div>
                 <label className="mb-1 block text-xs font-black text-gray-700">{ev.nameLabel}</label>
                 <input
-                  className="w-full rounded-xl border border-gray-200 bg-[#FDFBF7] px-3 py-2.5 text-sm font-bold text-[#111111] outline-none ring-[#cda04c] placeholder:text-gray-400 focus:ring-2"
+                  className="w-full rounded-xl border border-gray-200 bg-[#F4EFE6] px-3 py-2.5 text-sm font-bold text-[#1C2E3A] outline-none ring-[#9C7A3C] placeholder:text-gray-400 focus:ring-2"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder={ev.namePlaceholder}
@@ -364,7 +366,7 @@ export function PublicSessionsCards({
                 <input
                   type="tel"
                   dir="ltr"
-                  className="w-full rounded-xl border border-gray-200 bg-[#FDFBF7] px-3 py-2.5 text-sm font-bold text-[#111111] outline-none ring-[#cda04c] placeholder:text-gray-400 focus:ring-2"
+                  className="w-full rounded-xl border border-gray-200 bg-[#F4EFE6] px-3 py-2.5 text-sm font-bold text-[#1C2E3A] outline-none ring-[#9C7A3C] placeholder:text-gray-400 focus:ring-2"
                   value={whatsapp}
                   onChange={(e) => setWhatsapp(e.target.value)}
                   placeholder={ev.waPlaceholder}
@@ -376,7 +378,7 @@ export function PublicSessionsCards({
                 <div
                   className={`rounded-xl border px-3 py-2 text-xs font-black ${
                     formMsg.type === 'ok'
-                      ? 'border-emerald-400/40 bg-emerald-950/50 text-emerald-100'
+                      ? 'border-[#9C7A3C]/40 bg-[#1C2E3A] text-[#F4EFE6]'
                       : 'border-red-400/40 bg-red-950/50 text-red-100'
                   }`}
                 >
@@ -387,7 +389,7 @@ export function PublicSessionsCards({
               <button
                 type="submit"
                 disabled={submitting || spotsLeft(openFor) < 1}
-                className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#cda04c] py-3 text-sm font-black text-white transition hover:bg-[#b3893d] disabled:opacity-60"
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#9C7A3C] py-3 text-sm font-black text-[#F4EFE6] transition hover:bg-[#9C7A3C] disabled:opacity-60"
               >
                 {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                 {ev.submit}
@@ -397,7 +399,7 @@ export function PublicSessionsCards({
                 <button
                   type="button"
                   onClick={goToTripForm}
-                  className="font-black text-[#cda04c] underline underline-offset-2"
+                  className="font-black text-[#9C7A3C] underline underline-offset-2"
                 >
                   {ev.modalFooterLink}
                 </button>

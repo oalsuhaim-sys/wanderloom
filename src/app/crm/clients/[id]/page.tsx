@@ -9,7 +9,7 @@ import { buildItineraryPortalPath } from '@/lib/itinerary-client-crm'
 import { getClientAccessToken } from '@/lib/crm-session-token'
 import { sumUnifiedTripProfit, type UnifiedTripRow } from '@/lib/client-trips-crm'
 import { clientDnaSupabasePatch } from '@/lib/client-dna-columns'
-import { parseTravelDnaFromClient, serializeTravelDna, buildReferralCodeUpdatePayload, clientDnaAdvancedPayload, resolveClientTargetTrip, type ClientDnaAdvancedFields } from '@/lib/clientsTravelDna'
+import { parseTravelDnaFromClient, serializeTravelDna, buildReferralCodeUpdatePayload, clientDnaAdvancedPayload, resolveClientTargetTrip, parseDnaInterests, type ClientDnaAdvancedFields } from '@/lib/clientsTravelDna'
 import ClientDnaAdvancedDisplay from '@/app/crm/clients/_components/ClientDnaAdvancedDisplay'
 import ClientDnaAdvancedFieldsEditor from '@/app/crm/clients/_components/ClientDnaAdvancedFieldsEditor'
 import ClientDnaSmartEventRecommendations from '@/app/crm/clients/_components/ClientDnaSmartEventRecommendations'
@@ -19,6 +19,7 @@ import ClientPaymentWhatsAppButton from '@/app/crm/clients/_components/ClientPay
 import ClientSalesStageControl from '@/app/crm/clients/_components/ClientSalesStageControl'
 import ClientTargetTripBadge from '@/app/crm/clients/_components/ClientTargetTripBadge'
 import { formatBirthdayDisplayDate } from '@/lib/birthday-radar'
+import { calculateAge, resolveClientDisplayAge } from '@/lib/client-crm-profile'
 import Client360Profile from '@/app/crm/clients/_components/Client360Profile';
 import ClientFinancialHub from '@/app/crm/clients/_components/ClientFinancialHub';
 import ClientWalletLedgerCard from '@/app/crm/clients/_components/ClientWalletLedgerCard';
@@ -29,6 +30,10 @@ import {
 } from '@/lib/vip-wallet-ledger';
 import DnaInviteTripTypePicker from '@/app/crm/_components/DnaInviteTripTypePicker';
 import ClientGroupTripManagement from '@/app/crm/clients/_components/ClientGroupTripManagement';
+import ActiveTripRequestBanner, {
+  resolveActiveTripRequestFromLead,
+  type ActiveTripRequest,
+} from '@/app/crm/clients/_components/ActiveTripRequestBanner';
 import { tagClientForGroupDna } from '@/app/actions/groupTripAssignmentActions';
 import type { GroupMember } from '@/lib/group-members';
 import {
@@ -59,6 +64,7 @@ import {
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { setLeadPipelineStatus } from '@/lib/lead-pipeline-automation'
+import { generateDnaProposalAction, generateClaudeProposalAction } from '@/app/actions/generateDnaProposal'
 
 type UnifiedTrip = UnifiedTripRow
 
@@ -77,17 +83,58 @@ function clientQuickStatNum(value: unknown): number {
 
 function formatPassportExpiryForInput(raw: unknown): string {
   if (raw == null || raw === '') return ''
-  const s = String(raw).trim()
-  const iso = /^(\d{4}-\d{2}-\d{2})/.exec(s)
-  if (iso) return iso[1]
-  const d = new Date(s)
-  if (!Number.isNaN(d.getTime())) {
-    const y = d.getFullYear()
-    const m = String(d.getMonth() + 1).padStart(2, '0')
-    const day = String(d.getDate()).padStart(2, '0')
-    return `${y}-${m}-${day}`
+  try {
+    const s = String(raw).trim()
+    if (!s) return ''
+    const iso = /^(\d{4}-\d{2}-\d{2})/.exec(s)
+    if (iso?.[1]) return iso[1]
+    const d = new Date(s)
+    if (!Number.isNaN(d.getTime())) {
+      const y = d.getFullYear()
+      const m = String(d.getMonth() + 1).padStart(2, '0')
+      const day = String(d.getDate()).padStart(2, '0')
+      return `${y}-${m}-${day}`
+    }
+    return ''
+  } catch {
+    return ''
   }
-  return s.slice(0, 10)
+}
+
+/** Safe age label from birth_date → age column → «غير متوفر». Never throws. */
+function resolveSafeClientAgeLabel(client: {
+  birth_date?: unknown
+  age?: unknown
+  dob?: unknown
+} | null | undefined): string {
+  if (!client) return 'غير متوفر'
+  try {
+    const fromBirth =
+      calculateAge(
+        client.birth_date != null ? String(client.birth_date).trim() : null,
+      ) ??
+      calculateAge(client.dob != null ? String(client.dob).trim() : null)
+    if (fromBirth != null) return `${fromBirth} سنة`
+
+    const display = resolveClientDisplayAge(client as Record<string, unknown>)
+    if (display != null) return `${display} سنة`
+
+    const direct = Math.floor(Number(client.age))
+    if (Number.isFinite(direct) && direct > 0 && direct <= 120) return `${direct} سنة`
+  } catch {
+    /* fall through */
+  }
+  return 'غير متوفر'
+}
+
+function safeBirthdayLabel(raw: unknown): string | null {
+  if (raw == null || raw === '') return null
+  try {
+    const label = formatBirthdayDisplayDate(raw)
+    return label && label !== '—' ? label : null
+  } catch {
+    return null
+  }
 }
 
 export default function ClientDetailPage() {
@@ -144,6 +191,9 @@ export default function ClientDetailPage() {
   const [dnaInviteTripType, setDnaInviteTripType] = useState<DnaInviteTripType>('private')
   const [deletingClient, setDeletingClient] = useState(false)
   const [leadPipelineBusy, setLeadPipelineBusy] = useState<'postpone' | 'hardDelete' | null>(null)
+  const [activeTripRequest, setActiveTripRequest] = useState<ActiveTripRequest | null>(null)
+  const [generatingDnaProposal, setGeneratingDnaProposal] = useState(false)
+  const [generatingClaudeProposal, setGeneratingClaudeProposal] = useState(false)
 
   const loadTrips = useCallback(async () => {
     try {
@@ -204,14 +254,84 @@ export default function ClientDetailPage() {
           setLoadError(cErr.message || 'تعذر تحميل بيانات العميل.')
         }
         setJoinedGroups([])
+        setActiveTripRequest(null)
         return
       }
 
       await loadTrips()
 
+      // Active trip request banner — from linked lead; auto-hides when travel_date < today
+      let activeRequest: ActiveTripRequest | null = null
+      try {
+        const phone = String(c.phone_wa ?? '').trim()
+        let leadRows: Record<string, unknown>[] = []
+        const byClient = await supabase
+          .from('leads')
+          .select(
+            'id, destinations, travel_date, travel_days, travelers_count, status, full_name, created_at',
+          )
+          .eq('client_id', clientKey)
+          .order('created_at', { ascending: false })
+          .limit(8)
+
+        if (!byClient.error && Array.isArray(byClient.data)) {
+          leadRows = byClient.data as Record<string, unknown>[]
+        } else if (
+          byClient.error &&
+          /client_id|column|schema cache|does not exist/i.test(byClient.error.message ?? '') &&
+          phone
+        ) {
+          const byPhone = await supabase
+            .from('leads')
+            .select(
+              'id, destinations, travel_date, travel_days, travelers_count, status, full_name, created_at',
+            )
+            .eq('phone_wa', phone)
+            .order('created_at', { ascending: false })
+            .limit(8)
+          if (!byPhone.error && Array.isArray(byPhone.data)) {
+            leadRows = byPhone.data as Record<string, unknown>[]
+          }
+        }
+
+        const targetTrip = resolveClientTargetTrip(c as Record<string, unknown>)
+        const salesStage = String(c.sales_stage ?? '').trim()
+        for (const lead of leadRows) {
+          const resolved = resolveActiveTripRequestFromLead(lead, {
+            salesStage,
+            targetTrip,
+          })
+          if (resolved) {
+            activeRequest = resolved
+            break
+          }
+        }
+
+        // Fallback: fields on the clients row itself (if present)
+        if (!activeRequest) {
+          const row = c as Record<string, unknown>
+          activeRequest = resolveActiveTripRequestFromLead(
+            {
+              destinations: targetTrip ? [targetTrip] : [],
+              travel_date:
+                row.travel_date ?? row.trip_date ?? row.target_travel_date ?? null,
+              travel_days: row.travel_days ?? row.duration_days ?? null,
+              travelers_count:
+                row.travelers_count ?? row.passengers_count ?? null,
+              status: salesStage,
+            },
+            { salesStage, targetTrip },
+          )
+        }
+      } catch (err) {
+        console.warn('[client-detail] active trip request lookup:', err)
+      }
+      setActiveTripRequest(activeRequest)
+
       if (c) {
         const normalizedClient = {
           ...c,
+          ref_code: String(c.ref_code ?? '').trim(),
           total_profit: clientQuickStatNum(c.total_profit),
           total_spent: clientQuickStatNum(c.total_spent),
           wallet_balance: clientQuickStatNum(c.wallet_balance),
@@ -225,7 +345,7 @@ export default function ClientDetailPage() {
           dna_activity_level: String(c.dna_activity_level ?? ''),
         })
         setPassportExpiry(formatPassportExpiryForInput(c.passport_expiry))
-        setNewCode(c.ref_code || c.referral_code || '')
+        setNewCode(String(c.ref_code ?? '').trim())
         setNewProfileCode(String(c.profile_code ?? '').toUpperCase())
 
         // Default WhatsApp DNA invite to Group when client is a group traveler
@@ -398,7 +518,7 @@ export default function ClientDetailPage() {
       setSaveNotice(error.message || 'تعذر حفظ كود الإحالة.')
       return
     }
-    setClient({ ...client, ref_code: code, referral_code: code })
+    setClient({ ...client, ref_code: code })
     setEditingCode(false)
     setSaveNotice('تم حفظ كود الإحالة.')
   }
@@ -414,7 +534,7 @@ export default function ClientDetailPage() {
       setSaveNotice(error.message || 'تعذر حذف كود الإحالة.')
       return
     }
-    setClient({ ...client, ref_code: null, referral_code: null })
+    setClient({ ...client, ref_code: null })
     setNewCode('')
     setSaveNotice('تم حذف كود الإحالة.')
   }
@@ -433,7 +553,7 @@ export default function ClientDetailPage() {
       setSaveNotice(error.message || 'تعذر إنشاء كود الإحالة.')
       return
     }
-    setClient({ ...client, ref_code: code, referral_code: code })
+    setClient({ ...client, ref_code: code })
     setNewCode(code)
     setSaveNotice('تم إنشاء كود إحالة جديد.')
   }
@@ -736,6 +856,53 @@ export default function ClientDetailPage() {
     }
   }
 
+  const handleGenerateDnaProposal = async () => {
+    const resolvedClientId = client?.id ?? clientId
+    if (resolvedClientId == null || String(resolvedClientId).trim() === '') {
+      toast.error('معرّف العميل غير متوفر.')
+      return
+    }
+    setGeneratingDnaProposal(true)
+    try {
+      const result = await generateDnaProposalAction({ clientId: resolvedClientId })
+      if (!result.ok || !result.editUrl) {
+        toast.error(result.error || 'تعذر توليد عرض السعر من DNA.')
+        return
+      }
+      toast.success(result.message || 'تم تجهيز مسودة العرض من DNA ✨')
+      router.push(result.editUrl)
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'تعذر توليد عرض السعر من DNA.')
+    } finally {
+      setGeneratingDnaProposal(false)
+    }
+  }
+
+  const handleGenerateClaudeProposal = async () => {
+    const resolvedClientId = client?.id ?? clientId
+    if (resolvedClientId == null || String(resolvedClientId).trim() === '') {
+      toast.error('معرّف العميل غير متوفر.')
+      return
+    }
+    setGeneratingClaudeProposal(true)
+    const loadingToast = toast.loading('Claude AI يكتب عرض السعر…')
+    try {
+      const result = await generateClaudeProposalAction({ clientId: resolvedClientId })
+      toast.dismiss(loadingToast)
+      if (!result.ok || !result.editUrl) {
+        toast.error(result.error || 'تعذر توليد العرض بواسطة Claude AI.')
+        return
+      }
+      toast.success(result.message || 'تم تجهيز العرض بواسطة Claude AI ✨')
+      router.push(result.editUrl)
+    } catch (e) {
+      toast.dismiss(loadingToast)
+      toast.error(e instanceof Error ? e.message : 'تعذر توليد العرض بواسطة Claude AI.')
+    } finally {
+      setGeneratingClaudeProposal(false)
+    }
+  }
+
   const handleCopyDnaLink = async () => {
     const resolvedClientId = resolveDnaClientId()
     if (!resolvedClientId) {
@@ -850,6 +1017,8 @@ export default function ClientDetailPage() {
   const tripsProfitSum = sumUnifiedTripProfit(trips)
   const targetTripLabel = resolveClientTargetTrip(client as Record<string, unknown>)
   const showSalesPipeline = true
+  const birthdayLabel = safeBirthdayLabel(client.birth_date)
+  const ageLabel = resolveSafeClientAgeLabel(client)
 
   return (
     <div dir="rtl" className="mx-auto max-w-7xl p-4 font-sans text-slate-800 dark:text-gray-100">
@@ -866,6 +1035,47 @@ export default function ClientDetailPage() {
           {saveNotice}
         </div>
       )}
+
+      {activeTripRequest ? (
+        <ActiveTripRequestBanner
+          request={activeTripRequest}
+          onGenerateClaude={() => void handleGenerateClaudeProposal()}
+          generatingClaude={generatingClaudeProposal}
+        />
+      ) : null}
+
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={() => void handleGenerateClaudeProposal()}
+          disabled={generatingClaudeProposal || generatingDnaProposal}
+          title="توليد عرض سعر كامل بواسطة Claude AI من DNA وتواريخ الرحلة"
+          className="inline-flex items-center gap-2 rounded-xl border border-[#C9A84C]/60 bg-gradient-to-l from-[#D4AF37] to-[#C9A84C] px-4 py-2.5 text-sm font-black text-[#1C4532] shadow-sm transition hover:brightness-105 disabled:opacity-60"
+        >
+          {generatingClaudeProposal ? (
+            <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+          ) : (
+            <Sparkles className="h-4 w-4" aria-hidden />
+          )}
+          {generatingClaudeProposal
+            ? 'Claude يكتب العرض…'
+            : 'توليد عرض السعر بواسطة Claude AI'}
+        </button>
+        <button
+          type="button"
+          onClick={() => void handleGenerateDnaProposal()}
+          disabled={generatingDnaProposal || generatingClaudeProposal}
+          title="توليد مسودة سريعة من DNA بدون Claude"
+          className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-black text-slate-800 shadow-sm transition hover:bg-slate-50 disabled:opacity-60"
+        >
+          {generatingDnaProposal ? (
+            <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+          ) : (
+            <Sparkles className="h-4 w-4 text-[#C9A84C]" aria-hidden />
+          )}
+          {generatingDnaProposal ? 'جاري التوليد…' : 'توليد عرض سعر من DNA العميل'}
+        </button>
+      </div>
 
       {launchTripSuccess && (
         <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-800">
@@ -929,11 +1139,12 @@ export default function ClientDetailPage() {
                 onUpdated={(stage) => setClient({ ...client, sales_stage: stage || null })}
               />
             ) : null}
-            {client.birth_date ? (
+            {birthdayLabel ? (
               <span className="text-xs font-semibold text-white/65" dir="ltr">
-                🎂 {formatBirthdayDisplayDate(String(client.birth_date).slice(0, 10))}
-                    </span>
+                🎂 {birthdayLabel}
+              </span>
             ) : null}
+            <span className="text-xs font-semibold text-white/65">{ageLabel}</span>
           </>
         }
         actions={
@@ -1059,32 +1270,6 @@ export default function ClientDetailPage() {
               className="mb-4"
             />
 
-            <AiPredictiveWishesCard
-              className="mb-5"
-              storageKey={`predictive-wish-client-v2-${clientId}`}
-              builderHref={buildItineraryBuilderPath({
-                from: 'client',
-                clientId,
-                clientName: client?.name ?? undefined,
-                tripTitle: targetTripLabel.trim() || undefined,
-                destinations: targetTripLabel.trim() || undefined,
-              })}
-              context={{
-                clientRow: client
-                  ? {
-                      ...client,
-                      travel_dna: client.travel_dna,
-                      favorite_drink: travelDnaForm.drink_coffee,
-                      dna_interests: dnaAdvancedForm.dna_interests,
-                      dna_activity_level: dnaAdvancedForm.dna_activity_level,
-                    }
-                  : null,
-                destination: resolveClientTargetTrip(client ?? {}),
-                tripDateFrom: '',
-                tripDateTo: '',
-              }}
-            />
-
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <label className="block text-right sm:col-span-2">
                 <span className="mb-1 block text-[11px] font-black uppercase tracking-wide text-slate-700">المقعد المفضل (طيران)</span>
@@ -1133,6 +1318,44 @@ export default function ClientDetailPage() {
                   className="w-full rounded-xl border border-gray-400 bg-white p-3 text-sm font-bold text-gray-900 placeholder:text-gray-500 outline-none focus:ring-2 focus:ring-amber-500/35"
                 />
               </label>
+            </div>
+
+            <AiPredictiveWishesCard
+              className="mb-5 mt-5"
+              storageKey={`predictive-wish-client-v2-${clientId}`}
+              builderHref={buildItineraryBuilderPath({
+                from: 'client',
+                clientId,
+                clientName: client?.name ?? undefined,
+                tripTitle: targetTripLabel.trim() || undefined,
+                destinations: targetTripLabel.trim() || undefined,
+              })}
+              context={{
+                clientRow: client
+                  ? {
+                      ...client,
+                      travel_dna: client.travel_dna,
+                      preferred_seat: travelDnaForm.preferred_seat,
+                      flight_seat: travelDnaForm.preferred_seat,
+                      food_allergies: travelDnaForm.food_allergies,
+                      dietary: travelDnaForm.food_allergies,
+                      hotel_style: travelDnaForm.hotel_style,
+                      hotel_preference: travelDnaForm.hotel_style,
+                      favorite_drink: travelDnaForm.drink_coffee,
+                      drink_coffee: travelDnaForm.drink_coffee,
+                      dna_interests: dnaAdvancedForm.dna_interests,
+                      dna_activity_level: dnaAdvancedForm.dna_activity_level,
+                      dna_special_requests: dnaAdvancedForm.dna_special_requests,
+                    }
+                  : null,
+                interests: parseDnaInterests(dnaAdvancedForm.dna_interests),
+                destination: resolveClientTargetTrip(client ?? {}),
+                tripDateFrom: '',
+                tripDateTo: '',
+              }}
+            />
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <label className="block text-right sm:col-span-2">
                 <span className="mb-1 block text-[11px] font-black uppercase tracking-wide text-slate-700">تاريخ انتهاء الجواز</span>
                 <input
@@ -1183,10 +1406,10 @@ export default function ClientDetailPage() {
             }
           />
 
-          {(client.ref_code || client.referral_code) ? (
+          {client.ref_code ? (
             <section className={cardClass}>
               <h2 className="mb-4 text-center text-sm font-black text-[#1c3d27]">باركود الإحالة</h2>
-              <ReferralQrCard referralCode={client.ref_code || client.referral_code || ''} />
+              <ReferralQrCard referralCode={client.ref_code || ''} />
             </section>
           ) : null}
 
@@ -1406,6 +1629,34 @@ export default function ClientDetailPage() {
               )}
               إرسال رابط DNA عبر واتساب
             </button>
+            <button
+              type="button"
+              onClick={() => void handleGenerateClaudeProposal()}
+              disabled={generatingClaudeProposal || generatingDnaProposal}
+              className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-[#C9A84C]/60 bg-gradient-to-l from-[#D4AF37] to-[#C9A84C] px-4 py-3 text-sm font-black text-[#1C4532] shadow-sm transition hover:brightness-105 disabled:opacity-60"
+            >
+              {generatingClaudeProposal ? (
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+              ) : (
+                <Sparkles size={16} aria-hidden />
+              )}
+              {generatingClaudeProposal
+                ? 'Claude يكتب العرض…'
+                : 'توليد عرض السعر بواسطة Claude AI'}
+            </button>
+            <button
+              type="button"
+              onClick={() => void handleGenerateDnaProposal()}
+              disabled={generatingDnaProposal || generatingClaudeProposal}
+              className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-[#C9A84C]/50 bg-[#FEFDF9] px-4 py-3 text-sm font-black text-[#1C4532] shadow-sm transition hover:bg-amber-50 disabled:opacity-60"
+            >
+              {generatingDnaProposal ? (
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+              ) : (
+                <Sparkles size={16} className="text-[#C9A84C]" aria-hidden />
+              )}
+              توليد عرض سعر من DNA العميل
+            </button>
           </section>
 
           <section className={cardClass}>
@@ -1413,7 +1664,7 @@ export default function ClientDetailPage() {
               <Gift size={16} />
               كود الإحالة
             </h2>
-            {client.ref_code || client.referral_code ? (
+            {client.ref_code ? (
               <div>
                 {editingCode ? (
                   <div className="mb-2 flex items-center gap-2">
@@ -1432,7 +1683,7 @@ export default function ClientDetailPage() {
                 ) : (
                   <div className="mb-2 flex items-center gap-2">
                     <div className="flex-1 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-center text-lg font-black tracking-wider text-slate-900">
-                      {client.ref_code || client.referral_code}
+                      {client.ref_code}
                     </div>
                     <button type="button" onClick={() => setEditingCode(true)} className="rounded-lg bg-slate-200 p-2 text-slate-700">
                       <Pencil size={12} />
@@ -1567,14 +1818,18 @@ export default function ClientDetailPage() {
                 <span className="text-slate-600">عدد الرحلات</span>
                 <span className="font-black text-slate-900">{tripCount || 0}</span>
               </div>
-              {client.birth_date ? (
+              <div className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2">
+                <span className="text-slate-600">العمر</span>
+                <span className="font-black text-slate-900">{ageLabel}</span>
+              </div>
+              {birthdayLabel ? (
                 <div className="flex items-center justify-between rounded-lg bg-amber-50/80 px-3 py-2 ring-1 ring-amber-200/60">
                   <span className="inline-flex items-center gap-1.5 text-slate-600">
                     <span aria-hidden>🎂</span>
                     يوم الميلاد
                   </span>
                   <span className="font-black text-slate-900" dir="ltr">
-                    {formatBirthdayDisplayDate(String(client.birth_date).slice(0, 10))}
+                    {birthdayLabel}
                   </span>
                 </div>
               ) : null}

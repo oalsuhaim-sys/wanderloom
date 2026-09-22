@@ -11,6 +11,7 @@ import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { Command } from 'cmdk';
 import {
+  BookOpen,
   FileText,
   Handshake,
   Kanban,
@@ -96,6 +97,13 @@ const QUICK_ACTIONS: QuickAction[] = [
     label: 'دليل الشركاء',
     href: '/crm/partners-directory',
     icon: Handshake,
+  },
+  {
+    id: 'expert-handbook',
+    label: 'دليل الخبير',
+    subtitle: 'دليل خبير واندرلوم التشغيلي',
+    href: '/crm/docs',
+    icon: BookOpen,
   },
 ];
 

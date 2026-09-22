@@ -42,6 +42,11 @@ const MarketingPublishingRadar = dynamic(
   () => import('@/app/crm/_components/MarketingPublishingRadar'),
   { ssr: false },
 );
+const BirthdayRadarWidget = dynamic(
+  () =>
+    import('@/app/crm/_components/BirthdayRadarWidget').then((m) => m.BirthdayRadarWidget),
+  { ssr: false },
+);
 
 type ClientJoin = { name?: string | null };
 
@@ -473,6 +478,10 @@ export default function CRMHomeDashboardPage() {
             })}
       </section>
 
+      <div className="mt-8">
+        <BirthdayRadarWidget withinDays={7} />
+      </div>
+
       <section className="mt-8 text-right" aria-label="الوصول السريع" dir="rtl">
         <h2 className="mb-4 flex flex-wrap items-center justify-start gap-2 text-lg font-semibold text-slate-900 dark:text-gray-100">
           <Sparkles className="h-5 w-5 text-[#D4AF37]" aria-hidden />
@@ -488,7 +497,8 @@ export default function CRMHomeDashboardPage() {
               <Link
                 key={a.href}
                 href={a.href}
-                className={`${CARD} group flex flex-col p-5 text-right`}
+                prefetch={true}
+                className={`${CARD} group flex flex-col p-5 text-right transition-all duration-150 active:scale-95`}
                 dir="rtl"
               >
                 <span className={ICON_WELL}>

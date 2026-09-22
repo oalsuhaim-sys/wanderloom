@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
+  FolderOpen,
   Link2,
   Loader2,
   Plane,
@@ -23,6 +24,13 @@ import GenerateItineraryAiModal, {
 import { ExpertHandbookHelpLink } from '@/components/crm/ExpertHandbookHelpLink';
 import type { GeneratedItineraryDay } from '@/lib/ai-generate-itinerary';
 import { buildDnaHotelOptions } from '@/lib/dna-hotel-match';
+import { generateDnaProposalAction, generateClaudeProposalAction } from '@/app/actions/generateDnaProposal';
+import {
+  applyProposalTemplateContent,
+  fetchProposalTemplates,
+  saveProposalTemplate,
+  type ProposalTemplateRow,
+} from '@/lib/proposal-templates';
 import { canEditItineraries } from '@/lib/crm-permissions';
 import { supabase } from '@/lib/supabase';
 import { getClientAccessToken } from '@/lib/crm-session-token';
@@ -853,6 +861,14 @@ export function QuoteBuilderForm({
     createEmptyItineraryDay(1),
   ]);
   const [aiGenerateOpen, setAiGenerateOpen] = useState(false);
+  const [generatingDnaProposal, setGeneratingDnaProposal] = useState(false);
+  const [generatingClaudeProposal, setGeneratingClaudeProposal] = useState(false);
+  const [proposalTemplates, setProposalTemplates] = useState<ProposalTemplateRow[]>([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState('');
+  const [templateSaveTitle, setTemplateSaveTitle] = useState('');
+  const [templateBusy, setTemplateBusy] = useState(false);
+  const [templatesNotice, setTemplatesNotice] = useState('');
+  const [showTemplateSavePanel, setShowTemplateSavePanel] = useState(false);
   const [hotelOptions, setHotelOptions] = useState<QuotationHotelOption[]>([
     createEmptyHotelOption(),
   ]);
@@ -1182,6 +1198,185 @@ export function QuoteBuilderForm({
       `طوبقت الفنادق حسب DNA: ${options.length} خيار في ${citiesMatched} مدينة${warn} — راجع الأسعار قبل الحفظ 🏨`,
     );
   }, [itineraryDays, hotelPlaces, clientContext?.hotelPreference, startDate]);
+
+  const handleGenerateFullDnaProposal = useCallback(async () => {
+    const cid = normalizeClientId(clientId || initialClientId);
+    if (!cid) {
+      toast.error('اختر العميل أولاً لتوليد العرض من DNA.');
+      return;
+    }
+    setGeneratingDnaProposal(true);
+    setError('');
+    try {
+      const result = await generateDnaProposalAction({
+        clientId: cid,
+        leadId: initialLeadId || clientContext?.leadId || null,
+      });
+      if (!result.ok || !result.editUrl) {
+        toast.error(result.error || 'تعذر توليد عرض السعر من DNA.');
+        setError(result.error || 'تعذر توليد عرض السعر من DNA.');
+        return;
+      }
+      toast.success(result.message || 'تم تجهيز مسودة العرض من DNA ✨');
+      router.push(result.editUrl);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'تعذر توليد عرض السعر من DNA.';
+      toast.error(msg);
+      setError(msg);
+    } finally {
+      setGeneratingDnaProposal(false);
+    }
+  }, [clientId, clientContext?.leadId, initialClientId, initialLeadId, router]);
+
+  const handleGenerateClaudeProposal = useCallback(async () => {
+    const cid = normalizeClientId(clientId || initialClientId);
+    if (!cid) {
+      toast.error('اختر العميل أولاً لتوليد العرض بواسطة Claude.');
+      return;
+    }
+    setGeneratingClaudeProposal(true);
+    setError('');
+    const loadingToast = toast.loading('Claude AI يكتب عرض السعر…');
+    try {
+      const result = await generateClaudeProposalAction({
+        clientId: cid,
+        leadId: initialLeadId || clientContext?.leadId || null,
+      });
+      toast.dismiss(loadingToast);
+      if (!result.ok || !result.editUrl) {
+        toast.error(result.error || 'تعذر توليد العرض بواسطة Claude AI.');
+        setError(result.error || 'تعذر توليد العرض بواسطة Claude AI.');
+        return;
+      }
+      toast.success(result.message || 'تم تجهيز العرض بواسطة Claude AI ✨');
+      router.push(result.editUrl);
+    } catch (e) {
+      toast.dismiss(loadingToast);
+      const msg = e instanceof Error ? e.message : 'تعذر توليد العرض بواسطة Claude AI.';
+      toast.error(msg);
+      setError(msg);
+    } finally {
+      setGeneratingClaudeProposal(false);
+    }
+  }, [clientId, clientContext?.leadId, initialClientId, initialLeadId, router]);
+
+  const loadProposalTemplates = useCallback(async () => {
+    if (!supabase) return;
+    try {
+      const rows = await fetchProposalTemplates(supabase);
+      setProposalTemplates(rows);
+      setTemplatesNotice('');
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'تعذر تحميل القوالب.';
+      setTemplatesNotice(msg);
+      console.warn('[QuoteBuilder] proposal templates:', msg);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadProposalTemplates();
+  }, [loadProposalTemplates]);
+
+  const handleSaveProposalAsTemplate = useCallback(async () => {
+    if (readOnly) {
+      toast.error('صلاحية القراءة فقط — لا يمكن حفظ قالب.');
+      return;
+    }
+    if (!supabase) {
+      toast.error('Supabase غير مهيأ.');
+      return;
+    }
+    const name = templateSaveTitle.trim() || title.trim();
+    if (!name) {
+      toast.error('أدخل اسم القالب — مثال: عرض سويسرا وإيطاليا - فاخر');
+      setShowTemplateSavePanel(true);
+      return;
+    }
+    setTemplateBusy(true);
+    try {
+      await saveProposalTemplate(supabase, {
+        title: name,
+        destination: destinations.filter(Boolean).join(' · ') || null,
+        snapshot: {
+          title,
+          destinations,
+          itineraryDays,
+          hotelOptions,
+          transportOptions,
+          activityOptions,
+          flights,
+          costBreakdown,
+          marginPercent,
+          serviceFee,
+        },
+      });
+      setTemplateSaveTitle('');
+      setShowTemplateSavePanel(false);
+      await loadProposalTemplates();
+      toast.success('تم حفظ عرض السعر كقالب 📁');
+      setSuccess('تم حفظ القالب — يمكنك تطبيقه لاحقاً من «تطبيق قالب محفوظ».');
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'تعذر حفظ القالب.';
+      toast.error(msg);
+      setError(msg);
+    } finally {
+      setTemplateBusy(false);
+    }
+  }, [
+    activityOptions,
+    costBreakdown,
+    destinations,
+    flights,
+    hotelOptions,
+    itineraryDays,
+    loadProposalTemplates,
+    marginPercent,
+    readOnly,
+    serviceFee,
+    templateSaveTitle,
+    title,
+    transportOptions,
+  ]);
+
+  const handleApplyProposalTemplate = useCallback(() => {
+    if (readOnly) {
+      toast.error('صلاحية القراءة فقط — لا يمكن تطبيق قالب.');
+      return;
+    }
+    const template = proposalTemplates.find((t) => t.id === selectedTemplateId);
+    if (!template) {
+      toast.error('اختر قالباً محفوظاً أولاً.');
+      return;
+    }
+    const applied = applyProposalTemplateContent(template.content, {
+      startDate: startDate || undefined,
+      templateTitle: template.title,
+    });
+    if (applied.destinations.length) setDestinations(applied.destinations);
+    setItineraryDays(applied.itineraryDays);
+    setHotelOptions(applied.hotelOptions);
+    setTransportOptions(applied.transportOptions);
+    setActivityOptions(applied.activityOptions);
+    setFlights(applied.flights);
+    setCostBreakdown(applied.costBreakdown);
+    setMarginPercent(applied.marginPercent);
+    setServiceFee(applied.serviceFee);
+    if (!title.trim() && template.title) {
+      setTitle(template.title);
+    }
+    if (applied.itineraryDays.length && startDate) {
+      const end = applied.itineraryDays[applied.itineraryDays.length - 1]?.date;
+      if (end) setEndDate(end);
+    }
+    toast.success(`تم تطبيق القالب: ${template.title}`);
+    setSuccess(`تم تحميل القالب «${template.title}» في محرر العرض — راجع ثم احفظ.`);
+  }, [
+    proposalTemplates,
+    readOnly,
+    selectedTemplateId,
+    startDate,
+    title,
+  ]);
 
   const aiGenerateContext = useMemo((): GenerateItineraryAiContext => {
     const dnaSummary: string[] = [];
@@ -2109,6 +2304,105 @@ export function QuoteBuilderForm({
   return (
     <div dir="rtl" className="mx-auto max-w-4xl px-4 pb-8 sm:px-6 sm:pb-10">
       <Toaster position="top-center" />
+
+      {/* Top AI + Template action toolbar */}
+      <section
+        className="mb-5 rounded-2xl border border-[#C9A84C]/35 bg-gradient-to-l from-[#FEFDF9] via-white to-[#FFF8E7] p-3 shadow-sm dark:from-[#1A2421] dark:via-[#22302C] dark:to-[#1A2421] dark:border-[#D4AF37]/30 sm:p-4"
+        aria-label="أدوات الذكاء الاصطناعي والقوالب"
+      >
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => void handleGenerateClaudeProposal()}
+            disabled={saving || readOnly || generatingClaudeProposal || generatingDnaProposal}
+            title="توليد عرض كامل بواسطة Claude AI من DNA العميل وتواريخ الرحلة"
+            className="inline-flex items-center gap-2 rounded-xl border border-[#C9A84C]/60 bg-gradient-to-l from-[#D4AF37] to-[#C9A84C] px-4 py-2.5 text-sm font-black text-[#1C4532] shadow-sm transition hover:brightness-105 disabled:opacity-50"
+          >
+            {generatingClaudeProposal ? (
+              <Loader2 size={16} className="animate-spin" aria-hidden />
+            ) : (
+              <Sparkles size={16} aria-hidden />
+            )}
+            {generatingClaudeProposal
+              ? 'Claude يكتب العرض…'
+              : '✨ إنشاء العرض عن طريق Claude AI'}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              if (!showTemplateSavePanel) {
+                setTemplateSaveTitle((prev) => prev || title.trim());
+              }
+              setShowTemplateSavePanel((v) => !v);
+            }}
+            disabled={saving || readOnly || templateBusy}
+            title="حفظ هيكل العرض الحالي كقالب قابل لإعادة الاستخدام"
+            className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-black text-slate-800 shadow-sm transition hover:bg-slate-50 disabled:opacity-50 dark:border-[#2D3F3A] dark:bg-[#22302C] dark:text-white dark:hover:bg-[#2A3A35]"
+          >
+            <FolderOpen size={16} className="text-[#C9A84C]" aria-hidden />
+            📁 حفظ عرض السعر كقالب
+          </button>
+        </div>
+
+        {showTemplateSavePanel ? (
+          <div className="mt-3 flex flex-col gap-2 rounded-xl border border-[#C9A84C]/30 bg-white/80 p-3 dark:bg-[#1A2421]/80 sm:flex-row sm:items-center">
+            <input
+              type="text"
+              value={templateSaveTitle}
+              onChange={(e) => setTemplateSaveTitle(e.target.value)}
+              placeholder='اسم القالب — مثال: "عرض سويسرا وإيطاليا - فاخر"'
+              className="min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-900 outline-none ring-[#C9A84C]/40 focus:ring-2 dark:border-[#2D3F3A] dark:bg-[#22302C] dark:text-white"
+            />
+            <button
+              type="button"
+              onClick={() => void handleSaveProposalAsTemplate()}
+              disabled={templateBusy || readOnly}
+              className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#1C4532] px-4 py-2 text-sm font-black text-[#D4AF37] transition hover:brightness-110 disabled:opacity-50"
+            >
+              {templateBusy ? (
+                <Loader2 size={14} className="animate-spin" aria-hidden />
+              ) : (
+                <Save size={14} aria-hidden />
+              )}
+              {templateBusy ? 'جاري الحفظ…' : 'تأكيد الحفظ'}
+            </button>
+          </div>
+        ) : null}
+
+        <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-end">
+          <label className="min-w-0 flex-1 text-xs font-bold text-slate-600 dark:text-slate-300">
+            تطبيق قالب محفوظ
+            <select
+              value={selectedTemplateId}
+              onChange={(e) => setSelectedTemplateId(e.target.value)}
+              className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-900 outline-none dark:border-[#2D3F3A] dark:bg-[#22302C] dark:text-white"
+            >
+              <option value="">— اختر قالباً —</option>
+              {proposalTemplates.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.title}
+                  {t.destination ? ` · ${t.destination}` : ''}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button
+            type="button"
+            onClick={handleApplyProposalTemplate}
+            disabled={!selectedTemplateId || readOnly}
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#D4AF37] px-4 py-2.5 text-sm font-extrabold text-[#1C4532] shadow-sm transition hover:bg-[#c4a030] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            تطبيق القالب على العرض
+          </button>
+        </div>
+
+        {templatesNotice ? (
+          <p className="mt-2 rounded-lg border border-amber-400/40 bg-amber-50 px-3 py-2 text-[11px] font-bold text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
+            {templatesNotice}
+          </p>
+        ) : null}
+      </section>
+
       <div className="mb-5 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
         <div>
           <h1 className="text-xl font-black text-slate-900 dark:text-white sm:text-2xl">
@@ -2122,6 +2416,20 @@ export function QuoteBuilderForm({
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => void handleGenerateFullDnaProposal()}
+            disabled={saving || readOnly || generatingDnaProposal || generatingClaudeProposal}
+            title="توليد مسودة عرض كاملة من DNA العميل وتواريخ الرحلة النشطة"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-[#C9A84C]/50 bg-[#FEFDF9] px-3 py-2 text-xs font-black text-[#1C4532] shadow-sm transition hover:bg-amber-50 disabled:opacity-50"
+          >
+            {generatingDnaProposal ? (
+              <Loader2 size={14} className="animate-spin" aria-hidden />
+            ) : (
+              <Sparkles size={14} aria-hidden />
+            )}
+            {generatingDnaProposal ? 'جاري التوليد…' : 'توليد عرض سعر من DNA العميل'}
+          </button>
           <button
             type="button"
             onClick={() => setAiGenerateOpen(true)}

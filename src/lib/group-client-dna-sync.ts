@@ -1,5 +1,9 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import {
+  approximateBirthDateFromAge,
+  calculateAge,
+} from '@/lib/client-crm-profile';
 import { canonicalizePhoneWa } from '@/lib/client-intake-pipeline';
 import {
   clientDnaSupabasePatch,
@@ -13,6 +17,8 @@ export type GroupRegistrationClientInput = {
   phoneWa: string;
   email?: string | null;
   birthDate?: string | null;
+  /** Numeric age from registration — synced ONLY onto clients.age (not DNA fields) */
+  age?: number | null;
   tripLabel?: string | null;
   referralCode?: string | null;
   interests?: string[];
@@ -55,6 +61,43 @@ function extractClientId(raw: unknown): ClientId | null {
   return null;
 }
 
+function normalizeClientBirthDate(raw: unknown): string | null {
+  const birthDate = String(raw ?? '').trim().slice(0, 10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(birthDate) ? birthDate : null;
+}
+
+function withClientBirthDate(
+  payload: Record<string, unknown>,
+  birthDate: string | null,
+): Record<string, unknown> {
+  if (!birthDate) return payload;
+  return { ...payload, birth_date: birthDate };
+}
+
+function withClientAge(
+  payload: Record<string, unknown>,
+  age: number | null,
+): Record<string, unknown> {
+  if (age == null) return payload;
+  return { ...payload, age };
+}
+
+function normalizeRegistrationAge(raw: unknown): number | null {
+  const n = Math.floor(Number(raw));
+  if (!Number.isFinite(n) || n < 1 || n > 120) return null;
+  return n;
+}
+
+/** Strip age lines so DNA notes stay sensory-only. */
+export function stripAgeFromDnaNotes(raw: string): string {
+  return String(raw ?? '')
+    .replace(/(?:^|[·|,\n])\s*العمر\s*[:：]?\s*\d{1,3}\s*/gi, ' ')
+    .replace(/(?:^|[·|,\n])\s*age\s*[:＝=]?\s*\d{1,3}\s*/gi, ' ')
+    .replace(/\s{2,}/g, ' ')
+    .replace(/\s*·\s*·\s*/g, ' · ')
+    .trim();
+}
+
 function buildPrimaryClientUpsertPayloads(
   input: GroupRegistrationClientInput,
 ): Record<string, unknown>[] {
@@ -62,7 +105,11 @@ function buildPrimaryClientUpsertPayloads(
   const cleanPhone = sanitizePhoneDigits(input.phoneWa);
   const phoneWa = cleanPhone ? canonicalizePhoneWa(cleanPhone) || cleanPhone : '';
   const email = String(input.email ?? '').trim() || null;
-  const birthDate = String(input.birthDate ?? '').trim().slice(0, 10) || null;
+  const ageNum =
+    normalizeRegistrationAge(input.age) ||
+    calculateAge(normalizeClientBirthDate(input.birthDate));
+  const birthDate =
+    normalizeClientBirthDate(input.birthDate) || approximateBirthDateFromAge(ageNum);
   const tripLabel = String(input.tripLabel ?? '').trim() || null;
   const referralCode =
     String(input.referralCode ?? '')
@@ -73,25 +120,27 @@ function buildPrimaryClientUpsertPayloads(
   const interests =
     Array.isArray(input.interests) && input.interests.length
       ? input.interests.map((v) => String(v).trim()).filter(Boolean)
-      : ['رحلة جماعية'];
+      : [];
   const food = Array.isArray(input.foodPreferences)
     ? input.foodPreferences.map((v) => String(v).trim()).filter(Boolean)
     : [];
   const pace = String(input.dailyPace ?? '').trim();
-  const notes = String(input.specialNotes ?? '').trim();
+  const notes = stripAgeFromDnaNotes(String(input.specialNotes ?? '').trim());
 
-  const hasDna =
-    interests.length > 0 || Boolean(pace) || food.length > 0 || Boolean(notes);
-  const dnaPatch = hasDna
+  // DNA columns only when secondary DNA fields are explicitly present —
+  // basic group registration must NOT touch dna_special_requests.
+  const hasExplicitDna =
+    Boolean(pace) || food.length > 0 || Boolean(notes) || interests.length > 0;
+  const dnaPatch = hasExplicitDna
     ? buildGroupLeadClientDnaPatch({
-        interests,
+        interests: interests.length ? interests : ['رحلة جماعية'],
         daily_pace: pace || null,
         food_preferences: food,
         final_thoughts: notes || null,
       })
     : {};
 
-  const rich: Record<string, unknown> = {
+  const core: Record<string, unknown> = {
     name,
     phone_wa: phoneWa,
     email,
@@ -100,17 +149,32 @@ function buildPrimaryClientUpsertPayloads(
     lead_source: 'group_onboarding',
     target_trip: tripLabel,
     tags: ['group_trip_client', 'group_onboarding_registration'],
-    ...dnaPatch,
   };
-  if (birthDate && /^\d{4}-\d{2}-\d{2}$/.test(birthDate)) rich.birth_date = birthDate;
-  if (referralCode) rich.used_code = referralCode;
+  if (referralCode) core.used_code = referralCode;
+
+  const withAgeAndDob = (payload: Record<string, unknown>) =>
+    withClientAge(withClientBirthDate(payload, birthDate), ageNum);
 
   return [
-    rich,
-    { name, phone_wa: phoneWa, email, client_type: 'عميل', intake_trip_type: 'group', ...dnaPatch },
-    { name, phone_wa: phoneWa, email, client_type: 'عميل', ...dnaPatch },
-    { name, phone_wa: phoneWa, client_type: 'عميل', ...dnaPatch },
-    { name, phone_wa: phoneWa, ...dnaPatch },
+    withAgeAndDob({ ...core, ...dnaPatch }),
+    withAgeAndDob({
+      name,
+      phone_wa: phoneWa,
+      email,
+      client_type: 'عميل',
+      intake_trip_type: 'group',
+      ...dnaPatch,
+    }),
+    withAgeAndDob({ name, phone_wa: phoneWa, email, client_type: 'عميل', ...dnaPatch }),
+    withAgeAndDob({ name, phone_wa: phoneWa, client_type: 'عميل', age: ageNum }),
+    withAgeAndDob({ name, phone_wa: phoneWa, age: ageNum }),
+    withClientAge(
+      { name, phone_wa: cleanPhone || phoneWa, client_type: 'عميل', birth_date: birthDate },
+      ageNum,
+    ),
+    withClientAge({ name, phone_wa: phoneWa, birth_date: birthDate }, ageNum),
+    withClientAge({ name, phone_wa: cleanPhone || phoneWa, client_type: 'عميل' }, ageNum),
+    withClientAge({ name, phone_wa: phoneWa }, ageNum),
     { name, phone_wa: cleanPhone || phoneWa, client_type: 'عميل' },
     { name, phone_wa: phoneWa },
   ];
@@ -150,6 +214,41 @@ export async function upsertPrimaryGroupClient(
       return { ok: false, error: 'تعذر استخراج معرّف العميل بعد الحفظ.' };
     }
 
+    // Hard guarantee: clients.age + birth_date only — never dna_special_requests here.
+    const ageNum =
+      normalizeRegistrationAge(input.age) ||
+      calculateAge(normalizeClientBirthDate(input.birthDate));
+    const birthDate =
+      normalizeClientBirthDate(input.birthDate) || approximateBirthDateFromAge(ageNum);
+
+    if (birthDate || ageNum != null) {
+      const agePatch: Record<string, unknown> = {};
+      if (birthDate) agePatch.birth_date = birthDate;
+      if (ageNum != null) agePatch.age = ageNum;
+
+      const { error: birthError } = await admin
+        .from('clients')
+        .update(agePatch)
+        .eq('id', clientId);
+      if (birthError) {
+        // Retry without optional `age` column if schema lacks it
+        if (/column|schema cache|does not exist|age/i.test(birthError.message ?? '')) {
+          if (birthDate) {
+            const { error: leanErr } = await admin
+              .from('clients')
+              .update({ birth_date: birthDate })
+              .eq('id', clientId);
+            if (leanErr) {
+              console.warn('[upsertPrimaryGroupClient] birth_date lean patch:', leanErr.message);
+            }
+          }
+        } else {
+          console.warn('[upsertPrimaryGroupClient] age/birth_date patch:', birthError.message);
+        }
+      }
+    }
+
+    // Only sync preferences when explicit DNA fields were provided (not basic registration)
     const interests = Array.isArray(input.interests)
       ? input.interests.map((v) => String(v).trim()).filter(Boolean)
       : [];
@@ -179,6 +278,7 @@ export async function linkGroupMemberToTrip(
     customerName: string;
     customerPhone: string;
     status?: GroupMemberLinkStatus;
+    birthDate?: string | null;
   },
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const tripIdRaw = String(input.tripId ?? '').trim();
@@ -192,6 +292,8 @@ export async function linkGroupMemberToTrip(
   const cleanPhone = sanitizePhoneDigits(input.customerPhone);
   const phoneWa = cleanPhone ? canonicalizePhoneWa(cleanPhone) || cleanPhone : '';
   const status = input.status ?? 'pending_interview';
+  const birthDate = String(input.birthDate ?? '').trim().slice(0, 10);
+  const birthDateOk = /^\d{4}-\d{2}-\d{2}$/.test(birthDate) ? birthDate : '';
 
   const memberPayload: Record<string, unknown> = {
     client_id: clientKey,
@@ -201,6 +303,7 @@ export async function linkGroupMemberToTrip(
     customer_name: customerName,
   };
   if (phoneWa) memberPayload.customer_phone = phoneWa;
+  if (birthDateOk) memberPayload.birth_date = birthDateOk;
 
   const { data: existing } = await admin
     .from('group_members')
@@ -216,12 +319,15 @@ export async function linkGroupMemberToTrip(
       customer_name: customerName,
     };
     if (phoneWa) upd.customer_phone = phoneWa;
+    if (birthDateOk) upd.birth_date = birthDateOk;
     let { error } = await admin.from('group_members').update(upd).eq('client_id', clientKey);
-    if (error && /payment_status|customer_phone|column|schema cache/i.test(error.message ?? '')) {
-      const retry = await admin
-        .from('group_members')
-        .update({ group_id: tripKey, status })
-        .eq('client_id', clientKey);
+    if (
+      error &&
+      /payment_status|customer_phone|birth_date|column|schema cache/i.test(error.message ?? '')
+    ) {
+      const leanUpd: Record<string, unknown> = { group_id: tripKey, status };
+      if (customerName) leanUpd.customer_name = customerName;
+      const retry = await admin.from('group_members').update(leanUpd).eq('client_id', clientKey);
       error = retry.error;
     }
     if (error) return { ok: false, error: error.message };
@@ -231,7 +337,7 @@ export async function linkGroupMemberToTrip(
   let { error } = await admin.from('group_members').insert(memberPayload);
   if (
     error &&
-    /payment_status|customer_phone|customer_name|column|schema cache|does not exist/i.test(
+    /payment_status|customer_phone|customer_name|birth_date|column|schema cache|does not exist/i.test(
       error.message ?? '',
     )
   ) {
@@ -248,6 +354,7 @@ export async function linkGroupMemberToTrip(
       const upd: Record<string, unknown> = { group_id: tripKey, status };
       if (customerName) upd.customer_name = customerName;
       if (phoneWa) upd.customer_phone = phoneWa;
+      if (birthDateOk) upd.birth_date = birthDateOk;
       const retry = await admin.from('group_members').update(upd).eq('client_id', clientKey);
       if (retry.error) return { ok: false, error: retry.error.message };
       return { ok: true };
@@ -277,7 +384,10 @@ export function buildGroupLeadClientDnaPatch(
   const interests = extractLeadInterests(leadRow);
   const food = extractLeadFoodPreferences(leadRow);
   const pace = String(leadRow.daily_pace ?? '').trim();
-  const notes = String(leadRow.final_thoughts ?? leadRow.notes ?? '').trim();
+  // Keep DNA notes sensory-only — never carry registration age into dna_special_requests
+  const notes = stripAgeFromDnaNotes(
+    String(leadRow.final_thoughts ?? leadRow.notes ?? '').trim(),
+  );
 
   const dnaDirect = clientDnaSupabasePatch({
     dna_interests: formatInterestsForDnaColumn(interests),

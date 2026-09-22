@@ -10,6 +10,7 @@ import {
   aiSuggestionToPlacePayload,
   arabicMonthNameFromIso,
   buildClientDnaForAi,
+  buildDnaBadgeLines,
   buildPredictiveWishSuggestion,
   predictiveWishToPlacePayload,
   type AiItinerarySuggestion,
@@ -67,10 +68,34 @@ export default function AiPredictiveWishesCard({
     [autoRunKey],
   );
 
+  const dnaSignature = [
+    context.clientRow?.preferred_seat,
+    context.clientRow?.flight_seat,
+    context.clientRow?.food_allergies,
+    context.clientRow?.dietary,
+    context.clientRow?.hotel_preference,
+    context.clientRow?.hotel_style,
+    context.clientRow?.favorite_drink,
+    context.clientRow?.drink_coffee,
+    context.destination,
+    context.tripDateFrom,
+    context.tripDateTo,
+  ]
+    .map((v) => String(v ?? '').trim())
+    .join('|');
+  const dnaBadges = useMemo(
+    () => buildDnaBadgeLines(context),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- live DNA fields for badges only
+    [dnaSignature],
+  );
+
+  /**
+   * Always POST to the server route. Never read ANTHROPIC_API_KEY in the browser.
+   * Surface every server failure — never silently keep empty state.
+   */
   async function requestPredictiveSuggestions(): Promise<{
     suggestions: AiItinerarySuggestion[];
-    warning?: string;
-    simulated?: boolean;
+    provider?: string;
   }> {
     let accessToken = '';
     try {
@@ -88,20 +113,28 @@ export default function AiPredictiveWishesCard({
     const dest = liveContext.destination?.trim() || 'وجهة الرحلة';
     const mon = arabicMonthNameFromIso(liveContext.tripDateFrom ?? '');
 
-    const res = await fetch('/api/predictive', {
+    const dnaContext = {
+      destination: dest,
+      month: mon,
+      tripDateFrom: liveContext.tripDateFrom ?? '',
+      tripDateTo: liveContext.tripDateTo ?? '',
+      clientDNA,
+    };
+
+    const res = await fetch('/api/admin/predictive-ai', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${accessToken}`,
       },
-      body: JSON.stringify({ destination: dest, month: mon, clientDNA }),
+      body: JSON.stringify(dnaContext),
     });
 
     let data: {
       ok?: boolean;
       error?: string;
-      warning?: string;
-      simulated?: boolean;
+      provider?: string;
+      stops?: AiItinerarySuggestion[];
       suggestions?: AiItinerarySuggestion[];
     } = {};
     try {
@@ -110,23 +143,23 @@ export default function AiPredictiveWishesCard({
       throw new Error(`استجابة غير صالحة من الخادم (${res.status})`);
     }
 
-    if (!res.ok || data.ok === false) {
-      const msg = data.error || `تعذر جلب اقتراحات الذكاء الاصطناعي (${res.status})`;
-      // Prefer showing any fallback suggestions alongside the error when present
-      if (Array.isArray(data.suggestions) && data.suggestions.length > 0) {
-        return {
-          suggestions: data.suggestions,
-          warning: msg,
-          simulated: true,
-        };
-      }
-      throw new Error(msg);
+    if (!res.ok || data.error) {
+      throw new Error(data.error || 'فشلت عملية التوليد');
+    }
+
+    const stops = Array.isArray(data.stops)
+      ? data.stops
+      : Array.isArray(data.suggestions)
+        ? data.suggestions
+        : [];
+
+    if (!stops.length) {
+      throw new Error('لم يُرجع Claude أي محطات. أعد التوليد.');
     }
 
     return {
-      suggestions: Array.isArray(data.suggestions) ? data.suggestions : [],
-      warning: data.warning,
-      simulated: Boolean(data.simulated),
+      suggestions: stops,
+      provider: data.provider || 'anthropic',
     };
   }
 
@@ -138,13 +171,14 @@ export default function AiPredictiveWishesCard({
     try {
       const result = await requestPredictiveSuggestions();
       setAiSuggestions(result.suggestions);
-      setSimulated(Boolean(result.simulated));
-      if (result.warning) setWarning(result.warning);
+      setSimulated(false);
+      setWarning(null);
     } catch (err) {
-      console.error('[AiPredictiveWishesCard]', err);
+      console.error('[AiPredictiveWishesCard] server response error:', err);
       setError(err instanceof Error ? err.message : 'تعذر جلب الاقتراحات');
       setAiSuggestions([]);
       setSimulated(false);
+      setWarning(null);
     } finally {
       setLoading(false);
     }
@@ -153,10 +187,9 @@ export default function AiPredictiveWishesCard({
   useEffect(() => {
     if (dismissed) return;
 
-    // Skip only if we already finished a run for this exact key
     if (hasGeneratedAI.current && lastAutoKeyRef.current === autoRunKey) return;
 
-    hasGeneratedAI.current = true; // LOCK immediately (before await)
+    hasGeneratedAI.current = true;
     lastAutoKeyRef.current = autoRunKey;
 
     let cancelled = false;
@@ -171,16 +204,17 @@ export default function AiPredictiveWishesCard({
         const result = await requestPredictiveSuggestions();
         if (cancelled) return;
         setAiSuggestions(result.suggestions);
-        setSimulated(Boolean(result.simulated));
-        if (result.warning) setWarning(result.warning);
+        setSimulated(false);
+        setWarning(null);
         completed = true;
       } catch (err) {
         if (cancelled) return;
-        console.error('[AiPredictiveWishesCard]', err);
+        console.error('[AiPredictiveWishesCard] server response error:', err);
         setError(err instanceof Error ? err.message : 'تعذر جلب الاقتراحات');
         setAiSuggestions([]);
         setSimulated(false);
-        completed = true; // don't retry-loop on error from parent re-renders
+        setWarning(null);
+        completed = true;
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -189,7 +223,6 @@ export default function AiPredictiveWishesCard({
     void generateAI();
     return () => {
       cancelled = true;
-      // Strict Mode abort only — keep lock after a finished run
       if (!completed) hasGeneratedAI.current = false;
     };
   }, [dismissed, autoRunKey]);
@@ -212,14 +245,24 @@ export default function AiPredictiveWishesCard({
     setAppliedKeys((prev) => new Set(prev).add(key));
   }
 
-  function handleApplyFallback() {
+  function handleApplyAllToItinerary() {
     if (!onApply) return;
+    if (aiSuggestions.length > 0) {
+      const nextKeys = new Set(appliedKeys);
+      for (const suggestion of aiSuggestions) {
+        const key = `${suggestion.title}|${suggestion.time}`;
+        onApply(aiSuggestionToPlacePayload(suggestion, destination));
+        nextKeys.add(key);
+      }
+      nextKeys.add('apply-all');
+      setAppliedKeys(nextKeys);
+      return;
+    }
     onApply(predictiveWishToPlacePayload(fallback));
     setAppliedKeys((prev) => new Set(prev).add('fallback'));
   }
 
   function handleRegenerate() {
-    // Manual only — does not unlock the auto-effect loop
     void runAiFetch();
   }
 
@@ -228,7 +271,7 @@ export default function AiPredictiveWishesCard({
       className={`relative overflow-hidden rounded-2xl border border-slate-200/90 bg-white p-6 text-slate-800 shadow-sm ${className}`}
       dir="rtl"
       aria-live="polite"
-      data-wl-predictive-ai="v2"
+      data-wl-predictive-ai="v5-claude-sonnet-4-5"
     >
       <div className="mb-4 flex items-start justify-between gap-3">
         <div>
@@ -237,7 +280,7 @@ export default function AiPredictiveWishesCard({
             سحر واندرلوم التنبؤي
           </p>
           <p className="mt-1 text-[10px] font-medium uppercase tracking-[0.2em] text-slate-500">
-            Wanderloom Predictive AI
+            Wanderloom Predictive AI · Claude Sonnet
           </p>
         </div>
         <button
@@ -257,30 +300,38 @@ export default function AiPredictiveWishesCard({
         <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-medium text-slate-600">
           {fallback.contextLine}
         </span>
+        {dnaBadges.map((badge) => (
+          <span
+            key={badge}
+            className="rounded-full border border-[#D4AF37]/30 bg-[#D4AF37]/10 px-2.5 py-1 text-[10px] font-medium text-[#8A6B2A]"
+          >
+            {badge}
+          </span>
+        ))}
         {simulated ? (
-          <span className="rounded-full border border-amber-400/40 bg-amber-500/15 px-2.5 py-1 text-[10px] font-medium text-amber-100">
-            وضع احتياطي · بدون OpenAI حي
+          <span className="rounded-full border border-amber-300 bg-amber-50 px-2.5 py-1 text-[10px] font-medium text-amber-800">
+            وضع احتياطي · DNA محلي
           </span>
         ) : null}
       </div>
 
       <div className="relative flex min-h-[168px] w-full flex-col justify-center overflow-hidden sm:min-h-[180px]">
         {loading ? (
-          <div className="flex flex-1 flex-col items-center justify-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-8 text-center dark:border-slate-200">
+          <div className="flex flex-1 flex-col items-center justify-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-8 text-center">
             <Loader2 className="h-5 w-5 shrink-0 animate-spin text-[#D4AF37]" aria-hidden />
             <span className="max-w-[18rem] text-sm font-medium leading-relaxed text-slate-600">
-              جاري توليد اقتراحات مخصّصة من DNA العميل…
+              Claude يهندس مساراً حسياً من DNA العميل…
             </span>
           </div>
         ) : null}
 
         {!loading && error ? (
-          <div className="space-y-3 rounded-xl border border-rose-400/30 bg-rose-500/10 px-4 py-3">
-            <p className="text-xs font-medium leading-relaxed text-rose-200">{error}</p>
+          <div className="space-y-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3">
+            <p className="text-xs font-medium leading-relaxed text-rose-800">{error}</p>
             <button
               type="button"
               onClick={() => void runAiFetch()}
-              className="inline-flex items-center justify-center rounded-lg border border-rose-300/40 bg-rose-500/20 px-3 py-1.5 text-[11px] font-semibold text-rose-100 transition hover:bg-rose-500/30"
+              className="inline-flex items-center justify-center rounded-lg border border-rose-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-rose-700 transition hover:bg-rose-100"
             >
               إعادة المحاولة
             </button>
@@ -288,7 +339,7 @@ export default function AiPredictiveWishesCard({
         ) : null}
 
         {!loading && warning ? (
-          <p className="mb-3 rounded-xl border border-[#D4AF37]/30 bg-[#D4AF37]/10 px-4 py-3 text-xs font-medium text-[#D4AF37]">
+          <p className="mb-3 rounded-xl border border-[#D4AF37]/30 bg-[#D4AF37]/10 px-4 py-3 text-xs font-medium text-[#8A6B2A]">
             {warning}
           </p>
         ) : null}
@@ -301,13 +352,11 @@ export default function AiPredictiveWishesCard({
               return (
                 <li
                   key={key}
-                  className="rounded-xl border border-slate-200 bg-slate-100 p-4 text-sm transition-all hover:bg-white/20 dark:border-white/10"
+                  className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm transition-all hover:bg-white"
                 >
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold text-slate-900">
-                        {item.title}
-                      </p>
+                      <p className="text-sm font-semibold text-slate-900">{item.title}</p>
                       <p className="mt-1 text-[11px] font-medium text-[#D4AF37]">
                         {item.time} · {aiActivityTypeLabelAr(item.type)}
                       </p>
@@ -336,63 +385,53 @@ export default function AiPredictiveWishesCard({
         ) : null}
 
         {!loading && aiSuggestions.length === 0 && !error ? (
-          <div className="rounded-xl border border-slate-200 bg-slate-100 p-4 transition-colors hover:bg-white/20 dark:border-slate-200 dark:bg-slate-50/60">
-            <p className="text-sm font-medium leading-[1.85] text-slate-700">
-              {fallback.bodyAr}
-            </p>
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <p className="text-sm font-medium leading-[1.85] text-slate-700">{fallback.bodyAr}</p>
           </div>
         ) : null}
       </div>
 
-      {!loading && aiSuggestions.length === 0 ? (
-        <div className="mt-4 flex flex-wrap items-center gap-2">
-          {onApply ? (
-            <button
-              type="button"
-              onClick={handleApplyFallback}
-              disabled={appliedKeys.has('fallback')}
-              className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-[#D4AF37]/40 bg-[#D4AF37]/15 px-4 py-2.5 text-xs font-semibold text-[#D4AF37] transition hover:bg-[#D4AF37]/25 disabled:opacity-60 sm:flex-none"
-            >
-              <Zap className="h-4 w-4" aria-hidden />
-              {appliedKeys.has('fallback') ? 'تم تطبيق التعديل ✓' : 'تطبيق التعديل على المسار'}
-            </button>
-          ) : (
-            <Link
-              href={builderHref}
-              className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-[#D4AF37]/40 bg-[#D4AF37]/15 px-4 py-2.5 text-xs font-semibold text-[#D4AF37] transition hover:bg-[#D4AF37]/25 sm:flex-none"
-            >
-              <Zap className="h-4 w-4" aria-hidden />
-              تطبيق التعديل على المسار
-            </Link>
-          )}
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        {onApply ? (
           <button
             type="button"
-            onClick={handleRegenerate}
-            className="inline-flex flex-1 items-center justify-center rounded-xl border border-slate-200 bg-slate-100 px-4 py-2.5 text-xs font-bold text-slate-700 transition hover:bg-slate-200 sm:flex-none"
+            onClick={handleApplyAllToItinerary}
+            disabled={
+              appliedKeys.has('apply-all') ||
+              (aiSuggestions.length === 0 && appliedKeys.has('fallback'))
+            }
+            className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-[#D4AF37]/40 bg-[#D4AF37]/15 px-4 py-2.5 text-xs font-semibold text-[#D4AF37] transition hover:bg-[#D4AF37]/25 disabled:opacity-60 sm:flex-none"
           >
-            إعادة التوليد
+            <Zap className="h-4 w-4" aria-hidden />
+            {appliedKeys.has('apply-all') || appliedKeys.has('fallback')
+              ? 'تم تطبيق التعديل ✓'
+              : 'تطبيق التعديل على المسار'}
           </button>
-        </div>
-      ) : null}
-
-      {!loading && aiSuggestions.length > 0 ? (
-        <div className="mt-4 flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={handleRegenerate}
-            className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-slate-100 px-3 py-2 text-[11px] font-bold text-slate-700 transition hover:bg-slate-200"
+        ) : (
+          <Link
+            href={builderHref}
+            className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-[#D4AF37]/40 bg-[#D4AF37]/15 px-4 py-2.5 text-xs font-semibold text-[#D4AF37] transition hover:bg-[#D4AF37]/25 sm:flex-none"
           >
-            إعادة التوليد
-          </button>
-          <button
-            type="button"
-            onClick={handleDismiss}
-            className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] font-bold text-slate-500 transition hover:bg-slate-100"
-          >
-            تجاهل
-          </button>
-        </div>
-      ) : null}
+            <Zap className="h-4 w-4" aria-hidden />
+            تطبيق التعديل على المسار
+          </Link>
+        )}
+        <button
+          type="button"
+          onClick={handleRegenerate}
+          disabled={loading}
+          className="inline-flex flex-1 items-center justify-center rounded-xl border border-slate-200 bg-slate-100 px-4 py-2.5 text-xs font-bold text-slate-700 transition hover:bg-slate-200 disabled:opacity-50 sm:flex-none"
+        >
+          إعادة التوليد
+        </button>
+        <button
+          type="button"
+          onClick={handleDismiss}
+          className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] font-bold text-slate-500 transition hover:bg-slate-100"
+        >
+          تجاهل
+        </button>
+      </div>
     </aside>
   );
 }

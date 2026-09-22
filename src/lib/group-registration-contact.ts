@@ -16,6 +16,8 @@ export type GroupRegistrationDraft = {
   phone_wa: string;
   email: string;
   birth_date: string;
+  /** Explicit age from registration form — synced to clients.age */
+  age: number | null;
   referral_code: string;
   preferred_trip_id: string;
   trip_label: string;
@@ -60,6 +62,10 @@ export function persistGroupRegistrationDraft(
     phone_wa: String(draft.phone_wa ?? '').trim(),
     email: String(draft.email ?? '').trim(),
     birth_date: String(draft.birth_date ?? '').trim().slice(0, 10),
+    age: (() => {
+      const n = Math.floor(Number(draft.age));
+      return Number.isFinite(n) && n >= 1 && n <= 120 ? n : null;
+    })(),
     referral_code: String(draft.referral_code ?? '').trim().toUpperCase().slice(0, 64),
     preferred_trip_id: String(draft.preferred_trip_id ?? '').trim(),
     trip_label: String(draft.trip_label ?? '').trim(),
@@ -95,6 +101,10 @@ export function readGroupRegistrationDraft(): GroupRegistrationDraft | null {
       phone_wa: String(parsed.phone_wa).trim(),
       email: String(parsed.email ?? '').trim(),
       birth_date: String(parsed.birth_date ?? '').trim().slice(0, 10),
+      age: (() => {
+        const n = Math.floor(Number(parsed.age));
+        return Number.isFinite(n) && n >= 1 && n <= 120 ? n : null;
+      })(),
       referral_code: String(parsed.referral_code ?? '').trim(),
       preferred_trip_id: String(parsed.preferred_trip_id).trim(),
       trip_label: String(parsed.trip_label ?? 'رحلة جماعية').trim(),

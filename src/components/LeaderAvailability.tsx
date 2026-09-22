@@ -9,7 +9,12 @@ import { CalendarDays, Check, Clock3, Loader2, Pencil, X } from 'lucide-react';
 
 import { getClientAccessToken } from '@/lib/crm-session-token';
 
-type AvailabilityStatus = 'available' | 'unavailable' | 'booked';
+/** Short Arabic weekday labels — prevents header overlap in 7-col grid. */
+const ARABIC_WEEKDAY_SHORT = ['أحد', 'اثنين', 'ثلاثاء', 'أربعاء', 'خميس', 'جمعة', 'سبت'] as const;
+
+function formatWeekdayNameShort(date: Date): string {
+  return ARABIC_WEEKDAY_SHORT[date.getDay()] ?? '';
+}
 
 type AvailabilityRecord = {
   id: string;
@@ -33,7 +38,7 @@ function statusLabel(status: AvailabilityStatus): string {
 }
 
 const DAY_BTN =
-  'aspect-square flex w-full items-center justify-center rounded-xl text-sm font-medium transition-all hover:bg-slate-100 dark:hover:bg-[#2D3F3A]';
+  'mx-auto flex h-7 w-7 items-center justify-center rounded-md text-xs font-medium transition-all hover:bg-slate-100 dark:hover:bg-[#2D3F3A]';
 
 export function LeaderAvailability({ leaderId }: { leaderId: string }) {
   const [records, setRecords] = useState<AvailabilityRecord[]>([]);
@@ -161,7 +166,7 @@ export function LeaderAvailability({ leaderId }: { leaderId: string }) {
 
   return (
     <section
-      className="relative z-0 mb-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-[#2D3F3A] dark:bg-[#22302C]"
+      className="relative z-0 mb-6 overflow-visible rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-[#2D3F3A] dark:bg-[#22302C]"
       dir="rtl"
     >
       <div className="border-b border-slate-100 bg-gradient-to-r from-slate-900 to-slate-800 px-5 py-4 text-white dark:border-[#2D3F3A] dark:from-[#1A2421] dark:to-[#22302C]">
@@ -178,22 +183,23 @@ export function LeaderAvailability({ leaderId }: { leaderId: string }) {
         </div>
       </div>
 
-      <div className="relative z-0 flex flex-col gap-6 overflow-hidden p-5 md:flex-row md:items-start">
-        {/* Calendar column */}
-        <div className="relative z-0 min-w-0 flex-1 overflow-hidden rounded-2xl border border-slate-200 bg-white p-6 dark:border-[#2D3F3A] dark:bg-[#1A2421]">
+      <div className="relative z-0 mx-auto flex w-full max-w-5xl flex-col items-start gap-4 px-4 py-4 md:flex-row">
+        {/* Compact calendar column */}
+        <div className="relative z-0 mx-auto w-full max-w-[300px] shrink-0 overflow-visible rounded-2xl border border-slate-200 bg-white p-3 dark:border-[#2D3F3A] dark:bg-[#1A2421] md:mx-0">
           {loading ? (
-            <div className="flex min-h-80 items-center justify-center gap-2 text-sm font-medium text-slate-500 dark:text-slate-400">
+            <div className="flex min-h-48 items-center justify-center gap-2 text-sm font-medium text-slate-500 dark:text-slate-400">
               <Loader2 className="h-5 w-5 animate-spin text-slate-400 dark:text-[#D4AF37]" />
               جاري تحميل التقويم…
             </div>
           ) : (
-            <div className="leader-availability-calendar relative z-0 w-full overflow-hidden">
+            <div className="leader-availability-calendar relative z-0 mx-auto w-full max-w-[300px]">
               <DayPicker
                 mode="range"
                 locale={arSA}
                 selected={range}
                 onSelect={setRange}
                 modifiers={modifiers}
+                formatters={{ formatWeekdayName: formatWeekdayNameShort }}
                 modifiersClassNames={{
                   available:
                     '[&>button]:bg-emerald-500/10 [&>button]:font-bold [&>button]:text-emerald-600 [&>button]:border [&>button]:border-emerald-500/30 dark:[&>button]:text-emerald-400',
@@ -204,25 +210,25 @@ export function LeaderAvailability({ leaderId }: { leaderId: string }) {
                 }}
                 showOutsideDays
                 classNames={{
-                  root: 'w-full relative z-0 overflow-hidden',
+                  root: 'w-full relative z-0',
                   months: 'w-full flex flex-col',
-                  month: 'w-full space-y-3',
+                  month: 'w-full space-y-2',
                   month_caption:
-                    'relative flex h-10 items-center justify-center px-10',
+                    'relative flex h-8 items-center justify-center px-8',
                   caption_label:
-                    'text-sm font-bold text-slate-900 dark:text-white',
-                  nav: 'absolute inset-x-0 top-0 flex h-10 items-center justify-between px-1',
+                    'text-xs font-bold text-slate-900 dark:text-white',
+                  nav: 'absolute inset-x-0 top-0 flex h-8 items-center justify-between px-0.5',
                   button_previous:
-                    'inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-600 transition hover:bg-slate-100 dark:border-[#2D3F3A] dark:text-slate-300 dark:hover:bg-[#2D3F3A]',
+                    'inline-flex h-7 w-7 items-center justify-center rounded-md border border-slate-200 text-slate-600 transition hover:bg-slate-100 dark:border-[#2D3F3A] dark:text-slate-300 dark:hover:bg-[#2D3F3A]',
                   button_next:
-                    'inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-600 transition hover:bg-slate-100 dark:border-[#2D3F3A] dark:text-slate-300 dark:hover:bg-[#2D3F3A]',
+                    'inline-flex h-7 w-7 items-center justify-center rounded-md border border-slate-200 text-slate-600 transition hover:bg-slate-100 dark:border-[#2D3F3A] dark:text-slate-300 dark:hover:bg-[#2D3F3A]',
                   month_grid: 'w-full border-separate border-spacing-0',
-                  weekdays: 'grid grid-cols-7 gap-1 text-center mb-3',
+                  weekdays: 'grid grid-cols-7 gap-0.5 text-center w-full mb-1.5',
                   weekday:
-                    'text-center text-xs font-semibold text-slate-500 dark:text-slate-400',
-                  weeks: 'block space-y-1',
-                  week: 'grid grid-cols-7 gap-1 text-center',
-                  day: 'relative p-0 text-center',
+                    'text-center text-[10px] font-semibold text-slate-600 py-0.5 whitespace-nowrap dark:text-slate-300',
+                  weeks: 'block space-y-0.5 w-full',
+                  week: 'grid grid-cols-7 gap-0.5 text-center w-full',
+                  day: 'relative flex items-center justify-center p-0 text-center',
                   day_button: DAY_BTN,
                   selected:
                     '[&>button]:bg-slate-900 [&>button]:text-white dark:[&>button]:bg-[#D4AF37]/25 dark:[&>button]:text-[#D4AF37]',
@@ -242,38 +248,38 @@ export function LeaderAvailability({ leaderId }: { leaderId: string }) {
                   {
                     '--rdp-accent-color': '#0F172A',
                     '--rdp-accent-background-color': '#F1F5F9',
-                    '--rdp-day-height': '2.5rem',
+                    '--rdp-day-height': '1.75rem',
                     '--rdp-day-width': '100%',
-                    '--rdp-day_button-height': '2.5rem',
-                    '--rdp-day_button-width': '100%',
-                    '--rdp-day_button-border-radius': '0.75rem',
+                    '--rdp-day_button-height': '1.75rem',
+                    '--rdp-day_button-width': '1.75rem',
+                    '--rdp-day_button-border-radius': '0.375rem',
                   } as CSSProperties
                 }
               />
             </div>
           )}
 
-          <div className="my-4 flex items-center justify-center gap-4 text-xs font-medium text-slate-600 dark:text-slate-300">
+          <div className="my-3 flex items-center justify-center gap-3 text-[11px] font-medium text-slate-600 dark:text-slate-300">
             <span className="inline-flex items-center gap-1.5">
-              <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
+              <span className="h-2 w-2 rounded-full bg-emerald-500" />
               متاح
             </span>
             <span className="inline-flex items-center gap-1.5">
-              <span className="h-2.5 w-2.5 rounded-full bg-rose-500" />
+              <span className="h-2 w-2 rounded-full bg-rose-500" />
               غير متاح
             </span>
             <span className="inline-flex items-center gap-1.5">
-              <span className="h-2.5 w-2.5 rounded-full bg-slate-400" />
+              <span className="h-2 w-2 rounded-full bg-slate-400" />
               محجوز
             </span>
           </div>
 
           {range?.from ? (
-            <div className="mt-2 space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-[#2D3F3A] dark:bg-[#22302C]/60">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <p className="text-sm font-bold text-slate-900 dark:text-white">
+            <div className="mt-1 space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-[#2D3F3A] dark:bg-[#22302C]/60">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-xs font-bold text-slate-900 dark:text-white">
                   {format(range.from, 'd MMMM yyyy', { locale: arSA })}
-                  <span className="mx-2 text-slate-400 dark:text-[#D4AF37]">←</span>
+                  <span className="mx-1.5 text-slate-400 dark:text-[#D4AF37]">←</span>
                   {format(range.to ?? range.from, 'd MMMM yyyy', {
                     locale: arSA,
                   })}
@@ -281,18 +287,18 @@ export function LeaderAvailability({ leaderId }: { leaderId: string }) {
                 <button
                   type="button"
                   onClick={clearSelection}
-                  className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-800 dark:hover:text-[#D4AF37]"
+                  className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-500 hover:text-slate-800 dark:hover:text-[#D4AF37]"
                 >
-                  <X className="h-3.5 w-3.5" />
-                  إلغاء التحديد
+                  <X className="h-3 w-3" />
+                  إلغاء
                 </button>
               </div>
 
-              <div className="flex gap-2">
+              <div className="flex gap-1.5">
                 <button
                   type="button"
                   onClick={() => setSaveAs('available')}
-                  className={`flex-1 rounded-xl border px-3 py-2 text-xs font-bold transition ${
+                  className={`flex-1 rounded-lg border px-2 py-1.5 text-[11px] font-bold transition ${
                     saveAs === 'available'
                       ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
                       : 'border-slate-200 bg-white text-slate-600 dark:border-[#2D3F3A] dark:bg-[#1A2421] dark:text-slate-300'
@@ -303,7 +309,7 @@ export function LeaderAvailability({ leaderId }: { leaderId: string }) {
                 <button
                   type="button"
                   onClick={() => setSaveAs('unavailable')}
-                  className={`flex-1 rounded-xl border px-3 py-2 text-xs font-bold transition ${
+                  className={`flex-1 rounded-lg border px-2 py-1.5 text-[11px] font-bold transition ${
                     saveAs === 'unavailable'
                       ? 'border-rose-500/40 bg-rose-500/10 text-rose-700 dark:text-rose-400'
                       : 'border-slate-200 bg-white text-slate-600 dark:border-[#2D3F3A] dark:bg-[#1A2421] dark:text-slate-300'
@@ -317,18 +323,18 @@ export function LeaderAvailability({ leaderId }: { leaderId: string }) {
                 type="button"
                 onClick={() => void save()}
                 disabled={saving}
-                className="flex w-full items-center justify-center gap-2 rounded-xl border border-transparent bg-slate-900 py-3 text-sm font-bold text-white shadow-sm transition-all hover:opacity-90 disabled:opacity-60 dark:border-[#D4AF37]/40 dark:bg-[#D4AF37]/20 dark:text-[#D4AF37]"
+                className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-transparent bg-slate-900 py-2 text-xs font-bold text-white shadow-sm transition-all hover:opacity-90 disabled:opacity-60 dark:border-[#D4AF37]/40 dark:bg-[#D4AF37]/20 dark:text-[#D4AF37]"
               >
                 {saving ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
                 ) : (
-                  <Check className="h-4 w-4" />
+                  <Check className="h-3.5 w-3.5" />
                 )}
                 حفظ الفترة المحددة
               </button>
             </div>
           ) : (
-            <p className="mt-2 rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50/50 p-6 text-center text-sm text-slate-600 dark:border-[#2D3F3A] dark:bg-[#22302C]/50 dark:text-slate-300">
+            <p className="mt-1 rounded-xl border border-dashed border-slate-300 bg-slate-50/50 p-3 text-center text-[11px] leading-relaxed text-slate-600 dark:border-[#2D3F3A] dark:bg-[#22302C]/50 dark:text-slate-300">
               اضغط على يوم البداية ثم يوم النهاية لتحديد الفترة.
             </p>
           )}
@@ -336,20 +342,20 @@ export function LeaderAvailability({ leaderId }: { leaderId: string }) {
           {error ? (
             <p
               role="alert"
-              className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-800 dark:border-rose-900/40 dark:bg-rose-950/30 dark:text-rose-200"
+              className="mt-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-medium text-rose-800 dark:border-rose-900/40 dark:bg-rose-950/30 dark:text-rose-200"
             >
               {error}
             </p>
           ) : null}
           {notice ? (
-            <p className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800 dark:border-emerald-900/40 dark:bg-emerald-950/30 dark:text-emerald-200">
+            <p className="mt-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-800 dark:border-emerald-900/40 dark:bg-emerald-950/30 dark:text-emerald-200">
               {notice}
             </p>
           ) : null}
         </div>
 
-        {/* Saved intervals column */}
-        <aside className="relative z-0 w-full shrink-0 overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-6 dark:border-[#2D3F3A] dark:bg-[#22302C] md:w-80">
+        {/* Saved intervals column — always visible beside compact calendar */}
+        <aside className="relative z-0 min-w-[260px] flex-1 overflow-visible rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-[#2D3F3A] dark:bg-[#22302C]">
           <h3 className="inline-flex items-center gap-2 text-sm font-bold text-slate-900 dark:text-white">
             <Clock3 className="h-4 w-4 text-[#D4AF37]" />
             الفترات المحفوظة

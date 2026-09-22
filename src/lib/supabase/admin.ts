@@ -2,6 +2,7 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
 import { getSupabaseUrl, resolveSupabaseServiceRoleKey } from '@/lib/supabase/env';
 
+/** Process-wide singleton — reuse across API routes / RSC / actions (no re-auth). */
 let adminClient: SupabaseClient | null = null;
 
 /**
@@ -27,8 +28,13 @@ function warnIfAnonJwt(serviceKey: string): void {
   }
 }
 
-/** عميل Supabase بصلاحيات service_role — للخادم فقط (إنشاء/حظر مستخدمين). */
+/**
+ * عميل Supabase بصلاحيات service_role — للخادم فقط.
+ * Always returns the same process singleton (connection reuse).
+ */
 export function createSupabaseAdminClient(): SupabaseClient {
+  if (adminClient) return adminClient;
+
   const serviceKey = resolveSupabaseServiceRoleKey();
   if (!serviceKey) {
     throw new Error(
@@ -37,8 +43,6 @@ export function createSupabaseAdminClient(): SupabaseClient {
   }
 
   warnIfAnonJwt(serviceKey);
-
-  if (adminClient) return adminClient;
 
   adminClient = createClient(getSupabaseUrl(), serviceKey, {
     auth: { persistSession: false, autoRefreshToken: false },
@@ -50,4 +54,9 @@ export function createSupabaseAdminClient(): SupabaseClient {
     },
   });
   return adminClient;
+}
+
+/** Explicit alias — prefer this name at call sites that want reuse clarity. */
+export function getSupabaseAdminClient(): SupabaseClient {
+  return createSupabaseAdminClient();
 }

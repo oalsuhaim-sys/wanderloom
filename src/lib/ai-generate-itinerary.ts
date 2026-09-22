@@ -124,9 +124,11 @@ export function parseGeneratedItineraryPayload(payload: unknown): GeneratedItine
     ? payload
     : Array.isArray(root.days)
       ? root.days
-      : Array.isArray(root.itinerary_days)
-        ? root.itinerary_days
-        : [];
+      : Array.isArray(root.itinerary)
+        ? root.itinerary
+        : Array.isArray(root.itinerary_days)
+          ? root.itinerary_days
+          : [];
 
   return list
     .map((item, index) => {
@@ -135,14 +137,18 @@ export function parseGeneratedItineraryPayload(payload: unknown): GeneratedItine
         ? row.stops
         : Array.isArray(row.itinerary_stops)
           ? row.itinerary_stops
-          : Array.isArray(row.places)
-            ? row.places
-            : [];
+          : Array.isArray(row.activities)
+            ? row.activities
+            : Array.isArray(row.places)
+              ? row.places
+              : Array.isArray(row.schedule)
+                ? row.schedule
+                : [];
 
-      const stops = stopsRaw
+      const stops: GeneratedItineraryStop[] = stopsRaw
         .map((stopItem, stopIndex) => {
           const s = asRecord(stopItem);
-          const title = String(s.title ?? s.place_name ?? s.name ?? '').trim();
+          const title = String(s.title ?? s.place_name ?? s.name ?? s.activity ?? '').trim();
           if (!title) return null;
           return {
             title,
@@ -156,7 +162,19 @@ export function parseGeneratedItineraryPayload(payload: unknown): GeneratedItine
         })
         .filter((x): x is GeneratedItineraryStop => x != null);
 
-      if (!stops.length) return null;
+      // Day with title/city but no stops — keep as a single placeholder stop so parsing succeeds
+      if (!stops.length) {
+        const dayTitle = String(row.title ?? row.name ?? '').trim();
+        const dayDesc = String(row.description ?? row.summary ?? row.notes ?? '').trim();
+        if (!dayTitle && !dayDesc && !String(row.city ?? '').trim()) return null;
+        stops.push({
+          title: dayTitle || dayDesc || `محطة اليوم ${index + 1}`,
+          time: '10:00',
+          notes: dayDesc,
+          category: 'o',
+          search_keyword: String(row.city ?? '').trim(),
+        });
+      }
 
       return {
         dayNumber: Math.max(1, Math.trunc(Number(row.dayNumber ?? row.day_number ?? index + 1) || index + 1)),
@@ -168,41 +186,115 @@ export function parseGeneratedItineraryPayload(payload: unknown): GeneratedItine
     .filter((x): x is GeneratedItineraryDay => x != null);
 }
 
+/**
+ * Strip markdown fences / prose and parse Claude JSON.
+ * Handles ```json … ```, leading prose, and lightly truncated objects.
+ */
 export function extractJsonObject(text: string): unknown {
-  const trimmed = text.trim();
-  if (!trimmed) return {};
+  let raw = String(text ?? '').trim();
+  if (!raw) return {};
+
+  // 1) Strip all markdown code fences (```json / ```)
+  raw = raw.replace(/```(?:json|JSON)?\s*/gi, '').replace(/```/g, '').trim();
+
+  // 2) Direct parse
   try {
-    return JSON.parse(trimmed);
+    return JSON.parse(raw);
   } catch {
     /* continue */
   }
-  const fenced = /```(?:json)?\s*([\s\S]*?)```/i.exec(trimmed);
-  if (fenced?.[1]) {
+
+  // 3) Slice outermost object / array
+  const objStart = raw.indexOf('{');
+  const objEnd = raw.lastIndexOf('}');
+  if (objStart >= 0 && objEnd > objStart) {
+    const slice = raw.slice(objStart, objEnd + 1);
     try {
-      return JSON.parse(fenced[1].trim());
+      return JSON.parse(slice);
     } catch {
-      /* continue */
+      const repaired = repairTruncatedJson(slice);
+      if (repaired != null) return repaired;
     }
   }
-  const start = trimmed.indexOf('{');
-  const end = trimmed.lastIndexOf('}');
-  if (start >= 0 && end > start) {
+
+  const arrStart = raw.indexOf('[');
+  const arrEnd = raw.lastIndexOf(']');
+  if (arrStart >= 0 && arrEnd > arrStart) {
+    const slice = raw.slice(arrStart, arrEnd + 1);
     try {
-      return JSON.parse(trimmed.slice(start, end + 1));
+      return JSON.parse(slice);
     } catch {
-      /* continue */
+      const repaired = repairTruncatedJson(slice);
+      if (repaired != null) return repaired;
     }
   }
-  const aStart = trimmed.indexOf('[');
-  const aEnd = trimmed.lastIndexOf(']');
-  if (aStart >= 0 && aEnd > aStart) {
-    try {
-      return JSON.parse(trimmed.slice(aStart, aEnd + 1));
-    } catch {
-      /* continue */
-    }
+
+  // 4) Truncated mid-response: take from first { and close brackets
+  if (objStart >= 0) {
+    const repaired = repairTruncatedJson(raw.slice(objStart));
+    if (repaired != null) return repaired;
   }
+
   return {};
+}
+
+/** Best-effort close of truncated JSON (common when max_tokens cuts mid-object). */
+function repairTruncatedJson(slice: string): unknown | null {
+  let s = slice.trim();
+  if (!s) return null;
+
+  // Drop trailing incomplete string value: ,"key": "unfinished…
+  s = s.replace(/,\s*"[^"]*":\s*"[^"]*$/s, '');
+  s = s.replace(/,\s*"[^"]*":\s*$/s, '');
+  s = s.replace(/,\s*"[^"]*$/s, '');
+  s = s.replace(/,\s*$/s, '');
+
+  // Close open strings
+  let quoteCount = 0;
+  for (let i = 0; i < s.length; i += 1) {
+    if (s[i] === '\\') {
+      i += 1;
+      continue;
+    }
+    if (s[i] === '"') quoteCount += 1;
+  }
+  if (quoteCount % 2 === 1) s += '"';
+
+  const opens: string[] = [];
+  let inString = false;
+  let escape = false;
+  for (let i = 0; i < s.length; i += 1) {
+    const ch = s[i]!;
+    if (inString) {
+      if (escape) {
+        escape = false;
+        continue;
+      }
+      if (ch === '\\') {
+        escape = true;
+        continue;
+      }
+      if (ch === '"') inString = false;
+      continue;
+    }
+    if (ch === '"') {
+      inString = true;
+      continue;
+    }
+    if (ch === '{' || ch === '[') opens.push(ch);
+    if (ch === '}' || ch === ']') opens.pop();
+  }
+
+  while (opens.length) {
+    const open = opens.pop();
+    s += open === '{' ? '}' : ']';
+  }
+
+  try {
+    return JSON.parse(s);
+  } catch {
+    return null;
+  }
 }
 
 /** Compact, token-lean rendering of the real place candidates for the prompt. */

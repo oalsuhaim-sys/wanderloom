@@ -14,11 +14,11 @@ import ClientPaymentWhatsAppButton from '@/app/crm/clients/_components/ClientPay
 import ClientSalesStageControl from '@/app/crm/clients/_components/ClientSalesStageControl'
 import {
   clientDisplayTierBadge,
-  calculateAge,
   engagementDotClass,
   engagementStatusLabel,
   formatSarClv,
   parseTravelDnaChips,
+  resolveClientDisplayAge,
   resolveClientLifetimeValue,
 } from '@/lib/client-crm-profile'
 import { whatsAppHref } from '@/lib/crm-lead-actions'
@@ -29,6 +29,41 @@ import {
   resolveClientDnaDisplay,
   type VipClientProfile,
 } from '@/lib/clientsTravelDna'
+
+/**
+ * Status badge — `total_trips` + `status` only (single source of truth).
+ * total_trips > 0 → عميل | status مهتم/interested → مهتم | else عميل جديد
+ */
+export function resolveClientCardStatusBadge(
+  client: VipClientProfile,
+  tripsFallback: number = 0,
+): { label: string; className: string } {
+  const totalTrips = Math.max(
+    0,
+    Math.floor(Number(client.total_trips || 0)),
+    Math.floor(Number(tripsFallback) || 0),
+  )
+
+  let badgeLabel = 'عميل جديد'
+  let badgeStyle =
+    'border-slate-200 bg-slate-100 text-slate-700 dark:border-[#2D3F3A] dark:bg-[#1A2421] dark:text-slate-300'
+
+  if (totalTrips > 0) {
+    badgeLabel = 'عميل'
+    badgeStyle =
+      'border-emerald-300 bg-emerald-100 text-emerald-800 dark:border-emerald-700/50 dark:bg-emerald-950/40 dark:text-emerald-300'
+  } else {
+    const status = String(client.status ?? '').trim()
+    const normalized = status.toLowerCase()
+    if (status === 'مهتم' || normalized === 'مهتم' || normalized === 'interested') {
+      badgeLabel = 'مهتم'
+      badgeStyle =
+        'border-amber-300 bg-amber-100 text-amber-800 dark:border-[#D4AF37]/45 dark:bg-[#D4AF37]/20 dark:text-[#D4AF37]'
+    }
+  }
+
+  return { label: badgeLabel, className: badgeStyle }
+}
 
 export type ClientCardProps = {
   client: VipClientProfile
@@ -61,7 +96,8 @@ export default function ClientCard({
   const tier = clientDisplayTierBadge(client)
   const clv = resolveClientLifetimeValue(client)
   const displayName = client.name?.trim() || '—'
-  const clientAge = calculateAge(client.birth_date)
+  // Age from birth_date (preferred), fallback to persisted clients.age
+  const displayAge = resolveClientDisplayAge(client)
   const dna = resolveClientDnaDisplay(client)
   const interestTags = parseDnaInterests(dna.dna_interests)
   const activity = dna.dna_activity_level?.trim()
@@ -75,12 +111,25 @@ export default function ClientCard({
   })
   const engagement = client.engagement_status
   const wa = client.phone_wa?.trim() ? whatsAppHref(client.phone_wa) : null
+  const totalTrips = Math.max(
+    0,
+    Math.floor(Number(client.total_trips || 0)),
+    Math.floor(Number(trips) || 0),
+  )
+  const statusBadge = resolveClientCardStatusBadge(client, trips)
 
   return (
     <article
       className={`group relative flex cursor-pointer flex-col items-center rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-sm dark:border-[#2D3F3A] dark:bg-[#22302C] ${CRM_CARD_INTERACTIVE}`}
       onClick={() => onOpenProfile(client)}
     >
+      <span
+        className={`absolute top-3 end-3 z-10 rounded-full border px-2.5 py-0.5 text-[10px] font-black tracking-wide ${statusBadge.className}`}
+        title={`الحالة: ${statusBadge.label}`}
+      >
+        {statusBadge.label}
+      </span>
+
       <div className="relative mb-4">
         <div
           className="flex h-20 w-20 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-xl font-bold text-slate-700 dark:border-[#D4AF37]/30 dark:bg-[#1A2421] dark:text-[#D4AF37]"
@@ -97,15 +146,19 @@ export default function ClientCard({
         ) : null}
       </div>
 
-      <div className="mt-1 mb-1 flex max-w-full items-center justify-center gap-1.5">
-        <h2 className="truncate text-lg font-bold text-slate-900 dark:text-white">
+      <div className="mt-1 mb-1 flex max-w-full flex-wrap items-center justify-center gap-1.5">
+        <h2 className="truncate text-base font-bold text-slate-900 dark:text-white sm:text-lg">
           {displayName}
         </h2>
-        {clientAge != null ? (
-          <span className="shrink-0 rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600 dark:border-[#2D3F3A] dark:bg-[#1A2421] dark:text-slate-300">
-            {clientAge} سنة
+        {displayAge ? (
+          <span className="shrink-0 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-xs font-bold text-emerald-700 dark:border-emerald-800/40 dark:bg-emerald-950/30 dark:text-emerald-300">
+            {`${displayAge} سنة`}
           </span>
-        ) : null}
+        ) : (
+          <span className="shrink-0 rounded-full bg-slate-100 px-2.5 py-0.5 text-xs text-slate-500 dark:bg-[#1A2421] dark:text-slate-400">
+            العمر غير متوفر
+          </span>
+        )}
       </div>
 
       <div className="mt-1 flex flex-col items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
@@ -152,7 +205,7 @@ export default function ClientCard({
           {tier.label}
         </span>
         <span className="rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-[10px] font-medium text-slate-600 dark:border-[#2D3F3A] dark:bg-[#1A2421] dark:text-slate-300">
-          {trips} رحلات
+          {`${totalTrips || 0} رحلات`}
         </span>
         <div onClick={(e) => e.stopPropagation()}>
           <ClientSalesStageControl

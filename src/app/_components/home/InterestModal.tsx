@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useCallback, useEffect, useState } from 'react';
 import { Heart, X } from 'lucide-react';
@@ -53,18 +53,18 @@ export function InterestModal({ open, onClose }: Props) {
       onClick={handleClose}
     >
       <div
-        className="max-h-[92dvh] w-full max-w-md overflow-y-auto rounded-t-3xl border border-[#1e3f20]/10 bg-gradient-to-b from-[#FEFDF9] to-white p-5 shadow-2xl sm:max-h-[min(90vh,640px)] sm:rounded-3xl sm:p-7"
+        className="max-h-[92dvh] w-full max-w-md overflow-y-auto rounded-t-3xl border border-[#1C2E3A]/10 bg-gradient-to-b from-[#FEFDF9] to-white p-5 shadow-2xl sm:max-h-[min(90vh,640px)] sm:rounded-3xl sm:p-7"
         onClick={(e) => e.stopPropagation()}
         dir="rtl"
         lang="ar"
       >
         <div className="mb-5 flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1 text-right">
-            <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-[#1e3f20]/5 px-3 py-1 text-[10px] font-black text-[#1e3f20]">
-              <Heart className="h-3.5 w-3.5 text-[#cda04c]" aria-hidden />
+            <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-[#1C2E3A]/5 px-3 py-1 text-[10px] font-black text-[#1C2E3A]">
+              <Heart className="h-3.5 w-3.5 text-[#9C7A3C]" aria-hidden />
               تسجيل اهتمام
             </div>
-            <h2 id="interest-modal-title" className="text-lg font-black text-[#111111] sm:text-xl">
+            <h2 id="interest-modal-title" className="text-lg font-black text-[#1C2E3A] sm:text-xl">
               ابقَ على اطلاع بأفضل العروض
             </h2>
             <p className="mt-1.5 text-xs font-bold leading-relaxed text-gray-500 sm:text-sm">

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type MouseEvent } from 'react';
+import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -12,10 +12,9 @@ import {
   Loader2,
   MessageCircle,
   Trash2,
-  UserPlus,
   X,
 } from 'lucide-react';
-import toast, { Toaster } from 'react-hot-toast';
+import toast from 'react-hot-toast';
 
 import {
   revalidateCrmAfterRadarApprovalAction,
@@ -23,11 +22,10 @@ import {
 import { approveGroupLeadFromInbox } from '@/app/actions/groupOnboardingActions';
 import {
   handleAcceptRequest,
-  handleAddToClients,
   handleRejectRequest,
 } from '@/app/actions/leadRequestActions';
-import { ensureLeadClientAction } from '@/app/actions/submitCustomerLead';
 import DnaInviteTripTypePicker from '@/app/crm/_components/DnaInviteTripTypePicker';
+import { showCrmSuccessToast } from '@/components/CrmLuxuryToaster';
 import {
   deleteCrmLead,
   formatWhatsAppPhone,
@@ -36,13 +34,11 @@ import {
   whatsAppHrefWithMessage,
 } from '@/lib/crm-lead-actions';
 import {
-  assertUsableLeadClientFields,
   buildClientDnaWelcomeUrlByClientId,
-  buildDnaInviteWhatsAppPayload,
-  markDnaLinkSent,
   type CrmLeadWithIntake,
   type DnaInviteTripType,
 } from '@/lib/client-intake-pipeline';
+import { supabase } from '@/lib/supabase';
 import {
   formatRelativeTimeArabic,
   formatTravelDateArabic,
@@ -234,7 +230,7 @@ function LeadDetailModal({
   onLeadApproved?: (leadId: string) => void;
 }) {
   const router = useRouter();
-  const [busy, setBusy] = useState<'delete' | 'quote' | 'whatsapp' | 'addClient' | null>(null);
+  const [busy, setBusy] = useState<'delete' | 'quote' | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [copied, setCopied] = useState<'dna' | 'calendar' | null>(null);
   const [tripType, setTripType] = useState<DnaInviteTripType>('private');
@@ -284,153 +280,6 @@ function LeadDetailModal({
     } catch {
       setActionError('تعذر النسخ إلى الحافظة.');
       toast.error('تعذر النسخ إلى الحافظة.');
-    }
-  }
-
-  /**
-   * Manual DNA send — CHECK phone_wa first (unique_phone_wa), reuse id or insert stub.
-   * Opens WhatsApp via a programmatic <a> click (more reliable than window.open after await).
-   */
-  async function handleSendWhatsApp(e?: MouseEvent) {
-    if (e) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
-
-    if (!lead?.id) {
-      setActionError('بيانات الطلب مفقودة.');
-      return;
-    }
-
-    const nameToSave = String(lead.full_name ?? '').trim();
-    const phoneToUse = String(lead.phone_wa ?? '').trim();
-
-    if (!phoneToUse) {
-      setActionError('رقم الجوال مفقود.');
-      toast.error('رقم الجوال مفقود.');
-      return;
-    }
-
-    try {
-      assertUsableLeadClientFields({ name: nameToSave, phone: phoneToUse });
-    } catch (validationErr) {
-      const msg =
-        validationErr instanceof Error
-          ? validationErr.message
-          : 'بيانات العميل ناقصة أو غير صالحة. تأكد من وجود رقم الجوال.';
-      setActionError(msg);
-      toast.error(msg);
-      return;
-    }
-
-    setBusy('whatsapp');
-    setActionError(null);
-    try {
-      // Always resolve via check-then-insert (reuse existing clients.id on duplicate phone)
-      const ensured = await ensureLeadClientAction(lead.id, {
-        name: nameToSave,
-        phone: phoneToUse,
-        email: lead.email ?? null,
-      });
-      if (!ensured.ok) {
-        const raw = ensured.error || 'تعذر إنشاء ملف العميل تلقائياً من بيانات الطلب.';
-        const msg = /23505|unique_phone_wa|duplicate key/i.test(raw)
-          ? 'هذا الرقم مسجّل مسبقاً. أعد المحاولة — سيتم استخدام ملف العميل الحالي.'
-          : raw;
-        setActionError(msg);
-        toast.error(msg);
-        return;
-      }
-      const clientId = ensured.clientId;
-
-      const { whatsAppUrl } = buildDnaInviteWhatsAppPayload(
-        phoneToUse,
-        clientId,
-        tripType,
-        window.location.origin,
-      );
-
-      // Hidden anchor click — avoids window.open popup blockers after async work
-      const link = document.createElement('a');
-      link.href = whatsAppUrl;
-      link.target = '_blank';
-      link.rel = 'noopener noreferrer';
-      link.style.display = 'none';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-
-      toast.success(
-        ensured.reusedExisting
-          ? 'تم التعرف على عميل عائد — فُتح واتساب برابط DNA على ملفه الحالي.'
-          : 'تم فتح واتساب برابط DNA — يمكنك الموافقة لاحقاً من الزر الذهبي.',
-      );
-
-      if (supabase) {
-        void markDnaLinkSent(supabase, clientId).catch(() => undefined);
-      }
-      await onRefresh();
-      if (approved) onClose();
-    } catch (err) {
-      console.error('Send DNA Error:', err);
-      const raw = err instanceof Error ? err.message : '';
-      const msg = /23505|unique_phone_wa|duplicate key/i.test(raw)
-        ? 'حدث خطأ أثناء معالجة بيانات العميل — الرقم موجود مسبقاً.'
-        : raw || 'حدث خطأ أثناء معالجة بيانات العميل.';
-      setActionError(msg);
-      toast.error(msg);
-    } finally {
-      setBusy(null);
-    }
-  }
-
-  async function handleAddToClientsClick() {
-    if (!lead?.id) {
-      setActionError('بيانات الطلب مفقودة.');
-      return;
-    }
-    if (busy !== null) return;
-
-    setBusy('addClient');
-    setActionError(null);
-    try {
-      console.log('[NewLeadsInbox] handleAddToClients', lead.id);
-      const result = await handleAddToClients(lead.id, {
-        full_name: String(lead.full_name ?? '').trim() || null,
-        phone_wa: String(lead.phone_wa ?? '').trim() || null,
-        email: lead.email != null ? String(lead.email).trim() || null : null,
-        destinations: Array.isArray(lead.destinations) ? lead.destinations : [],
-      });
-      if (!result.ok) throw new Error(result.error);
-
-      toast.success(
-        result.message ||
-          (result.reusedExisting
-            ? 'العميل موجود مسبقاً في قاعدة العملاء ✨'
-            : 'تم إضافة / تحديث العميل في قاعدة العملاء بنجاح! ✨'),
-      );
-      onLeadApproved?.(lead.id);
-      onClose();
-      await onRefresh();
-      router.refresh();
-      if (result.clientId) {
-        window.setTimeout(() => {
-          window.open(`/crm/clients/${result.clientId}`, '_blank', 'noopener,noreferrer');
-        }, 350);
-      }
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'حدث خطأ أثناء إضافة العميل';
-      if (/موجود مسبقاً|already exists|23505|unique_phone_wa/i.test(msg)) {
-        toast.success(msg, { icon: '👤' });
-        onLeadApproved?.(lead.id);
-        onClose();
-        await onRefresh();
-        return;
-      }
-      setActionError(msg);
-      toast.error(msg);
-    } finally {
-      setBusy(null);
     }
   }
 
@@ -498,7 +347,7 @@ function LeadDetailModal({
       if (isExplicitGroupTripLead(lead)) {
         const result = await approveGroupLeadFromInbox(lead.id);
         if (!result.ok) throw new Error(result.error);
-        toast.success(result.message);
+        showCrmSuccessToast(result.message, { duration: 4000 });
         onLeadApproved?.(lead.id);
         onClose();
         await onRefresh();
@@ -521,14 +370,16 @@ function LeadDetailModal({
 
       const surveyUrl =
         result.dnaUrl ||
-        buildClientDnaWelcomeUrlByClientId(
-          result.dnaKey || String(result.clientId ?? lead.id),
-          window.location.origin,
-          tripType,
-        );
+        (result.dnaKey || result.clientId != null
+          ? buildClientDnaWelcomeUrlByClientId(
+              result.dnaKey || String(result.clientId ?? lead.id),
+              window.location.origin,
+              tripType,
+            )
+          : '');
 
       setAcceptedClientId(result.clientId);
-      setAcceptedDnaUrl(surveyUrl);
+      setAcceptedDnaUrl(surveyUrl || null);
       onLeadApproved?.(lead.id);
       setApproved(true);
       router.refresh();
@@ -536,8 +387,8 @@ function LeadDetailModal({
         console.warn('[approve] revalidate skipped:', err);
       });
 
-      toast.success(result.message || 'تمت الموافقة — رابط DNA جاهز للنسخ أو واتساب', {
-        duration: 5500,
+      showCrmSuccessToast(result.message || 'تمت الموافقة — رابط DNA جاهز للنسخ أو واتساب', {
+        duration: 4000,
       });
 
       void onRefresh();
@@ -751,20 +602,6 @@ function LeadDetailModal({
             <span>مشاركة التفاصيل عبر واتساب</span>
           </button>
 
-          <button
-            type="button"
-            onClick={(e) => void handleSendWhatsApp(e)}
-            disabled={busy !== null}
-            className="flex w-full flex-row-reverse items-center justify-center gap-2 rounded-xl border border-emerald-100 bg-white py-3 text-sm font-medium text-emerald-700 shadow-sm ring-1 ring-emerald-600/10 transition hover:bg-emerald-50 active:scale-[0.98] disabled:opacity-60"
-          >
-            {busy === 'whatsapp' ? (
-              <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-            ) : (
-              <MessageCircle className="h-4 w-4 text-emerald-500" aria-hidden />
-            )}
-            <span>إرسال رابط DNA عبر واتساب (قبل الموافقة)</span>
-          </button>
-
           {!approved ? (
           <button
             type="button"
@@ -817,25 +654,6 @@ function LeadDetailModal({
               </div>
             </div>
           )}
-
-          <button
-            type="button"
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              void handleAddToClientsClick();
-            }}
-            disabled={busy !== null}
-            className="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-800 bg-[#1A2421] py-3 text-sm font-bold text-[#D4AF37] shadow-sm transition hover:opacity-90 active:scale-[0.98] disabled:opacity-60"
-            title="إضافة لقاعدة العملاء فقط — بدون رفض"
-          >
-            {busy === 'addClient' ? (
-              <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-            ) : (
-              <UserPlus className="h-4 w-4" aria-hidden />
-            )}
-            <span>إضافة لقاعدة العملاء</span>
-          </button>
 
           <div className="flex flex-col gap-2 sm:flex-row">
             <button
@@ -906,7 +724,6 @@ export function NewLeadsInbox({
 
   return (
     <div dir="rtl" lang="ar" className="w-full text-right">
-      <Toaster position="top-center" toastOptions={{ className: 'text-sm font-bold' }} />
       <section className="mb-10 w-full" aria-label="الطلبات الجديدة">
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-lg font-extrabold text-slate-900">صندوق الوارد — الطلبات الجديدة</h2>

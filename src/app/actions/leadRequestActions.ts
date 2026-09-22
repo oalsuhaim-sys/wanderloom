@@ -35,6 +35,30 @@ function coerceClientId(raw: unknown): number | null {
   return Math.trunc(n);
 }
 
+/** Safe optional contact/date fields for clients inserts — never empty strings for dates. */
+function safeClientOptionalFields(input: {
+  email?: string | null;
+  birth_date?: string | null;
+  age?: number | null;
+}): {
+  email: string | null;
+  birth_date: string | null;
+  age: number | null;
+} {
+  const emailRaw = input.email != null ? String(input.email).trim() : '';
+  const birthRaw = input.birth_date != null ? String(input.birth_date).trim() : '';
+  const birth_date =
+    birthRaw && /^\d{4}-\d{2}-\d{2}/.test(birthRaw) ? birthRaw.slice(0, 10) : null;
+  const ageNum = input.age == null || input.age === ('' as unknown) ? NaN : Number(input.age);
+  const age =
+    Number.isFinite(ageNum) && ageNum > 0 && ageNum <= 120 ? Math.floor(ageNum) : null;
+  return {
+    email: emailRaw || null,
+    birth_date,
+    age,
+  };
+}
+
 function isUniquePhoneConflict(message: string, code?: string | null): boolean {
   if (String(code ?? '').trim() === '23505') return true;
   return /duplicate|unique|23505|unique_phone_wa|already exists/i.test(message);
@@ -102,9 +126,16 @@ function pickPreferredDestination(row: Record<string, unknown>): string | null {
 }
 
 function buildDnaSurveyUrl(clientKey: number | string, origin?: string): string {
-  const id = String(clientKey ?? '').trim();
-  const base = (origin ?? siteOrigin()).replace(/\/$/, '');
-  return `${base}/dna-survey?client_id=${encodeURIComponent(id)}`;
+  try {
+    const id = String(clientKey ?? '').trim() || 'unknown';
+    const base = String(origin ?? siteOrigin() ?? '')
+      .trim()
+      .replace(/\/$/, '');
+    if (!base) return `/dna-survey?client_id=${encodeURIComponent(id)}`;
+    return `${base}/dna-survey?client_id=${encodeURIComponent(id)}`;
+  } catch {
+    return `/dna-survey?client_id=${encodeURIComponent(String(clientKey ?? 'unknown'))}`;
+  }
 }
 
 async function loadLeadRow(
@@ -113,7 +144,7 @@ async function loadLeadRow(
 ): Promise<Record<string, unknown>> {
   const safe = await admin
     .from('leads')
-    .select('id, full_name, phone_wa, email, destinations, destination, status, client_id')
+    .select('id, full_name, phone_wa, email, destinations, destination, status, client_id, birth_date, age')
     .eq('id', leadId)
     .maybeSingle();
 
@@ -130,30 +161,81 @@ async function patchClientMeta(
   clientId: number,
   patch: Record<string, unknown>,
 ) {
-  const attempts = [
-    patch,
-    (() => {
-      const p = { ...patch };
-      delete p.phone_wa;
-      return p;
-    })(),
-    (() => {
-      const p = { ...patch };
-      delete p.phone_wa;
-      delete p.dna_survey_url;
-      delete p.dna_url;
-      return p;
-    })(),
-    { name: patch.name, email: patch.email ?? null },
-  ].filter((p) => Object.keys(p).length > 0);
-
-  for (const attempt of attempts) {
-    const { error } = await admin.from('clients').update(attempt).eq('id', clientId);
+  let remaining: Record<string, unknown> = { ...patch };
+  // Peel unknown / constrained columns so lead_source + tags still land.
+  for (let i = 0; i < 24 && Object.keys(remaining).length > 0; i++) {
+    const { error } = await admin.from('clients').update(remaining).eq('id', clientId);
     if (!error) return;
-    if (isUniquePhoneConflict(error.message)) continue;
-    if (/column|schema cache|does not exist|check constraint/i.test(error.message)) continue;
-    console.warn('[leadRequestActions] patchClientMeta soft-fail:', error.message);
+
+    const msg = error.message ?? '';
+    if (isUniquePhoneConflict(msg, (error as { code?: string }).code)) {
+      const next = { ...remaining };
+      delete next.phone_wa;
+      remaining = next;
+      continue;
+    }
+
+    const colMatch =
+      /Could not find the '([^']+)' column/i.exec(msg) ||
+      /column ["'`]?([a-zA-Z0-9_]+)/i.exec(msg) ||
+      /'([a-zA-Z0-9_]+)' column of 'clients'/i.exec(msg);
+    if (colMatch?.[1] && Object.prototype.hasOwnProperty.call(remaining, colMatch[1])) {
+      const next = { ...remaining };
+      delete next[colMatch[1]];
+      remaining = next;
+      continue;
+    }
+
+    // status / engagement check constraints — drop the offending field and retry
+    if (/check constraint|invalid input|status/i.test(msg) && remaining.status !== undefined) {
+      const next = { ...remaining };
+      delete next.status;
+      remaining = next;
+      continue;
+    }
+    if (/engagement_status/i.test(msg) && remaining.engagement_status !== undefined) {
+      const next = { ...remaining };
+      delete next.engagement_status;
+      remaining = next;
+      continue;
+    }
+
+    console.warn('[leadRequestActions] patchClientMeta soft-fail:', msg);
     return;
+  }
+}
+
+/** Interest-list → clients markers (badge «مهتم»). Tries richest payload first. */
+async function markClientAsInterested(admin: AdminClient, clientId: number) {
+  const layers: Record<string, unknown>[] = [
+    {
+      lead_source: 'interest',
+      tags: ['مهتم', 'source:interest'],
+      status: 'مهتم',
+      engagement_status: 'active',
+      sales_stage: DEFAULT_SALES_STAGE,
+    },
+    {
+      lead_source: 'interest',
+      tags: ['مهتم', 'source:interest'],
+      engagement_status: 'active',
+      sales_stage: DEFAULT_SALES_STAGE,
+    },
+    {
+      lead_source: 'interest',
+      tags: ['مهتم', 'source:interest'],
+    },
+    { lead_source: 'interest' },
+    { tags: ['مهتم', 'source:interest'] },
+  ];
+
+  for (const layer of layers) {
+    const { error } = await admin.from('clients').update(layer).eq('id', clientId);
+    if (!error) return;
+    if (!/column|schema cache|does not exist|check constraint|could not find/i.test(error.message ?? '')) {
+      console.warn('[leadRequestActions] markClientAsInterested soft-fail:', error.message);
+      return;
+    }
   }
 }
 
@@ -304,7 +386,7 @@ async function tryLinkClientFromRequest(
       {
         name: nameVal,
         phone_wa: phoneVal,
-        email,
+        ...safeClientOptionalFields({ email }),
         target_trip: destination,
         client_type: 'عميل',
         sales_stage: DEFAULT_SALES_STAGE,
@@ -314,13 +396,18 @@ async function tryLinkClientFromRequest(
       {
         name: nameVal,
         phone_wa: phoneVal,
-        email,
+        ...safeClientOptionalFields({ email }),
         target_trip: destination,
         client_type: 'عميل',
         sales_stage: DEFAULT_SALES_STAGE,
       },
-      { name: nameVal, phone_wa: phoneVal, email, client_type: 'عميل' },
-      { name: nameVal, phone_wa: phoneVal },
+      {
+        name: nameVal,
+        phone_wa: phoneVal,
+        ...safeClientOptionalFields({ email }),
+        client_type: 'عميل',
+      },
+      { name: nameVal, phone_wa: phoneVal, birth_date: null, age: null },
     ];
 
     for (const payload of insertPayloads) {
@@ -557,13 +644,19 @@ export async function handleAddToClients(
       }
     }
 
-    // 2) Upsert / insert CORE columns — treat 23505 as "already exists" (success path)
+    // 2) Upsert / insert CORE + interest markers when possible
     const insertErrors: string[] = [];
     if (!clientId) {
+      const interestMarkers: Record<string, unknown> = {
+        lead_source: 'interest',
+        tags: ['مهتم', 'source:interest'],
+        status: 'مهتم',
+      };
       const corePayload: Record<string, unknown> = {
         name: nameVal,
         phone_wa: phoneVal,
-        ...(email ? { email } : {}),
+        ...safeClientOptionalFields({ email }),
+        ...interestMarkers,
       };
 
       console.log('[handleAddToClients] Upsert payload:', corePayload);
@@ -594,7 +687,24 @@ export async function handleAddToClients(
         } else if (
           /onConflict|constraint|column|schema cache|does not exist|could not find/i.test(detail)
         ) {
-          // Fall through to plain insert attempts
+          // Retry lean upsert without optional interest columns
+          const leanUpsert = await admin
+            .from('clients')
+            .upsert(
+              {
+                name: nameVal,
+                phone_wa: phoneVal,
+                ...safeClientOptionalFields({ email }),
+              },
+              { onConflict: 'phone_wa' },
+            )
+            .select('id')
+            .maybeSingle();
+          if (!leanUpsert.error && leanUpsert.data?.id != null) {
+            clientId = coerceClientId(leanUpsert.data.id);
+            reusedExisting = false;
+          }
+          // Fall through to plain insert attempts if still missing
         } else {
           return { ok: false, error: `فشل الإدراج: ${detail}` };
         }
@@ -603,8 +713,14 @@ export async function handleAddToClients(
       // Plain insert fallbacks if upsert unsupported / failed without reclaim
       if (!clientId) {
         const payloads: Record<string, unknown>[] = [
-          { name: nameVal, phone_wa: phoneVal, ...(email ? { email } : {}) },
-          { name: nameVal, phone_wa: phoneVal },
+          {
+            name: nameVal,
+            phone_wa: phoneVal,
+            ...safeClientOptionalFields({ email }),
+            ...interestMarkers,
+          },
+          { name: nameVal, phone_wa: phoneVal, ...safeClientOptionalFields({ email }) },
+          { name: nameVal, phone_wa: phoneVal, birth_date: null, age: null },
         ];
 
         for (const payload of payloads) {
@@ -673,10 +789,15 @@ export async function handleAddToClients(
       ...(email ? { email } : {}),
       engagement_status: 'active',
       sales_stage: DEFAULT_SALES_STAGE,
-      lead_source: 'interest_list',
+      /** Interest-list conversion — drives «مهتم» badge on ClientCard */
+      lead_source: 'interest',
+      status: 'مهتم',
+      tags: ['مهتم', 'source:interest'],
       secret_notes: null,
       updated_at: new Date().toISOString(),
     });
+    // Guarantee interest markers even if a prior optional field forced a lean fallback
+    await markClientAsInterested(admin, clientId);
 
     await admin
       .from('leads')
@@ -688,38 +809,25 @@ export async function handleAddToClients(
         }
       });
 
-    const { error: statusError } = await admin
-      .from('leads')
-      .update({ status: 'converted' })
-      .eq('id', id);
-
-    if (statusError) {
-      console.error('[handleAddToClients] status update:', formatSupabaseError(statusError));
-      if (/converted|check constraint|status/i.test(statusError.message ?? '')) {
-        const fallback = await admin.from('leads').update({ status: 'postponed' }).eq('id', id);
-        if (fallback.error) {
-          revalidateLeadClientPaths(clientId);
-          return {
-            ok: true,
-            clientId,
-            dnaKey: String(clientId),
-            reusedExisting,
-            message: reusedExisting
-              ? `العميل (${nameVal}) موجود مسبقاً في قاعدة العملاء ✨`
-              : `تمت إضافة العميل (#${clientId}) لكن تعذر تحديث حالة الطلب: ${formatSupabaseError(statusError)}`,
-          };
+    // Remove from Interests List: prefer delete, then status fall-backs
+    let removedFromInterestList = false;
+    const { error: deleteLeadError } = await admin.from('leads').delete().eq('id', id);
+    if (!deleteLeadError) {
+      removedFromInterestList = true;
+    } else {
+      console.warn(
+        '[handleAddToClients] interest lead delete soft-fail:',
+        formatSupabaseError(deleteLeadError),
+      );
+      for (const status of ['converted', 'interest_converted', 'postponed'] as const) {
+        const { error: statusError } = await admin.from('leads').update({ status }).eq('id', id);
+        if (!statusError) {
+          removedFromInterestList = true;
+          break;
         }
-      } else {
-        revalidateLeadClientPaths(clientId);
-        return {
-          ok: true,
-          clientId,
-          dnaKey: String(clientId),
-          reusedExisting,
-          message: reusedExisting
-            ? `العميل (${nameVal}) موجود مسبقاً في قاعدة العملاء ✨`
-            : `تمت إضافة العميل (#${clientId}) لكن تعذر تحديث حالة الطلب: ${formatSupabaseError(statusError)}`,
-        };
+        if (!/converted|check constraint|status|column|schema cache|does not exist/i.test(statusError.message ?? '')) {
+          console.warn('[handleAddToClients] status update:', formatSupabaseError(statusError));
+        }
       }
     }
 
@@ -729,15 +837,48 @@ export async function handleAddToClients(
       clientId,
       dnaKey: String(clientId),
       reusedExisting,
-      message: reusedExisting
-        ? `العميل (${nameVal}) موجود مسبقاً في قاعدة العملاء ✨`
-        : 'تم إضافة / تحديث العميل في قاعدة العملاء بنجاح! ✨',
+      message: removedFromInterestList
+        ? 'تمت إضافة العميل بنجاح ونقله من قائمة الاهتمامات'
+        : reusedExisting
+          ? `العميل (${nameVal}) موجود مسبقاً في قاعدة العملاء ✨`
+          : 'تم إضافة / تحديث العميل في قاعدة العملاء بنجاح! ✨',
     };
   } catch (err) {
     console.error('[handleAddToClients] exception:', err);
     return {
       ok: false,
       error: `خطأ غير متوقع: ${err instanceof Error ? err.message : String(err)}`,
+    };
+  }
+}
+
+/**
+ * Hard-delete an interest / lead row from قائمة الاهتمامات.
+ */
+export async function deleteInterestLead(
+  leadId: string,
+): Promise<{ ok: true; message: string } | { ok: false; error: string }> {
+  const id = String(leadId ?? '').trim();
+  if (!id) return { ok: false, error: 'معرّف الطلب غير صالح.' };
+
+  const serviceKeyError = assertServiceRoleKeyConfigured();
+  if (serviceKeyError) return { ok: false, error: serviceKeyError };
+
+  try {
+    const admin = createSupabaseAdminClient();
+    const { error } = await admin.from('leads').delete().eq('id', id);
+    if (error) {
+      console.error('[deleteInterestLead]', error);
+      return { ok: false, error: formatSupabaseError(error) };
+    }
+    revalidatePath('/crm/radar');
+    revalidatePath('/crm/clients');
+    return { ok: true, message: 'تم حذف تسجيل الاهتمام.' };
+  } catch (err) {
+    console.error('[deleteInterestLead] exception:', err);
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : 'تعذر حذف تسجيل الاهتمام.',
     };
   }
 }
@@ -764,12 +905,18 @@ export async function handleAcceptRequest(
     const phoneVal = pickLeadPhone(leadRow);
     const email = String(leadRow.email ?? '').trim() || null;
     const destination = pickPreferredDestination(leadRow);
+    const optional = safeClientOptionalFields({
+      email,
+      birth_date:
+        leadRow.birth_date != null ? String(leadRow.birth_date) : null,
+      age: leadRow.age != null ? Number(leadRow.age) : null,
+    });
 
     // Soft client link — failures only warn; acceptance continues
     const linked = await tryLinkClientFromRequest(admin, {
       name: nameVal,
       phone: phoneVal,
-      email,
+      email: optional.email,
       destination,
       engagementStatus: 'active',
       linkedClientId: coerceClientId(leadRow.client_id),
@@ -779,17 +926,27 @@ export async function handleAcceptRequest(
     // Fallback for DNA: client id OR lead id (request id)
     const finalIdForDna = String(targetClientId ?? id);
 
-    const dnaUrl = buildDnaSurveyUrl(finalIdForDna, options?.origin ?? undefined);
-    const welcomeUrl =
-      targetClientId != null
-        ? buildClientDnaWelcomeUrlByClientId(targetClientId, options?.origin ?? undefined)
-        : `${(options?.origin ?? siteOrigin()).replace(/\/$/, '')}/welcome/${encodeURIComponent(id)}`;
+    let dnaUrl = '';
+    let welcomeUrl = '';
+    try {
+      dnaUrl = buildDnaSurveyUrl(finalIdForDna, options?.origin ?? undefined);
+      welcomeUrl =
+        targetClientId != null
+          ? buildClientDnaWelcomeUrlByClientId(targetClientId, options?.origin ?? undefined)
+          : `${(options?.origin ?? siteOrigin()).replace(/\/$/, '')}/welcome/${encodeURIComponent(id)}`;
+    } catch (dnaErr) {
+      console.warn('[handleAcceptRequest] DNA URL soft-fail:', dnaErr);
+      dnaUrl = `/dna-survey?client_id=${encodeURIComponent(finalIdForDna)}`;
+      welcomeUrl = dnaUrl;
+    }
 
     if (targetClientId != null) {
       await patchClientMeta(admin, targetClientId, {
         name: nameVal,
         phone_wa: phoneVal || undefined,
-        email,
+        email: optional.email,
+        birth_date: optional.birth_date,
+        age: optional.age,
         target_trip: destination,
         engagement_status: 'active',
         sales_stage: DEFAULT_SALES_STAGE,

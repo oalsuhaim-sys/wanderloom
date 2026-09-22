@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useTransition } from 'react';
 import { Heart, Loader2, MapPin, Phone, User } from 'lucide-react';
@@ -10,9 +10,9 @@ import { requireValidPhone } from '@/lib/phoneUtils';
 import { normalizeAffiliateRef, persistAffiliateRef } from '@/lib/referral-url';
 
 const INPUT_CLASS =
-  'h-11 w-full rounded-xl border border-gray-200/90 bg-white/80 px-4 text-sm font-bold text-[#111111] outline-none transition placeholder:text-gray-400 focus:border-[#cda04c]/70 focus:ring-2 focus:ring-[#cda04c]/25';
+  'h-11 w-full rounded-xl border border-gray-200/90 bg-white/80 px-4 text-sm font-bold text-[#1C2E3A] outline-none transition placeholder:text-gray-400 focus:border-[#9C7A3C]/70 focus:ring-2 focus:ring-[#9C7A3C]/25';
 
-const FIELD_LABEL = 'mb-2 block text-right text-xs font-black tracking-wide text-[#cda04c]';
+const FIELD_LABEL = 'mb-2 block text-right text-xs font-black tracking-wide text-[#9C7A3C]';
 
 type InterestFormProps = {
   variant?: 'default' | 'modal';
@@ -48,7 +48,7 @@ export function InterestForm({ variant = 'default', onSuccess }: InterestFormPro
     fd.set('full_name', fullName);
     fd.set('phone_wa', phoneCheck.formattedPhone);
     if (destination.trim()) fd.set('destination', destination.trim());
-    if (referral) fd.set('referral_code', referral);
+    if (referral) fd.set('ref_code', referral);
 
     startTransition(async () => {
       const result = await submitInterestAction(fd);
@@ -73,19 +73,19 @@ export function InterestForm({ variant = 'default', onSuccess }: InterestFormPro
         className={
           variant === 'modal'
             ? 'py-4 text-center'
-            : 'rounded-2xl border border-emerald-200/80 bg-gradient-to-br from-emerald-50 to-white p-8 text-center shadow-sm'
+            : 'rounded-2xl border border-[#1C2E3A]/15 bg-gradient-to-br from-[#F4EFE6] to-white p-8 text-center shadow-sm'
         }
       >
-        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
+        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-[#1C2E3A]/10 text-[#1C2E3A]">
           <Heart className="h-7 w-7" aria-hidden />
         </div>
-        <p className="text-base font-black leading-relaxed text-emerald-900 sm:text-lg">
+        <p className="text-base font-black leading-relaxed text-[#1C2E3A] sm:text-lg">
           {successMessage}
         </p>
         <button
           type="button"
           onClick={() => setSuccessMessage('')}
-          className="mt-6 text-sm font-bold text-[#9a7b45] underline decoration-[#cda04c]/40 underline-offset-4 transition hover:text-[#cda04c]"
+          className="mt-6 text-sm font-bold text-[#9C7A3C] underline decoration-[#9C7A3C]/40 underline-offset-4 transition hover:text-[#9C7A3C]"
         >
           {variant === 'modal' ? 'إغلاق' : 'تسجيل اهتمام آخر'}
         </button>
@@ -99,7 +99,7 @@ export function InterestForm({ variant = 'default', onSuccess }: InterestFormPro
       className={
         variant === 'modal'
           ? ''
-          : 'rounded-2xl border border-[#1e3f20]/10 bg-white/90 p-6 shadow-sm backdrop-blur-sm sm:p-8'
+          : 'rounded-2xl border border-[#1C2E3A]/10 bg-white/90 p-6 shadow-sm backdrop-blur-sm sm:p-8'
       }
       dir="rtl"
       lang="ar"
@@ -169,7 +169,7 @@ export function InterestForm({ variant = 'default', onSuccess }: InterestFormPro
         <ReferralCodeField
           value={referralCode}
           onChange={setReferralCode}
-          inputClassName="h-11 focus:border-[#cda04c]/70 focus:ring-[#cda04c]/25"
+          inputClassName="h-11 focus:border-[#9C7A3C]/70 focus:ring-[#9C7A3C]/25"
         />
       </div>
 
@@ -182,7 +182,7 @@ export function InterestForm({ variant = 'default', onSuccess }: InterestFormPro
       <button
         type="submit"
         disabled={pending}
-        className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-[#1e3f20] py-3.5 text-sm font-black text-[#cda04c] transition hover:bg-[#163018] disabled:opacity-60"
+        className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-[#1C2E3A] py-3.5 text-sm font-black text-[#F4EFE6] transition hover:bg-[#122029] disabled:opacity-60"
       >
         {pending ? <Loader2 className="h-5 w-5 animate-spin" aria-hidden /> : null}
         سجل اهتمامك

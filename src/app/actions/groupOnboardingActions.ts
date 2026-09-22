@@ -217,6 +217,7 @@ async function placePublicRegistrantOnWaitlist(input: {
     phoneWa: input.phoneWa,
     email: input.email,
     birthDate: input.birthDate,
+    age: input.age ?? null,
     tripLabel: input.tripTitle,
     referralCode: input.referralCode,
   });
@@ -228,6 +229,7 @@ async function placePublicRegistrantOnWaitlist(input: {
     customerName: input.fullName,
     customerPhone: input.phoneWa,
     status: 'waitlisted',
+    birthDate: input.birthDate,
   });
   if (!link.ok) return { ok: false, error: link.error };
 
@@ -311,6 +313,7 @@ export async function submitGroupTripLead(input: {
       phoneWa: phone_wa,
       email,
       birthDate: birth_date,
+      age: ageNum,
       tripLabel: trip_label,
       referralCode: referral_code,
     });
@@ -340,6 +343,7 @@ export async function submitGroupTripLead(input: {
           customerName: full_name,
           customerPhone: phone_wa,
           status: 'waitlisted',
+          birthDate: birth_date,
         });
         if (!memberLink.ok) {
           console.error('Supabase Form Error:', memberLink.error);
@@ -372,6 +376,7 @@ export async function submitGroupTripLead(input: {
         customerName: full_name,
         customerPhone: phone_wa,
         status: 'pending_interview',
+        birthDate: birth_date,
       });
       if (!memberLink.ok) {
         console.warn('[submitGroupTripLead] group_members link:', memberLink.error);
@@ -430,6 +435,7 @@ export type GroupRegistrationDraftPayload = {
   phone_wa: string;
   email?: string | null;
   birth_date?: string | null;
+  age?: number | null;
   trip_label: string;
   preferred_trip_id: string;
   referral_code?: string | null;
@@ -449,8 +455,16 @@ function validateGroupRegistrationDraft(
   const preferred_trip_id = s(input.preferred_trip_id);
   const birth_date = s(input.birth_date ?? '').slice(0, 10) || null;
 
+  const explicitAge =
+    input.age != null && Number.isFinite(Number(input.age))
+      ? Math.floor(Number(input.age))
+      : null;
   let age =
-    birth_date != null ? ageFromBirthDate(birth_date) : null;
+    explicitAge != null && explicitAge >= 1 && explicitAge <= 120
+      ? explicitAge
+      : birth_date != null
+        ? ageFromBirthDate(birth_date)
+        : null;
 
   if (!full_name || !phone_wa) {
     return { ok: false, error: ar.errors.trip.namePhone };
@@ -461,12 +475,21 @@ function validateGroupRegistrationDraft(
   if (email && !isValidEmail(email)) {
     return { ok: false, error: ar.errors.groupTrip.invalidEmail };
   }
+  if (!age || age < 1 || age > 120) {
+    return {
+      ok: false,
+      error: birth_date
+        ? ar.errors.groupTrip.invalidBirthDate
+        : ar.errors.groupTrip.ageRequired,
+    };
+  }
   if (birth_date) {
-    if (!age || age < 1 || age > 120) {
+    const fromDob = ageFromBirthDate(birth_date);
+    if (!fromDob) {
       return { ok: false, error: ar.errors.groupTrip.invalidBirthDate };
     }
   } else {
-    return { ok: false, error: ar.errors.groupTrip.invalidBirthDate };
+    return { ok: false, error: ar.errors.groupTrip.birthDateRequired };
   }
 
   return { ok: true, age, birth_date };
@@ -507,6 +530,7 @@ async function registerGroupTripLeadAtConfirmation(
     phoneWa: phone_wa,
     email,
     birthDate: birth_date,
+    age: validated.age,
     tripLabel: trip_label,
     referralCode: referral_code,
   });
@@ -739,6 +763,10 @@ export async function submitGroupLeadDnaAction(
     email: resolvedContact.email,
     birthDate:
       leadContact?.birth_date != null ? String(leadContact.birth_date).slice(0, 10) : null,
+    age:
+      leadContact?.age != null && Number.isFinite(Number(leadContact.age))
+        ? Math.floor(Number(leadContact.age))
+        : null,
     tripLabel: destinations[0] ?? null,
     interests,
     dailyPace: payload.daily_pace || null,
@@ -789,6 +817,8 @@ export async function submitGroupLeadDnaAction(
       customerName: resolvedContact.fullName,
       customerPhone: resolvedContact.phoneWa,
       status: 'pending_interview',
+      birthDate:
+        leadContact?.birth_date != null ? String(leadContact.birth_date).slice(0, 10) : null,
     });
     if (!memberLink.ok) {
       console.warn('[group-dna] group_members link:', memberLink.error);
@@ -1125,21 +1155,40 @@ async function resolveClientForGroupApproval(
   // Canonical SA form for storage — must match how unique_phone_wa rows are stored
   const phoneWa = canonicalizePhoneWa(cleanPhone) || cleanPhone;
   const email = String(leadRow.email ?? '').trim() || null;
+  const birthDateRaw = String(leadRow.birth_date ?? '').trim().slice(0, 10);
+  const birthDate = /^\d{4}-\d{2}-\d{2}$/.test(birthDateRaw) ? birthDateRaw : null;
+  const leadAgeRaw =
+    leadRow.age != null && Number.isFinite(Number(leadRow.age))
+      ? Math.floor(Number(leadRow.age))
+      : null;
+  const ageNum =
+    (leadAgeRaw != null && leadAgeRaw >= 1 && leadAgeRaw <= 120 ? leadAgeRaw : null) ||
+    (birthDate ? ageFromBirthDate(birthDate) : null);
+
+  const withAgeAndDob = (payload: Record<string, unknown>): Record<string, unknown> => {
+    let next = { ...payload };
+    if (birthDate) next = { ...next, birth_date: birthDate };
+    if (ageNum != null) next = { ...next, age: ageNum };
+    return next;
+  };
 
   const upsertPayloads: Record<string, unknown>[] = [
-    {
+    withAgeAndDob({
       name,
       phone_wa: phoneWa,
       email,
       client_type: 'عميل',
       intake_trip_type: 'group',
       lead_source: 'group_onboarding',
-    },
+    }),
+    withAgeAndDob({ name, phone_wa: phoneWa, email, client_type: 'عميل' }),
+    withAgeAndDob({ name, phone_wa: phoneWa, client_type: 'عميل' }),
+    withAgeAndDob({ name, phone_wa: phoneWa }),
+    withAgeAndDob({ name, phone_wa: cleanPhone, client_type: 'عميل' }),
+    withAgeAndDob({ name, phone_wa: cleanPhone }),
+    // Fallbacks if birth_date / age columns are missing from schema cache
     { name, phone_wa: phoneWa, email, client_type: 'عميل' },
-    { name, phone_wa: phoneWa, client_type: 'عميل' },
     { name, phone_wa: phoneWa },
-    { name, phone_wa: cleanPhone, client_type: 'عميل' },
-    { name, phone_wa: cleanPhone },
   ];
 
   let lastError: string | null = null;
@@ -1167,6 +1216,19 @@ async function resolveClientForGroupApproval(
         ok: false,
         error: `فشل استخراج ID. البيانات المستلمة: ${JSON.stringify(clientData)}`,
       };
+    }
+
+    if (birthDate || ageNum != null) {
+      const agePatch: Record<string, unknown> = {};
+      if (birthDate) agePatch.birth_date = birthDate;
+      if (ageNum != null) agePatch.age = ageNum;
+      const { error: birthError } = await admin
+        .from('clients')
+        .update(agePatch)
+        .eq('id', clientId);
+      if (birthError) {
+        console.warn('[groupApprove] clients.age/birth_date patch:', birthError.message);
+      }
     }
 
     let clientName = name;
@@ -1201,10 +1263,12 @@ async function loadLeadDecisionRow(
   const admin = createSupabaseAdminClient();
   const id = String(leadId ?? '').trim();
   const selectAttempts = [
-    'id, full_name, phone_wa, email, birth_date, destinations, interests, daily_pace, food_preferences, final_thoughts, status, form_type, interview_date, preferred_trip_id, media_consent, referral_code',
+    'id, full_name, phone_wa, email, birth_date, age, destinations, interests, daily_pace, food_preferences, final_thoughts, status, form_type, interview_date, preferred_trip_id, media_consent, referral_code',
+    'id, full_name, phone_wa, email, birth_date, age, destinations, interests, daily_pace, food_preferences, final_thoughts, status, form_type, interview_date, preferred_trip_id, media_consent',
     'id, full_name, phone_wa, email, birth_date, destinations, interests, daily_pace, food_preferences, final_thoughts, status, form_type, interview_date, preferred_trip_id, media_consent',
     'id, full_name, phone_wa, email, destinations, interests, daily_pace, food_preferences, final_thoughts, status, form_type, interview_date, preferred_trip_id',
     'id, full_name, phone_wa, email, destinations, interests, daily_pace, food_preferences, final_thoughts, status, form_type, interview_date',
+    'id, full_name, phone_wa, email, client_id, birth_date, age, destinations, interests, daily_pace, food_preferences, final_thoughts, status, form_type, interview_date, preferred_trip_id, media_consent, referral_code',
     'id, full_name, phone_wa, email, client_id, birth_date, destinations, interests, daily_pace, food_preferences, final_thoughts, status, form_type, interview_date, preferred_trip_id, media_consent, referral_code',
     'id, full_name, phone_wa, email, client_id, destinations, interests, daily_pace, food_preferences, final_thoughts, status, form_type, interview_date, preferred_trip_id',
   ];
@@ -1310,7 +1374,7 @@ async function patchClientGroupMetadata(
   const leadName = String(leadRow.full_name ?? leadRow.name ?? '').trim();
   if (leadName) updatePayload.name = leadName;
 
-  // Persist the referral code the lead used (do not overwrite client's own referral_code)
+  // Persist the affiliate code the lead used (do not overwrite client's own ref_code)
   if (decision === 'approved' || decision === 'dna_submitted') {
     const usedCode = extractReferralCodeFromLead(leadRow);
     if (usedCode) {

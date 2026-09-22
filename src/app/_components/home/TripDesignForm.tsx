@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import type { ReactNode } from 'react';
 import { Suspense, useEffect, useRef, useState, useTransition } from 'react';
@@ -18,14 +18,14 @@ import { requireValidPhone } from '@/lib/phoneUtils';
 import { getTripCountryById } from '@/lib/trip-destination-data';
 
 const INPUT_CLASS =
-  'h-10 w-full rounded-lg border border-gray-200/90 bg-white/50 px-3 text-sm font-bold text-[#111111] outline-none transition placeholder:text-gray-400 focus:border-[#cda04c]/70 focus:ring-2 focus:ring-[#cda04c]/25';
+  'h-10 w-full rounded-lg border border-gray-200/90 bg-white/50 px-3 text-sm font-bold text-[#1C2E3A] outline-none transition placeholder:text-gray-400 focus:border-[#9C7A3C]/70 focus:ring-2 focus:ring-[#9C7A3C]/25';
 
 const DATE_INPUT_CLASS = `${INPUT_CLASS} [color-scheme:light] cursor-pointer [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-50 hover:[&::-webkit-calendar-picker-indicator]:opacity-100`;
 
 const TEXTAREA_CLASS =
-  'w-full resize-y rounded-lg border border-gray-200/90 bg-white/50 px-3 py-2.5 text-sm font-bold leading-relaxed text-[#111111] outline-none transition placeholder:text-gray-400 focus:border-[#cda04c]/70 focus:ring-2 focus:ring-[#cda04c]/25';
+  'w-full resize-y rounded-lg border border-gray-200/90 bg-white/50 px-3 py-2.5 text-sm font-bold leading-relaxed text-[#1C2E3A] outline-none transition placeholder:text-gray-400 focus:border-[#9C7A3C]/70 focus:ring-2 focus:ring-[#9C7A3C]/25';
 
-const FIELD_LABEL = 'mb-1.5 block text-right text-xs font-black tracking-wide text-[#cda04c]';
+const FIELD_LABEL = 'mb-1.5 block text-right text-xs font-black tracking-wide text-[#9C7A3C]';
 
 const PILL_ROW = 'flex flex-wrap gap-3 justify-start dir-rtl';
 
@@ -35,9 +35,9 @@ const PILL_BASE =
   'inline-flex cursor-pointer select-none items-center justify-center rounded-full px-4 py-1.5 text-sm font-bold transition-all duration-200';
 
 const PILL_OFF =
-  'border border-gray-300/90 bg-transparent text-[#111111] hover:border-[#cda04c]/45 hover:bg-[#f4f0e6]/40';
+  'border border-gray-300/90 bg-transparent text-[#1C2E3A] hover:border-[#9C7A3C]/45 hover:bg-[#f4f0e6]/40';
 
-const PILL_ON = 'border border-transparent bg-[#1e3f20] text-white shadow-sm';
+const PILL_ON = 'border border-[#9C7A3C] bg-[#1C2E3A] text-[#F4EFE6] shadow-sm';
 
 function SectionCard({
   n,
@@ -54,11 +54,11 @@ function SectionCard({
     <fieldset className="rounded-2xl border border-gray-100/90 bg-white p-4 shadow-sm sm:p-6">
       <legend className="sr-only">{title}</legend>
       <div className="mb-5 flex items-start gap-3 border-b border-gray-100 pb-4">
-        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-[#1e3f20]/30 bg-[#f4f0e6]/50 text-xs font-black text-[#1e3f20]">
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-[#1C2E3A]/30 bg-[#f4f0e6]/50 text-xs font-black text-[#1C2E3A]">
           {n}
         </span>
         <div className="min-w-0 flex-1 text-right">
-          <h3 className="text-base font-black text-[#111111] sm:text-lg">{title}</h3>
+          <h3 className="text-base font-black text-[#1C2E3A] sm:text-lg">{title}</h3>
           {subtitle ? (
             <p className="mt-1 text-xs font-bold leading-relaxed text-gray-500">{subtitle}</p>
           ) : null}
@@ -122,7 +122,7 @@ function CheckboxPill({
     <label className="cursor-pointer">
       <input type="checkbox" name={name} value={value} className="peer sr-only" />
       <span
-        className={`${PILL_BASE} ${PILL_OFF} peer-checked:border-transparent peer-checked:bg-[#1e3f20] peer-checked:text-white peer-checked:shadow-sm`}
+        className={`${PILL_BASE} ${PILL_OFF} peer-checked:border-[#9C7A3C] peer-checked:bg-[#1C2E3A] peer-checked:text-[#F4EFE6] peer-checked:shadow-sm`}
       >
         {label}
       </span>
@@ -151,7 +151,7 @@ function RadioPill({
         className="peer sr-only"
       />
       <span
-        className={`${PILL_BASE} ${PILL_OFF} peer-checked:border-transparent peer-checked:bg-[#1e3f20] peer-checked:text-white peer-checked:shadow-sm`}
+        className={`${PILL_BASE} ${PILL_OFF} peer-checked:border-[#9C7A3C] peer-checked:bg-[#1C2E3A] peer-checked:text-[#F4EFE6] peer-checked:shadow-sm`}
       >
         {label}
       </span>
@@ -162,7 +162,7 @@ function RadioPill({
 function PillGroup({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className={QUESTION_BLOCK}>
-      <p className="text-right text-xs font-black text-[#111111]">{label}</p>
+      <p className="text-right text-xs font-black text-[#1C2E3A]">{label}</p>
       <div className={PILL_ROW}>{children}</div>
     </div>
   );
@@ -191,7 +191,7 @@ function PreferenceWithOther({
 }) {
   return (
     <div className={QUESTION_BLOCK}>
-      <p className="text-right text-xs font-black text-[#111111]">{label}</p>
+      <p className="text-right text-xs font-black text-[#1C2E3A]">{label}</p>
       <div className={PILL_ROW}>
         {children}
         <label className={`${PILL_BASE} ${otherSelected ? PILL_ON : PILL_OFF}`}>
@@ -228,7 +228,7 @@ export function TripDesignForm() {
     <Suspense
       fallback={
         <div className="mx-auto flex min-h-[200px] max-w-3xl items-center justify-center rounded-2xl border border-gray-100 bg-white p-8">
-          <Loader2 className="h-8 w-8 animate-spin text-[#cda04c]" aria-hidden />
+          <Loader2 className="h-8 w-8 animate-spin text-[#9C7A3C]" aria-hidden />
         </div>
       }
     >
@@ -276,6 +276,7 @@ function TripDesignFormInner() {
   const [lodgingOther, setLodgingOther] = useState(false);
   const [lodgingOtherText, setLodgingOtherText] = useState('');
   const [referralCode, setReferralCode] = useState('');
+  const [formData, setFormData] = useState({ birth_date: '' });
 
   useEffect(() => {
     const fromUrl = normalizeAffiliateRef(searchParams.get('ref'));
@@ -430,8 +431,8 @@ function TripDesignFormInner() {
       fd.append('lodging_prefs', 'other');
       if (lodgingOtherText.trim()) fd.set('lodging_prefs_other', lodgingOtherText.trim());
     }
-    const ref = normalizeAffiliateRef(referralCode) || normalizeAffiliateRef(fd.get('referral_code') as string);
-    if (ref) fd.set('referral_code', ref);
+    const ref = normalizeAffiliateRef(referralCode) || normalizeAffiliateRef(fd.get('ref_code') as string) || normalizeAffiliateRef(fd.get('referral_code') as string);
+    if (ref) fd.set('ref_code', ref);
     setState(null);
     startTransition(() => {
       void (async () => {
@@ -440,6 +441,7 @@ function TripDesignFormInner() {
           setState(res);
           if (res.ok) {
             form.reset();
+            setFormData({ birth_date: '' });
             setSelectedCountries([]);
             setSelectedCities([]);
             setIsOtherCountry(false);
@@ -477,7 +479,7 @@ function TripDesignFormInner() {
   const showCityPicker = effectiveCountries.length > 0;
 
   return (
-    <form onSubmit={onSubmit} className="mx-auto max-w-3xl space-y-6 bg-[#FDFBF7]" dir={dir}>
+    <form onSubmit={onSubmit} className="mx-auto max-w-3xl space-y-6 bg-[#F4EFE6]" dir={dir}>
       {selectedCountries.map((id) => (
         <input key={id} type="hidden" name="dest_countries" value={id} />
       ))}
@@ -509,6 +511,26 @@ function TripDesignFormInner() {
           />
         </div>
         <div>
+          <label className={FIELD_LABEL}>{f.birthDateLabel}</label>
+          <input
+            name="birth_date"
+            required
+            type="date"
+            className={`${INPUT_CLASS} cursor-pointer`}
+            value={formData.birth_date}
+            onChange={(e) =>
+              setFormData((prev) => ({ ...prev, birth_date: e.target.value }))
+            }
+            onClick={(e) => {
+              try {
+                e.currentTarget.showPicker?.();
+              } catch {
+                /* native date input still works */
+              }
+            }}
+          />
+        </div>
+        <div>
           <label className={FIELD_LABEL}>{f.sourceLabel}</label>
           <select name="source" className={INPUT_CLASS} defaultValue="">
             <option value="" disabled>
@@ -533,7 +555,7 @@ function TripDesignFormInner() {
 
       <SectionCard n={2} title={f.section2Title} subtitle={f.section2Subtitle}>
         <div className={QUESTION_BLOCK}>
-          <p className="text-right text-xs font-black text-[#111111]">{f.countriesLabel}</p>
+          <p className="text-right text-xs font-black text-[#1C2E3A]">{f.countriesLabel}</p>
           <div className={PILL_ROW}>
             {tripDestinations.map((c) => {
               const isSelected = selectedCountries.includes(c.id);
@@ -559,7 +581,7 @@ function TripDesignFormInner() {
                 value={customCountry}
                 onChange={(e) => setCustomCountry(e.target.value)}
                 placeholder={f.otherCountryPlaceholder}
-                className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm font-bold text-[#111111] outline-none transition-all placeholder:text-gray-400 focus:border-[#1A3B2A] focus:ring-1 focus:ring-[#1A3B2A] md:w-1/2"
+                className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm font-bold text-[#1C2E3A] outline-none transition-all placeholder:text-gray-400 focus:border-[#1C2E3A] focus:ring-1 focus:ring-[#1C2E3A] md:w-1/2"
               />
             </div>
           ) : null}
@@ -567,7 +589,7 @@ function TripDesignFormInner() {
 
         {showCityPicker ? (
           <div className="space-y-4 border-t border-gray-100 pt-4">
-            <p className="text-right text-xs font-black text-[#111111]">{f.citiesHeading}</p>
+            <p className="text-right text-xs font-black text-[#1C2E3A]">{f.citiesHeading}</p>
             {effectiveCountries.map((cid) => {
               const country = cid === 'other' ? null : tripDestinations.find((c) => c.id === cid) ?? getTripCountryById(cid);
               if (cid !== 'other' && !country) return null;
@@ -610,7 +632,7 @@ function TripDesignFormInner() {
                         '{country}',
                         displayCountryLabel(cid),
                       )}
-                      className="mt-2 inline-block w-full max-w-md rounded-full border border-gray-200 px-4 py-2 text-sm font-bold text-[#111111] outline-none transition placeholder:text-gray-400 focus:border-[#1A3B2A] focus:ring-1 focus:ring-[#1A3B2A]"
+                      className="mt-2 inline-block w-full max-w-md rounded-full border border-gray-200 px-4 py-2 text-sm font-bold text-[#1C2E3A] outline-none transition placeholder:text-gray-400 focus:border-[#1C2E3A] focus:ring-1 focus:ring-[#1C2E3A]"
                     />
                   ) : null}
                 </div>
@@ -686,7 +708,7 @@ function TripDesignFormInner() {
 
         {effectiveCountries.length > 0 ? (
           <div className="space-y-4 border-t border-gray-100 pt-4">
-            <p className="text-right text-xs font-black text-[#111111]">{f.visitSectionTitle}</p>
+            <p className="text-right text-xs font-black text-[#1C2E3A]">{f.visitSectionTitle}</p>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               {effectiveCountries.map((cid) => {
                 if (
@@ -784,7 +806,7 @@ function TripDesignFormInner() {
       ) : null}
 
       {state?.ok && state.message ? (
-        <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-900">
+        <div className="rounded-lg border border-[#1C2E3A]/20 bg-[#F4EFE6] px-4 py-3 text-sm font-bold text-[#1C2E3A]">
           {state.message}
         </div>
       ) : null}
@@ -793,7 +815,7 @@ function TripDesignFormInner() {
         <button
           type="submit"
           disabled={pending || isSubmitting}
-          className={`inline-flex h-11 min-w-[220px] items-center justify-center gap-2 rounded-full bg-[#cda04c] px-8 text-sm font-black text-white shadow-sm transition hover:bg-[#b3893d] disabled:cursor-not-allowed disabled:opacity-50 ${
+          className={`inline-flex h-11 min-w-[220px] items-center justify-center gap-2 rounded-full bg-[#1C2E3A] px-8 text-sm font-black text-[#F4EFE6] shadow-sm transition-all hover:bg-[#122029] disabled:cursor-not-allowed disabled:opacity-50 ${
             pending || isSubmitting ? 'opacity-50 cursor-not-allowed' : ''
           }`}
         >

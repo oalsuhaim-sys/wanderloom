@@ -99,9 +99,14 @@ export async function submitOnboardingProfileAction(
       console.warn('[submitOnboardingProfileAction] auto quotation:', autoQuote.error);
     }
 
+    // Auto-quote may briefly set quote_stage — re-force «اجتماع العميل» as DNA destination
+    await ensureLeadMeetingAfterDnaAdmin(
+      meeting.clientId != null ? String(meeting.clientId) : key,
+    );
+
     return {
       ok: true,
-      leadId: meeting.leadId,
+      leadId: meeting.leadId ?? autoQuote.leadId,
       quoteId: autoQuote.quoteId,
       quotationUrl: autoQuote.quotationUrl ?? null,
       clientName: autoQuote.clientName ?? null,

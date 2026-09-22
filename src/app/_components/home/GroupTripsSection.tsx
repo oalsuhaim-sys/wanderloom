@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -24,9 +24,9 @@ import { supabaseClient } from '@/lib/supabaseClient';
 import type { GroupTripRow } from '@/types/group-trip';
 
 const CARD_STYLES = [
-  { ring: 'ring-[#cda04c]/35', chip: 'bg-[#1e3f20]/10 text-[#1e3f20]' },
-  { ring: 'ring-sky-300/40', chip: 'bg-sky-50 text-sky-900' },
-  { ring: 'ring-violet-300/40', chip: 'bg-violet-50 text-violet-900' },
+  { ring: 'ring-[#9C7A3C]/20', chip: 'text-[#9C7A3C]' },
+  { ring: 'ring-[#1C2E3A]/10', chip: 'text-[#9C7A3C]' },
+  { ring: 'ring-[#9C7A3C]/15', chip: 'text-[#9C7A3C]' },
 ] as const;
 
 type DisplayTrip = GroupTripRow & {
@@ -49,20 +49,20 @@ const INITIAL_REG_FORM = {
 };
 
 const REG_FIELD_CLASS =
-  'w-full rounded-xl border border-slate-200 bg-white p-3 text-xs font-bold text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#C5A059] focus:ring-2 focus:ring-[#C5A059]/40 disabled:cursor-text disabled:bg-white disabled:text-slate-900 disabled:opacity-100';
+  'w-full rounded-xl border border-[#1C2E3A]/15 bg-white p-3 text-xs font-bold text-[#1C2E3A] outline-none transition placeholder:text-[#1C2E3A]/40 focus:border-[#9C7A3C] focus:ring-2 focus:ring-[#9C7A3C]/40 disabled:cursor-text disabled:bg-white disabled:text-[#1C2E3A] disabled:opacity-100';
 
 const REG_LABEL_CLASS = 'mb-1 block text-xs font-extrabold';
 
 function GroupTripCardSkeleton() {
   return (
-    <div className="flex animate-pulse flex-col rounded-2xl border border-gray-100 bg-white p-8 shadow-sm md:p-10">
-      <div className="h-6 w-20 rounded-full bg-stone-200" />
-      <div className="mt-4 h-6 w-3/4 rounded-lg bg-stone-200" />
+    <div className="flex animate-pulse flex-col rounded-3xl border border-[#1C2E3A]/10 bg-white/80 p-8 shadow-sm backdrop-blur-sm md:p-10">
+      <div className="h-4 w-20 rounded-full bg-[#F4EFE6]" />
+      <div className="mt-4 h-6 w-3/4 rounded-lg bg-[#F4EFE6]" />
       <div className="mt-3 space-y-2">
-        <div className="h-3 w-full rounded bg-stone-100" />
-        <div className="h-3 w-5/6 rounded bg-stone-100" />
+        <div className="h-3 w-full rounded bg-[#F4EFE6]/80" />
+        <div className="h-3 w-5/6 rounded bg-[#F4EFE6]/80" />
       </div>
-      <div className="mt-6 h-12 rounded-2xl bg-stone-200" />
+      <div className="mt-6 h-12 rounded-full bg-[#F4EFE6]" />
     </div>
   );
 }
@@ -219,6 +219,7 @@ export function GroupTripsSection() {
         full_name: formData.fullName.trim(),
         phone_wa: phoneCheck.formattedPhone,
         email: emailTrimmed,
+        age: null,
         birth_date: birthDate,
         referral_code: referralCode ?? '',
         preferred_trip_id: open.id,
@@ -251,8 +252,8 @@ export function GroupTripsSection() {
           <GroupTripCardSkeleton />
         </div>
       ) : displayTrips.length === 0 ? (
-        <div className="mx-auto mt-12 max-w-xl rounded-[1.75rem] border border-[#1e3f20]/10 bg-white px-6 py-12 text-center shadow-sm">
-          <Loader2 className="mx-auto mb-3 h-8 w-8 animate-spin text-[#1e3f20]/40" aria-hidden />
+        <div className="mx-auto mt-12 max-w-xl rounded-[1.75rem] border border-[#1C2E3A]/10 bg-white px-6 py-12 text-center shadow-sm">
+          <Loader2 className="mx-auto mb-3 h-8 w-8 animate-spin text-[#1C2E3A]/40" aria-hidden />
           <p className="text-sm font-bold text-[#3d4a42]">
             {locale === 'ar'
               ? 'لا توجد رحلات مجموعات متاحة حالياً.'
@@ -267,24 +268,26 @@ export function GroupTripsSection() {
           {displayTrips.map((trip) => (
             <article
               key={trip.id}
-              className={`wl-lift-card group flex flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm ring-1 transition-all duration-500 hover:-translate-y-2 hover:shadow-[0_20px_40px_rgba(0,0,0,0.06)] ${trip.ring}`}
+              className={`wl-lift-card group flex flex-col overflow-hidden rounded-3xl border border-[#1C2E3A]/10 bg-white/80 p-6 shadow-sm backdrop-blur-sm ring-1 transition-all duration-300 hover:border-[#9C7A3C]/40 hover:shadow-xl ${trip.ring}`}
             >
-              <div className="wl-card-media overflow-hidden border-b border-gray-50 bg-gradient-to-br from-[#F9F9F6] via-white to-[#f4efe6] px-5 py-6 sm:px-8">
-                <div className="wl-card-media-icon flex h-14 w-14 items-center justify-center rounded-2xl bg-[#1A3B2A] text-[#C5A059] shadow-md transition-transform duration-700 group-hover:scale-105">
-                  <Users className="h-6 w-6" aria-hidden />
+              <div className="wl-card-media overflow-hidden rounded-2xl bg-gradient-to-br from-[#F4EFE6] via-white to-[#F4EFE6]/60 px-5 py-5">
+                <div className="wl-card-media-icon flex h-12 w-12 items-center justify-center rounded-2xl bg-[#1C2E3A] text-[#9C7A3C] transition-transform duration-500 group-hover:scale-105">
+                  <Users className="h-5 w-5" aria-hidden />
                 </div>
               </div>
-              <div className="flex flex-1 flex-col p-5 sm:p-8 md:p-10">
-                <span className={`w-fit rounded-full px-3 py-1 text-[10px] font-black ${trip.chip}`}>
+              <div className="mt-5 flex flex-1 flex-col">
+                <span className={`w-fit text-[11px] font-medium tracking-wide ${trip.chip}`}>
                   {trip.badge}
                 </span>
-                <h3 className="mt-4 text-lg font-black leading-snug text-[#0f1e16]">{trip.title}</h3>
+                <h3 className="mt-3 text-lg font-semibold leading-snug text-[#1C2E3A]">
+                  {trip.title}
+                </h3>
                 {trip.leader_name?.trim() ? (
                   <div className="mt-3">
                     <GroupTripLeaderBadge name={trip.leader_name} compact />
                   </div>
                 ) : null}
-                <p className="mt-3 flex-1 text-sm font-bold leading-relaxed text-[#4a5650]">
+                <p className="mt-3 flex-1 text-sm font-medium leading-relaxed text-[#1C2E3A]/70">
                   {trip.description}
                 </p>
                 <button
@@ -294,7 +297,7 @@ export function GroupTripsSection() {
                     resetRegForm();
                     setMsg(null);
                   }}
-                  className="mt-6 w-full rounded-full bg-[#1A3B2A] py-3.5 text-sm font-black text-white shadow-md transition-all duration-300 hover:-translate-y-0.5 hover:bg-[#163018] hover:shadow-lg"
+                  className="mt-6 w-full rounded-full bg-[#1C2E3A] py-3.5 text-sm font-medium tracking-wide text-[#F4EFE6] transition-all hover:bg-[#122029] hover:shadow-lg"
                 >
                   {g.registerCta}
                 </button>
@@ -307,14 +310,14 @@ export function GroupTripsSection() {
       {open && portalReady
         ? createPortal(
             <div
-              className="pointer-events-auto fixed inset-0 z-[9999] flex items-center justify-center overflow-y-auto bg-slate-950/70 p-4 backdrop-blur-md"
+              className="pointer-events-auto fixed inset-0 z-[9999] flex items-center justify-center overflow-y-auto bg-[#1C2E3A]/70 p-4 backdrop-blur-md"
               role="dialog"
               aria-modal="true"
               aria-labelledby="group-trip-modal-title"
               onClick={() => closeModal()}
             >
               <div
-                className="relative my-auto max-h-[min(92dvh,720px)] w-full max-w-lg space-y-5 overflow-y-auto rounded-3xl border border-slate-200/80 bg-white p-6 text-right shadow-2xl sm:p-8"
+                className="relative my-auto max-h-[min(92dvh,720px)] w-full max-w-lg space-y-5 overflow-y-auto rounded-3xl border border-[#1C2E3A]/15 bg-white p-6 text-right shadow-2xl sm:p-8"
                 onClick={(e) => e.stopPropagation()}
                 dir={dir}
               >
@@ -339,11 +342,11 @@ export function GroupTripsSection() {
                     {open.title}
                   </h3>
                   {open.description ? (
-                    <p className="pt-1 text-xs font-semibold leading-relaxed text-slate-600">
+                    <p className="pt-1 text-xs font-semibold leading-relaxed text-[#1C2E3A]/70">
                       {open.description}
                     </p>
                   ) : (
-                    <p className="pt-1 text-xs font-semibold text-slate-600">
+                    <p className="pt-1 text-xs font-semibold text-[#1C2E3A]/70">
                       {g.modal.tripLabel}: {open.title}
                     </p>
                   )}
@@ -371,7 +374,7 @@ export function GroupTripsSection() {
                     <div className="space-y-1 text-right">
                       <label className={REG_LABEL_CLASS} style={brandOliveLabelStyle}>
                         {g.modal.emailLabel}{' '}
-                        <span className="font-normal text-slate-500">({g.modal.optionalHint})</span>
+                        <span className="font-normal text-[#1C2E3A]/50">({g.modal.optionalHint})</span>
                       </label>
                       <input
                         type="email"
@@ -386,48 +389,47 @@ export function GroupTripsSection() {
                       />
                     </div>
 
-                    <div className="grid grid-cols-1 gap-3 text-right sm:grid-cols-2">
-                      <div className="space-y-1">
-                        <label className={REG_LABEL_CLASS} style={brandOliveLabelStyle}>
-                          {g.modal.waLabel.replace(/\s*\*$/, '')}{' '}
-                          <span className="text-rose-500">*</span>
-                        </label>
-                        <input
-                          type="tel"
-                          required
-                          dir="ltr"
-                          className={`${REG_FIELD_CLASS} text-right`}
-                          placeholder={g.modal.waPlaceholder}
-                          value={formData.whatsapp || ''}
-                          onChange={(e) =>
-                            setFormData((prev) => ({ ...prev, whatsapp: e.target.value }))
+                    <div className="space-y-1 text-right">
+                      <label className={REG_LABEL_CLASS} style={brandOliveLabelStyle}>
+                        {g.modal.waLabel.replace(/\s*\*$/, '')}{' '}
+                        <span className="text-rose-500">*</span>
+                      </label>
+                      <input
+                        type="tel"
+                        required
+                        dir="ltr"
+                        className={`${REG_FIELD_CLASS} text-right`}
+                        placeholder={g.modal.waPlaceholder}
+                        value={formData.whatsapp || ''}
+                        onChange={(e) =>
+                          setFormData((prev) => ({ ...prev, whatsapp: e.target.value }))
+                        }
+                        autoComplete="tel"
+                      />
+                    </div>
+
+                    <div className="space-y-1 text-right">
+                      <label className={REG_LABEL_CLASS} style={brandOliveLabelStyle}>
+                        {g.modal.birthDateLabel}{' '}
+                        <span className="text-rose-500">*</span>
+                      </label>
+                      <input
+                        type="date"
+                        required
+                        value={formData.birth_date || ''}
+                        onChange={(e) =>
+                          setFormData((prev) => ({ ...prev, birth_date: e.target.value }))
+                        }
+                        onClick={(e) => {
+                          try {
+                            e.currentTarget.showPicker?.();
+                          } catch {
+                            /* showPicker unsupported — native date input still works */
                           }
-                          autoComplete="tel"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className={REG_LABEL_CLASS} style={brandOliveLabelStyle}>
-                          {g.modal.birthDateLabel}{' '}
-                          <span className="text-rose-500">*</span>
-                        </label>
-                        <input
-                          type="date"
-                          required
-                          value={formData.birth_date || ''}
-                          onChange={(e) =>
-                            setFormData((prev) => ({ ...prev, birth_date: e.target.value }))
-                          }
-                          onClick={(e) => {
-                            try {
-                              e.currentTarget.showPicker?.();
-                            } catch {
-                              /* showPicker unsupported — native date input still works */
-                            }
-                          }}
-                          className={`${REG_FIELD_CLASS} cursor-pointer text-right`}
-                          dir="rtl"
-                        />
-                      </div>
+                        }}
+                        className={`${REG_FIELD_CLASS} cursor-pointer text-right`}
+                        dir="rtl"
+                      />
                     </div>
 
                     <ReferralCodeField
@@ -444,7 +446,7 @@ export function GroupTripsSection() {
                     <div
                       className={`mt-4 whitespace-pre-wrap rounded-xl border px-3 py-2 text-xs font-black ${
                         msg.type === 'ok'
-                          ? 'border-emerald-200 bg-emerald-50 text-emerald-900'
+                          ? 'border-[#1C2E3A]/20 bg-[#F4EFE6] text-[#1C2E3A]'
                           : 'border-red-200 bg-red-50 text-red-800'
                       }`}
                     >

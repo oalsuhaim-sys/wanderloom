@@ -52,6 +52,12 @@ export function normalizeSalesStage(raw: unknown): ClientSalesStage | '' {
   return ''
 }
 
+export function salesStageShortLabel(raw: unknown): string {
+  const s = normalizeSalesStage(raw)
+  if (!s) return String(raw ?? '').trim()
+  return CLIENT_SALES_STAGES.find((o) => o.value === s)?.shortLabel ?? s
+}
+
 export function salesStageBadgeClass(stage: string): string {
   const s = normalizeSalesStage(stage)
   switch (s) {

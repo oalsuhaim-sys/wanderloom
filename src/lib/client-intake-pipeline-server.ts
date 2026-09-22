@@ -302,6 +302,9 @@ async function healCreateClientFromLead(
       total_trips: 0,
       lead_source: 'website_lead',
       vip_tier: 'gold',
+      ...(lead.referral_code?.trim()
+        ? { used_code: String(lead.referral_code).trim() }
+        : {}),
     },
     {
       name,
@@ -310,6 +313,9 @@ async function healCreateClientFromLead(
       client_type: 'عميل',
       sales_stage: 'بانتظار DNA',
       lead_source: 'website_lead',
+      ...(lead.referral_code?.trim()
+        ? { used_code: String(lead.referral_code).trim() }
+        : {}),
     },
     { name, phone_wa: phone, email, client_type: 'عميل', sales_stage: 'طلب انضمام جديد' },
     { name, phone_wa: phone, email, client_type: 'عميل' },

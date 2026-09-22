@@ -4,7 +4,7 @@ import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 
 /**
  * Public referral code for a linked client — service-role read
- * (browser RLS often cannot select clients.referral_code).
+ * (browser RLS often cannot select clients.ref_code).
  *
  * Query: ?client_id=…  and/or  ?trip_id=…
  */
@@ -49,7 +49,7 @@ export async function GET(request: Request) {
 
   const { data: client, error } = await admin
     .from('clients')
-    .select('id, referral_code, ref_code')
+    .select('id, ref_code')
     .eq('id', clientId)
     .maybeSingle();
 
@@ -65,9 +65,7 @@ export async function GET(request: Request) {
     });
   }
 
-  // Match Admin CRM display order: ref_code first, then referral_code
-  const referral =
-    String(client.ref_code ?? client.referral_code ?? '').trim() || null;
+  const referral = String(client.ref_code ?? '').trim() || null;
 
   return NextResponse.json({
     ok: true,

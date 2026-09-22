@@ -3,7 +3,7 @@ import {
   formatInterestsForDnaColumn,
 } from '@/lib/client-dna-columns';
 import { CLIENT_DNA_ACTIVITY_OPTIONS, CLIENT_DNA_INTEREST_SUGGESTIONS, parseTravelDnaForm } from '@/lib/clientsTravelDna';
-import { updatePipelineStatus } from '@/lib/lead-pipeline-automation';
+import { advanceLeadsToMeetingAfterDna } from '@/lib/lead-pipeline-automation';
 import { normalizeLeadStatus, type LeadStatus } from '@/lib/lead-status';
 import { supabase } from '@/lib/supabase';
 
@@ -488,25 +488,7 @@ async function advanceLeadToMeetingAfterDna(
   clientId: ClientDbId,
 ): Promise<void> {
   try {
-    // DNA submitted (+ calendar already on the form) → Kanban «اجتماع العميل»
-    await updatePipelineStatus(sb, { clientId, force: true }, 'meeting');
-    // Belt-and-suspenders: direct update if pipeline helper no-ops
-    const { error } = await sb
-      .from('leads')
-      .update({ status: 'meeting' })
-      .eq('client_id', clientId)
-      .in('status', [
-        'radar_pending',
-        'new',
-        'pending_approval',
-        'awaiting_dna',
-        'dna_sent',
-        'dna_pending',
-        'meeting',
-      ]);
-    if (error && !/column|schema cache|does not exist|check/i.test(error.message ?? '')) {
-      console.warn('[onboarding] direct leads→meeting:', error.message);
-    }
+    await advanceLeadsToMeetingAfterDna(sb, clientId);
   } catch (err) {
     console.warn('[onboarding] advance lead to meeting:', err);
   }

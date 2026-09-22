@@ -16,6 +16,7 @@ import {
   Images,
   Kanban,
   LayoutDashboard,
+  Lightbulb,
   LogOut,
   Map,
   Megaphone,
@@ -72,7 +73,7 @@ const NAV_GROUPS: NavGroup[] = [
       { href: '/crm/groups', label: 'القروبات السياحية', icon: Users },
       { href: '/crm/groups/pricing', label: 'حاسبة تسعير القروب', icon: Calculator },
       { href: '/crm/sessions', label: 'الجلسات', icon: CalendarClock },
-      { href: '/crm/marketing', label: 'مركز التسويق', icon: Megaphone },
+      { href: '/crm/marketing', label: 'مركز التسويق الشامل', icon: Megaphone },
       { href: '/crm/hotels', label: 'قاعدة الفنادق', icon: Hotel },
       { href: '/crm/suppliers', label: 'دليل الموردين', icon: Handshake },
     ],
@@ -120,6 +121,7 @@ const NAV_GROUPS: NavGroup[] = [
 ];
 
 const STANDALONE_BOTTOM: NavItem[] = [
+  { href: '/crm/docs', label: 'دليل الخبير', icon: Lightbulb },
   { href: '/crm/accounts', label: 'إدارة الحسابات', icon: ShieldCheck, adminOnly: true },
   { href: '/crm/settings', label: 'إعدادات الوكالة', icon: Settings, adminOnly: true },
   { href: '/crm/features', label: 'دليل مميزات النظام', icon: Award },
@@ -152,8 +154,9 @@ function SidebarNavLink({
   return (
     <Link
       href={item.href}
+      prefetch={true}
       onClick={() => onNavigate?.()}
-      className={`group flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm transition-all duration-200 ease-in-out ${
+      className={`group flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm transition-all duration-150 ease-in-out active:scale-95 ${
         active
           ? 'bg-slate-900 font-medium text-white shadow-sm dark:border dark:border-[#D4AF37]/30 dark:bg-[#D4AF37]/10 dark:text-[#D4AF37] dark:shadow-none'
           : 'font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-gray-400 dark:hover:bg-[#2A3834] dark:hover:text-gray-100'

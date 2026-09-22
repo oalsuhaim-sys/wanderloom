@@ -1,8 +1,9 @@
 'use client';
 
-import React, { memo } from 'react';
+import React, { memo, useEffect, useRef, useState } from 'react';
 import { Draggable, Droppable } from '@hello-pangea/dnd';
-import { ChevronDown, ChevronUp, GripVertical, Pencil } from 'lucide-react';
+import { ChevronDown, ChevronUp, GripVertical, ImagePlus, Pencil, Sparkles, X } from 'lucide-react';
+import { toast } from '@/lib/crm-toast';
 
 import SupplierWhatsAppButton from '@/app/crm/itineraries/_components/SupplierWhatsAppButton';
 import {
@@ -42,6 +43,215 @@ function DayHotelEndCard({ hotelName }: { hotelName: string }) {
   );
 }
 
+function StopImageField({
+  imageUrl,
+  placeName,
+  searchKeyword,
+  category,
+  city,
+  onChange,
+}: {
+  imageUrl?: string;
+  placeName?: string;
+  searchKeyword?: string;
+  category?: string;
+  city?: string;
+  onChange: (url: string) => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [curating, setCurating] = useState(false);
+  const [draftUrl, setDraftUrl] = useState(() => String(imageUrl ?? ''));
+  const preview = String(draftUrl || imageUrl || '').trim();
+  const looksLikeHttpUrl = /^https?:\/\//i.test(preview);
+
+  useEffect(() => {
+    setDraftUrl(String(imageUrl ?? ''));
+  }, [imageUrl]);
+
+  function commitUrl(raw: string) {
+    setDraftUrl(raw);
+    onChange(String(raw ?? '').trim());
+  }
+
+  async function handleCurateImage() {
+    const title = String(placeName ?? '').trim();
+    if (!title && !String(searchKeyword ?? '').trim()) {
+      toast.error('أدخل عنوان المحطة أولاً لجلب صورة تلقائياً.');
+      return;
+    }
+
+    setCurating(true);
+    try {
+      let accessToken = '';
+      try {
+        const { getClientAccessToken } = await import('@/lib/crm-session-token');
+        accessToken = await getClientAccessToken();
+      } catch (authErr) {
+        throw new Error(
+          authErr instanceof Error ? authErr.message : 'انتهت الجلسة — سجّل الدخول مجدداً.',
+        );
+      }
+
+      const res = await fetch('/api/admin/fetch-stop-image', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          title,
+          search_keyword: searchKeyword,
+          category,
+          city,
+        }),
+      });
+      const json = (await res.json().catch(() => null)) as {
+        ok?: boolean;
+        imageUrl?: string;
+        message?: string;
+        error?: string;
+      } | null;
+
+      if (!res.ok || !json?.ok || !json.imageUrl) {
+        throw new Error(json?.message || json?.error || 'تعذر جلب الصورة');
+      }
+
+      commitUrl(json.imageUrl);
+      toast.success('تم جلب صورة فاخرة تلقائياً ✨');
+    } catch (err) {
+      console.error('[stop-image-curate]', err);
+      toast.error(err instanceof Error ? err.message : 'فشل جلب الصورة');
+    } finally {
+      setCurating(false);
+    }
+  }
+
+  async function handleFile(file: File | undefined) {
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      toast.error('يرجى اختيار صورة (JPG / PNG / WebP).');
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      toast.error('حجم الصورة كبير جداً (الحد 8MB).');
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const form = new FormData();
+      form.append('file', file);
+      if (placeName?.trim()) form.append('placeName', placeName.trim());
+
+      const res = await fetch('/api/crm/itinerary-stop-image', {
+        method: 'POST',
+        body: form,
+      });
+      const json = (await res.json().catch(() => null)) as
+        | { ok?: boolean; publicUrl?: string; error?: string; hint?: string }
+        | null;
+
+      if (!res.ok || !json?.ok || !json.publicUrl) {
+        const msg = json?.error || 'upload_failed';
+        const pasteHint =
+          /bucket not found/i.test(msg) || Boolean(json?.hint)
+            ? ' — يمكنك لصق رابط https:// مباشرة في الحقل.'
+            : '';
+        throw new Error(`${msg}${pasteHint}`);
+      }
+
+      setDraftUrl(json.publicUrl);
+      onChange(json.publicUrl);
+      toast.success('تم رفع صورة المحطة');
+    } catch (err) {
+      console.error('[stop-image-upload]', err);
+      toast.error(
+        err instanceof Error ? `فشل الرفع: ${err.message}` : 'فشل رفع صورة المحطة',
+        { duration: 6000 },
+      );
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  return (
+    <div className="mt-2 space-y-2">
+      <span className="block text-xs font-bold text-slate-700">صورة المحطة</span>
+      {looksLikeHttpUrl ? (
+        <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={preview} alt="" className="max-h-36 w-full object-cover transition duration-500" />
+          <button
+            type="button"
+            title="إزالة الصورة"
+            aria-label="إزالة الصورة"
+            onClick={() => {
+              setDraftUrl('');
+              onChange('');
+            }}
+            className="absolute left-2 top-2 inline-flex h-7 w-7 items-center justify-center rounded-full border border-white/40 bg-black/50 text-white transition hover:bg-black/70"
+          >
+            <X className="h-3.5 w-3.5" aria-hidden />
+          </button>
+        </div>
+      ) : null}
+      <div className="flex flex-wrap items-center gap-2">
+        <input
+          type="text"
+          inputMode="url"
+          dir="ltr"
+          placeholder="الصق رابط صورة https://… مباشرة"
+          value={draftUrl}
+          onChange={(e) => commitUrl(e.target.value)}
+          onPaste={(e) => {
+            const pasted = e.clipboardData.getData('text').trim();
+            if (/^https?:\/\//i.test(pasted)) {
+              e.preventDefault();
+              commitUrl(pasted);
+            }
+          }}
+          className="min-w-0 flex-1 rounded border border-gray-200 p-2 text-xs focus:border-[#C5A059] focus:outline-none"
+        />
+        <input
+          ref={inputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/gif"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            e.target.value = '';
+            void handleFile(file);
+          }}
+        />
+        <button
+          type="button"
+          disabled={curating || uploading}
+          onClick={() => void handleCurateImage()}
+          className="inline-flex items-center gap-1.5 rounded-xl border border-[#D4AF37]/50 bg-[#D4AF37]/15 px-3 py-2 text-xs font-bold text-[#9C7A3C] transition hover:bg-[#D4AF37]/25 disabled:opacity-60"
+          title="جلب صورة فاخرة من Unsplash"
+        >
+          <Sparkles className="h-3.5 w-3.5" aria-hidden />
+          {curating ? 'جاري الجلب…' : 'جلب صورة تلقائياً ✨'}
+        </button>
+        <button
+          type="button"
+          disabled={uploading || curating}
+          onClick={() => inputRef.current?.click()}
+          className="inline-flex items-center gap-1.5 rounded-xl border border-[#D4AF37]/40 bg-white px-3 py-2 text-xs font-bold text-[#9C7A3C] transition hover:border-[#D4AF37] hover:bg-[#D4AF37]/10 disabled:opacity-60"
+        >
+          <ImagePlus className="h-3.5 w-3.5" aria-hidden />
+          {uploading ? 'جاري الرفع…' : 'رفع'}
+        </button>
+      </div>
+      <p className="text-[10px] font-medium text-slate-500">
+        لصق رابط، جلب تلقائي من Unsplash، أو رفع إلى bucket{' '}
+        <span dir="ltr">itinerary-images</span>.
+      </p>
+    </div>
+  );
+}
+
 export type SimpleItineraryDayCardProps = {
   day: SimpleItineraryDay;
   dayIdx: number;
@@ -69,6 +279,7 @@ export type SimpleItineraryDayCardProps = {
   ) => void;
   onUpdateVisitTime: (dayId: number, placeIndex: number, visit_time: string) => void;
   onUpdatePlaceNotes: (dayId: number, placeIndex: number, notes: string) => void;
+  onUpdatePlaceImageUrl: (dayId: number, placeIndex: number, imageUrl: string) => void;
   dayDroppableId: (dayId: number) => string;
   supplierBrief?: SupplierBriefClientContext | null;
 };
@@ -95,6 +306,7 @@ function SimpleItineraryDayCardInner({
   onUpdateTransport,
   onUpdateVisitTime,
   onUpdatePlaceNotes,
+  onUpdatePlaceImageUrl,
   dayDroppableId,
   supplierBrief,
 }: SimpleItineraryDayCardProps) {
@@ -237,7 +449,6 @@ function SimpleItineraryDayCardInner({
         <div onClick={(e) => e.stopPropagation()}>
           <Droppable
             droppableId={dayDroppableId(day.id)}
-            // Remount when chronological order changes so DnD reflects sort immediately
             key={`${dayDroppableId(day.id)}:${day.places.map((p) => p._dragId).join(',')}`}
           >
             {(provided, snapshot) => (
@@ -322,6 +533,24 @@ function SimpleItineraryDayCardInner({
                                       className="w-full rounded border border-gray-200 p-2 text-xs focus:border-[#C5A059] focus:outline-none"
                                     />
                                   </div>
+                                  <StopImageField
+                                    imageUrl={place.image_url}
+                                    placeName={
+                                      typeof place.name === 'string' ? place.name : undefined
+                                    }
+                                    searchKeyword={
+                                      typeof place.search_keyword === 'string'
+                                        ? place.search_keyword
+                                        : undefined
+                                    }
+                                    category={
+                                      typeof place.category === 'string' ? place.category : undefined
+                                    }
+                                    city={typeof place.city === 'string' ? place.city : undefined}
+                                    onChange={(url) =>
+                                      onUpdatePlaceImageUrl(day.id, placeIndex, url)
+                                    }
+                                  />
                                   {daysCount > 1 ? (
                                     <div
                                       className="mt-2 flex items-center gap-1.5 text-xs"

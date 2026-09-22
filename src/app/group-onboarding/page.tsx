@@ -141,6 +141,11 @@ function GroupOnboardingForm() {
       setFormError('أدخل بريداً إلكترونياً صالحاً، أو اترك الحقل فارغاً.');
       return;
     }
+    const birthMs = Date.parse(birthDate.trim().slice(0, 10));
+    if (!Number.isFinite(birthMs) || birthMs > Date.now()) {
+      setFormError('يرجى إدخال تاريخ ميلاد صحيح.');
+      return;
+    }
 
     setSubmitting(true);
     setFormError(null);
@@ -152,7 +157,8 @@ function GroupOnboardingForm() {
       full_name: fullName.trim(),
       phone_wa: phoneCheck.formattedPhone,
       email: emailTrimmed,
-      birth_date: birthDate.trim(),
+      age: null,
+      birth_date: birthDate.trim().slice(0, 10),
       referral_code: referral ?? '',
       preferred_trip_id: trip.id,
       trip_label: trip.title_ar,

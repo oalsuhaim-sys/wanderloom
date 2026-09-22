@@ -25,7 +25,7 @@ export function ReferralCodeField({
   value,
   onChange,
   autoPrefill = true,
-  name = 'referral_code',
+  name = 'ref_code',
   className = '',
   inputClassName = '',
   labelClassName = 'block text-xs font-bold text-slate-700',

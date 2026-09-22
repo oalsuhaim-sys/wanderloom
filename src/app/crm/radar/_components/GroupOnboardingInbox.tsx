@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from 'react';
 import { Calendar, Loader2, Pencil, X } from 'lucide-react';
-import toast, { Toaster } from 'react-hot-toast';
+import toast from 'react-hot-toast';
 
 import {
   approveGroupLead,
@@ -273,7 +273,6 @@ export function GroupOnboardingInbox({ leads, loading, error, onRefresh, onLeadD
       aria-label="مواعيد المقابلات القادمة (أفراد ومجموعات)"
       dir="rtl"
     >
-      <Toaster position="top-center" toastOptions={{ className: 'text-sm font-medium' }} />
       <h2 className="flex items-center gap-2 text-base font-semibold text-slate-900">
         <Calendar className="h-4 w-4 shrink-0 text-slate-400" aria-hidden />
         مواعيد المقابلات القادمة (أفراد ومجموعات)

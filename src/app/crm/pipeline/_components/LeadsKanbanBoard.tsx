@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import {
   DragDropContext,
@@ -25,6 +25,7 @@ import {
   leadKanbanColumnToneClass,
   type LeadKanbanColumnId,
 } from '@/lib/leads-kanban';
+import { subscribeCrmRealtimeRefresh } from '@/lib/crm-realtime-events';
 import { supabase } from '@/lib/supabase';
 
 type ColumnsState = Record<LeadKanbanColumnId, CrmKanbanLead[]>;
@@ -80,15 +81,30 @@ function removeLeadFromColumns(columns: ColumnsState, leadId: string): ColumnsSt
   return next;
 }
 
+function insertLeadIntoColumns(columns: ColumnsState, lead: CrmKanbanLead): ColumnsState {
+  const col = lead.kanbanStatus;
+  if (!isLeadKanbanColumnId(col)) return columns;
+  const next = emptyColumns();
+  for (const c of LEAD_KANBAN_COLUMNS) {
+    next[c.id] = [...columns[c.id]];
+  }
+  if (!next[col].some((l) => l.id === lead.id)) {
+    next[col] = [lead, ...next[col]];
+  }
+  return next;
+}
+
 function KanbanCard({
   lead,
   index,
   onRemoved,
+  onRestored,
   onItineraryLinked,
 }: {
   lead: CrmKanbanLead;
   index: number;
   onRemoved: (leadId: string) => void;
+  onRestored: (lead: CrmKanbanLead) => void;
   onItineraryLinked: (leadId: string, itineraryId: string) => void;
 }) {
   const [busy, setBusy] = useState<'postpone' | 'delete' | 'route' | 'generate' | null>(null);
@@ -111,17 +127,24 @@ function KanbanCard({
       toast.error('Supabase غير مهيأ.');
       return;
     }
+    const snapshot = lead;
     setBusy('postpone');
+    // Optimistic: vanish immediately
+    onRemoved(lead.id);
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('leads')
         .update({ status: 'postponed' })
-        .eq('id', lead.id);
+        .eq('id', lead.id)
+        .select('id');
       if (error) throw error;
+      if (!data?.length) {
+        throw new Error('لم يتم تأجيل الطلب — تحقق من صلاحيات الكتابة.');
+      }
       toast.success('تم تأجيل الطلب ⏳');
-      onRemoved(lead.id);
     } catch (err) {
       console.error('[kanban postpone]', err);
+      onRestored(snapshot);
       toast.error(err instanceof Error ? err.message : 'حدث خطأ أثناء التأجيل');
     } finally {
       setBusy(null);
@@ -143,14 +166,24 @@ function KanbanCard({
       toast.error('Supabase غير مهيأ.');
       return;
     }
+    const snapshot = lead;
     setBusy('delete');
+    // Optimistic: vanish immediately
+    onRemoved(lead.id);
     try {
-      const { error } = await supabase.from('leads').delete().eq('id', lead.id);
+      const { data, error } = await supabase
+        .from('leads')
+        .delete()
+        .eq('id', lead.id)
+        .select('id');
       if (error) throw error;
+      if (!data?.length) {
+        throw new Error('لم يتم حذف الطلب — تحقق من صلاحيات الكتابة.');
+      }
       toast.success('تم الحذف النهائي وتطهير النظام 🧹');
-      onRemoved(lead.id);
     } catch (err) {
       console.error('[kanban hard delete]', err);
+      onRestored(snapshot);
       toast.error(err instanceof Error ? err.message : 'حدث خطأ أثناء الحذف');
     } finally {
       setBusy(null);
@@ -369,6 +402,8 @@ export function LeadsKanbanBoard() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
+  /** Skip one soft-refresh wave after local delete/postpone so the card stays gone. */
+  const muteSoftRefreshUntilRef = useRef(0);
 
   const totalCount = useMemo(
     () => LEAD_KANBAN_COLUMNS.reduce((sum, col) => sum + columns[col.id].length, 0),
@@ -416,8 +451,10 @@ export function LeadsKanbanBoard() {
 
     let debounceTimer: number | undefined;
     const softRefresh = () => {
+      if (Date.now() < muteSoftRefreshUntilRef.current) return;
       window.clearTimeout(debounceTimer);
       debounceTimer = window.setTimeout(() => {
+        if (Date.now() < muteSoftRefreshUntilRef.current) return;
         void load(true);
       }, 400);
     };
@@ -439,22 +476,46 @@ export function LeadsKanbanBoard() {
         { event: '*', schema: 'public', table: 'invoices' },
         softRefresh,
       )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'clients' },
+        softRefresh,
+      )
       .subscribe();
 
     const onFocus = () => void load(true);
     window.addEventListener('focus', onFocus);
 
+    const unsubCrm = subscribeCrmRealtimeRefresh((detail) => {
+      if (
+        detail.source === 'leads' ||
+        detail.source === 'clients' ||
+        detail.source === 'quotations' ||
+        detail.source === 'manual'
+      ) {
+        softRefresh();
+      }
+    });
+
     return () => {
       window.clearTimeout(debounceTimer);
       window.removeEventListener('focus', onFocus);
+      unsubCrm();
       void supabase.removeChannel(channel);
     };
   }, [load]);
 
   const removeCard = useCallback((leadId: string) => {
+    muteSoftRefreshUntilRef.current = Date.now() + 2500;
     setColumns((prev) => removeLeadFromColumns(prev, leadId));
     setOrphanRouteLeads((prev) => prev.filter((l) => l.id !== leadId));
     setAllLeads((prev) => prev.filter((l) => l.id !== leadId));
+  }, []);
+
+  const restoreCard = useCallback((lead: CrmKanbanLead) => {
+    muteSoftRefreshUntilRef.current = 0;
+    setAllLeads((prev) => (prev.some((l) => l.id === lead.id) ? prev : [lead, ...prev]));
+    setColumns((prev) => insertLeadIntoColumns(prev, lead));
   }, []);
 
   const linkItinerary = useCallback((leadId: string, itineraryId: string) => {
@@ -670,6 +731,7 @@ export function LeadsKanbanBoard() {
                           lead={lead}
                           index={index}
                           onRemoved={removeCard}
+                          onRestored={restoreCard}
                           onItineraryLinked={linkItinerary}
                         />
                       ))}

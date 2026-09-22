@@ -54,6 +54,7 @@ export function GroupTripTermsAgreement({ draft, backHref, onWaitlisted, onBooke
           phone_wa: draft.phone_wa,
           email: draft.email || null,
           birth_date: draft.birth_date,
+          age: draft.age,
           trip_label: draft.trip_label,
           preferred_trip_id: draft.preferred_trip_id,
           referral_code: draft.referral_code || null,

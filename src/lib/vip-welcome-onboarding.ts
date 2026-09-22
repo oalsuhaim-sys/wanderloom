@@ -1,4 +1,4 @@
-import { updatePipelineStatus } from '@/lib/lead-pipeline-automation';
+import { advanceLeadsToMeetingAfterDna } from '@/lib/lead-pipeline-automation';
 import { supabase } from '@/lib/supabase';
 
 export type WelcomeTravelStyle = {
@@ -249,7 +249,7 @@ export async function submitWelcomeOnboardingByToken(
         .eq('onboarding_token', trimmed)
         .maybeSingle();
       if (row?.id != null) {
-        await updatePipelineStatus(supabase, { clientId: row.id, force: true }, 'meeting').catch((err) => {
+        await advanceLeadsToMeetingAfterDna(supabase, row.id).catch((err) => {
           console.warn('[welcome-onboarding] advance lead to meeting:', err);
         });
       }
@@ -280,7 +280,7 @@ export async function submitWelcomeOnboardingByToken(
 
   if (error) throw error;
   if (supabase) {
-    await updatePipelineStatus(supabase, { clientId: row.id, force: true }, 'meeting').catch((err) => {
+    await advanceLeadsToMeetingAfterDna(supabase, row.id).catch((err) => {
       console.warn('[welcome-onboarding] advance lead to meeting:', err);
     });
   }

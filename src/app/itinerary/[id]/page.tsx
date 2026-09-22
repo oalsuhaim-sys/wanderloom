@@ -142,16 +142,14 @@ async function enrichTripWithClientPublicFields(
   if (!referral) {
     const { data, error } = await supabase
       .from('clients')
-      .select('referral_code, ref_code')
+      .select('ref_code')
       .eq('id', resolvedClientId)
       .maybeSingle();
 
     if (error) {
       console.warn('[vip-itinerary] clients referral lookup:', error.message);
     } else {
-      // Same priority as Admin: ref_code || referral_code
-      referral =
-        String(data?.ref_code ?? data?.referral_code ?? '').trim() || null;
+      referral = String(data?.ref_code ?? '').trim() || null;
     }
   }
 

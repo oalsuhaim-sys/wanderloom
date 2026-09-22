@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowRight, Loader2, MessageCircle, Plus, Trash2, Copy, CopyPlus, FileStack, Camera } from 'lucide-react';
+import { ArrowRight, Loader2, MessageCircle, Plus, Trash2, Copy, CopyPlus, FileStack, Camera, Sparkles } from 'lucide-react';
 import { DragDropContext } from '@hello-pangea/dnd';
 
 import {
@@ -15,6 +15,11 @@ import { toast } from '@/lib/crm-toast';
 import { useCrmEmployee } from '@/app/crm/_components/CrmEmployeeProvider';
 import { canEditItineraries } from '@/lib/crm-permissions';
 import SimpleItineraryDayPlanner from '@/app/crm/itineraries/_components/SimpleItineraryDayPlanner';
+import GenerateItineraryAiModal, {
+  type GenerateItineraryAiContext,
+} from '@/app/crm/itineraries/_components/GenerateItineraryAiModal';
+import { ExpertHandbookHelpLink } from '@/components/crm/ExpertHandbookHelpLink';
+import type { GeneratedItineraryDay } from '@/lib/ai-generate-itinerary';
 import SupplierRequestsEditor from '@/app/crm/itineraries/_components/SupplierRequestsEditor';
 import SimpleItineraryPlacesBank from '@/app/crm/itineraries/_components/SimpleItineraryPlacesBank';
 import ExperiencesExplorer from '@/app/crm/itineraries/_components/ExperiencesExplorer';
@@ -37,7 +42,9 @@ import {
   sortPlacesByVisitTime,
   type ItineraryHotelEntry,
   type SimpleItineraryDay,
+  placeImageUrlToStopPayload,
   placeNotesToStopPayload,
+  readPlaceImageUrlFromStop,
   readPlaceNotesFromStop,
   withTransportDefaults,
 } from '@/app/crm/itineraries/_components/simple-itinerary-day-utils';
@@ -173,7 +180,8 @@ function daysDataToItineraryDays(raw: unknown): SimpleItineraryDay[] {
 
   return parsed.map((d: Record<string, unknown>, idx: number) => {
     const row = d;
-    if (Array.isArray(row.places) && row.places.length >= 0) {
+    // Prefer non-empty places[]; empty arrays fall through to stops so image_url / notes are not lost
+    if (Array.isArray(row.places) && row.places.length > 0) {
       return {
         id: typeof row.id === 'number' ? row.id : Date.now() + idx,
         title: String(row.title ?? `اليوم ${idx + 1}`),
@@ -193,6 +201,7 @@ function daysDataToItineraryDays(raw: unknown): SimpleItineraryDay[] {
           city: row.city ?? s.city,
           rating: s.rating,
           notes: readPlaceNotesFromStop(s),
+          image_url: readPlaceImageUrlFromStop(s),
           transportToNext: transitModeToArabic(s.transit_mode ?? s.transport_type),
           transportDuration: String(s.transit_duration ?? '').trim(),
           visit_time: String(s.visit_time ?? s.time_slot ?? s.time ?? '').trim(),
@@ -221,6 +230,7 @@ function itineraryDaysToDaysData(days: SimpleItineraryDay[]): unknown[] {
       category: p.category,
       places_bank_id: p.id != null ? String(p.id) : undefined,
       ...placeNotesToStopPayload(p.notes),
+      ...placeImageUrlToStopPayload(p.image_url),
       ...(p.visit_time?.trim()
         ? { visit_time: p.visit_time.trim(), time_slot: p.visit_time.trim() }
         : {}),
@@ -390,6 +400,7 @@ export default function EditItineraryPage() {
     updateTransport,
     updateVisitTime,
     updatePlaceNotes,
+    updatePlaceImageUrl,
     updateDayHotel,
     updateDayCity,
     updateDayTitle,
@@ -406,6 +417,7 @@ export default function EditItineraryPage() {
   const [notice, setNotice] = useState<string | null>(null);
   const [clientLinkWarning, setClientLinkWarning] = useState<string | null>(null);
   const [memoryUploading, setMemoryUploading] = useState(false);
+  const [aiGenerateOpen, setAiGenerateOpen] = useState(false);
   const daysStorageKeyRef = useRef<DaysStorageKey>('days_data');
   const pinnedClientRef = useRef<CrmClientMini | null>(null);
   const adminMemoryInputRef = useRef<HTMLInputElement>(null);
@@ -801,7 +813,7 @@ export default function EditItineraryPage() {
             .select(
               `id, day_num, title, city, notes, sort_order,
               itinerary_stops (
-                id, place_name, category, visit_time, time_slot, note,
+                id, place_name, category, visit_time, time_slot, note, image_url,
                 transport_type, taxi, transit_mode, transit_duration,
                 sort_order, places_bank_id
               )`,
@@ -839,6 +851,80 @@ export default function EditItineraryPage() {
 
   const geographyDestinationLabel =
     buildDestinationSummary(tripCities, tripCountries) || tripTitle;
+
+  const applyAiGeneratedDays = useCallback(
+    (generated: GeneratedItineraryDay[]) => {
+      const nextDays: SimpleItineraryDay[] = generated.map((day, idx) => ({
+        id: Date.now() + idx,
+        title: day.title?.trim() || (idx === 0 ? 'اليوم الأول' : `اليوم ${idx + 1}`),
+        city: day.city?.trim() || tripCities[0] || undefined,
+        places: sortPlacesByVisitTime(
+          day.stops.map((stop) => {
+            const keyword = stop.search_keyword?.trim();
+            const notesParts = [stop.notes?.trim(), keyword ? `بحث: ${keyword}` : '']
+              .filter(Boolean)
+              .join('\n');
+            return withTransportDefaults({
+              name: stop.title,
+              visit_time: stop.time,
+              category: stop.category || 'o',
+              notes: notesParts || undefined,
+              search_keyword: keyword || undefined,
+              image_url: stop.image_url?.trim() || undefined,
+              city: day.city?.trim() || tripCities[0] || undefined,
+            });
+          }),
+        ),
+      }));
+
+      if (!nextDays.length) {
+        toast.error('لم يُرجع Claude أي أيام.');
+        return;
+      }
+
+      setItineraryDays(nextDays);
+      setActiveDayId(nextDays[0]!.id);
+      setNotice('تم تعبئة المسار من Claude — راجع المحطات وأضف الصور قبل الحفظ ✨');
+    },
+    [setItineraryDays, setActiveDayId, tripCities],
+  );
+
+  const aiGenerateContext = useMemo((): GenerateItineraryAiContext => {
+    const dna = supplierBrief?.dna;
+    const dnaSummary: string[] = [];
+    if (dna?.drink_coffee?.trim()) dnaSummary.push(`القهوة: ${dna.drink_coffee.trim()}`);
+    if (dna?.hotel_style?.trim()) dnaSummary.push(`أسلوب الفندق: ${dna.hotel_style.trim()}`);
+    if (dna?.preferred_seat?.trim()) dnaSummary.push(`المقعد: ${dna.preferred_seat.trim()}`);
+    if (dna?.food_allergies?.trim()) dnaSummary.push(`حساسية: ${dna.food_allergies.trim()}`);
+    if ((supplierBrief?.interests ?? []).length) {
+      dnaSummary.push(`اهتمامات: ${(supplierBrief?.interests ?? []).join('، ')}`);
+    }
+
+    return {
+      clientName: supplierBrief?.clientName || 'عميل VIP',
+      destination:
+        supplierBrief?.destination ||
+        geographyDestinationLabel ||
+        tripCities[0] ||
+        '',
+      daysCount: Math.max(1, itineraryDays.length || 1),
+      interests: supplierBrief?.interests ?? [],
+      dnaSummary,
+      dietary: supplierBrief?.dietary,
+      hotelPreferences: supplierBrief?.hotelPreferences,
+      secretNotes: supplierBrief?.secretNotes,
+      tripDateFrom,
+      tripDateTo,
+      dna: dna ? ({ ...dna } as Record<string, unknown>) : null,
+    };
+  }, [
+    supplierBrief,
+    geographyDestinationLabel,
+    tripCities,
+    itineraryDays.length,
+    tripDateFrom,
+    tripDateTo,
+  ]);
 
   const supplierDestinationLabel =
     tripCountries.join('، ') || geographyDestinationLabel || 'المختارة';
@@ -1392,8 +1478,21 @@ export default function EditItineraryPage() {
           <h1 className="text-2xl font-extrabold tracking-wide text-[#D4AF37] sm:text-3xl">
             مساحة بناء المسار الذكي
           </h1>
+          <div className="mt-2">
+            <ExpertHandbookHelpLink tab="itineraries" />
+          </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setAiGenerateOpen(true)}
+            disabled={saving || duplicating || readOnly}
+            title="توليد المسار من DNA العميل عبر Claude"
+            className="inline-flex items-center gap-2 rounded-xl border border-[#D4AF37]/50 bg-[#D4AF37] px-4 py-2.5 text-sm font-black text-[#1A3B2A] shadow-md transition hover:bg-[#c4a030] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Sparkles className="h-4 w-4" aria-hidden />
+            توليد المسار بـ AI
+          </button>
           <button
             type="button"
             onClick={() => void handleDuplicate()}
@@ -2069,21 +2168,31 @@ export default function EditItineraryPage() {
           onUpdateTransport={updateTransport}
           onUpdateVisitTime={updateVisitTime}
           onUpdatePlaceNotes={updatePlaceNotes}
+          onUpdatePlaceImageUrl={updatePlaceImageUrl}
           dayDroppableId={dayDroppableId}
           supplierBrief={supplierBrief}
           predictiveWishContext={
             supplierBrief
               ? {
                   clientRow: {
-                    travel_dna: supplierBrief?.dna,
-                    favorite_drink: supplierBrief?.dna?.drink_coffee ?? '',
-                    dna_interests: (supplierBrief?.interests ?? []).join('، '),
-                    dietary: supplierBrief?.dietary ?? '',
+                    name: supplierBrief.clientName,
+                    travel_dna: supplierBrief.dna,
+                    favorite_drink: supplierBrief.dna?.drink_coffee ?? '',
+                    drink_coffee: supplierBrief.dna?.drink_coffee ?? '',
+                    hotel_preference: supplierBrief.hotelPreferences || supplierBrief.dna?.hotel_style || '',
+                    hotel_style: supplierBrief.dna?.hotel_style ?? '',
+                    flight_seat: supplierBrief.dna?.preferred_seat ?? '',
+                    preferred_seat: supplierBrief.dna?.preferred_seat ?? '',
+                    food_allergies: supplierBrief.dietary || supplierBrief.dna?.food_allergies || '',
+                    dietary: supplierBrief.dietary ?? '',
+                    dna_interests: (supplierBrief.interests ?? []).join('، '),
+                    dna_special_requests: supplierBrief.secretNotes ?? '',
+                    secret_notes: supplierBrief.secretNotes ?? '',
                   },
-                  interests: supplierBrief?.interests ?? [],
-                  destination: supplierBrief?.destination ?? '',
-                  tripDateFrom: supplierBrief?.tripDateFrom ?? '',
-                  tripDateTo: supplierBrief?.tripDateTo ?? '',
+                  interests: supplierBrief.interests ?? [],
+                  destination: supplierBrief.destination ?? '',
+                  tripDateFrom: supplierBrief.tripDateFrom ?? '',
+                  tripDateTo: supplierBrief.tripDateTo ?? '',
                 }
               : null
           }
@@ -2127,6 +2236,13 @@ export default function EditItineraryPage() {
         onClose={() => setIsQuickAddModalOpen(false)}
         onChange={(patch) => setNewPlaceData((prev) => ({ ...prev, ...patch }))}
         onSave={handleQuickAddPlace}
+      />
+
+      <GenerateItineraryAiModal
+        open={aiGenerateOpen}
+        onClose={() => setAiGenerateOpen(false)}
+        context={aiGenerateContext}
+        onGenerated={applyAiGeneratedDays}
       />
     </div>
   );

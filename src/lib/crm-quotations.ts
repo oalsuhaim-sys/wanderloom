@@ -129,23 +129,23 @@ export const QUOTATION_STATUS_LABEL: Record<QuotationStatus, string> = {
 
 /** Soft SaaS badge classes for quotation status chips */
 export function quotationStatusBadgeClass(status: QuotationStatus): string {
-  const base = 'px-3 py-1 rounded-full text-xs font-semibold border';
+  const base =
+    'inline-flex items-center whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-semibold leading-none';
   switch (status) {
     case 'draft':
-      return `${base} border-transparent bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300`;
+      return `${base} bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300`;
     case 'pending_client':
     case 'awaiting_payment':
     case 'client_responded':
-      return `${base} border-amber-100 bg-amber-50 text-amber-600 dark:border-amber-900/30 dark:bg-amber-900/20 dark:text-amber-400`;
+    case 'needs_revision':
+      return `${base} border border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/40 dark:bg-amber-900/20 dark:text-amber-400`;
     case 'approved':
     case 'payment_confirmed':
     case 'deposit_paid':
     case 'fully_paid':
-      return `${base} border-emerald-100 bg-emerald-50 text-emerald-600 dark:border-emerald-900/30 dark:bg-emerald-900/20 dark:text-emerald-400`;
-    case 'needs_revision':
-      return `${base} border-rose-100 bg-rose-50 text-rose-600 dark:border-rose-900/30 dark:bg-rose-900/20 dark:text-rose-400`;
+      return `${base} border border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/40 dark:bg-emerald-900/20 dark:text-emerald-400`;
     default:
-      return `${base} border-transparent bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300`;
+      return `${base} border border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300`;
   }
 }
 

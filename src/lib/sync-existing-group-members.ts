@@ -39,6 +39,8 @@ async function fetchAllGroupMembers(
   admin: SupabaseClient,
 ): Promise<Record<string, unknown>[]> {
   const selects = [
+    'id, client_id, customer_phone, customer_name, birth_date, notes, preferences, group_id',
+    'id, client_id, customer_phone, customer_name, birth_date, notes, preferences',
     'id, client_id, customer_phone, customer_name, notes, preferences, group_id',
     'id, client_id, customer_phone, customer_name, notes, preferences',
     'id, client_id, customer_phone, customer_name, notes',
@@ -175,6 +177,14 @@ export async function syncExistingGroupMembers(
 
     const prefs = memberPreferencesToClientInput(member);
     let targetClientId: ClientId | null = null;
+    const memberBirthDate = String(
+      (member as { birth_date?: unknown }).birth_date ?? '',
+    )
+      .trim()
+      .slice(0, 10);
+    const birthDateOk = /^\d{4}-\d{2}-\d{2}$/.test(memberBirthDate)
+      ? memberBirthDate
+      : null;
 
     const existing = resolveClientByPhone(phone, clientsByPhone);
     if (existing) {
@@ -200,6 +210,7 @@ export async function syncExistingGroupMembers(
       const created = await upsertPrimaryGroupClient(admin, {
         fullName: name,
         phoneWa: phone,
+        birthDate: birthDateOk,
         interests: prefs.interests?.length ? prefs.interests : ['رحلة جماعية'],
         dailyPace: prefs.dailyPace,
         foodPreferences: prefs.foodPreferences,
@@ -216,6 +227,12 @@ export async function syncExistingGroupMembers(
         clientsByPhone.set(key, { id: targetClientId, phone_wa: phone });
       }
       result.created += 1;
+    } else if (birthDateOk) {
+      await admin
+        .from('clients')
+        .update({ birth_date: birthDateOk })
+        .eq('id', targetClientId)
+        .is('birth_date', null);
     }
 
     if (memberClientId !== String(targetClientId)) {

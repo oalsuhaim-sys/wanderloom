@@ -14,6 +14,13 @@ insert into public.system_settings (id, bank_name, account_name, iban)
 values (1, null, null, null)
 on conflict (id) do nothing;
 
+-- Social scheduler (Buffer / Metricool) — Marketing Hub
+alter table public.system_settings
+  add column if not exists social_provider text,
+  add column if not exists social_api_key text,
+  add column if not exists social_extra text,
+  add column if not exists social_updated_at timestamptz;
+
 alter table public.system_settings enable row level security;
 
 drop policy if exists "system_settings_select_authenticated" on public.system_settings;

@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 
 import { insertInterestLeadAdmin } from '@/lib/interest-lead-insert';
 import { requireValidPhone } from '@/lib/phoneUtils';
+import { readAffiliateRefFromFormData } from '@/lib/referral-url';
 
 export type SubmitInterestResult =
   | { ok: true; success: true; message: string; leadId?: string }
@@ -19,7 +20,8 @@ export async function submitInterestAction(formData: FormData): Promise<SubmitIn
   const fullName = cleanText(formData.get('full_name'), 120);
   const phoneRaw = cleanText(formData.get('phone_wa'), 40);
   const destination = cleanText(formData.get('destination'), 120);
-  const referralCode = cleanText(formData.get('referral_code'), 64).toUpperCase() || null;
+  // Form sends ref_code; leads table still stores attribution as referral_code
+  const referralCode = readAffiliateRefFromFormData(formData)?.toUpperCase() || null;
 
   if (!fullName || fullName.length < 2) {
     return { ok: false, success: false, error: 'يرجى إدخال الاسم الكامل' };

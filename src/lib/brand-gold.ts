@@ -1,24 +1,24 @@
-/** Wanderloom luxury gold — explicit hex (never default Tailwind orange). */
+/** Wanderloom official gold — explicit hex (never default Tailwind orange). */
 export const BRAND_GOLD = {
-  DEFAULT: '#C5A059',
-  HOVER: '#B38E46',
-  BG: '#C5A059',
-  ACCENT: '#D4AF37',
-  LIGHT: '#FDFBF7',
-  LIGHT_SOFT: '#F7F0E1',
-  LIGHT_BORDER: '#E8D2A7',
-  MUTED_BG: '#FDFBF7',
-  TEXT: '#8C6D23',
-  TEXT_DARK: '#4A3910',
-  BORDER: '#E8D2A7',
-  ON_GOLD: '#0F172A',
-  BADGE_TEXT: '#8C6D23',
+  DEFAULT: '#9C7A3C',
+  HOVER: '#826533',
+  BG: '#9C7A3C',
+  ACCENT: '#9C7A3C',
+  LIGHT: '#F4EFE6',
+  LIGHT_SOFT: '#EFE6D4',
+  LIGHT_BORDER: '#E0D0A8',
+  MUTED_BG: '#F4EFE6',
+  TEXT: '#6A5329',
+  TEXT_DARK: '#3A2E17',
+  BORDER: '#E0D0A8',
+  ON_GOLD: '#F4EFE6',
+  BADGE_TEXT: '#6A5329',
 } as const;
 
-/** Deep olive green — headings and primary text hierarchy. */
+/** Dark emerald — headings and primary text hierarchy. */
 export const BRAND_OLIVE = {
-  HEADING: '#1c382b',
-  LABEL: '#234737',
+  HEADING: '#1C2E3A',
+  LABEL: '#1C2E3A',
 } as const;
 
 export const BRAND_GOLD_BUTTON_CLASS =

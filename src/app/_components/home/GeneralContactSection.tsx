@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { Mail, MessageCircle } from 'lucide-react';
 
@@ -18,7 +18,7 @@ export function GeneralContactSection() {
 
   return (
     <div className="mx-auto max-w-3xl px-4 text-center sm:px-8">
-      <h2 className="text-2xl font-black text-[#111111] sm:text-3xl md:text-4xl">{c.title}</h2>
+      <h2 className="text-2xl font-black text-[#1C2E3A] sm:text-3xl md:text-4xl">{c.title}</h2>
       <p className="mx-auto mt-4 max-w-2xl text-sm font-bold leading-[1.9] text-gray-600 sm:mt-6 sm:text-base">
         {c.lead}
       </p>
@@ -28,14 +28,14 @@ export function GeneralContactSection() {
           href={waHref}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex w-full min-w-[220px] items-center justify-center gap-2 rounded-2xl bg-[#cda04c] px-8 py-4 text-sm font-black text-white shadow-lg shadow-[#cda04c]/20 transition hover:bg-[#b3893d] sm:w-auto"
+          className="inline-flex w-full min-w-[220px] items-center justify-center gap-2 rounded-2xl bg-[#9C7A3C] px-8 py-4 text-sm font-black text-[#F4EFE6] shadow-lg shadow-[#9C7A3C]/20 transition hover:bg-[#9C7A3C] sm:w-auto"
         >
           <MessageCircle className="h-5 w-5" aria-hidden />
           {c.whatsappCta}
         </a>
         <a
           href={mailHref}
-          className="inline-flex w-full min-w-[220px] items-center justify-center gap-2 rounded-2xl border border-[#1e3f20] px-8 py-4 text-sm font-black text-[#1e3f20] transition hover:bg-[#f4efe6] sm:w-auto"
+          className="inline-flex w-full min-w-[220px] items-center justify-center gap-2 rounded-2xl border border-[#1C2E3A] px-8 py-4 text-sm font-black text-[#1C2E3A] transition hover:bg-[#f4efe6] sm:w-auto"
         >
           <Mail className="h-5 w-5" aria-hidden />
           {c.emailCta}

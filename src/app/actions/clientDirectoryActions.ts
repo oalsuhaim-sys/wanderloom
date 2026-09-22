@@ -3,7 +3,14 @@
 import { revalidatePath } from 'next/cache';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-import { CLIENT_LIST_SELECT, CLIENT_SELECT_CORE, normalizeVipClient, type VipClientProfile } from '@/lib/clientsTravelDna';
+import { CLIENT_LIST_SELECT, CLIENT_LIST_SELECT_WITH_STATUS, CLIENT_SELECT_CORE, CLIENT_SELECT_CORE_WITH_STATUS, normalizeVipClient, type VipClientProfile } from '@/lib/clientsTravelDna';
+import {
+  approximateBirthDateFromAge,
+  calculateAge,
+  extractAgeFromRegistrationMeta,
+  resolveClientBirthDate,
+  resolveClientDisplayAge,
+} from '@/lib/client-crm-profile';
 import {
   filterClientsByAssignedScope,
   resolvePartnerAssignedScope,
@@ -20,14 +27,14 @@ import {
   requireCrmServerAction,
 } from '@/lib/supabase/server-action-auth';
 
-export type ClientDirectoryFetchResult =
+type ClientDirectoryFetchResult =
   | {
       ok: true;
       rows: VipClientProfile[];
     }
   | { ok: false; error: string };
 
-export type DeleteClientActionResult =
+type DeleteClientActionResult =
   | { ok: true; deletedId: string }
   | { ok: false; error: string };
 
@@ -253,13 +260,186 @@ export async function deleteClientAction(
 }
 
 /**
- * قاعدة العملاء — Single Source of Truth = `clients` table ONLY.
- * No leads merge, no dedupe Maps, no ghost rows.
- * No sales_stage / trip-count filters — brand-new clients with 0 trips must appear.
- * Experts/leaders with access_assigned_only see only referral-linked clients.
+ * Batch-load birth dates + ages from group_members + leads (by client_id / phone).
+ * Embeds often fail because production group_members historically lacked birth_date.
  */
+async function fetchRelatedBirthDates(
+  admin: ReturnType<typeof createSupabaseAdminClient>,
+  clients: Array<{ id: string; phone_wa?: string | null }>,
+): Promise<{
+  byClientId: Map<string, string>;
+  ageByClientId: Map<string, number>;
+  membersByClientId: Map<string, Record<string, unknown>[]>;
+}> {
+  const byClientId = new Map<string, string>();
+  const ageByClientId = new Map<string, number>();
+  const membersByClientId = new Map<string, Record<string, unknown>[]>();
+  if (clients.length === 0) return { byClientId, ageByClientId, membersByClientId };
+
+  const clientIds = clients.map((c) => c.id).filter(Boolean);
+  const clientIdQueryValues = clientIds.flatMap((id) =>
+    /^\d+$/.test(id) ? [id, Number(id)] : [id],
+  );
+  const phones = clients.map((c) => String(c.phone_wa ?? '').trim()).filter(Boolean);
+
+  const rememberAge = (clientKey: string, age: number | null) => {
+    if (!clientKey || age == null) return;
+    if (!ageByClientId.has(clientKey)) ageByClientId.set(clientKey, age);
+  };
+
+  const remember = (
+    clientKey: string,
+    date: string | null,
+    member?: Record<string, unknown>,
+    ageHint?: number | null,
+  ) => {
+    if (!clientKey) return;
+    if (member) {
+      const list = membersByClientId.get(clientKey) ?? [];
+      list.push(member);
+      membersByClientId.set(clientKey, list);
+    }
+    if (date && !byClientId.has(clientKey)) byClientId.set(clientKey, date);
+    rememberAge(
+      clientKey,
+      ageHint ??
+        extractAgeFromRegistrationMeta(member) ??
+        (date ? calculateAge(date) : null),
+    );
+  };
+
+  const memberSelects = [
+    'id, client_id, customer_phone, birth_date, dob, date_of_birth, birthdate, preferences, notes, passenger_info, created_at',
+    'id, client_id, customer_phone, birth_date, dob, preferences, notes, created_at',
+    'id, client_id, customer_phone, birth_date, preferences, notes, created_at',
+    'id, client_id, customer_phone, birth_date, created_at',
+    'id, client_id, customer_phone, preferences, notes, created_at',
+    'id, client_id, customer_phone, notes, created_at',
+    'id, client_id, customer_phone, created_at',
+  ];
+
+  for (const select of memberSelects) {
+    const { data, error } = await admin
+      .from('group_members')
+      .select(select)
+      .in('client_id', clientIdQueryValues)
+      .limit(5000);
+    if (error) {
+      if (/column|schema cache|does not exist|passenger_info/i.test(error.message ?? '')) continue;
+      console.warn('[fetchRelatedBirthDates] group_members:', error.message);
+      break;
+    }
+    for (const row of (data ?? []) as Record<string, unknown>[]) {
+      const cid = String(row.client_id ?? '').trim();
+      const dob = resolveClientBirthDate(row);
+      remember(cid, dob, row);
+    }
+    break;
+  }
+
+  // Also match members by phone when client_id is missing/mismatched
+  if (phones.length > 0) {
+    for (const select of [
+      'id, client_id, customer_phone, birth_date, dob, preferences, notes, created_at',
+      'id, client_id, customer_phone, birth_date, notes, created_at',
+      'id, client_id, customer_phone, notes, created_at',
+    ]) {
+      const { data, error } = await admin
+        .from('group_members')
+        .select(select)
+        .in('customer_phone', phones)
+        .limit(5000);
+      if (error) {
+        if (/column|schema cache|does not exist/i.test(error.message ?? '')) continue;
+        break;
+      }
+      const phoneToClient = new Map(
+        clients.map((c) => [String(c.phone_wa ?? '').trim(), c.id] as const),
+      );
+      for (const row of (data ?? []) as Record<string, unknown>[]) {
+        const phone = String(row.customer_phone ?? '').trim();
+        const cid = String(row.client_id ?? '').trim() || phoneToClient.get(phone) || '';
+        const dob = resolveClientBirthDate(row);
+        remember(cid, dob, row);
+      }
+      break;
+    }
+  }
+
+  const leadSelects = [
+    'id, client_id, phone_wa, birth_date, age, dob, date_of_birth, final_thoughts, created_at',
+    'id, client_id, phone_wa, birth_date, age, final_thoughts, created_at',
+    'id, client_id, phone_wa, birth_date, age, created_at',
+    'id, client_id, phone_wa, birth_date, dob, date_of_birth, created_at',
+    'id, client_id, phone_wa, birth_date, created_at',
+    'id, phone_wa, birth_date, age, final_thoughts, created_at',
+    'id, phone_wa, birth_date, age, created_at',
+    'id, phone_wa, birth_date, created_at',
+  ];
+  for (const select of leadSelects) {
+    if (clientIdQueryValues.length) {
+      const byClient = await admin
+        .from('leads')
+        .select(select)
+        .in('client_id', clientIdQueryValues)
+        .limit(5000);
+      if (!byClient.error) {
+        for (const row of (byClient.data ?? []) as Record<string, unknown>[]) {
+          const cid = String(row.client_id ?? '').trim();
+          const age = extractAgeFromRegistrationMeta(row);
+          const dob =
+            resolveClientBirthDate(row) || approximateBirthDateFromAge(age ?? row.age);
+          remember(cid, dob, undefined, age);
+        }
+        // Keep going to also try phone matches for orphan leads
+      } else if (
+        !/column|schema cache|does not exist|client_id|final_thoughts/i.test(
+          byClient.error.message ?? '',
+        )
+      ) {
+        console.warn('[fetchRelatedBirthDates] leads:', byClient.error.message);
+      }
+    }
+
+    if (phones.length) {
+      const byPhone = await admin.from('leads').select(select).in('phone_wa', phones).limit(5000);
+      if (byPhone.error) {
+        if (/column|schema cache|does not exist|final_thoughts/i.test(byPhone.error.message ?? ''))
+          continue;
+        break;
+      }
+      const phoneToClient = new Map(
+        clients.map((c) => [String(c.phone_wa ?? '').trim(), c.id] as const),
+      );
+      for (const row of (byPhone.data ?? []) as Record<string, unknown>[]) {
+        const phone = String(row.phone_wa ?? '').trim();
+        const cid = String(row.client_id ?? '').trim() || phoneToClient.get(phone) || '';
+        const age = extractAgeFromRegistrationMeta(row);
+        const dob =
+          resolveClientBirthDate(row) || approximateBirthDateFromAge(age ?? row.age);
+        remember(cid, dob, undefined, age);
+      }
+      break;
+    }
+    break;
+  }
+
+  return { byClientId, ageByClientId, membersByClientId };
+}
+
+/** Full directory fetch — no artificial 50-row cap (PostgREST soft max). */
+const CLIENT_DIRECTORY_PAGE_LIMIT = 5000;
+
+type FetchClientDirectoryOptions = {
+  /** Max rows to return (default 5000). */
+  limit?: number;
+  /** Skip healing UPDATE round-trips on list load (default true). */
+  skipBackfill?: boolean;
+};
+
 export async function fetchClientDirectoryAction(
   accessToken?: string | null,
+  options?: FetchClientDirectoryOptions,
 ): Promise<ClientDirectoryFetchResult> {
   const serviceKeyError = assertServiceRoleKeyConfigured();
   if (serviceKeyError) {
@@ -269,16 +449,27 @@ export async function fetchClientDirectoryAction(
   try {
     const admin = createSupabaseAdminClient();
     const auth = await requireCrmServerAction(accessToken);
+    const requested = options?.limit ?? CLIENT_DIRECTORY_PAGE_LIMIT;
+    const listLimit = Math.min(Math.max(1, requested), 5000);
+    const skipBackfill = options?.skipBackfill !== false;
 
-    // Progressive selects — missing optional columns must not empty the whole directory
+    // Progressive selects — try `status` first, then CORE without it (keeps lead_source/tags)
     const selectAttempts = [
+      CLIENT_LIST_SELECT_WITH_STATUS,
       CLIENT_LIST_SELECT,
+      `${CLIENT_SELECT_CORE_WITH_STATUS}, total_spent, total_profit, lifetime_value, engagement_status, vip_tier, wallet_balance, onboarding_completed`,
       `${CLIENT_SELECT_CORE}, total_spent, total_profit, lifetime_value, engagement_status, vip_tier, wallet_balance, onboarding_completed`,
       `${CLIENT_SELECT_CORE}, total_spent, total_profit, vip_tier, wallet_balance, onboarding_completed`,
+      CLIENT_SELECT_CORE_WITH_STATUS,
       CLIENT_SELECT_CORE,
-      'id, name, phone_wa, email, created_at, sales_stage, client_type, client_tier, total_trips, total_spent, lifetime_value, engagement_status, travel_dna, dna_interests, lead_source, referral_code, ref_code, used_code, tags, target_trip',
-      'id, name, phone_wa, email, created_at, sales_stage, client_type, client_tier, total_trips, lead_source, referral_code, ref_code, used_code, tags, target_trip',
-      'id, name, phone_wa, email, created_at, sales_stage, client_type',
+      'id, name, phone_wa, email, birth_date, age, created_at, sales_stage, client_type, client_tier, total_trips, total_spent, lifetime_value, engagement_status, travel_dna, dna_interests, lead_source, status, ref_code, used_code, tags, target_trip',
+      'id, name, phone_wa, email, birth_date, age, created_at, sales_stage, client_type, client_tier, total_trips, total_spent, lifetime_value, engagement_status, travel_dna, dna_interests, lead_source, ref_code, used_code, tags, target_trip',
+      'id, name, phone_wa, email, birth_date, age, created_at, sales_stage, client_type, client_tier, total_trips, lead_source, tags, target_trip, travel_dna, ref_code',
+      'id, name, phone_wa, email, birth_date, created_at, sales_stage, client_type, client_tier, total_trips, lead_source, tags, target_trip, ref_code',
+      'id, name, phone_wa, email, birth_date, age, created_at, sales_stage, client_type, total_trips, lead_source, ref_code',
+      'id, name, phone_wa, email, birth_date, created_at, sales_stage, client_type, total_trips',
+      'id, name, phone_wa, birth_date, age, travel_dna, created_at, total_trips, lead_source, ref_code',
+      'id, name, phone_wa, birth_date, created_at',
       'id, name, phone_wa, created_at',
     ];
 
@@ -290,7 +481,7 @@ export async function fetchClientDirectoryAction(
         .from('clients')
         .select(select)
         .order('created_at', { ascending: false })
-        .limit(1000);
+        .limit(listLimit);
 
       if (!result.error) {
         data = (result.data ?? []) as unknown[];
@@ -300,8 +491,7 @@ export async function fetchClientDirectoryAction(
       lastError = result.error.message || 'select failed';
       console.warn('[fetchClientDirectoryAction] select failed, retrying leaner:', lastError);
 
-      // Non-schema errors (RLS, network) — stop early
-      if (!/column|schema cache|does not exist/i.test(lastError)) {
+      if (!/column|schema cache|does not exist|relationship|could not find/i.test(lastError)) {
         return { ok: false, error: lastError };
       }
     }
@@ -310,15 +500,133 @@ export async function fetchClientDirectoryAction(
       return { ok: false, error: lastError || 'تعذر قراءة جدول العملاء.' };
     }
 
+    const rawClients = data as Record<string, unknown>[];
+    const related = await fetchRelatedBirthDates(
+      admin,
+      rawClients.map((r) => ({
+        id: String(r.id ?? ''),
+        phone_wa: r.phone_wa != null ? String(r.phone_wa) : null,
+      })),
+    );
+
+    console.info('[fetchClientDirectoryAction] birth-date enrichment', {
+      clients: rawClients.length,
+      withRelatedDob: related.byClientId.size,
+      withRelatedAge: related.ageByClientId.size,
+      withMemberRows: related.membersByClientId.size,
+    });
+
     let rows: VipClientProfile[] = [];
     const seenIds = new Set<string>();
-    for (const raw of data as Record<string, unknown>[]) {
+    const backfillBirthDates: { id: string; birth_date: string }[] = [];
+    const backfillAges: { id: string; age: number }[] = [];
+
+    for (const raw of rawClients) {
+      const rowId = String(raw.id ?? '');
+      const members = related.membersByClientId.get(rowId) ?? [];
+      if (members.length) raw.group_members = members;
+
+      // SSOT: clients.birth_date first; related tables only fill gaps.
+      const clientDob = resolveClientBirthDate(raw);
+      const relatedDob = related.byClientId.get(rowId) ?? null;
+      const resolvedDob =
+        clientDob ||
+        relatedDob ||
+        resolveClientBirthDate({
+          ...raw,
+          group_members: members,
+        });
+      if (resolvedDob) {
+        if (!clientDob) {
+          backfillBirthDates.push({ id: rowId, birth_date: resolvedDob });
+        }
+        raw.birth_date = resolvedDob;
+      }
+
+      // Force age onto the row before normalize (clients.age / leads.age / notes / DOB)
+      const hadPersistedAge =
+        extractAgeFromRegistrationMeta({
+          age: raw.age,
+          travel_dna: raw.travel_dna,
+        }) != null;
+      const relatedAge = related.ageByClientId.get(rowId) ?? null;
+      const resolvedAge =
+        extractAgeFromRegistrationMeta(raw) ||
+        relatedAge ||
+        extractAgeFromRegistrationMeta({ group_members: members }) ||
+        (resolvedDob ? calculateAge(resolvedDob) : null);
+      if (resolvedAge != null) {
+        raw.age = resolvedAge;
+      }
+
       const mapped = normalizeVipClient(raw);
       if (!mapped) continue;
-      const rowId = String(mapped.id);
+
+      if (resolvedDob) mapped.birth_date = resolvedDob;
+      // Always materialize age on the profile object returned to ClientCard
+      mapped.age =
+        mapped.age ??
+        relatedAge ??
+        resolveClientDisplayAge({
+          ...mapped,
+          group_members: members,
+        });
+      if (mapped.age == null && resolvedDob) {
+        mapped.age = calculateAge(resolvedDob);
+      }
+      if (mapped.age != null && !hadPersistedAge) {
+        backfillAges.push({ id: rowId, age: mapped.age });
+      }
+      ;(mapped as VipClientProfile & { group_members?: unknown }).group_members = members;
+
       if (seenIds.has(rowId)) continue;
       seenIds.add(rowId);
       rows.push(mapped);
+    }
+
+    // Heal legacy rows in the background — never block directory paint on UPDATEs.
+    if (!skipBackfill && backfillBirthDates.length) {
+      void Promise.all(
+        backfillBirthDates.map(async ({ id, birth_date }) => {
+          const age = calculateAge(birth_date);
+          const patch: Record<string, unknown> = { birth_date };
+          if (age != null) patch.age = age;
+          const { error } = await admin
+            .from('clients')
+            .update(patch)
+            .eq('id', id)
+            .is('birth_date', null);
+          if (error) {
+            if (/column|schema cache|does not exist|age/i.test(error.message ?? '')) {
+              const { error: leanErr } = await admin
+                .from('clients')
+                .update({ birth_date })
+                .eq('id', id)
+                .is('birth_date', null);
+              if (leanErr) {
+                console.warn('[fetchClientDirectoryAction] birth_date backfill:', id, leanErr.message);
+              }
+            } else {
+              console.warn('[fetchClientDirectoryAction] birth_date backfill:', id, error.message);
+            }
+          }
+        }),
+      );
+    }
+
+    if (!skipBackfill && backfillAges.length) {
+      void Promise.all(
+        backfillAges.map(async ({ id, age }) => {
+          const { error } = await admin
+            .from('clients')
+            .update({ age })
+            .eq('id', id)
+            .is('age', null);
+          if (error && !/column|schema cache|does not exist|age/i.test(error.message ?? '')) {
+            console.warn('[fetchClientDirectoryAction] age backfill:', id, error.message);
+          }
+        }),
+      );
     }
 
     if (auth.ok && shouldApplyAssignedScope(auth.access)) {
@@ -339,7 +647,7 @@ export async function fetchClientDirectoryAction(
   }
 }
 
-export type SyncExistingGroupMembersActionResult =
+type SyncExistingGroupMembersActionResult =
   | ({ ok: true } & SyncExistingGroupMembersResult)
   | { ok: false; error: string };
 
@@ -374,7 +682,7 @@ export async function syncExistingGroupMembersAction(
   }
 }
 
-export type LegacyGroupDnaSyncResult =
+type LegacyGroupDnaSyncResult =
   | ({ ok: true } & GroupDnaBackfillResult)
   | { ok: false; error: string };
 

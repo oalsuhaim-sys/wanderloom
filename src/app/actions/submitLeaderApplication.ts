@@ -53,8 +53,8 @@ async function findLeaderByReferralCode(code: string) {
 
   const { data, error } = await supabase
     .from('clients')
-    .select('id, name, referral_code, ref_code, is_leader')
-    .or(`referral_code.eq.${code},ref_code.eq.${code}`)
+    .select('id, name, ref_code, is_leader')
+    .eq('ref_code', code)
     .maybeSingle()
 
   if (error) {

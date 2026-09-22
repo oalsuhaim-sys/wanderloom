@@ -87,7 +87,7 @@ export default function WhatsAppTemplatePicker({
         aria-label="قوالب واتساب"
         title={phone ? 'إرسال قالب واتساب للعميل' : 'فتح واتساب بدون رقم — ألصق الرقم يدوياً'}
       >
-        <option value="">قوالب واتساب</option>
+        <option value="">واتساب</option>
         {WHATSAPP_TEMPLATE_OPTIONS.map((option) => (
           <option key={option.id} value={option.id}>
             {option.label}

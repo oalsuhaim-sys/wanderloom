@@ -176,6 +176,23 @@ export function useSimpleItineraryDays(initialDays?: SimpleItineraryDay[]) {
     );
   }, []);
 
+  const updatePlaceImageUrl = useCallback((dayId: number, placeIndex: number, imageUrl: string) => {
+    const normalized = String(imageUrl ?? '').trim();
+    setItineraryDays((prev) =>
+      prev.map((day) => {
+        if (day.id !== dayId) return day;
+        return {
+          ...day,
+          places: day.places.map((p, index) =>
+            index === placeIndex
+              ? { ...p, image_url: normalized || undefined }
+              : p,
+          ),
+        };
+      }),
+    );
+  }, []);
+
   const updateVisitTime = useCallback(
     (dayId: number, placeIndex: number, visit_time: string) => {
       const normalized = String(visit_time || '').trim();
@@ -305,6 +322,7 @@ export function useSimpleItineraryDays(initialDays?: SimpleItineraryDay[]) {
     movePlaceToDay,
     updateTransport,
     updatePlaceNotes,
+    updatePlaceImageUrl,
     updateVisitTime,
     updateDayHotel,
     updateDayCity,

@@ -4,17 +4,19 @@ import { revalidatePath } from 'next/cache';
 
 import { runWebsiteLeadIntakeAutomation } from '@/lib/client-intake-pipeline';
 import { ensureLeadClientIntakeAdmin, ensureClientFromDirectoryFieldsAdmin } from '@/lib/client-intake-pipeline-server';
+import { calculateAge } from '@/lib/client-crm-profile';
 import { escapeEmailHtml, sendEmailAlert } from '@/lib/emailAlert';
 import { mapTripFormSourceToLeadSource } from '@/lib/lead-source';
 import { normalizeLeadStatus, CLIENT_DATABASE_LEAD_STATUSES } from '@/lib/lead-status';
 import { labelForCityComposite, labelForCountryId } from '@/lib/trip-destination-data';
-import { normalizeAffiliateRef } from '@/lib/referral-url';
+import { normalizeAffiliateRef, readAffiliateRefFromFormData } from '@/lib/referral-url';
 import { requireValidPhone } from '@/lib/phoneUtils';
 import { runRegistrationAutomationPipeline } from '@/lib/registration-automation';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { assertServiceRoleKeyConfigured } from '@/lib/supabase/server-action-auth';
 import { ar } from '@/messages/ar';
 import type { LeadTravelStyle } from '@/lib/lead-travel-style';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
 export type CustomerLeadState = {
   ok: boolean;
@@ -56,6 +58,7 @@ type LeadsInsertRow = {
   email: string | null;
   phone_wa: string;
   age: number | null;
+  birth_date?: string | null;
   destinations: string[];
   travel_date: string | null;
   travel_days: number;
@@ -120,6 +123,40 @@ function mergeOtherPref(values: string[], otherText: string): string[] {
     return [...withoutOther, 'أخرى'];
   }
   return withoutOther;
+}
+
+function parseRegistrationBirthDate(raw: unknown): string | null {
+  const iso = String(raw ?? '').trim().slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return null;
+  const ms = Date.parse(iso);
+  if (!Number.isFinite(ms) || ms > Date.now()) return null;
+  return iso;
+}
+
+/** Write birth_date (+ derived age) onto clients for the matching phone / client id. */
+async function syncClientsBirthDateColumn(
+  admin: SupabaseClient,
+  opts: { phoneWa: string; clientId?: number | null; birthDate: string; age: number },
+): Promise<void> {
+  const patch: Record<string, unknown> = {
+    birth_date: opts.birthDate,
+    age: opts.age,
+  };
+
+  if (opts.clientId != null && Number.isFinite(Number(opts.clientId))) {
+    const { error } = await admin.from('clients').update(patch).eq('id', opts.clientId);
+    if (error && !/column|schema cache|does not exist|age|birth_date/i.test(error.message ?? '')) {
+      console.warn('[submitCustomerLead] clients.birth_date by id:', error.message);
+    }
+    if (!error) return;
+  }
+
+  const phone = String(opts.phoneWa ?? '').trim();
+  if (!phone) return;
+  const { error } = await admin.from('clients').update(patch).eq('phone_wa', phone);
+  if (error && !/column|schema cache|does not exist|age|birth_date/i.test(error.message ?? '')) {
+    console.warn('[submitCustomerLead] clients.birth_date by phone:', error.message);
+  }
 }
 
 function resolveCountryLabel(countryId: string, customCountry: string): string {
@@ -252,7 +289,7 @@ export async function submitCustomerLead(formData: FormData): Promise<CustomerLe
     const phone_wa = phoneCheck.formattedPhone;
     const sourceRaw = s(formData.get('source')) || null;
     const lead_source = mapTripFormSourceToLeadSource(sourceRaw);
-    const referral_code = normalizeAffiliateRef(s(formData.get('referral_code')));
+    const referral_code = readAffiliateRefFromFormData(formData);
     const dream_feeling = s(formData.get('dream_feeling'));
 
     const destCountries = all(formData, 'dest_countries');
@@ -278,6 +315,20 @@ export async function submitCustomerLead(formData: FormData): Promise<CustomerLe
 
     if (!full_name || !phone_wa) {
       return { ok: false, error: ar.errors.trip.namePhone };
+    }
+
+    const birthDate = parseRegistrationBirthDate(formData.get('birth_date'));
+    if (!birthDate) {
+      return {
+        ok: false,
+        error: s(formData.get('birth_date'))
+          ? ar.tripForm.invalidBirthDate
+          : ar.tripForm.birthDateRequired,
+      };
+    }
+    const ageNum = calculateAge(birthDate);
+    if (ageNum == null) {
+      return { ok: false, error: ar.tripForm.invalidBirthDate };
     }
 
     if (!dream_feeling) {
@@ -353,7 +404,8 @@ export async function submitCustomerLead(formData: FormData): Promise<CustomerLe
       full_name,
       email: null,
       phone_wa,
-      age: null,
+      age: ageNum,
+      birth_date: birthDate,
       destinations,
       travel_date,
       travel_days,
@@ -393,6 +445,15 @@ export async function submitCustomerLead(formData: FormData): Promise<CustomerLe
       ({ data: inserted, error } = await supabase
         .from('leads')
         .insert(withoutSource as never)
+        .select('id, full_name, phone_wa, email, referral_code')
+        .single());
+    }
+
+    if (error && /birth_date|column|schema cache|does not exist/i.test(error.message ?? '')) {
+      const { birth_date: _dropBirth, ...withoutBirth } = row;
+      ({ data: inserted, error } = await supabase
+        .from('leads')
+        .insert(withoutBirth as never)
         .select('id, full_name, phone_wa, email, referral_code')
         .single());
     }
@@ -491,6 +552,12 @@ export async function submitCustomerLead(formData: FormData): Promise<CustomerLe
           automation.errors.join('; ') || 'unknown',
         );
       }
+      await syncClientsBirthDateColumn(admin, {
+        phoneWa: insertedLead.phone_wa || phone_wa,
+        clientId: automation.intake?.clientId ?? null,
+        birthDate,
+        age: ageNum,
+      });
     } catch (intakeErr) {
       console.error('[submitCustomerLead] registration automation:', intakeErr);
       // Lead is already saved — do not fail the user for WhatsApp/notification issues.
@@ -506,11 +573,21 @@ export async function submitCustomerLead(formData: FormData): Promise<CustomerLe
       } catch (fallbackErr) {
         console.error('[submitCustomerLead] client intake fallback:', fallbackErr);
       }
+      try {
+        await syncClientsBirthDateColumn(admin, {
+          phoneWa: insertedLead.phone_wa || phone_wa,
+          birthDate,
+          age: ageNum,
+        });
+      } catch (ageErr) {
+        console.warn('[submitCustomerLead] clients.birth_date sync after intake error:', ageErr);
+      }
     }
 
     revalidatePath('/');
     revalidatePath('/sessions');
     revalidatePath('/crm/radar');
+    revalidatePath('/crm/clients');
     return {
       ok: true,
       message: ar.success.tripLeadSent,

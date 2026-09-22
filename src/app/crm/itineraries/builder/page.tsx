@@ -4,12 +4,17 @@ import React, { Suspense, useState, useEffect, useCallback, useMemo, useRef } fr
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { DragDropContext } from '@hello-pangea/dnd';
-import { ArrowRight, Copy, FileStack, Loader2, Plus, Trash2 } from 'lucide-react';
+import { ArrowRight, Copy, FileStack, Loader2, Plus, Sparkles, Trash2 } from 'lucide-react';
 
 import { getQuoteLedgerAction } from '@/app/actions/invoiceActions';
 import { saveItineraryClientLinkAction } from '@/app/actions/itineraryClientActions';
 import { toast } from '@/lib/crm-toast';
 import SimpleItineraryDayPlanner from '@/app/crm/itineraries/_components/SimpleItineraryDayPlanner';
+import GenerateItineraryAiModal, {
+  type GenerateItineraryAiContext,
+} from '@/app/crm/itineraries/_components/GenerateItineraryAiModal';
+import { ExpertHandbookHelpLink } from '@/components/crm/ExpertHandbookHelpLink';
+import type { GeneratedItineraryDay } from '@/lib/ai-generate-itinerary';
 import SimpleItineraryPlacesBank from '@/app/crm/itineraries/_components/SimpleItineraryPlacesBank';
 import ExperiencesExplorer from '@/app/crm/itineraries/_components/ExperiencesExplorer';
 import ItineraryPlacesSourceTabs, {
@@ -31,6 +36,7 @@ import {
   type SimpleItineraryDay,
   placeNotesToStopPayload,
   readPlaceNotesFromStop,
+  sortPlacesByVisitTime,
   withTransportDefaults,
 } from '@/app/crm/itineraries/_components/simple-itinerary-day-utils';
 import { useSimpleItineraryDays } from '@/app/crm/itineraries/_components/useSimpleItineraryDays';
@@ -315,6 +321,7 @@ function ItineraryBuilderPageContent() {
     dayDroppableId,
   } = useSimpleItineraryDays([createEmptyDay(0)]);
 
+  const [aiGenerateOpen, setAiGenerateOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveNotice, setSaveNotice] = useState<string | null>(null);
 
@@ -828,6 +835,74 @@ function ItineraryBuilderPageContent() {
   const geographyDestinationLabel =
     buildDestinationSummary(tripCities, tripCountries) || tripTitle;
 
+  const applyAiGeneratedDays = useCallback(
+    (generated: GeneratedItineraryDay[]) => {
+      const nextDays: SimpleItineraryDay[] = generated.map((day, idx) => ({
+        id: Date.now() + idx,
+        title: day.title?.trim() || (idx === 0 ? 'اليوم الأول' : `اليوم ${idx + 1}`),
+        city: day.city?.trim() || tripCities[0] || undefined,
+        places: sortPlacesByVisitTime(
+          day.stops.map((stop) => {
+            const keyword = stop.search_keyword?.trim();
+            const notesParts = [stop.notes?.trim(), keyword ? `بحث: ${keyword}` : '']
+              .filter(Boolean)
+              .join('\n');
+            return withTransportDefaults({
+              name: stop.title,
+              visit_time: stop.time,
+              category: stop.category || 'o',
+              notes: notesParts || undefined,
+              search_keyword: keyword || undefined,
+              image_url: stop.image_url?.trim() || undefined,
+              city: day.city?.trim() || tripCities[0] || undefined,
+            });
+          }),
+        ),
+      }));
+      if (!nextDays.length) {
+        toast.error('لم يُرجع Claude أي أيام.');
+        return;
+      }
+      setItineraryDays(nextDays);
+      setActiveDayId(nextDays[0]!.id);
+      setSaveNotice('تم تعبئة المسار من Claude — راجع المحطات وأضف الصور قبل الحفظ ✨');
+    },
+    [setItineraryDays, setActiveDayId, tripCities],
+  );
+
+  const aiGenerateContext = useMemo((): GenerateItineraryAiContext => {
+    const dna = supplierBrief?.dna;
+    const dnaSummary: string[] = [];
+    if (dna?.drink_coffee?.trim()) dnaSummary.push(`القهوة: ${dna.drink_coffee.trim()}`);
+    if (dna?.hotel_style?.trim()) dnaSummary.push(`أسلوب الفندق: ${dna.hotel_style.trim()}`);
+    if (dna?.preferred_seat?.trim()) dnaSummary.push(`المقعد: ${dna.preferred_seat.trim()}`);
+    if (dna?.food_allergies?.trim()) dnaSummary.push(`حساسية: ${dna.food_allergies.trim()}`);
+    if ((supplierBrief?.interests ?? []).length) {
+      dnaSummary.push(`اهتمامات: ${(supplierBrief?.interests ?? []).join('، ')}`);
+    }
+    return {
+      clientName: supplierBrief?.clientName || 'عميل VIP',
+      destination:
+        supplierBrief?.destination || geographyDestinationLabel || tripCities[0] || '',
+      daysCount: Math.max(1, itineraryDays.length || 1),
+      interests: supplierBrief?.interests ?? [],
+      dnaSummary,
+      dietary: supplierBrief?.dietary,
+      hotelPreferences: supplierBrief?.hotelPreferences,
+      secretNotes: supplierBrief?.secretNotes,
+      tripDateFrom,
+      tripDateTo,
+      dna: dna ? ({ ...dna } as Record<string, unknown>) : null,
+    };
+  }, [
+    supplierBrief,
+    geographyDestinationLabel,
+    tripCities,
+    itineraryDays.length,
+    tripDateFrom,
+    tripDateTo,
+  ]);
+
   const supplierDestinationLabel =
     tripCountries.join('، ') || geographyDestinationLabel || 'المختارة';
 
@@ -1192,15 +1267,30 @@ function ItineraryBuilderPageContent() {
           <h1 className="text-2xl font-extrabold tracking-wide text-[#D4AF37] sm:text-3xl">
             مساحة بناء المسار الذكي
           </h1>
+          <div className="mt-2">
+            <ExpertHandbookHelpLink tab="itineraries" />
+          </div>
         </div>
-        <button
-          type="button"
-          onClick={() => void handleSave()}
-          disabled={saving || quoteLoading}
-          className={WL_BTN_PRIMARY}
-        >
-          {saving ? 'جاري الحفظ...' : 'حفظ المسار'}
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setAiGenerateOpen(true)}
+            disabled={saving || quoteLoading}
+            title="توليد المسار من DNA العميل عبر Claude"
+            className="inline-flex items-center gap-2 rounded-xl border border-[#D4AF37]/50 bg-[#D4AF37] px-4 py-2.5 text-sm font-black text-[#1A3B2A] shadow-md transition hover:bg-[#c4a030] disabled:opacity-50"
+          >
+            <Sparkles className="h-4 w-4" aria-hidden />
+            توليد المسار بـ AI
+          </button>
+          <button
+            type="button"
+            onClick={() => void handleSave()}
+            disabled={saving || quoteLoading}
+            className={WL_BTN_PRIMARY}
+          >
+            {saving ? 'جاري الحفظ...' : 'حفظ المسار'}
+          </button>
+        </div>
       </div>
 
       {saveNotice ? (
@@ -1907,6 +1997,13 @@ function ItineraryBuilderPageContent() {
         onClose={() => setIsQuickAddModalOpen(false)}
         onChange={(patch) => setNewPlaceData((prev) => ({ ...prev, ...patch }))}
         onSave={handleQuickAddPlace}
+      />
+
+      <GenerateItineraryAiModal
+        open={aiGenerateOpen}
+        onClose={() => setAiGenerateOpen(false)}
+        context={aiGenerateContext}
+        onGenerated={applyAiGeneratedDays}
       />
     </div>
   );

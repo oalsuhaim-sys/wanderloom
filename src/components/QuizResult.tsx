@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import Link from 'next/link';
 
@@ -35,9 +35,9 @@ export function QuizResult({
   return (
     <div className="mx-auto w-full max-w-2xl">
       <article className="rounded-2xl border border-gray-100 bg-white p-8 text-center shadow-sm md:p-12">
-        <p className="text-sm font-bold tracking-wide text-[#cda04c]">{kicker}</p>
+        <p className="text-sm font-bold tracking-wide text-[#9C7A3C]">{kicker}</p>
 
-        <h2 className="mt-3 text-4xl font-black leading-tight text-[#111111] sm:text-5xl md:text-6xl">
+        <h2 className="mt-3 text-4xl font-black leading-tight text-[#1C2E3A] sm:text-5xl md:text-6xl">
           {countryName}
         </h2>
 
@@ -54,7 +54,7 @@ export function QuizResult({
             {vibeTags.map((tag) => (
               <span
                 key={tag}
-                className="rounded-full border border-[#cda04c]/20 bg-[#fffaf1] px-4 py-1.5 text-xs font-bold text-[#1e3f20]"
+                className="rounded-full border border-[#9C7A3C]/20 bg-[#fffaf1] px-4 py-1.5 text-xs font-bold text-[#1C2E3A]"
               >
                 {tag}
               </span>
@@ -65,7 +65,7 @@ export function QuizResult({
         <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
           <Link
             href={leadHref}
-            className="inline-flex w-auto items-center justify-center rounded-lg bg-[#cda04c] px-8 py-3 text-sm font-bold text-white shadow-sm transition-colors hover:bg-[#b3893d]"
+            className="inline-flex w-auto items-center justify-center rounded-full bg-[#9C7A3C] px-8 py-3 text-sm font-bold text-[#F4EFE6] shadow-sm transition-all hover:bg-[#826533]"
           >
             {registerLabel}
           </Link>
@@ -73,7 +73,7 @@ export function QuizResult({
           <button
             type="button"
             onClick={onOpenPersuasion}
-            className="inline-flex w-auto items-center justify-center rounded-lg bg-[#1e3f20] px-8 py-3 text-sm font-bold text-white shadow-sm transition-colors hover:bg-[#163018]"
+            className="inline-flex w-auto items-center justify-center rounded-full bg-[#1C2E3A] px-8 py-3 text-sm font-bold text-[#F4EFE6] shadow-sm transition-all hover:bg-[#122029]"
           >
             {persuasionLabel}
           </button>

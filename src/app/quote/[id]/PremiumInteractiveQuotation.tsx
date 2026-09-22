@@ -45,6 +45,7 @@ import {
   type QuotationHotelOption,
   type QuotationTransportOption,
 } from '@/lib/interactive-quotation';
+import { ProposalItineraryStopsTimeline } from '@/app/quote/[id]/ProposalItineraryStopsTimeline';
 
 type FeedbackTarget =
   | { kind: 'day'; id: string; label: string }
@@ -97,30 +98,6 @@ function destinationIcon(city: string, className = 'h-5 w-5') {
   if (/airport|مطار|flight|طيران/i.test(c))
     return <Plane className={className} aria-hidden />;
   return <MapPin className={className} aria-hidden />;
-}
-
-function dayRowIcon(
-  day: { title: string; description: string; city: string },
-) {
-  const blob = `${day.title} ${day.description} ${day.city}`;
-  if (/وصول|استقبال|مغادرة|مطار|طيران|flight|airport|depart|arriv/i.test(blob)) {
-    return <Plane className="h-4 w-4 text-white" aria-hidden />;
-  }
-  return destinationIcon(day.city || day.title || '', 'h-4 w-4 text-white');
-}
-
-function formatDayNumberLabel(dayNumber: number): string {
-  return `يوم ${String(Math.max(0, dayNumber)).padStart(2, '0')}`;
-}
-
-function formatTimelineDate(raw: string): string {
-  const value = raw.trim();
-  if (!value) return '';
-  const parsed = new Date(value);
-  if (!Number.isNaN(parsed.getTime())) {
-    return parsed.toLocaleDateString('ar-SA', { day: 'numeric', month: 'long' });
-  }
-  return value;
 }
 
 function EditFeedbackButton({
@@ -629,95 +606,36 @@ export function PremiumInteractiveQuotation({ quotation }: Props) {
         {days.length > 0 ? (
           <section>
             <SectionHeading eyebrow="Itinerary" title="يومًا بيوم" />
-            <div className="relative mt-10">
-              {/* Vertical timeline line — physical right in RTL */}
-              <div
-                className={'absolute top-0 bottom-0 right-[20px] w-0.5 bg-[#D4C4A8]'}
-                aria-hidden
-              />
-
-              <div className="relative">
-                {days.map((day, index) => {
+            <div className="mt-10">
+              <ProposalItineraryStopsTimeline
+                days={days}
+                renderDayActions={(day) => {
                   const noteKey = day.id;
                   const hasNote = Boolean(feedback.days?.[noteKey]?.trim());
-                  const isFirst = index === 0;
-                  const dateLabel = formatTimelineDate(day.date);
-
                   return (
-                    <div key={day.id} className="relative mb-6 pr-14">
-                      {/* Timeline dot — first filled gold, rest outlined */}
-                      <div
-                        className={
-                          isFirst
-                            ? 'absolute right-[15px] top-4 h-3 w-3 rounded-full border-2 border-[#b8954d] bg-[#b8954d]'
-                            : 'absolute right-[15px] top-4 h-3 w-3 rounded-full border-2 border-[#D4C4A8] bg-[#FDFBF7]'
+                    <div className="relative flex flex-col items-end gap-2">
+                      <EditFeedbackButton
+                        hasNote={hasNote}
+                        onClick={() =>
+                          setPopover({
+                            kind: 'day',
+                            id: noteKey,
+                            label: day.title || `يوم ${day.dayNumber}`,
+                          })
                         }
-                        aria-hidden
                       />
-
-                      <div
-                        className={
-                          'flex items-center justify-between gap-3 rounded-xl border border-[#E5E0D5] bg-[#F8F6F0] p-4 shadow-sm'
-                        }
-                      >
-                        {/* Right (RTL start): icon + date/title */}
-                        <div className="flex min-w-0 items-center gap-3">
-                          <div
-                            className={
-                              'flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#243223]'
-                            }
-                          >
-                            {dayRowIcon(day)}
-                          </div>
-                          <div className="flex min-w-0 flex-col">
-                            {dateLabel ? (
-                              <span className="text-xs text-gray-500">
-                                {dateLabel}
-                                {day.city ? ` · ${day.city}` : ''}
-                              </span>
-                            ) : day.city ? (
-                              <span className="text-xs text-gray-500">{day.city}</span>
-                            ) : null}
-                            <span className="text-lg font-bold text-[#243223]">
-                              {day.title || `يوم ${day.dayNumber}`}
-                            </span>
-                            {day.description ? (
-                              <span className="mt-1 line-clamp-2 text-sm leading-6 text-gray-600">
-                                {day.description}
-                              </span>
-                            ) : null}
-                          </div>
-                        </div>
-
-                        {/* Left (RTL end): day number + تعديل */}
-                        <div className="relative flex shrink-0 flex-col items-end gap-2">
-                          <span className="text-sm text-gray-400">
-                            {formatDayNumberLabel(day.dayNumber)}
-                          </span>
-                          <EditFeedbackButton
-                            hasNote={hasNote}
-                            onClick={() =>
-                              setPopover({
-                                kind: 'day',
-                                id: noteKey,
-                                label: day.title || `يوم ${day.dayNumber}`,
-                              })
-                            }
-                          />
-                          {popover?.kind === 'day' && popover.id === noteKey ? (
-                            <FeedbackPopover
-                              target={popover}
-                              value={popoverValue}
-                              onChange={setPopoverValue}
-                              onClose={() => setPopover(null)}
-                            />
-                          ) : null}
-                        </div>
-                      </div>
+                      {popover?.kind === 'day' && popover.id === noteKey ? (
+                        <FeedbackPopover
+                          target={popover}
+                          value={popoverValue}
+                          onChange={setPopoverValue}
+                          onClose={() => setPopover(null)}
+                        />
+                      ) : null}
                     </div>
                   );
-                })}
-              </div>
+                }}
+              />
             </div>
           </section>
         ) : null}

@@ -337,6 +337,123 @@ export async function setLeadPipelineStatus(
   }
 }
 
+const DNA_MEETING_SOURCE_STATUSES = [
+  'radar_pending',
+  'new',
+  'pending_approval',
+  'awaiting_dna',
+  'dna_sent',
+  'dna_pending',
+  'meeting',
+  'interview_scheduled',
+] as const;
+
+/**
+ * After Travel DNA submission → Kanban «اجتماع العميل» (`meeting`).
+ * Resolves leads by client_id and phone, links client_id when missing, then force-updates status.
+ */
+export async function advanceLeadsToMeetingAfterDna(
+  sb: SupabaseClient,
+  clientId: string | number,
+): Promise<{ leadIds: string[] }> {
+  const variants = clientIdVariants(clientId);
+  if (!variants.length) return { leadIds: [] };
+
+  const updated = new Set<string>();
+
+  // Stamp completion time on client (column may be absent on older schemas)
+  for (const variant of variants) {
+    const { error } = await sb
+      .from('clients')
+      .update({
+        onboarding_completed: true,
+        dna_completed_at: new Date().toISOString(),
+      })
+      .eq('id', variant);
+    if (error && /dna_completed_at|column|schema cache/i.test(error.message ?? '')) {
+      await sb
+        .from('clients')
+        .update({ onboarding_completed: true })
+        .eq('id', variant)
+        .then(() => undefined);
+    }
+    break;
+  }
+
+  await updatePipelineStatus(sb, { clientId, force: true }, 'meeting');
+
+  let rows = await listLeadsForClient(sb, clientId);
+
+  if (!rows.length) {
+    const { data: clientPhone } = await sb
+      .from('clients')
+      .select('phone_wa, phone_number')
+      .eq('id', variants[0]!)
+      .maybeSingle();
+    const phone = String(
+      (clientPhone as { phone_wa?: string; phone_number?: string } | null)?.phone_wa ??
+        (clientPhone as { phone_wa?: string; phone_number?: string } | null)?.phone_number ??
+        '',
+    ).trim();
+
+    if (phone) {
+      const { data: byPhone } = await sb
+        .from('leads')
+        .select('id, status, client_id, phone_wa')
+        .eq('phone_wa', phone)
+        .order('created_at', { ascending: false })
+        .limit(15);
+
+      for (const raw of byPhone ?? []) {
+        const id = String((raw as { id?: unknown }).id ?? '').trim();
+        if (!id) continue;
+        if ((raw as { client_id?: unknown }).client_id == null) {
+          await sb
+            .from('leads')
+            .update({ client_id: variants[0]! })
+            .eq('id', id)
+            .then(({ error }) => {
+              if (error) console.warn('[advanceLeadsToMeetingAfterDna] link client_id:', error.message);
+            });
+        }
+        rows.push({
+          id,
+          status: (raw as { status?: string | null }).status ?? null,
+        });
+      }
+    }
+  }
+
+  for (const row of rows) {
+    const current = normalizeLeadStatus(row.status);
+    if (current === 'radar_rejected' || current === 'postponed') continue;
+    // Never pull back from payment stages
+    if (current === 'awaiting_payment' || current === 'payment_confirmed') continue;
+
+    const { error } = await sb.from('leads').update({ status: 'meeting' }).eq('id', row.id);
+    if (!error) updated.add(row.id);
+    else if (!/column|schema cache|does not exist|check/i.test(error.message ?? '')) {
+      console.warn('[advanceLeadsToMeetingAfterDna]', row.id, error.message);
+    }
+  }
+
+  // Broad update by client_id for early statuses (covers enum edge cases)
+  for (const variant of variants) {
+    const { data } = await sb
+      .from('leads')
+      .update({ status: 'meeting' })
+      .eq('client_id', variant)
+      .in('status', [...DNA_MEETING_SOURCE_STATUSES])
+      .select('id');
+    for (const r of data ?? []) {
+      const id = String((r as { id?: unknown }).id ?? '').trim();
+      if (id) updated.add(id);
+    }
+  }
+
+  return { leadIds: [...updated] };
+}
+
 /** Map quotation.status → minimum Kanban pipeline stage evidence */
 export function pipelineStatusFromQuotation(raw: unknown): LeadStatus | null {
   const s = String(raw ?? '')

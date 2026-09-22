@@ -57,9 +57,14 @@ export type VipClientProfile = {
   client_type: ClientType
   client_tier: ClientTier
   total_trips: number
+  /** Numeric age (years) synced from trip registration — ClientCard prefers this */
+  age: number | null
   referrals_count: number
-  referral_code: string
+  /** Own affiliate / share code — SSOT column `clients.ref_code` */
+  ref_code: string
   lead_source: string
+  /** CRM contact status badge: مهتم | جديد | عميل | … */
+  status: string
   /** علم المؤثر الموحّد (جدول clients) */
   is_influencer: boolean
   /** علم الليدر الموحّد (جدول clients) */
@@ -270,13 +275,22 @@ function pick(raw: Record<string, unknown>, keys: string[]): string {
 export const CLIENT_INFLUENCER_COLUMNS =
   'is_influencer, platforms, influencer_followers, content_focus, influencer_commission, profile_url' as const
 
-/** الأعمدة الأساسية التي يقرأها normalizeVipClient — صراحةً بدل select('*') */
+/** الأعمدة الأساسية التي يقرأها normalizeVipClient — صراحةً بدل select('*')
+ * Note: `status` is optional (may be missing in some DBs) — requested separately so a
+ * missing column never collapses the select down to a lean projection without lead_source/tags.
+ */
 export const CLIENT_SELECT_CORE =
-  'id, name, phone_wa, email, birth_date, flight_seat, food_allergies, favorite_drink, hotel_preference, passport_expiry, flight_preferences, hotel_preferences, dietary, secret_notes, dna_interests, dna_special_requests, dna_activity_level, travel_dna, created_at, client_type, client_tier, total_trips, referrals_count, referral_code, ref_code, lead_source, is_leader, sales_stage, used_code, target_trip, tags'
+  'id, name, phone_wa, email, birth_date, age, flight_seat, food_allergies, favorite_drink, hotel_preference, passport_expiry, flight_preferences, hotel_preferences, dietary, secret_notes, dna_interests, dna_special_requests, dna_activity_level, travel_dna, created_at, client_type, client_tier, total_trips, referrals_count, ref_code, lead_source, is_leader, sales_stage, used_code, target_trip, tags'
+
+/** Same as CORE + optional CRM status badge column */
+export const CLIENT_SELECT_CORE_WITH_STATUS = `${CLIENT_SELECT_CORE}, status`
 
 /** عمود Select الموحّد لقائمة العملاء — يغطي كل ما يحتاجه normalizeVipClient فقط */
 export const CLIENT_LIST_SELECT =
   `${CLIENT_SELECT_CORE}, ${CLIENT_INFLUENCER_COLUMNS}, total_spent, total_profit, lifetime_value, engagement_status, tier, vip_tier, wallet_balance, onboarding_completed`
+
+export const CLIENT_LIST_SELECT_WITH_STATUS =
+  `${CLIENT_SELECT_CORE_WITH_STATUS}, ${CLIENT_INFLUENCER_COLUMNS}, total_spent, total_profit, lifetime_value, engagement_status, tier, vip_tier, wallet_balance, onboarding_completed`
 
 function parseBool(raw: unknown): boolean {
   if (raw === true || raw === 1 || raw === '1' || raw === 'true') return true
@@ -381,16 +395,18 @@ export function normalizeVipClient(raw: Record<string, unknown>): VipClientProfi
     name,
     phone_wa: pick(raw, ['phone_wa', 'phone_number', 'phone']),
     email: pick(raw, ['email']) || null,
-    birth_date:
-      (() => {
-        const rawBirth =
-          raw.birth_date != null && String(raw.birth_date).trim()
-            ? String(raw.birth_date).trim()
-            : raw.dob != null && String(raw.dob).trim()
-              ? String(raw.dob).trim()
-              : ''
-        return rawBirth ? rawBirth.slice(0, 10) : ''
-      })(),
+    birth_date: (() => {
+      const fromAliases =
+        pick(raw, [
+          'birth_date',
+          'dob',
+          'birthdate',
+          'date_of_birth',
+          'birth_day',
+          'birthday',
+        ]) || ''
+      return fromAliases ? fromAliases.slice(0, 10) : ''
+    })(),
     flight_seat: pick(raw, ['flight_seat']) || dna.preferred_seat.trim(),
     food_allergies: pick(raw, ['food_allergies']) || dna.food_allergies.trim(),
     favorite_drink: pick(raw, ['favorite_drink']) || dna.drink_coffee.trim(),
@@ -409,10 +425,17 @@ export function normalizeVipClient(raw: Record<string, unknown>): VipClientProfi
     ...pickClientDnaAdvanced(raw),
     client_type,
     client_tier: normalizeClientTier(raw.client_tier ?? raw.tier),
-    total_trips: pickNum(raw, ['total_trips', 'trips_count']),
+    total_trips: pickNum(raw, ['total_trips']),
+    /** Direct clients.age column only — never dna_special_requests / travel_dna */
+    age: (() => {
+      const direct = Math.floor(Number(raw.age))
+      if (Number.isFinite(direct) && direct > 0 && direct <= 120) return direct
+      return null
+    })(),
     referrals_count: pickNum(raw, ['referrals_count', 'referral_count']),
-    referral_code: pick(raw, ['ref_code', 'referral_code']),
+    ref_code: pick(raw, ['ref_code']),
     lead_source: pick(raw, ['lead_source']),
+    status: pick(raw, ['status']),
     is_influencer,
     is_leader,
     influencer_followers,
@@ -465,7 +488,7 @@ export function buildClientInsertPayload(fields: {
   client_tier: ClientTier
   total_trips: number
   referrals_count: number
-  referral_code?: string
+  ref_code?: string
   lead_source?: string
   is_influencer?: boolean
   is_leader?: boolean
@@ -538,10 +561,8 @@ export function buildClientInsertPayload(fields: {
   const used_code = fields.used_code?.trim() || null
   if (used_code) payload.used_code = used_code
 
-  if (fields.referral_code !== undefined) {
-    const referral_code = fields.referral_code.trim() || null
-    payload.referral_code = referral_code
-    payload.ref_code = referral_code
+  if (fields.ref_code !== undefined) {
+    payload.ref_code = fields.ref_code.trim() || null
   }
 
   return sanitizeClientWritePayload(payload)
@@ -553,8 +574,8 @@ export function sanitizeClientWritePayload(payload: Record<string, unknown>): Re
   delete clean.full_name
   delete clean.phone_number
   delete clean.phone
-  // Often missing or constrained differently across environments
-  delete clean.status
+  // Dropped duplicate — SSOT is ref_code only
+  delete clean.referral_code
   // Partner/influencer sparse columns — may be dropped (clients_drop_partner_sparse_columns.sql)
   delete clean.platforms
   delete clean.influencer_followers
@@ -564,16 +585,19 @@ export function sanitizeClientWritePayload(payload: Record<string, unknown>): Re
   return clean
 }
 
-/** Payload for the dedicated referral-code widget (single source of truth). */
+/** Payload for the dedicated referral-code widget — writes `clients.ref_code` only. */
 export function buildReferralCodeUpdatePayload(code: string | null) {
-  const referral_code = code?.trim() || null
-  return { referral_code, ref_code: referral_code }
+  return { ref_code: code?.trim() || null }
 }
 
 export function buildClientUpdatePayload(
-  fields: Omit<Parameters<typeof buildClientInsertPayload>[0], 'referral_code'>,
-): Omit<ReturnType<typeof buildClientInsertPayload>, 'status'> {
-  const { status: _status, ...rest } = buildClientInsertPayload(fields)
+  fields: Omit<Parameters<typeof buildClientInsertPayload>[0], 'ref_code'> & {
+    ref_code?: string
+  },
+): ReturnType<typeof buildClientInsertPayload> {
+  const { status: _status, ...rest } = buildClientInsertPayload(fields) as ReturnType<
+    typeof buildClientInsertPayload
+  > & { status?: unknown }
   return rest
 }
 

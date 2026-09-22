@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { arSA } from 'date-fns/locale';
 import { format, parseISO } from 'date-fns';
@@ -20,7 +20,14 @@ type Profile = {
 };
 
 const DAY_BTN =
-  'aspect-square flex w-full items-center justify-center rounded-xl text-sm font-semibold transition-all active:scale-95';
+  'mx-auto flex h-9 w-9 max-w-full aspect-square items-center justify-center rounded-xl text-sm font-semibold transition-all active:scale-95';
+
+/** Short Arabic weekday labels — prevents header overlap in 7-col grid. */
+const ARABIC_WEEKDAY_SHORT = ['أحد', 'اثنين', 'ثلاثاء', 'أربعاء', 'خميس', 'جمعة', 'سبت'] as const;
+
+function formatWeekdayNameShort(date: Date): string {
+  return ARABIC_WEEKDAY_SHORT[date.getDay()] ?? '';
+}
 
 function LeaderCalendarInner() {
   const searchParams = useSearchParams();
@@ -117,7 +124,7 @@ function LeaderCalendarInner() {
 
   return (
     <div
-      className="mx-auto flex min-h-dvh w-full max-w-lg flex-col bg-[#F8FAFC] px-4 pb-[calc(6.5rem+env(safe-area-inset-bottom))] pt-6 dark:bg-[#1A2421]"
+      className="mx-auto flex min-h-dvh w-full max-w-xl flex-col bg-[#F8FAFC] px-4 pb-[calc(6.5rem+env(safe-area-inset-bottom))] pt-6 dark:bg-[#1A2421]"
       dir="rtl"
     >
       <Toaster position="top-center" toastOptions={{ duration: 3200 }} />
@@ -168,7 +175,7 @@ function LeaderCalendarInner() {
       ) : null}
 
       {!error && !loading ? (
-        <section className="relative z-0 overflow-hidden rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-[#2D3F3A] dark:bg-[#22302C]">
+        <section className="relative z-0 w-full min-w-[360px] overflow-visible rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5 dark:border-[#2D3F3A] dark:bg-[#22302C]">
           <div className="mb-3 flex items-center gap-2 text-sm font-bold text-slate-900 dark:text-white">
             <CalendarDays className="h-4 w-4 text-[#D4AF37]" aria-hidden />
             تقويم التفرغ
@@ -180,7 +187,7 @@ function LeaderCalendarInner() {
             الأيام المحجوزة لا يمكن تغييرها.
           </p>
 
-          <div className="leader-availability-calendar w-full overflow-hidden">
+          <div className="leader-availability-calendar w-full">
             <DayPicker
               mode="multiple"
               locale={arSA}
@@ -195,6 +202,7 @@ function LeaderCalendarInner() {
                 setDirty(true);
               }}
               disabled={bookedMatchers}
+              formatters={{ formatWeekdayName: formatWeekdayNameShort }}
               modifiers={{
                 unavailable: unavailableMatchers,
                 booked: bookedMatchers,
@@ -216,17 +224,27 @@ function LeaderCalendarInner() {
                   'inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-600 dark:border-[#2D3F3A] dark:text-slate-300',
                 button_next:
                   'inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-600 dark:border-[#2D3F3A] dark:text-slate-300',
-                weekdays: 'grid grid-cols-7 gap-1 text-center mb-2',
-                weekday: 'text-[11px] font-semibold text-slate-500 dark:text-slate-400',
-                weeks: 'block space-y-1',
-                week: 'grid grid-cols-7 gap-1 text-center',
-                day: 'relative p-0 text-center',
+                weekdays: 'grid grid-cols-7 gap-1 text-center w-full mb-2',
+                weekday:
+                  'text-center text-xs font-semibold text-slate-600 py-1 whitespace-nowrap dark:text-slate-300',
+                weeks: 'block space-y-1 w-full',
+                week: 'grid grid-cols-7 gap-1 text-center w-full',
+                day: 'relative flex items-center justify-center p-0 text-center',
                 day_button: `${DAY_BTN} text-slate-800 dark:text-gray-100 hover:bg-emerald-500/10`,
                 today: '[&>button]:ring-1 [&>button]:ring-[#D4AF37]/50',
                 outside: '[&>button]:text-slate-300 dark:[&>button]:text-slate-600',
                 selected:
                   '[&>button]:bg-rose-500/15 [&>button]:font-bold [&>button]:text-rose-600 [&>button]:border [&>button]:border-rose-500/30 dark:[&>button]:text-rose-400',
               }}
+              style={
+                {
+                  '--rdp-day-height': '2.25rem',
+                  '--rdp-day-width': '100%',
+                  '--rdp-day_button-height': '2.25rem',
+                  '--rdp-day_button-width': '2.25rem',
+                  '--rdp-day_button-border-radius': '0.75rem',
+                } as CSSProperties
+              }
             />
           </div>
 
@@ -254,7 +272,7 @@ function LeaderCalendarInner() {
 
       {!error && profile ? (
         <div className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 px-4 py-3 backdrop-blur dark:border-[#2D3F3A] dark:bg-[#22302C]/95">
-          <div className="mx-auto max-w-lg">
+          <div className="mx-auto max-w-xl">
             <button
               type="button"
               onClick={() => void handleSave()}

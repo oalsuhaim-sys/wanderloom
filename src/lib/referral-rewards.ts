@@ -75,7 +75,7 @@ async function resolveReferralCodeForQuotation(
 
   const { data: client, error } = await supabase
     .from('clients')
-    .select('used_code, referral_code, ref_code')
+    .select('used_code, ref_code')
     .eq('id', clientId)
     .maybeSingle();
 
@@ -84,7 +84,7 @@ async function resolveReferralCodeForQuotation(
     if (msg.includes('used_code') || msg.includes('column')) {
       const fallback = await supabase
         .from('clients')
-        .select('referral_code, ref_code')
+        .select('ref_code')
         .eq('id', clientId)
         .maybeSingle();
       if (fallback.error) throw fallback.error;
@@ -302,32 +302,19 @@ async function findReferrerByCode(
   const normalized = normalizeReferralCode(code);
   if (!normalized) return null;
 
-  const selectCols = 'id, wallet_balance, referral_code, ref_code';
+  const selectCols = 'id, wallet_balance, ref_code';
   const variants = referralCodeLookupVariants(normalized);
 
   for (const variant of variants) {
-    const byReferralCode = await supabase
+    const byRefCode = await supabase
       .from('clients')
       .select(selectCols)
-      .eq('referral_code', variant)
+      .eq('ref_code', variant)
       .maybeSingle();
 
-    if (byReferralCode.error && !byReferralCode.error.message.includes('referral_code')) {
-      throw byReferralCode.error;
-    }
+    if (byRefCode.error) throw byRefCode.error;
 
-    let row = byReferralCode.data as Record<string, unknown> | null;
-
-    if (!row) {
-      const byRefCode = await supabase
-        .from('clients')
-        .select(selectCols)
-        .eq('ref_code', variant)
-        .maybeSingle();
-      if (byRefCode.error) throw byRefCode.error;
-      row = byRefCode.data as Record<string, unknown> | null;
-    }
-
+    const row = byRefCode.data as Record<string, unknown> | null;
     if (!row?.id) continue;
 
     const id = Number(row.id);
@@ -347,7 +334,7 @@ async function findReferrerByCode(
   const { data: candidates, error } = await supabase
     .from('clients')
     .select(selectCols)
-    .or('referral_code.not.is.null,ref_code.not.is.null')
+    .not('ref_code', 'is', null)
     .order('id', { ascending: false })
     .limit(500);
 
@@ -361,10 +348,7 @@ async function findReferrerByCode(
     const id = Number(record.id);
     if (!Number.isFinite(id) || id <= 0) continue;
     if (excludeClientId != null && id === excludeClientId) continue;
-    if (
-      referralCodesEqual(record.referral_code, target) ||
-      referralCodesEqual(record.ref_code, target)
-    ) {
+    if (referralCodesEqual(record.ref_code, target)) {
       return {
         id,
         wallet_balance: Number(record.wallet_balance ?? 0) || 0,

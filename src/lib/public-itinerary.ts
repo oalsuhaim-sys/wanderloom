@@ -1976,7 +1976,7 @@ async function enrichItineraryRow(row: Record<string, unknown>): Promise<Record<
   if (!pickStr(row, ['customer_name']) && row.client_id != null) {
     const { data: client, error } = await supabase
       .from('clients')
-      .select('name, vip_tier, total_spent, referral_code, ref_code')
+      .select('name, vip_tier, total_spent, ref_code')
       .eq('id', row.client_id)
       .maybeSingle()
     if (!error && client && typeof client === 'object') {
@@ -1984,32 +1984,30 @@ async function enrichItineraryRow(row: Record<string, unknown>): Promise<Record<
         name?: string | null
         vip_tier?: string | null
         total_spent?: unknown
-        referral_code?: string | null
         ref_code?: string | null
       }
       const name = c.name
       if (name != null && String(name).trim()) enriched.customer_name = String(name).trim()
       enriched.client_vip_tier = c.vip_tier
       enriched.client_total_spent = c.total_spent
-      const referral = (c.ref_code ?? c.referral_code ?? '').trim()
+      const referral = String(c.ref_code ?? '').trim()
       if (referral) enriched.referral_code = referral
     }
   } else if (row.client_id != null) {
     const { data: client, error } = await supabase
       .from('clients')
-      .select('vip_tier, total_spent, referral_code, ref_code')
+      .select('vip_tier, total_spent, ref_code')
       .eq('id', row.client_id)
       .maybeSingle()
     if (!error && client && typeof client === 'object') {
       const c = client as {
         vip_tier?: string | null
         total_spent?: unknown
-        referral_code?: string | null
         ref_code?: string | null
       }
       enriched.client_vip_tier = c.vip_tier
       enriched.client_total_spent = c.total_spent
-      const referral = (c.ref_code ?? c.referral_code ?? '').trim()
+      const referral = String(c.ref_code ?? '').trim()
       if (referral) enriched.referral_code = referral
     }
   }

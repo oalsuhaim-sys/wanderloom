@@ -1,35 +1,14 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Heart, Inbox, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 import {
-  buildLazySupplierAlerts,
-  buildPassportAlerts,
-  buildSalesPipelinePulse,
-  buildVipsInTransit,
   formatSarAmount,
-  type LazySupplierAlert,
-  type PassportAlert,
-  type SalesPipelinePulse,
-  type VipInTransit,
 } from '@/lib/live-radar-dashboard';
-import { fetchGroupOnboardingLeads, fetchInterestOnlyLeads, fetchNewCrmLeads, type CrmLeadRow, type CrmLeadWithIntake } from '@/lib/crm-leads';
-import {
-  fetchGroupFulfillmentClients,
-  type GroupFulfillmentClient,
-} from '@/lib/group-operations-radar';
-import {
-  fetchMarketingPublishingRadar,
-  type MarketingPublishRadarItem,
-} from '@/lib/marketing-publishing-radar';
-import { supabase } from '@/lib/supabase';
-import {
-  anyJwtClockSkewError,
-  recoverSupabaseSessionFromClockSkew,
-} from '@/lib/supabase/auth-clock-skew';
+import { BirthdayRadarWidget } from '@/app/crm/_components/BirthdayRadarWidget';
 import { subscribeCrmRealtimeRefresh } from '@/lib/crm-realtime-events';
 
 import { useCrmEmployee } from '@/app/crm/_components/CrmEmployeeProvider';
@@ -45,6 +24,7 @@ import { InterestListInbox } from './_components/InterestListInbox';
 import { GroupOnboardingInbox } from './_components/GroupOnboardingInbox';
 import { NewLeadsInbox } from './_components/NewLeadsInbox';
 import { RADAR_SECTION_INITIAL_LIMIT, ShowAllToggle } from './_components/ShowAllToggle';
+import { useRadarDashboard } from './useRadarDashboard';
 
 function todayIsoLocal(): string {
   return new Date().toLocaleDateString('en-CA');
@@ -63,295 +43,33 @@ function todayLabelArabic(): string {
   }
 }
 
-type DashboardData = {
-  pulse: SalesPipelinePulse;
-  inTransit: VipInTransit[];
-  passportAlerts: PassportAlert[];
-  lazySuppliers: LazySupplierAlert[];
-  newLeads: CrmLeadWithIntake[];
-  leadsWarning?: string;
-  interestLeads: CrmLeadRow[];
-  interestWarning?: string;
-  groupOnboardingLeads: CrmLeadRow[];
-  groupOnboardingError?: string;
-  groupFulfillment: GroupFulfillmentClient[];
-  groupFulfillmentError?: string;
-  marketingPublish: MarketingPublishRadarItem[];
-  marketingPublishError?: string;
-  quotationRevisions: Array<{
-    id: string;
-    title: string;
-    status: 'needs_revision' | 'client_responded';
-    clientName: string;
-    clientPhone: string | null;
-    updatedAt: string | null;
-  }>;
-};
-
 export default function RadarPage() {
   const { profileAccess } = useCrmEmployee();
   const showInbox = canAccessRadarInbox(profileAccess);
   const showAppointments = canAccessRadarAppointments(profileAccess);
   const showGroupOps = canAccessGroupOperations(profileAccess);
 
-  const [data, setData] = useState<DashboardData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [dataWarning, setDataWarning] = useState('');
+  const {
+    data,
+    error,
+    dataWarning,
+    showFullPageSpinner,
+    mutate,
+    refresh: fetchRadar,
+  } = useRadarDashboard();
+
   const [leadsPanelTab, setLeadsPanelTab] = useState<'inbox' | 'interest'>('inbox');
   const [showAllTravelers, setShowAllTravelers] = useState(false);
   const [showAllPassports, setShowAllPassports] = useState(false);
   const [showAllLazySuppliers, setShowAllLazySuppliers] = useState(false);
 
-  const fetchRadar = useCallback(async (opts?: { soft?: boolean }) => {
-    if (!supabase) {
-      setError('Supabase غير مهيأ.');
-      setData(null);
-      setLoading(false);
-      return;
-    }
-
-    if (!opts?.soft) setLoading(true);
-    setError('');
-    if (!opts?.soft) setDataWarning('');
-
-    const itineraryCols =
-      'id, customer_name, title, destination, status, dates, start_date, end_date, is_template, client_id, supplier_requests, updated_at, expected_profit, clients(name)';
-
-    const loadCoreQueries = () =>
-      Promise.all([
-        supabase.from('itineraries').select(itineraryCols).not('is_template', 'eq', true),
-        supabase
-          .from('clients')
-          .select('id, name, passport_expiry, wallet_balance'),
-        supabase.from('quotations').select('id, status, total_estimated_cost, expected_profit'),
-        supabase
-          .from('quotations')
-          .select('id, title, status, updated_at, clients(name, phone_wa)')
-          .in('status', ['needs_revision', 'client_responded'])
-          .order('updated_at', { ascending: false })
-          .limit(8),
-      ]);
-
-    let [tripsRes, clientsRes, quotationsRes, quotationRevisionRes] =
-      await loadCoreQueries();
-
-    // Local clock skew can make JWTs look "issued in the future" — refresh once and retry.
-    if (
-      anyJwtClockSkewError(
-        tripsRes.error,
-        clientsRes.error,
-        quotationsRes.error,
-        quotationRevisionRes.error,
-      )
-    ) {
-      const recovered = await recoverSupabaseSessionFromClockSkew(supabase);
-      if (recovered) {
-        [tripsRes, clientsRes, quotationsRes, quotationRevisionRes] =
-          await loadCoreQueries();
-      }
-    }
-
-    // Clear prior skew warning once queries succeed after recovery / delayed retry.
-    if (
-      !anyJwtClockSkewError(
-        tripsRes.error,
-        clientsRes.error,
-        quotationsRes.error,
-        quotationRevisionRes.error,
-      )
-    ) {
-      setDataWarning((prev) =>
-        /JWT|ساعة الجهاز/i.test(prev) ? '' : prev,
-      );
-    }
-
-    let itineraries = (tripsRes.data as Record<string, unknown>[]) ?? [];
-
-    if (tripsRes.error) {
-      const msg = tripsRes.error.message ?? '';
-      if (anyJwtClockSkewError(tripsRes.error)) {
-        // Soft-fail: keep previous dashboard stats; warn instead of clearing to zeros.
-        setDataWarning(
-          'انحراف بسيط في ساعة الجهاز (JWT) — جاري إعادة المحاولة تلقائياً…',
-        );
-        setLoading(false);
-        if (!opts?.soft) {
-          window.setTimeout(() => {
-            void fetchRadar({ soft: true });
-          }, 2000);
-        }
-        return;
-      }
-      if (msg.includes('expected_profit') || msg.includes('supplier_requests') || msg.includes('column')) {
-        setDataWarning('بعض أعمدة المسارات غير متوفرة — نفّذ سكربتات SQL الأحدث في Supabase.');
-        const fallback = await supabase
-          .from('itineraries')
-          .select(
-            'id, customer_name, title, destination, status, dates, start_date, end_date, is_template, client_id, clients(name)',
-          )
-          .not('is_template', 'eq', true);
-        if (fallback.error) {
-          if (anyJwtClockSkewError(fallback.error)) {
-            setDataWarning(
-              'انحراف بسيط في ساعة الجهاز (JWT) — أعد مزامنة الوقت أو حدّث الصفحة.',
-            );
-            setLoading(false);
-            return;
-          }
-          setError(fallback.error.message || 'تعذر تحميل الرادار.');
-          setData(null);
-          setLoading(false);
-          return;
-        }
-        itineraries = (fallback.data as Record<string, unknown>[]) ?? [];
-      } else {
-        setError(msg || 'تعذر تحميل الرادار.');
-        setData(null);
-        setLoading(false);
-        return;
-      }
-    }
-
-    let clients = (clientsRes.data as Record<string, unknown>[]) ?? [];
-    if (clientsRes.error) {
-      const msg = clientsRes.error.message ?? '';
-      if (anyJwtClockSkewError(clientsRes.error)) {
-        setDataWarning((prev) =>
-          prev
-            ? prev
-            : 'انحراف بسيط في ساعة الجهاز (JWT) — بعض الإحصائيات قد تكون ناقصة مؤقتاً.',
-        );
-      } else if (msg.includes('wallet_balance') || msg.includes('passport_expiry') || msg.includes('column')) {
-        setDataWarning((prev) =>
-          prev
-            ? prev
-            : 'تعذر تحميل wallet_balance أو passport_expiry — نفّذ سكربتات العملاء في Supabase.',
-        );
-        const fallback = await supabase.from('clients').select('id, name');
-        clients = (fallback.data as Record<string, unknown>[]) ?? [];
-      } else {
-        setDataWarning(msg);
-      }
-    }
-
-    let quotations = (quotationsRes.data as Record<string, unknown>[]) ?? [];
-    if (quotationsRes.error) {
-      const msg = quotationsRes.error.message ?? '';
-      if (anyJwtClockSkewError(quotationsRes.error)) {
-        setDataWarning((prev) =>
-          prev
-            ? prev
-            : 'انحراف بسيط في ساعة الجهاز (JWT) — بعض الإحصائيات قد تكون ناقصة مؤقتاً.',
-        );
-        quotations = [];
-      } else if (msg.includes('quotations') || msg.includes('relation') || msg.includes('column')) {
-        setDataWarning((prev) =>
-          prev ? `${prev} · جدول quotations غير متوفر.` : 'جدول quotations غير متوفر — نفّذ supabase/sql/quotations.sql',
-        );
-        quotations = [];
-      }
-    }
-
-    const quotationRevisions =
-      ((quotationRevisionRes.data as Record<string, unknown>[] | null) ?? []).map((row) => {
-        const clientsRaw = row.clients;
-        const firstClient =
-          Array.isArray(clientsRaw) && clientsRaw.length > 0
-            ? (clientsRaw[0] as Record<string, unknown>)
-            : clientsRaw && typeof clientsRaw === 'object'
-              ? (clientsRaw as Record<string, unknown>)
-              : null;
-        const statusRaw = String(row.status ?? '');
-        const status: 'needs_revision' | 'client_responded' =
-          statusRaw === 'client_responded' ? 'client_responded' : 'needs_revision';
-        return {
-          id: String(row.id ?? '').trim(),
-          title: String(row.title ?? '').trim() || 'عرض سعر',
-          status,
-          clientName: String(firstClient?.name ?? '').trim() || '—',
-          clientPhone:
-            firstClient?.phone_wa != null
-              ? String(firstClient.phone_wa).trim() || null
-              : null,
-          updatedAt: row.updated_at != null ? String(row.updated_at) : null,
-        };
-      }).filter((row) => row.id);
-
-    const now = new Date();
-
-    let newLeads: CrmLeadWithIntake[] = [];
-    let leadsWarning: string | undefined;
-    try {
-      const leadsResult = await fetchNewCrmLeads(supabase);
-      newLeads = leadsResult.leads;
-      leadsWarning = leadsResult.warning;
-    } catch (leadsErr) {
-      const leadsMsg = leadsErr instanceof Error ? leadsErr.message : 'تعذر تحميل الطلبات الجديدة.';
-      setDataWarning((prev) => (prev ? `${prev} · ${leadsMsg}` : leadsMsg));
-    }
-
-    let interestLeads: CrmLeadRow[] = [];
-    let interestWarning: string | undefined;
-    try {
-      const interestResult = await fetchInterestOnlyLeads(supabase);
-      interestLeads = interestResult.leads;
-      interestWarning = interestResult.warning;
-    } catch (interestErr) {
-      const interestMsg =
-        interestErr instanceof Error ? interestErr.message : 'تعذر تحميل قائمة الاهتمامات.';
-      setDataWarning((prev) => (prev ? `${prev} · ${interestMsg}` : interestMsg));
-    }
-
-    let groupOnboardingLeads: CrmLeadRow[] = [];
-    let groupOnboardingError: string | undefined;
-    try {
-      const groupObResult = await fetchGroupOnboardingLeads(supabase);
-      groupOnboardingLeads = groupObResult.leads;
-      if (groupObResult.error) {
-        console.error('Fetch Group Leads Error:', groupObResult.error);
-        groupOnboardingError = groupObResult.error;
-      }
-    } catch (groupObErr) {
-      console.error('Fetch Group Leads Error:', groupObErr);
-      groupOnboardingError =
-        'حدث خطأ في جلب البيانات، تأكد من الاتصال بقاعدة البيانات.';
-    }
-
-    const groupResult = await fetchGroupFulfillmentClients(supabase);
-    const marketingResult = await fetchMarketingPublishingRadar(supabase);
-
-    setData({
-      pulse: buildSalesPipelinePulse({ itineraries, quotations, clients }),
-      inTransit: buildVipsInTransit(itineraries, now),
-      passportAlerts: buildPassportAlerts(clients, now),
-      lazySuppliers: buildLazySupplierAlerts(itineraries, now),
-      newLeads,
-      leadsWarning,
-      interestLeads,
-      interestWarning,
-      groupOnboardingLeads,
-      groupOnboardingError,
-      groupFulfillment: groupResult.clients,
-      groupFulfillmentError: groupResult.error,
-      marketingPublish: marketingResult.items,
-      marketingPublishError: marketingResult.error,
-      quotationRevisions,
-    });
-    setLoading(false);
-  }, []);
-
-  useEffect(() => {
-    void fetchRadar();
-  }, [fetchRadar]);
-
   useEffect(() => {
     return subscribeCrmRealtimeRefresh(() => {
-      void fetchRadar({ soft: true });
+      void fetchRadar();
     });
   }, [fetchRadar]);
 
-  if (loading) {
+  if (showFullPageSpinner) {
     return (
       <div className="flex min-h-screen items-center justify-center gap-3 bg-slate-50 text-slate-500" dir="rtl">
         <Loader2 className="h-8 w-8 animate-spin text-slate-400" aria-hidden />
@@ -359,6 +77,18 @@ export default function RadarPage() {
       </div>
     );
   }
+
+  const setData = (
+    updater: (prev: NonNullable<typeof data> | null) => NonNullable<typeof data> | null | undefined,
+  ) => {
+    void mutate(
+      (current) => {
+        const next = updater(current ?? null);
+        return next ?? current;
+      },
+      { revalidate: false },
+    );
+  };
 
   const pulse = data?.pulse ?? { confirmedProfit: 0, pendingQuotationValue: 0, lowWalletCount: 0 };
   const inTransit = data?.inTransit ?? [];
@@ -425,6 +155,8 @@ export default function RadarPage() {
           {dataWarning}
         </div>
       ) : null}
+
+      <BirthdayRadarWidget withinDays={7} />
 
       {/* 1. Sales Pipeline Pulse */}
       <section className="space-y-4">

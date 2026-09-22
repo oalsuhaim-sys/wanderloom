@@ -14,27 +14,27 @@
   --font-sans: var(--font-tajawal), "Tajawal", sans-serif;
   --font-mono: var(--font-geist-mono);
 
-  /* Wanderloom luxury brand palette */
-  --color-brand-primary: #1a3b2a;
-  --color-brand-dark: #0b1912;
-  --color-brand-surface: #12261b;
-  --color-brand-gold: #c5a059;
-  --color-brand-charcoal: #0a0f0c;
-  --color-brand-offwhite: #f9f9f6;
-  --color-brand-muted: #8fa396;
+  /* Wanderloom official brand palette */
+  --color-brand-primary: #1c2e3a;
+  --color-brand-dark: #122029;
+  --color-brand-surface: #162833;
+  --color-brand-gold: #9c7a3c;
+  --color-brand-charcoal: #122029;
+  --color-brand-offwhite: #f4efe6;
+  --color-brand-muted: #6b7c86;
 
-  /* Luxury amber gold — overrides default Tailwind orange drift */
-  --color-amber-50: #fdfbf7;
-  --color-amber-100: #f7f0e1;
-  --color-amber-200: #e8d2a7;
-  --color-amber-300: #dcc18a;
-  --color-amber-400: #d4af37;
-  --color-amber-500: #c5a059;
-  --color-amber-600: #b38e46;
-  --color-amber-700: #8c6d23;
-  --color-amber-800: #6b5419;
-  --color-amber-900: #4a3910;
-  --color-amber-950: #2d2209;
+  /* Warm gold scale — overrides default Tailwind orange drift */
+  --color-amber-50: #f4efe6;
+  --color-amber-100: #efe6d4;
+  --color-amber-200: #e0d0a8;
+  --color-amber-300: #c9ad6e;
+  --color-amber-400: #b08d4a;
+  --color-amber-500: #9c7a3c;
+  --color-amber-600: #826533;
+  --color-amber-700: #6a5329;
+  --color-amber-800: #524020;
+  --color-amber-900: #3a2e17;
+  --color-amber-950: #241c0e;
 }
 
 body {
@@ -516,15 +516,15 @@ body {
 }
 
 .crm-command-center .crm-kpi-value {
-  color: #c5a059;
+  color: #9c7a3c;
   font-weight: 700;
   font-size: 1.875rem;
   line-height: 2.25rem;
 }
 
 .crm-command-center table.crm-data-table thead th {
-  background: rgb(26 59 42 / 0.05);
-  color: #1a3b2a;
+  background: rgb(28 46 58 / 0.05);
+  color: #1c2e3a;
   font-weight: 600;
   text-align: right;
   padding: 1rem 1.5rem;
@@ -555,13 +555,13 @@ body {
   select
 ):not([class*='border-0']):not(.crm-marketing-textarea):focus {
   outline: none;
-  border-color: #c5a059;
-  box-shadow: 0 0 0 2px rgb(197 160 89 / 0.5);
+  border-color: #9c7a3c;
+  box-shadow: 0 0 0 2px rgb(156 122 60 / 0.5);
 }
 
 /* ——— Wanderloom landing: woven “W” thread watermark ——— */
 .bg-wanderloom-pattern {
-  --wanderloom-pattern-base: #fbfbf9;
+  --wanderloom-pattern-base: #f4efe6;
   --wanderloom-pattern-tile: 200px;
   background-color: var(--wanderloom-pattern-base);
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'%3E%3Cg fill='none' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M22 52 L54 138 L100 58 L146 138 L178 52' stroke='%237A6E52' stroke-opacity='0.038' stroke-width='0.55'/%3E%3Cpath d='M22 52 L54 138 L100 58 L146 138 L178 52' stroke='%236B5C38' stroke-opacity='0.018' stroke-width='0.45' transform='translate(100 100)'/%3E%3Cpath d='M0 50 H200 M0 100 H200 M0 150 H200' stroke='%239C8B6E' stroke-opacity='0.022' stroke-width='0.35'/%3E%3Cpath d='M50 0 V200 M100 0 V200 M150 0 V200' stroke='%239C8B6E' stroke-opacity='0.022' stroke-width='0.35'/%3E%3Cpath d='M-30 0 L230 200 M230 0 L-30 200' stroke='%238B7355' stroke-opacity='0.012' stroke-width='0.3'/%3E%3C/g%3E%3C/svg%3E");
@@ -572,41 +572,41 @@ body {
 
 /* ——— Landing Phase 1: glass navbar + hero CTAs (plain CSS — always ships) ——— */
 .wl-public-navbar {
-  background-color: rgb(249 249 246 / 0.82) !important;
-  border-bottom-color: rgb(197 160 89 / 0.28) !important;
+  background-color: rgb(244 239 230 / 0.88) !important;
+  border-bottom-color: rgb(156 122 60 / 0.28) !important;
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  box-shadow: 0 1px 0 rgb(197 160 89 / 0.12), 0 8px 24px rgb(26 59 42 / 0.04);
+  box-shadow: 0 1px 0 rgb(156 122 60 / 0.12), 0 8px 24px rgb(28 46 58 / 0.04);
 }
 
 .wl-public-nav-logo {
-  color: #c5a059;
+  color: #9c7a3c;
 }
 
 .wl-public-nav-logo:hover {
-  color: #a88849;
+  color: #826533;
 }
 
 .wl-public-nav-link {
-  color: rgb(26 59 42 / 0.82);
+  color: rgb(28 46 58 / 0.85);
 }
 
 .wl-public-nav-link:hover {
-  color: #c5a059;
+  color: #9c7a3c;
 }
 
 .wl-public-nav-underline {
-  background-color: #c5a059;
+  background-color: #9c7a3c;
 }
 
 .wl-public-nav-partner {
-  color: #c5a059;
-  border-color: rgb(197 160 89 / 0.55);
+  color: #9c7a3c;
+  border-color: rgb(156 122 60 / 0.55);
 }
 
 .wl-public-nav-partner:hover {
-  color: #a88849;
-  border-color: #c5a059;
+  color: #826533;
+  border-color: #9c7a3c;
 }
 
 .wl-hero-cta {
@@ -621,23 +621,25 @@ body {
 }
 
 .wl-hero-cta--gold {
-  background-color: #c5a059;
-  box-shadow: 0 8px 18px rgb(197 160 89 / 0.28);
+  background-color: #9c7a3c;
+  color: #f4efe6;
+  box-shadow: 0 8px 18px rgb(156 122 60 / 0.28);
 }
 
 .wl-hero-cta--gold:hover {
-  background-color: #b3893d;
-  box-shadow: 0 12px 28px rgb(197 160 89 / 0.38);
+  background-color: #826533;
+  box-shadow: 0 12px 28px rgb(156 122 60 / 0.38);
 }
 
 .wl-hero-cta--green {
-  background-color: #1a3b2a;
-  box-shadow: 0 8px 18px rgb(26 59 42 / 0.22);
+  background-color: #1c2e3a;
+  color: #f4efe6;
+  box-shadow: 0 8px 18px rgb(28 46 58 / 0.22);
 }
 
 .wl-hero-cta--green:hover {
-  background-color: #163018;
-  box-shadow: 0 12px 28px rgb(26 59 42 / 0.3);
+  background-color: #122029;
+  box-shadow: 0 12px 28px rgb(28 46 58 / 0.3);
 }
 
 /* ——— Landing Phase 2: cards, destination tags, quiz options ——— */
@@ -676,15 +678,15 @@ body {
 }
 
 .wl-dest-tag:hover {
-  border-color: #1a3b2a;
+  border-color: #1c2e3a;
   box-shadow: 0 1px 3px rgb(0 0 0 / 0.08);
 }
 
 .wl-dest-tag.is-active {
-  background: #1a3b2a;
-  color: #c5a059;
-  border-color: transparent;
-  box-shadow: 0 4px 14px rgb(26 59 42 / 0.25);
+  background: #1c2e3a;
+  color: #f4efe6;
+  border-color: #9c7a3c;
+  box-shadow: 0 4px 14px rgb(28 46 58 / 0.25);
   transform: scale(1.05);
 }
 
@@ -712,9 +714,10 @@ body {
 }
 
 .wl-quiz-option.is-selected {
-  border-color: #c5a059;
-  background: #fffbf0;
-  box-shadow: 0 8px 22px rgb(197 160 89 / 0.18);
+  border-color: #9c7a3c;
+  background: #1c2e3a;
+  color: #f4efe6;
+  box-shadow: 0 8px 22px rgb(28 46 58 / 0.18);
 }
 
 .wl-quiz-option-mark {
@@ -734,9 +737,9 @@ body {
 }
 
 .wl-quiz-option.is-selected .wl-quiz-option-mark {
-  border-color: #c5a059;
-  background: #c5a059;
-  color: #ffffff;
+  border-color: #9c7a3c;
+  background: #9c7a3c;
+  color: #f4efe6;
 }
 
 /* ——— Landing Phase 3: editorial About Us scroll reveal ——— */
@@ -771,7 +774,7 @@ body {
 
 .wl-about-manifesto {
   border-right-width: 4px;
-  border-right-color: #c5a059;
+  border-right-color: #9c7a3c;
   border-right-style: solid;
   border-top-right-radius: 9999px;
   border-bottom-right-radius: 9999px;
@@ -884,7 +887,7 @@ input[type='radio'].wanderloom-raw-radio {
   -webkit-appearance: none !important;
   -moz-appearance: none !important;
   border-radius: 2px !important;
-  accent-color: #1e3f20;
+  accent-color: #1c2e3a;
 }
 
 input[type='radio'].wanderloom-raw-radio::before,
@@ -1457,48 +1460,89 @@ input[type='radio'].wanderloom-raw-radio::after {
   }
 }
 
-/* Leader availability calendar — force clean 7-col grid, no overlap */
+/* Leader availability calendar — wide 7-col grid, full weekday titles */
 .leader-availability-calendar .rdp-root {
   width: 100%;
+  min-width: 0;
   position: relative;
   z-index: 0;
+}
+
+.leader-availability-calendar .rdp-months,
+.leader-availability-calendar .rdp-month {
+  width: 100%;
+  max-width: 100%;
 }
 
 .leader-availability-calendar .rdp-month_grid,
 .leader-availability-calendar table.rdp-month_grid {
   width: 100%;
   table-layout: fixed;
+  border-collapse: separate;
+  border-spacing: 0;
 }
 
+/* Weekday header row — equal columns, no truncation */
 .leader-availability-calendar .rdp-weekdays {
   display: grid !important;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 0.25rem;
+  grid-template-columns: repeat(7, minmax(0, 1fr)) !important;
+  gap: 0.25rem !important;
+  width: 100% !important;
   margin-bottom: 0.75rem;
+  text-align: center;
 }
 
-.leader-availability-calendar .rdp-weekdays > * {
-  width: 100% !important;
+.leader-availability-calendar .rdp-weekdays > *,
+.leader-availability-calendar .rdp-weekday {
+  position: static !important;
+  width: auto !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  box-sizing: border-box;
+  overflow: visible;
+  text-overflow: unset;
+  white-space: nowrap;
+  text-align: center !important;
+  font-size: 0.75rem !important;
+  font-weight: 600;
+  line-height: 1.25 !important;
+  padding: 0.25rem 0 !important;
+  color: #475569;
+}
+
+.dark .leader-availability-calendar .rdp-weekdays > *,
+.dark .leader-availability-calendar .rdp-weekday {
+  color: #cbd5e1;
 }
 
 .leader-availability-calendar .rdp-weeks {
   display: block;
+  width: 100%;
 }
 
 .leader-availability-calendar .rdp-week {
   display: grid !important;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 0.25rem;
+  grid-template-columns: repeat(7, minmax(0, 1fr)) !important;
+  gap: 0.25rem !important;
+  width: 100%;
   margin-top: 0.25rem;
 }
 
 .leader-availability-calendar .rdp-week > * {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 100% !important;
+  min-width: 0 !important;
 }
 
 .leader-availability-calendar .rdp-day_button {
-  width: 100%;
-  max-width: none;
+  width: 1.75rem;
+  height: 1.75rem;
+  max-width: 100%;
+  margin-inline: auto;
+  font-size: 0.75rem;
 }
 
 /* Hide scrollbar for Chrome, Safari and Opera */

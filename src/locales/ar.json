@@ -64,7 +64,7 @@
       "emailPlaceholder": "example@email.com",
       "ageLabel": "العمر *",
       "agePlaceholder": "مثال: 28",
-      "birthDateLabel": "تاريخ الميلاد",
+      "birthDateLabel": "تاريخ الميلاد *",
       "submit": "تقديم طلب انضمام",
       "close": "إغلاق"
     },
@@ -590,6 +590,9 @@
     "fullNamePlaceholder": "كما تحب أن نناديك في الرسائل",
     "phoneWa": "رقم الواتساب *",
     "phonePlaceholder": "9665xxxxxxxx",
+    "birthDateLabel": "تاريخ الميلاد *",
+    "birthDateRequired": "يرجى إدخال تاريخ الميلاد.",
+    "invalidBirthDate": "يرجى إدخال تاريخ ميلاد صحيح.",
     "sourceLabel": "من أين عرفت عن Wanderloom؟",
     "sourcePlaceholder": "اختر…",
     "sourceInstagram": "إنستغرام",

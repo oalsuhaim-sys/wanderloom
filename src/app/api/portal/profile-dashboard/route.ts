@@ -266,8 +266,7 @@ export async function GET(request: Request) {
   const clientId = clientRow.id as string | number;
   const clientDbId = coerceQuotationIdForDb(clientId);
   const keys = clientIdKeys(clientId);
-  const referral =
-    pickString(clientRow, ['ref_code', 'referral_code', 'referralCode']) || null;
+  const referral = pickString(clientRow, ['ref_code']) || null;
   const passportRaw = pickString(clientRow, [
     'passport_expiry',
     'passportExpiry',

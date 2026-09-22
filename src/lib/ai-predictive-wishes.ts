@@ -35,6 +35,8 @@ export type AiItinerarySuggestion = {
   time: string;
   ai_reasoning: string;
   type: 'cafe' | 'nature' | 'culture' | 'action';
+  category?: string;
+  notes?: string;
 };
 
 function pickText(raw: Record<string, unknown> | null | undefined, keys: string[]): string {
@@ -145,7 +147,7 @@ function resolveTripDateLabel(ctx: PredictiveWishContext): string {
   return '15 أكتوبر';
 }
 
-/** DNA مضغوط لإرساله إلى OpenAI */
+/** DNA كامل لإرساله إلى Claude Predictive AI */
 export function buildClientDnaForAi(ctx: PredictiveWishContext): Record<string, unknown> {
   const client = ctx.clientRow ?? {};
   const dna = parseTravelDnaForm(client.travel_dna);
@@ -154,17 +156,62 @@ export function buildClientDnaForAi(ctx: PredictiveWishContext): Record<string, 
     ...(ctx.interests ?? []),
   ].filter(Boolean);
 
+  const flight_seat =
+    pickText(client, ['flight_seat', 'preferred_seat']) || dna.preferred_seat;
+  const food_allergies =
+    pickText(client, ['food_allergies', 'dietary']) || dna.food_allergies;
+  const hotel_preference =
+    pickText(client, ['hotel_preference', 'hotel_preferences', 'hotel_style']) ||
+    dna.hotel_style;
+  const favorite_drink =
+    pickText(client, ['favorite_drink', 'drink_coffee']) || dna.drink_coffee;
+
   return {
     name: pickText(client, ['name', 'full_name']) || 'ضيف Wanderloom',
     interests: [...new Set(interests)].slice(0, 12),
+    dna_interests: [...new Set(interests)].slice(0, 12),
     activity_level: pickText(client, ['dna_activity_level']),
-    special_requests: pickText(client, ['dna_special_requests', 'secret_notes']) || dna.secret_notes,
-    hotel_preference: pickText(client, ['hotel_preference']) || dna.hotel_style,
-    favorite_drink: pickText(client, ['favorite_drink']) || dna.drink_coffee,
-    food_allergies: pickText(client, ['food_allergies', 'dietary']) || dna.food_allergies,
-    flight_seat: pickText(client, ['flight_seat']) || dna.preferred_seat,
+    dna_activity_level: pickText(client, ['dna_activity_level']),
+    special_requests:
+      pickText(client, ['dna_special_requests', 'secret_notes']) || dna.secret_notes,
+    secret_notes: pickText(client, ['secret_notes']) || dna.secret_notes,
+    hotel_preference,
+    hotel_style: hotel_preference,
+    favorite_drink,
+    drink_coffee: favorite_drink,
+    food_allergies,
+    dietary: food_allergies,
+    flight_seat,
+    preferred_seat: flight_seat,
     client_tier: pickText(client, ['client_tier', 'vip_tier']),
+    destination: ctx.destination?.trim() || '',
+    tripDateFrom: ctx.tripDateFrom?.trim() || '',
+    tripDateTo: ctx.tripDateTo?.trim() || '',
+    activeDayLabel: ctx.activeDayLabel?.trim() || '',
   };
+}
+
+/** ملخص DNA للشارات في واجهة السحر التنبؤي */
+export function buildDnaBadgeLines(ctx: PredictiveWishContext): string[] {
+  const dna = buildClientDnaForAi(ctx);
+  const lines: string[] = [];
+  if (String(dna.flight_seat ?? '').trim()) {
+    lines.push(`مقعد: ${String(dna.flight_seat).trim()}`);
+  }
+  if (String(dna.food_allergies ?? '').trim()) {
+    lines.push(`طعام: ${String(dna.food_allergies).trim()}`);
+  }
+  if (String(dna.hotel_preference ?? '').trim()) {
+    lines.push(`فندق: ${String(dna.hotel_preference).trim()}`);
+  }
+  if (String(dna.favorite_drink ?? '').trim()) {
+    lines.push(`مشروب: ${String(dna.favorite_drink).trim()}`);
+  }
+  const interests = Array.isArray(dna.interests) ? dna.interests : [];
+  if (interests.length) {
+    lines.push(`اهتمامات: ${interests.slice(0, 4).join(' · ')}`);
+  }
+  return lines;
 }
 
 export function aiActivityTypeLabelAr(type: AiItinerarySuggestion['type']): string {
@@ -179,11 +226,18 @@ export function aiSuggestionToPlacePayload(
   destination?: string,
 ): Record<string, unknown> {
   const city = resolveTripCity(destination ?? '');
+  const time = String(suggestion.time ?? '').trim();
+  const visit =
+    /^(\d{1,2}):(\d{2})/.exec(time)?.[0] ??
+    (/^\d{1,2}:\d{2}/.test(time) ? time.slice(0, 5) : '');
   return {
-    name: `${suggestion.title}${suggestion.time ? ` (${suggestion.time})` : ''}`,
-    category: aiActivityTypeLabelAr(suggestion.type),
+    name: suggestion.title,
+    category: suggestion.category || aiActivityTypeLabelAr(suggestion.type),
     city,
+    visit_time: visit || undefined,
+    time_slot: visit || undefined,
     suggested_time: suggestion.time,
+    notes: suggestion.notes || suggestion.ai_reasoning || undefined,
     ai_reasoning: suggestion.ai_reasoning,
     predictive_wish: true,
     ai_generated: true,

@@ -30,6 +30,8 @@ export type SimpleItineraryPlace = {
   visit_time?: string;
   /** ملاحظات المحطة (اختياري) — تظهر للعميل في المسار */
   notes?: string;
+  /** صورة المحطة — تُحفظ في days_data / itinerary_stops وتظهر للعميل */
+  image_url?: string;
   transportToNext?: string;
   transportDuration?: string;
   /** حالة سداد المورد — للموظف فقط */
@@ -49,6 +51,21 @@ export function placeNotesToStopPayload(notes: string | undefined): Record<strin
   const trimmed = String(notes ?? '').trim();
   if (!trimmed) return {};
   return { notes: trimmed, note: trimmed };
+}
+
+/** قراءة صورة المحطة من JSON — يدعم image_url / photo / thumbnail_url */
+export function readPlaceImageUrlFromStop(raw: Record<string, unknown>): string | undefined {
+  const url = String(
+    raw.image_url ?? raw.photo ?? raw.thumbnail_url ?? raw.imageUrl ?? '',
+  ).trim();
+  return url || undefined;
+}
+
+/** كتابة صورة المحطة في payload الحفظ — image_url + photo للتوافق */
+export function placeImageUrlToStopPayload(imageUrl: string | undefined): Record<string, string> {
+  const trimmed = String(imageUrl ?? '').trim();
+  if (!trimmed) return {};
+  return { image_url: trimmed, photo: trimmed };
 }
 
 export const TRANSPORT_MODES = [
@@ -122,11 +139,13 @@ export function withTransportDefaults(place: Record<string, unknown>): SimpleIti
   const visit_time = String(
     place.visit_time ?? place.time_slot ?? place.time ?? '',
   ).trim();
+  const image_url = readPlaceImageUrlFromStop(place);
 
   return {
     ...place,
     _dragId: dragId,
     visit_time,
+    ...(image_url ? { image_url } : { image_url: undefined }),
     transportToNext: (place.transportToNext as string | undefined) ?? 'سيارة',
     transportDuration: (place.transportDuration as string | undefined) ?? '',
     supplierPaid:

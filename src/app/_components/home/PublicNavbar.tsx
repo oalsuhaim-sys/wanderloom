@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
@@ -11,7 +11,7 @@ import {
 import { useLanguage } from '@/context/LanguageContext';
 
 const INTEREST_BTN_CLASS =
-  'inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-full bg-[#1e3f20] px-5 py-2 text-sm font-medium text-[#cda04c] transition hover:bg-[#163018]';
+  'inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-full bg-[#1C2E3A] px-5 py-2 text-sm font-medium text-[#F4EFE6] transition hover:bg-[#122029]';
 
 /**
  * Public landing navbar — Phase 1 glassmorphism (forced via `.wl-public-navbar` CSS).
@@ -57,7 +57,7 @@ export function PublicNavbar() {
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:gap-4 sm:px-8 sm:py-4">
           <Link
             href="/#top"
-            className="wl-public-nav-logo shrink-0 text-xl font-black tracking-[0.14em] text-[#C5A059] transition-colors duration-300 hover:text-[#A88849] sm:text-2xl sm:tracking-[0.18em] lg:text-3xl"
+            className="wl-public-nav-logo shrink-0 text-xl font-black tracking-[0.14em] text-[#9C7A3C] transition-colors duration-300 hover:text-[#A88849] sm:text-2xl sm:tracking-[0.18em] lg:text-3xl"
           >
             {t.brand.name}
           </Link>
@@ -88,13 +88,9 @@ export function PublicNavbar() {
               </button>
               <Link
                 href="/portal"
-                className="wl-public-nav-link group relative whitespace-nowrap rounded-full px-4 py-2 text-[13px] font-bold transition-colors duration-300"
+                className="inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded-full bg-[#1C2E3A] px-4 py-2 text-[13px] font-medium text-[#F4EFE6] transition-all hover:bg-[#122029]"
               >
                 {n.portal}
-                <span
-                  className="wl-public-nav-underline pointer-events-none absolute inset-x-4 -bottom-0.5 h-px origin-center scale-x-0 transition-transform duration-300 group-hover:scale-x-100"
-                  aria-hidden
-                />
               </Link>
               <Link
                 href="/join-partner"
@@ -116,7 +112,7 @@ export function PublicNavbar() {
             <button
               type="button"
               onClick={openInterest}
-              className="inline-flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-full bg-[#1e3f20] px-3 py-1.5 text-xs font-medium text-[#cda04c]"
+              className="inline-flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-full bg-[#1C2E3A] px-3 py-1.5 text-xs font-medium text-[#F4EFE6] transition-all hover:bg-[#122029]"
             >
               <Heart className="h-3.5 w-3.5 shrink-0" aria-hidden />
               اهتمام
@@ -157,7 +153,7 @@ export function PublicNavbar() {
               <button
                 type="button"
                 onClick={openInterest}
-                className="mt-2 inline-flex w-full items-center justify-center gap-2 whitespace-nowrap rounded-full bg-[#1e3f20] px-5 py-2.5 text-sm font-medium text-[#cda04c]"
+                className="mt-2 inline-flex w-full items-center justify-center gap-2 whitespace-nowrap rounded-full bg-[#1C2E3A] px-5 py-2.5 text-sm font-medium text-[#F4EFE6] transition-all hover:bg-[#122029]"
               >
                 <Heart className="h-3.5 w-3.5 shrink-0" aria-hidden />
                 تسجيل اهتمام
@@ -165,7 +161,7 @@ export function PublicNavbar() {
 
               <Link
                 href="/portal"
-                className="wl-public-nav-link rounded-xl px-4 py-3.5 text-center text-sm font-bold transition-colors duration-300 hover:bg-amber-50"
+                className="mt-1 inline-flex w-full items-center justify-center rounded-full bg-[#1C2E3A] px-5 py-2.5 text-center text-sm font-medium text-[#F4EFE6] transition-all hover:bg-[#122029]"
                 onClick={() => setOpen(false)}
               >
                 {n.portal}

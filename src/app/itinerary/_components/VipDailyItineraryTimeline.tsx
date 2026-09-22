@@ -435,14 +435,14 @@ function ActivityTimelineCard({
         )}
       </div>
 
-      {/* Optional thumbnail */}
+      {/* Optional stop image — luxury thumb */}
       {thumb ? (
-        <div className="relative h-28 w-full shrink-0 overflow-hidden rounded-xl sm:h-auto sm:w-36">
+        <div className="relative max-h-48 w-full shrink-0 overflow-hidden rounded-2xl sm:max-h-56 sm:w-40">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={thumb}
             alt=""
-            className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+            className="h-full max-h-48 w-full object-cover transition duration-500 ease-out group-hover:scale-110 sm:max-h-56"
             loading="lazy"
           />
         </div>

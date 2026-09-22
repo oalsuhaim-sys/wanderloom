@@ -71,7 +71,8 @@ export async function insertGroupTripLeadAdmin(
       .toUpperCase()
       .slice(0, 64) || null;
   const referralNote = referralCode ? ` · كود الإحالة: ${referralCode}` : '';
-  const finalThoughts = `طلب انضمام لرحلة جماعية · ${tripLabel} · العمر: ${input.age}${birthNote}${preferredNote}${referralNote}`;
+  // Age lives on leads.age / clients.age — never embed in final_thoughts (DNA notes)
+  const finalThoughts = `طلب انضمام لرحلة جماعية · ${tripLabel}${birthNote}${preferredNote}${referralNote}`;
   const leadSource = String(input.leadSource ?? '').trim() || 'website';
 
   const withPreferred = (row: Record<string, unknown>): Record<string, unknown> =>

@@ -2,11 +2,12 @@
 
 import { useCallback, useEffect, useRef } from 'react';
 
-import {
-  syncExistingGroupMembersAction,
-  type SyncExistingGroupMembersActionResult,
-} from '@/app/actions/clientDirectoryActions';
+import { syncExistingGroupMembersAction } from '@/app/actions/clientDirectoryActions';
 import { getClientAccessToken } from '@/lib/crm-session-token';
+
+type SyncExistingGroupMembersActionResult = Awaited<
+  ReturnType<typeof syncExistingGroupMembersAction>
+>;
 
 /** localStorage flag — auto-runs once per browser until key version bumps */
 export const GROUP_MEMBERS_CLIENT_SYNC_KEY = 'wanderloom_crm_group_members_sync_v1';

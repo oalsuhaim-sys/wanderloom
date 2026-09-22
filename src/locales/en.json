@@ -64,7 +64,7 @@
       "emailPlaceholder": "example@email.com",
       "ageLabel": "Age *",
       "agePlaceholder": "e.g. 28",
-      "birthDateLabel": "Date of birth",
+      "birthDateLabel": "Date of birth *",
       "submit": "Submit join request",
       "close": "Close"
     },
@@ -566,6 +566,9 @@
     "fullNamePlaceholder": "How you would like us to address you",
     "phoneWa": "WhatsApp number *",
     "phonePlaceholder": "9665xxxxxxxx",
+    "birthDateLabel": "Date of birth *",
+    "birthDateRequired": "Please enter your date of birth.",
+    "invalidBirthDate": "Please enter a valid date of birth.",
     "sourceLabel": "How did you hear about Wanderloom?",
     "sourcePlaceholder": "Select…",
     "sourceInstagram": "Instagram",

@@ -121,7 +121,7 @@ async function createClientFromLead(
     name,
     phone_wa: phone,
     email: lead.email?.trim() || '',
-    birth_date: '',
+    birth_date: undefined,
     flight_seat: '',
     food_allergies: '',
     favorite_drink: '',

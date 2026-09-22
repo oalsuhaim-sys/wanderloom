@@ -37,6 +37,18 @@ export function normalizeAffiliateRef(raw: string | null | undefined): string | 
   return code;
 }
 
+/**
+ * Read affiliate / referral input from FormData.
+ * Prefers `ref_code` (clients SSOT / new forms); falls back to legacy `referral_code`.
+ */
+export function readAffiliateRefFromFormData(formData: FormData): string | null {
+  return (
+    normalizeAffiliateRef(formData.get('ref_code') as string | null) ||
+    normalizeAffiliateRef(formData.get('referral_code') as string | null) ||
+    normalizeAffiliateRef(formData.get('referral') as string | null)
+  );
+}
+
 export function persistAffiliateRef(code: string): void {
   const normalized = normalizeAffiliateRef(code);
   if (!normalized || typeof window === 'undefined') return;

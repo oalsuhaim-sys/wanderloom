@@ -5,12 +5,8 @@ import { useParams } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 
 import { PremiumInteractiveQuotation } from '@/app/quote/[id]/PremiumInteractiveQuotation';
-import { supabase } from '@/lib/supabase';
-import {
-  mapQuotationRow,
-  PUBLIC_QUOTATION_SELECT,
-  type QuotationRow,
-} from '@/lib/crm-quotations';
+import type { QuotationRow } from '@/lib/crm-quotations';
+import { mapQuotationRow } from '@/lib/crm-quotations';
 import {
   createEmptyHotelOption,
   createEmptyTransportOption,
@@ -67,6 +63,20 @@ function hydrateBrochureFromLegacy(row: QuotationRow): QuotationRow {
   return { ...row, hotel_options, transport_options, cost_breakdown };
 }
 
+function coerceQuotation(payload: unknown): QuotationRow | null {
+  if (!payload || typeof payload !== 'object') return null;
+  const row = payload as QuotationRow;
+  // Already mapped server-side QuotationRow
+  if (row.id && Array.isArray(row.hotel_options)) {
+    return hydrateBrochureFromLegacy(row);
+  }
+  try {
+    return hydrateBrochureFromLegacy(mapQuotationRow(payload as Record<string, unknown>));
+  } catch {
+    return null;
+  }
+}
+
 /** Public client brochure — no CRM shell, no login required */
 export default function PublicProposalPage() {
   const params = useParams();
@@ -75,10 +85,11 @@ export default function PublicProposalPage() {
 
   const [quotation, setQuotation] = useState<QuotationRow | null>(null);
   const [loading, setLoading] = useState(true);
+  const [errorDetail, setErrorDetail] = useState<string | null>(null);
   const [fetchDebug, setFetchDebug] = useState<{
     quoteId: string | undefined;
-    supabaseError: unknown;
-    rawData: unknown;
+    status?: number;
+    body?: unknown;
   } | null>(null);
 
   useEffect(() => {
@@ -86,74 +97,61 @@ export default function PublicProposalPage() {
     void (async () => {
       setLoading(true);
       setFetchDebug(null);
+      setErrorDetail(null);
 
       if (!quoteId) {
         if (!cancelled) {
-          setFetchDebug({ quoteId: undefined, supabaseError: null, rawData: null });
+          setFetchDebug({ quoteId: undefined });
           setQuotation(null);
           setLoading(false);
         }
         return;
       }
 
-      if (!supabase) {
-        if (!cancelled) {
-          setFetchDebug({
-            quoteId,
-            supabaseError: { message: 'Supabase client is not configured.' },
-            rawData: null,
-          });
+      try {
+        const res = await fetch(`/api/proposals/${encodeURIComponent(quoteId)}`, {
+          method: 'GET',
+          headers: { Accept: 'application/json' },
+          cache: 'no-store',
+        });
+        const body = (await res.json().catch(() => null)) as {
+          ok?: boolean;
+          error?: string;
+          quotation?: unknown;
+          row?: unknown;
+        } | null;
+
+        if (cancelled) return;
+
+        setFetchDebug({ quoteId, status: res.status, body });
+
+        if (!res.ok || !body?.ok) {
+          setErrorDetail(body?.error || `HTTP ${res.status}`);
           setQuotation(null);
           setLoading(false);
+          return;
         }
-        return;
-      }
 
-      let quotationData: Record<string, unknown> | null = null;
-      let supabaseError: { message?: string } | null = null;
-
-      const primary = await supabase
-        .from('quotations')
-        .select(PUBLIC_QUOTATION_SELECT)
-        .eq('id', quoteId)
-        .single();
-
-      if (!primary.error && primary.data) {
-        quotationData = primary.data as Record<string, unknown>;
-      } else {
-        supabaseError = primary.error;
-        const fallback = await supabase
-          .from('quotations')
-          .select('*, clients(*)')
-          .eq('id', quoteId)
-          .single();
-        if (!fallback.error && fallback.data) {
-          quotationData = fallback.data as Record<string, unknown>;
-          supabaseError = null;
-        } else if (fallback.error) {
-          supabaseError = fallback.error;
+        const mapped = coerceQuotation(body.quotation ?? body.row);
+        if (!mapped) {
+          setErrorDetail('تعذر قراءة بيانات العرض');
+          setQuotation(null);
+          setLoading(false);
+          return;
         }
-      }
 
-      if (cancelled) return;
-
-      setFetchDebug({
-        quoteId,
-        supabaseError,
-        rawData: quotationData,
-      });
-
-      if (supabaseError || !quotationData) {
+        setQuotation(mapped);
+        setLoading(false);
+      } catch (err) {
+        if (cancelled) return;
+        setErrorDetail(err instanceof Error ? err.message : 'تعذر فتح العرض');
+        setFetchDebug({
+          quoteId,
+          body: { message: err instanceof Error ? err.message : String(err) },
+        });
         setQuotation(null);
         setLoading(false);
-        return;
       }
-
-      const mapped = hydrateBrochureFromLegacy(
-        mapQuotationRow(quotationData as Record<string, unknown>),
-      );
-      setQuotation(mapped);
-      setLoading(false);
     })();
 
     return () => {
@@ -180,6 +178,9 @@ export default function PublicProposalPage() {
       >
         <p className="font-serif text-2xl text-[#243223]">تعذر فتح العرض</p>
         <p className="text-sm text-slate-500">الرابط غير صالح أو العرض غير متاح.</p>
+        {errorDetail ? (
+          <p className="max-w-md text-xs font-semibold text-slate-400">{errorDetail}</p>
+        ) : null}
         {process.env.NODE_ENV === 'development' && fetchDebug ? (
           <pre className="mt-4 max-w-lg overflow-auto rounded-lg bg-slate-900 p-3 text-start text-[10px] text-amber-200">
             {JSON.stringify(fetchDebug, null, 2)}

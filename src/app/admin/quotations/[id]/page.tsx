@@ -11,6 +11,7 @@ import {
   sendUpdatedQuotationAction,
 } from '@/app/actions/quotationActions';
 import { ClientFeedbackAlert } from '@/app/crm/quotations/_components/ClientFeedbackPanel';
+import { ProposalItineraryStopsTimeline } from '@/app/quote/[id]/ProposalItineraryStopsTimeline';
 import {
   formatDestinationsLabel,
   QUOTATION_STATUS_LABEL,
@@ -160,23 +161,17 @@ export default function AdminQuotationReviewPage() {
 
       <section className="mb-6 rounded-2xl border border-[#EFE5D6] bg-white p-5">
         <h2 className="text-lg font-black text-[#1A3B2A]">اليوم بيوم</h2>
-        <div className="mt-3 space-y-3">
+        <div className="mt-3">
           {row.itinerary_days.length === 0 ? (
             <p className="text-sm font-semibold text-slate-500">لا يوجد أيام محفوظة.</p>
           ) : (
-            row.itinerary_days.map((day) => {
-              const dayNote = feedbackFor(notes.days, day.id);
-              return (
-                <article key={day.id} className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                  <p className="text-xs font-black text-[#8A6B2A]">
-                    اليوم {day.dayNumber} {day.date ? `· ${day.date}` : ''} {day.city ? `· ${day.city}` : ''}
-                  </p>
-                  <p className="mt-1 text-sm font-black text-[#1A3B2A]">{day.title || `اليوم ${day.dayNumber}`}</p>
-                  {day.description ? <p className="mt-1 text-xs font-semibold text-slate-600">{day.description}</p> : null}
-                  {dayNote ? <ClientNote text={dayNote} /> : null}
-                </article>
-              );
-            })
+            <ProposalItineraryStopsTimeline
+              days={row.itinerary_days}
+              renderDayActions={(day) => {
+                const dayNote = feedbackFor(notes.days, day.id);
+                return dayNote ? <ClientNote text={dayNote} /> : null;
+              }}
+            />
           )}
         </div>
       </section>

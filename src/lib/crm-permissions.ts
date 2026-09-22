@@ -50,7 +50,7 @@ export const CRM_PERMISSION_LABELS: Record<CrmPermissionKey, string> = {
   can_access_dashboard: 'لوحة التحكم',
   can_access_clients: 'إدارة العملاء',
   can_access_itineraries: 'مخطط المسارات',
-  can_access_marketing: 'مركز التسويق',
+  can_access_marketing: 'مركز التسويق الشامل',
   can_access_payments: 'المدفوعات والمالية',
   view_dashboard: '📊 لوحة التحكم والرادار',
   access_inbox: '📥 صندوق الوارد والطلبات',
@@ -352,6 +352,7 @@ export function isPartnersCrmPath(pathname: string): boolean {
 const EXPERT_ALLOWED_PREFIXES = [
   '/crm/unauthorized',
   '/crm/features',
+  '/crm/docs',
   '/crm/quotations',
   '/crm/itineraries',
   '/crm/groups',
@@ -438,6 +439,7 @@ const CRM_ROUTE_RULES: { prefix: string; permission: CrmRouteGuardKey }[] = [
 const CRM_OPEN_PREFIXES = [
   '/crm/unauthorized',
   '/crm/features',
+  '/crm/docs',
   '/crm/partners-radar',
   '/crm/partners-directory',
   '/crm/partner-radar',
