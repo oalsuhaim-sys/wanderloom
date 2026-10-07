@@ -1,0 +1,4807 @@
+{
+ "policies": [
+  {
+   "t": "clients",
+   "n": "staff_all",
+   "perm": "PERMISSIVE",
+   "roles": "{public}",
+   "cmd": "ALL",
+   "qual": "(auth.role() = 'authenticated'::text)",
+   "check": null
+  },
+  {
+   "t": "client_preferences",
+   "n": "staff_all",
+   "perm": "PERMISSIVE",
+   "roles": "{public}",
+   "cmd": "ALL",
+   "qual": "(auth.role() = 'authenticated'::text)",
+   "check": null
+  },
+  {
+   "t": "client_notes",
+   "n": "staff_all",
+   "perm": "PERMISSIVE",
+   "roles": "{public}",
+   "cmd": "ALL",
+   "qual": "(auth.role() = 'authenticated'::text)",
+   "check": null
+  },
+  {
+   "t": "client_trips",
+   "n": "staff_all",
+   "perm": "PERMISSIVE",
+   "roles": "{public}",
+   "cmd": "ALL",
+   "qual": "(auth.role() = 'authenticated'::text)",
+   "check": null
+  },
+  {
+   "t": "places",
+   "n": "staff_all",
+   "perm": "PERMISSIVE",
+   "roles": "{public}",
+   "cmd": "ALL",
+   "qual": "(auth.role() = 'authenticated'::text)",
+   "check": null
+  },
+  {
+   "t": "events",
+   "n": "staff_all",
+   "perm": "PERMISSIVE",
+   "roles": "{public}",
+   "cmd": "ALL",
+   "qual": "(auth.role() = 'authenticated'::text)",
+   "check": null
+  },
+  {
+   "t": "itineraries",
+   "n": "staff_all",
+   "perm": "PERMISSIVE",
+   "roles": "{public}",
+   "cmd": "ALL",
+   "qual": "(auth.role() = 'authenticated'::text)",
+   "check": null
+  },
+  {
+   "t": "itinerary_days",
+   "n": "staff_all",
+   "perm": "PERMISSIVE",
+   "roles": "{public}",
+   "cmd": "ALL",
+   "qual": "(auth.role() = 'authenticated'::text)",
+   "check": null
+  },
+  {
+   "t": "itinerary_stops",
+   "n": "staff_all",
+   "perm": "PERMISSIVE",
+   "roles": "{public}",
+   "cmd": "ALL",
+   "qual": "(auth.role() = 'authenticated'::text)",
+   "check": null
+  },
+  {
+   "t": "edit_requests",
+   "n": "staff_all",
+   "perm": "PERMISSIVE",
+   "roles": "{public}",
+   "cmd": "ALL",
+   "qual": "(auth.role() = 'authenticated'::text)",
+   "check": null
+  },
+  {
+   "t": "itineraries",
+   "n": "portal_read",
+   "perm": "PERMISSIVE",
+   "roles": "{public}",
+   "cmd": "SELECT",
+   "qual": "true",
+   "check": null
+  },
+  {
+   "t": "itinerary_days",
+   "n": "portal_read",
+   "perm": "PERMISSIVE",
+   "roles": "{public}",
+   "cmd": "SELECT",
+   "qual": "true",
+   "check": null
+  },
+  {
+   "t": "itinerary_stops",
+   "n": "portal_read",
+   "perm": "PERMISSIVE",
+   "roles": "{public}",
+   "cmd": "SELECT",
+   "qual": "true",
+   "check": null
+  },
+  {
+   "t": "places",
+   "n": "portal_read",
+   "perm": "PERMISSIVE",
+   "roles": "{public}",
+   "cmd": "SELECT",
+   "qual": "true",
+   "check": null
+  },
+  {
+   "t": "edit_requests",
+   "n": "portal_insert",
+   "perm": "PERMISSIVE",
+   "roles": "{public}",
+   "cmd": "INSERT",
+   "qual": null,
+   "check": "true"
+  },
+  {
+   "t": "clients",
+   "n": "public_read_clients",
+   "perm": "PERMISSIVE",
+   "roles": "{public}",
+   "cmd": "SELECT",
+   "qual": "true",
+   "check": null
+  },
+  {
+   "t": "places",
+   "n": "public_read_places",
+   "perm": "PERMISSIVE",
+   "roles": "{public}",
+   "cmd": "SELECT",
+   "qual": "true",
+   "check": null
+  },
+  {
+   "t": "events",
+   "n": "public_read_events",
+   "perm": "PERMISSIVE",
+   "roles": "{public}",
+   "cmd": "SELECT",
+   "qual": "true",
+   "check": null
+  },
+  {
+   "t": "client_trips",
+   "n": "public_read_trips",
+   "perm": "PERMISSIVE",
+   "roles": "{public}",
+   "cmd": "SELECT",
+   "qual": "true",
+   "check": null
+  },
+  {
+   "t": "client_trips",
+   "n": "public_write_trips",
+   "perm": "PERMISSIVE",
+   "roles": "{public}",
+   "cmd": "INSERT",
+   "qual": null,
+   "check": "true"
+  },
+  {
+   "t": "client_notes",
+   "n": "public_read_notes",
+   "perm": "PERMISSIVE",
+   "roles": "{public}",
+   "cmd": "SELECT",
+   "qual": "true",
+   "check": null
+  },
+  {
+   "t": "client_notes",
+   "n": "public_write_notes",
+   "perm": "PERMISSIVE",
+   "roles": "{public}",
+   "cmd": "INSERT",
+   "qual": null,
+   "check": "true"
+  },
+  {
+   "t": "client_preferences",
+   "n": "public_read_prefs",
+   "perm": "PERMISSIVE",
+   "roles": "{public}",
+   "cmd": "SELECT",
+   "qual": "true",
+   "check": null
+  },
+  {
+   "t": "client_preferences",
+   "n": "public_write_prefs",
+   "perm": "PERMISSIVE",
+   "roles": "{public}",
+   "cmd": "UPDATE",
+   "qual": "true",
+   "check": null
+  },
+  {
+   "t": "clients",
+   "n": "public_update_clients",
+   "perm": "PERMISSIVE",
+   "roles": "{public}",
+   "cmd": "UPDATE",
+   "qual": "true",
+   "check": null
+  },
+  {
+   "t": "client_trips",
+   "n": "public_update_trips",
+   "perm": "PERMISSIVE",
+   "roles": "{public}",
+   "cmd": "UPDATE",
+   "qual": "true",
+   "check": null
+  },
+  {
+   "t": "client_trips",
+   "n": "public_delete_trips",
+   "perm": "PERMISSIVE",
+   "roles": "{public}",
+   "cmd": "DELETE",
+   "qual": "true",
+   "check": null
+  },
+  {
+   "t": "itineraries",
+   "n": "public_write_itineraries",
+   "perm": "PERMISSIVE",
+   "roles": "{public}",
+   "cmd": "INSERT",
+   "qual": null,
+   "check": "true"
+  },
+  {
+   "t": "itineraries",
+   "n": "public_update_itineraries",
+   "perm": "PERMISSIVE",
+   "roles": "{public}",
+   "cmd": "UPDATE",
+   "qual": "true",
+   "check": null
+  },
+  {
+   "t": "itinerary_days",
+   "n": "public_write_days",
+   "perm": "PERMISSIVE",
+   "roles": "{public}",
+   "cmd": "INSERT",
+   "qual": null,
+   "check": "true"
+  },
+  {
+   "t": "itinerary_stops",
+   "n": "public_write_stops",
+   "perm": "PERMISSIVE",
+   "roles": "{public}",
+   "cmd": "INSERT",
+   "qual": null,
+   "check": "true"
+  },
+  {
+   "t": "places",
+   "n": "public_update_places",
+   "perm": "PERMISSIVE",
+   "roles": "{public}",
+   "cmd": "UPDATE",
+   "qual": "true",
+   "check": null
+  },
+  {
+   "t": "events",
+   "n": "public_update_events",
+   "perm": "PERMISSIVE",
+   "roles": "{public}",
+   "cmd": "UPDATE",
+   "qual": "true",
+   "check": null
+  },
+  {
+   "t": "events",
+   "n": "public_write_events",
+   "perm": "PERMISSIVE",
+   "roles": "{public}",
+   "cmd": "INSERT",
+   "qual": null,
+   "check": "true"
+  },
+  {
+   "t": "itineraries",
+   "n": "public_delete_itineraries",
+   "perm": "PERMISSIVE",
+   "roles": "{public}",
+   "cmd": "DELETE",
+   "qual": "true",
+   "check": null
+  },
+  {
+   "t": "itinerary_days",
+   "n": "public_delete_days",
+   "perm": "PERMISSIVE",
+   "roles": "{public}",
+   "cmd": "DELETE",
+   "qual": "true",
+   "check": null
+  },
+  {
+   "t": "itinerary_stops",
+   "n": "public_delete_stops",
+   "perm": "PERMISSIVE",
+   "roles": "{public}",
+   "cmd": "DELETE",
+   "qual": "true",
+   "check": null
+  },
+  {
+   "t": "itinerary_days",
+   "n": "public_update_days",
+   "perm": "PERMISSIVE",
+   "roles": "{public}",
+   "cmd": "UPDATE",
+   "qual": "true",
+   "check": null
+  },
+  {
+   "t": "itinerary_stops",
+   "n": "public_update_stops",
+   "perm": "PERMISSIVE",
+   "roles": "{public}",
+   "cmd": "UPDATE",
+   "qual": "true",
+   "check": null
+  },
+  {
+   "t": "places",
+   "n": "public_insert_places",
+   "perm": "PERMISSIVE",
+   "roles": "{public}",
+   "cmd": "INSERT",
+   "qual": null,
+   "check": "true"
+  },
+  {
+   "t": "places",
+   "n": "public_delete_places",
+   "perm": "PERMISSIVE",
+   "roles": "{public}",
+   "cmd": "DELETE",
+   "qual": "true",
+   "check": null
+  },
+  {
+   "t": "client_trips",
+   "n": "public_delete_trips2",
+   "perm": "PERMISSIVE",
+   "roles": "{public}",
+   "cmd": "DELETE",
+   "qual": "true",
+   "check": null
+  },
+  {
+   "t": "client_trips",
+   "n": "public_update_trips2",
+   "perm": "PERMISSIVE",
+   "roles": "{public}",
+   "cmd": "UPDATE",
+   "qual": "true",
+   "check": null
+  },
+  {
+   "t": "trip_budget",
+   "n": "public_all_budget",
+   "perm": "PERMISSIVE",
+   "roles": "{public}",
+   "cmd": "ALL",
+   "qual": "true",
+   "check": null
+  },
+  {
+   "t": "memory_vault",
+   "n": "Public Access",
+   "perm": "PERMISSIVE",
+   "roles": "{public}",
+   "cmd": "ALL",
+   "qual": "true",
+   "check": null
+  },
+  {
+   "t": "tour_groups",
+   "n": "Allow All",
+   "perm": "PERMISSIVE",
+   "roles": "{public}",
+   "cmd": "ALL",
+   "qual": "true",
+   "check": null
+  },
+  {
+   "t": "group_members",
+   "n": "Allow All",
+   "perm": "PERMISSIVE",
+   "roles": "{public}",
+   "cmd": "ALL",
+   "qual": "true",
+   "check": null
+  },
+  {
+   "t": "suppliers",
+   "n": "Enable read access for all users",
+   "perm": "PERMISSIVE",
+   "roles": "{public}",
+   "cmd": "SELECT",
+   "qual": "true",
+   "check": null
+  },
+  {
+   "t": "clients",
+   "n": "Enable full access for CRM users",
+   "perm": "PERMISSIVE",
+   "roles": "{public}",
+   "cmd": "ALL",
+   "qual": "true",
+   "check": null
+  },
+  {
+   "t": "itineraries",
+   "n": "Enable public read access for itineraries",
+   "perm": "PERMISSIVE",
+   "roles": "{public}",
+   "cmd": "SELECT",
+   "qual": "true",
+   "check": null
+  },
+  {
+   "t": "group_trips",
+   "n": "السماح للجميع بقراءة الرحلات",
+   "perm": "PERMISSIVE",
+   "roles": "{public}",
+   "cmd": "SELECT",
+   "qual": "true",
+   "check": null
+  },
+  {
+   "t": "group_trips",
+   "n": "السماح بالإضافة",
+   "perm": "PERMISSIVE",
+   "roles": "{public}",
+   "cmd": "INSERT",
+   "qual": null,
+   "check": "true"
+  },
+  {
+   "t": "group_trips",
+   "n": "السماح بالتعديل",
+   "perm": "PERMISSIVE",
+   "roles": "{public}",
+   "cmd": "UPDATE",
+   "qual": "true",
+   "check": null
+  },
+  {
+   "t": "group_trips",
+   "n": "السماح بالحذف",
+   "perm": "PERMISSIVE",
+   "roles": "{public}",
+   "cmd": "DELETE",
+   "qual": "true",
+   "check": null
+  },
+  {
+   "t": "influencers",
+   "n": "Allow All",
+   "perm": "PERMISSIVE",
+   "roles": "{public}",
+   "cmd": "ALL",
+   "qual": "true",
+   "check": null
+  },
+  {
+   "t": "itinerary_templates",
+   "n": "Allow all on templates",
+   "perm": "PERMISSIVE",
+   "roles": "{public}",
+   "cmd": "ALL",
+   "qual": "true",
+   "check": "true"
+  },
+  {
+   "t": "quotations",
+   "n": "Enable full access for authenticated users",
+   "perm": "PERMISSIVE",
+   "roles": "{authenticated}",
+   "cmd": "ALL",
+   "qual": "true",
+   "check": "true"
+  },
+  {
+   "t": "experts",
+   "n": "Allow read access for experts",
+   "perm": "PERMISSIVE",
+   "roles": "{public}",
+   "cmd": "SELECT",
+   "qual": "true",
+   "check": null
+  },
+  {
+   "t": "leaders",
+   "n": "Allow read access for leaders",
+   "perm": "PERMISSIVE",
+   "roles": "{public}",
+   "cmd": "SELECT",
+   "qual": "true",
+   "check": null
+  },
+  {
+   "t": "wallet_transactions",
+   "n": "Allow read access for wallet_transactions",
+   "perm": "PERMISSIVE",
+   "roles": "{public}",
+   "cmd": "SELECT",
+   "qual": "true",
+   "check": null
+  },
+  {
+   "t": "crm_record_comments",
+   "n": "Allow authenticated users to read comments",
+   "perm": "PERMISSIVE",
+   "roles": "{authenticated}",
+   "cmd": "SELECT",
+   "qual": "true",
+   "check": null
+  },
+  {
+   "t": "crm_record_comments",
+   "n": "Allow authenticated users to insert comments",
+   "perm": "PERMISSIVE",
+   "roles": "{authenticated}",
+   "cmd": "INSERT",
+   "qual": null,
+   "check": "true"
+  },
+  {
+   "t": "group_pricings",
+   "n": "Allow full access for group_pricings",
+   "perm": "PERMISSIVE",
+   "roles": "{public}",
+   "cmd": "ALL",
+   "qual": "true",
+   "check": "true"
+  },
+  {
+   "t": "itineraries",
+   "n": "Allow read itineraries",
+   "perm": "PERMISSIVE",
+   "roles": "{public}",
+   "cmd": "SELECT",
+   "qual": "true",
+   "check": null
+  },
+  {
+   "t": "clients",
+   "n": "Allow read clients",
+   "perm": "PERMISSIVE",
+   "roles": "{public}",
+   "cmd": "SELECT",
+   "qual": "true",
+   "check": null
+  },
+  {
+   "t": "leaders",
+   "n": "Allow read leaders",
+   "perm": "PERMISSIVE",
+   "roles": "{public}",
+   "cmd": "SELECT",
+   "qual": "true",
+   "check": null
+  },
+  {
+   "t": "leaders",
+   "n": "Allow public read access to leaders",
+   "perm": "PERMISSIVE",
+   "roles": "{public}",
+   "cmd": "SELECT",
+   "qual": "true",
+   "check": null
+  },
+  {
+   "t": "leaders",
+   "n": "Enable read access for all users",
+   "perm": "PERMISSIVE",
+   "roles": "{public}",
+   "cmd": "SELECT",
+   "qual": "true",
+   "check": null
+  },
+  {
+   "t": "leaders",
+   "n": "Allow public select on leaders",
+   "perm": "PERMISSIVE",
+   "roles": "{public}",
+   "cmd": "SELECT",
+   "qual": "true",
+   "check": null
+  },
+  {
+   "t": "itineraries",
+   "n": "Allow public select on itineraries",
+   "perm": "PERMISSIVE",
+   "roles": "{public}",
+   "cmd": "SELECT",
+   "qual": "true",
+   "check": null
+  },
+  {
+   "t": "clients",
+   "n": "Allow public insert to clients",
+   "perm": "PERMISSIVE",
+   "roles": "{public}",
+   "cmd": "INSERT",
+   "qual": null,
+   "check": "true"
+  },
+  {
+   "t": "clients",
+   "n": "Allow public select on clients",
+   "perm": "PERMISSIVE",
+   "roles": "{public}",
+   "cmd": "SELECT",
+   "qual": "true",
+   "check": null
+  },
+  {
+   "t": "group_members",
+   "n": "Enable update for all users",
+   "perm": "PERMISSIVE",
+   "roles": "{public}",
+   "cmd": "UPDATE",
+   "qual": "true",
+   "check": null
+  },
+  {
+   "t": "group_members",
+   "n": "Enable delete for all users",
+   "perm": "PERMISSIVE",
+   "roles": "{public}",
+   "cmd": "DELETE",
+   "qual": "true",
+   "check": null
+  }
+ ],
+ "rls": [
+  {
+   "t": "countries",
+   "rls": true
+  },
+  {
+   "t": "client_preferences",
+   "rls": true
+  },
+  {
+   "t": "celebrities",
+   "rls": true
+  },
+  {
+   "t": "client_notes",
+   "rls": true
+  },
+  {
+   "t": "client_trips",
+   "rls": true
+  },
+  {
+   "t": "itinerary_stops",
+   "rls": true
+  },
+  {
+   "t": "edit_requests",
+   "rls": true
+  },
+  {
+   "t": "wow_tasks",
+   "rls": true
+  },
+  {
+   "t": "group_tours",
+   "rls": true
+  },
+  {
+   "t": "group_travelers",
+   "rls": true
+  },
+  {
+   "t": "places",
+   "rls": true
+  },
+  {
+   "t": "itinerary_days",
+   "rls": true
+  },
+  {
+   "t": "events",
+   "rls": true
+  },
+  {
+   "t": "travel_wardrobe",
+   "rls": false
+  },
+  {
+   "t": "trip_budget",
+   "rls": true
+  },
+  {
+   "t": "hotels",
+   "rls": false
+  },
+  {
+   "t": "tour_groups",
+   "rls": false
+  },
+  {
+   "t": "itinerary_templates",
+   "rls": true
+  },
+  {
+   "t": "destinations_guide",
+   "rls": false
+  },
+  {
+   "t": "secret_places",
+   "rls": true
+  },
+  {
+   "t": "suppliers",
+   "rls": true
+  },
+  {
+   "t": "marketing_human_scripts",
+   "rls": false
+  },
+  {
+   "t": "marketing_ai_prompts",
+   "rls": false
+  },
+  {
+   "t": "marketing_calendar",
+   "rls": false
+  },
+  {
+   "t": "brand_identity",
+   "rls": false
+  },
+  {
+   "t": "memory_vault",
+   "rls": false
+  },
+  {
+   "t": "sessions",
+   "rls": false
+  },
+  {
+   "t": "experiences",
+   "rls": false
+  },
+  {
+   "t": "client_memories",
+   "rls": false
+  },
+  {
+   "t": "leads",
+   "rls": false
+  },
+  {
+   "t": "wallet_transactions",
+   "rls": true
+  },
+  {
+   "t": "influencers",
+   "rls": false
+  },
+  {
+   "t": "employees",
+   "rls": false
+  },
+  {
+   "t": "session_registrations",
+   "rls": false
+  },
+  {
+   "t": "invoices",
+   "rls": true
+  },
+  {
+   "t": "client_reviews",
+   "rls": true
+  },
+  {
+   "t": "leader_availability",
+   "rls": true
+  },
+  {
+   "t": "trip_logs",
+   "rls": true
+  },
+  {
+   "t": "expert_suppliers",
+   "rls": true
+  },
+  {
+   "t": "itineraries",
+   "rls": true
+  },
+  {
+   "t": "group_pricings",
+   "rls": true
+  },
+  {
+   "t": "crm_record_comments",
+   "rls": true
+  },
+  {
+   "t": "proposal_templates",
+   "rls": true
+  },
+  {
+   "t": "system_settings",
+   "rls": true
+  },
+  {
+   "t": "marketing_content",
+   "rls": true
+  },
+  {
+   "t": "group_trips",
+   "rls": true
+  },
+  {
+   "t": "clients",
+   "rls": true
+  },
+  {
+   "t": "group_members",
+   "rls": true
+  },
+  {
+   "t": "quotations",
+   "rls": true
+  },
+  {
+   "t": "leaders",
+   "rls": true
+  },
+  {
+   "t": "activity_logs",
+   "rls": true
+  },
+  {
+   "t": "ai_consultations",
+   "rls": true
+  },
+  {
+   "t": "experts",
+   "rls": true
+  }
+ ],
+ "grants": [
+  {
+   "t": "countries",
+   "g": "anon",
+   "p": "INSERT"
+  },
+  {
+   "t": "countries",
+   "g": "anon",
+   "p": "SELECT"
+  },
+  {
+   "t": "countries",
+   "g": "anon",
+   "p": "UPDATE"
+  },
+  {
+   "t": "countries",
+   "g": "anon",
+   "p": "DELETE"
+  },
+  {
+   "t": "countries",
+   "g": "anon",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "countries",
+   "g": "anon",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "countries",
+   "g": "anon",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "countries",
+   "g": "authenticated",
+   "p": "INSERT"
+  },
+  {
+   "t": "countries",
+   "g": "authenticated",
+   "p": "SELECT"
+  },
+  {
+   "t": "countries",
+   "g": "authenticated",
+   "p": "UPDATE"
+  },
+  {
+   "t": "countries",
+   "g": "authenticated",
+   "p": "DELETE"
+  },
+  {
+   "t": "countries",
+   "g": "authenticated",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "countries",
+   "g": "authenticated",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "countries",
+   "g": "authenticated",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "client_preferences",
+   "g": "anon",
+   "p": "INSERT"
+  },
+  {
+   "t": "client_preferences",
+   "g": "anon",
+   "p": "SELECT"
+  },
+  {
+   "t": "client_preferences",
+   "g": "anon",
+   "p": "UPDATE"
+  },
+  {
+   "t": "client_preferences",
+   "g": "anon",
+   "p": "DELETE"
+  },
+  {
+   "t": "client_preferences",
+   "g": "anon",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "client_preferences",
+   "g": "anon",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "client_preferences",
+   "g": "anon",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "client_preferences",
+   "g": "authenticated",
+   "p": "INSERT"
+  },
+  {
+   "t": "client_preferences",
+   "g": "authenticated",
+   "p": "SELECT"
+  },
+  {
+   "t": "client_preferences",
+   "g": "authenticated",
+   "p": "UPDATE"
+  },
+  {
+   "t": "client_preferences",
+   "g": "authenticated",
+   "p": "DELETE"
+  },
+  {
+   "t": "client_preferences",
+   "g": "authenticated",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "client_preferences",
+   "g": "authenticated",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "client_preferences",
+   "g": "authenticated",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "celebrities",
+   "g": "anon",
+   "p": "INSERT"
+  },
+  {
+   "t": "celebrities",
+   "g": "anon",
+   "p": "SELECT"
+  },
+  {
+   "t": "celebrities",
+   "g": "anon",
+   "p": "UPDATE"
+  },
+  {
+   "t": "celebrities",
+   "g": "anon",
+   "p": "DELETE"
+  },
+  {
+   "t": "celebrities",
+   "g": "anon",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "celebrities",
+   "g": "anon",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "celebrities",
+   "g": "anon",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "celebrities",
+   "g": "authenticated",
+   "p": "INSERT"
+  },
+  {
+   "t": "celebrities",
+   "g": "authenticated",
+   "p": "SELECT"
+  },
+  {
+   "t": "celebrities",
+   "g": "authenticated",
+   "p": "UPDATE"
+  },
+  {
+   "t": "celebrities",
+   "g": "authenticated",
+   "p": "DELETE"
+  },
+  {
+   "t": "celebrities",
+   "g": "authenticated",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "celebrities",
+   "g": "authenticated",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "celebrities",
+   "g": "authenticated",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "client_notes",
+   "g": "anon",
+   "p": "INSERT"
+  },
+  {
+   "t": "client_notes",
+   "g": "anon",
+   "p": "SELECT"
+  },
+  {
+   "t": "client_notes",
+   "g": "anon",
+   "p": "UPDATE"
+  },
+  {
+   "t": "client_notes",
+   "g": "anon",
+   "p": "DELETE"
+  },
+  {
+   "t": "client_notes",
+   "g": "anon",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "client_notes",
+   "g": "anon",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "client_notes",
+   "g": "anon",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "client_notes",
+   "g": "authenticated",
+   "p": "INSERT"
+  },
+  {
+   "t": "client_notes",
+   "g": "authenticated",
+   "p": "SELECT"
+  },
+  {
+   "t": "client_notes",
+   "g": "authenticated",
+   "p": "UPDATE"
+  },
+  {
+   "t": "client_notes",
+   "g": "authenticated",
+   "p": "DELETE"
+  },
+  {
+   "t": "client_notes",
+   "g": "authenticated",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "client_notes",
+   "g": "authenticated",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "client_notes",
+   "g": "authenticated",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "client_trips",
+   "g": "anon",
+   "p": "INSERT"
+  },
+  {
+   "t": "client_trips",
+   "g": "anon",
+   "p": "SELECT"
+  },
+  {
+   "t": "client_trips",
+   "g": "anon",
+   "p": "UPDATE"
+  },
+  {
+   "t": "client_trips",
+   "g": "anon",
+   "p": "DELETE"
+  },
+  {
+   "t": "client_trips",
+   "g": "anon",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "client_trips",
+   "g": "anon",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "client_trips",
+   "g": "anon",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "client_trips",
+   "g": "authenticated",
+   "p": "INSERT"
+  },
+  {
+   "t": "client_trips",
+   "g": "authenticated",
+   "p": "SELECT"
+  },
+  {
+   "t": "client_trips",
+   "g": "authenticated",
+   "p": "UPDATE"
+  },
+  {
+   "t": "client_trips",
+   "g": "authenticated",
+   "p": "DELETE"
+  },
+  {
+   "t": "client_trips",
+   "g": "authenticated",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "client_trips",
+   "g": "authenticated",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "client_trips",
+   "g": "authenticated",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "itinerary_stops",
+   "g": "anon",
+   "p": "INSERT"
+  },
+  {
+   "t": "itinerary_stops",
+   "g": "anon",
+   "p": "SELECT"
+  },
+  {
+   "t": "itinerary_stops",
+   "g": "anon",
+   "p": "UPDATE"
+  },
+  {
+   "t": "itinerary_stops",
+   "g": "anon",
+   "p": "DELETE"
+  },
+  {
+   "t": "itinerary_stops",
+   "g": "anon",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "itinerary_stops",
+   "g": "anon",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "itinerary_stops",
+   "g": "anon",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "itinerary_stops",
+   "g": "authenticated",
+   "p": "INSERT"
+  },
+  {
+   "t": "itinerary_stops",
+   "g": "authenticated",
+   "p": "SELECT"
+  },
+  {
+   "t": "itinerary_stops",
+   "g": "authenticated",
+   "p": "UPDATE"
+  },
+  {
+   "t": "itinerary_stops",
+   "g": "authenticated",
+   "p": "DELETE"
+  },
+  {
+   "t": "itinerary_stops",
+   "g": "authenticated",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "itinerary_stops",
+   "g": "authenticated",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "itinerary_stops",
+   "g": "authenticated",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "edit_requests",
+   "g": "anon",
+   "p": "INSERT"
+  },
+  {
+   "t": "edit_requests",
+   "g": "anon",
+   "p": "SELECT"
+  },
+  {
+   "t": "edit_requests",
+   "g": "anon",
+   "p": "UPDATE"
+  },
+  {
+   "t": "edit_requests",
+   "g": "anon",
+   "p": "DELETE"
+  },
+  {
+   "t": "edit_requests",
+   "g": "anon",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "edit_requests",
+   "g": "anon",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "edit_requests",
+   "g": "anon",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "edit_requests",
+   "g": "authenticated",
+   "p": "INSERT"
+  },
+  {
+   "t": "edit_requests",
+   "g": "authenticated",
+   "p": "SELECT"
+  },
+  {
+   "t": "edit_requests",
+   "g": "authenticated",
+   "p": "UPDATE"
+  },
+  {
+   "t": "edit_requests",
+   "g": "authenticated",
+   "p": "DELETE"
+  },
+  {
+   "t": "edit_requests",
+   "g": "authenticated",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "edit_requests",
+   "g": "authenticated",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "edit_requests",
+   "g": "authenticated",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "wow_tasks",
+   "g": "anon",
+   "p": "INSERT"
+  },
+  {
+   "t": "wow_tasks",
+   "g": "anon",
+   "p": "SELECT"
+  },
+  {
+   "t": "wow_tasks",
+   "g": "anon",
+   "p": "UPDATE"
+  },
+  {
+   "t": "wow_tasks",
+   "g": "anon",
+   "p": "DELETE"
+  },
+  {
+   "t": "wow_tasks",
+   "g": "anon",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "wow_tasks",
+   "g": "anon",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "wow_tasks",
+   "g": "anon",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "wow_tasks",
+   "g": "authenticated",
+   "p": "INSERT"
+  },
+  {
+   "t": "wow_tasks",
+   "g": "authenticated",
+   "p": "SELECT"
+  },
+  {
+   "t": "wow_tasks",
+   "g": "authenticated",
+   "p": "UPDATE"
+  },
+  {
+   "t": "wow_tasks",
+   "g": "authenticated",
+   "p": "DELETE"
+  },
+  {
+   "t": "wow_tasks",
+   "g": "authenticated",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "wow_tasks",
+   "g": "authenticated",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "wow_tasks",
+   "g": "authenticated",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "group_tours",
+   "g": "anon",
+   "p": "INSERT"
+  },
+  {
+   "t": "group_tours",
+   "g": "anon",
+   "p": "SELECT"
+  },
+  {
+   "t": "group_tours",
+   "g": "anon",
+   "p": "UPDATE"
+  },
+  {
+   "t": "group_tours",
+   "g": "anon",
+   "p": "DELETE"
+  },
+  {
+   "t": "group_tours",
+   "g": "anon",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "group_tours",
+   "g": "anon",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "group_tours",
+   "g": "anon",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "group_tours",
+   "g": "authenticated",
+   "p": "INSERT"
+  },
+  {
+   "t": "group_tours",
+   "g": "authenticated",
+   "p": "SELECT"
+  },
+  {
+   "t": "group_tours",
+   "g": "authenticated",
+   "p": "UPDATE"
+  },
+  {
+   "t": "group_tours",
+   "g": "authenticated",
+   "p": "DELETE"
+  },
+  {
+   "t": "group_tours",
+   "g": "authenticated",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "group_tours",
+   "g": "authenticated",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "group_tours",
+   "g": "authenticated",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "group_travelers",
+   "g": "anon",
+   "p": "INSERT"
+  },
+  {
+   "t": "group_travelers",
+   "g": "anon",
+   "p": "SELECT"
+  },
+  {
+   "t": "group_travelers",
+   "g": "anon",
+   "p": "UPDATE"
+  },
+  {
+   "t": "group_travelers",
+   "g": "anon",
+   "p": "DELETE"
+  },
+  {
+   "t": "group_travelers",
+   "g": "anon",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "group_travelers",
+   "g": "anon",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "group_travelers",
+   "g": "anon",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "group_travelers",
+   "g": "authenticated",
+   "p": "INSERT"
+  },
+  {
+   "t": "group_travelers",
+   "g": "authenticated",
+   "p": "SELECT"
+  },
+  {
+   "t": "group_travelers",
+   "g": "authenticated",
+   "p": "UPDATE"
+  },
+  {
+   "t": "group_travelers",
+   "g": "authenticated",
+   "p": "DELETE"
+  },
+  {
+   "t": "group_travelers",
+   "g": "authenticated",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "group_travelers",
+   "g": "authenticated",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "group_travelers",
+   "g": "authenticated",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "places",
+   "g": "anon",
+   "p": "INSERT"
+  },
+  {
+   "t": "places",
+   "g": "anon",
+   "p": "SELECT"
+  },
+  {
+   "t": "places",
+   "g": "anon",
+   "p": "UPDATE"
+  },
+  {
+   "t": "places",
+   "g": "anon",
+   "p": "DELETE"
+  },
+  {
+   "t": "places",
+   "g": "anon",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "places",
+   "g": "anon",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "places",
+   "g": "anon",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "places",
+   "g": "authenticated",
+   "p": "INSERT"
+  },
+  {
+   "t": "places",
+   "g": "authenticated",
+   "p": "SELECT"
+  },
+  {
+   "t": "places",
+   "g": "authenticated",
+   "p": "UPDATE"
+  },
+  {
+   "t": "places",
+   "g": "authenticated",
+   "p": "DELETE"
+  },
+  {
+   "t": "places",
+   "g": "authenticated",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "places",
+   "g": "authenticated",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "places",
+   "g": "authenticated",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "itinerary_days",
+   "g": "anon",
+   "p": "INSERT"
+  },
+  {
+   "t": "itinerary_days",
+   "g": "anon",
+   "p": "SELECT"
+  },
+  {
+   "t": "itinerary_days",
+   "g": "anon",
+   "p": "UPDATE"
+  },
+  {
+   "t": "itinerary_days",
+   "g": "anon",
+   "p": "DELETE"
+  },
+  {
+   "t": "itinerary_days",
+   "g": "anon",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "itinerary_days",
+   "g": "anon",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "itinerary_days",
+   "g": "anon",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "itinerary_days",
+   "g": "authenticated",
+   "p": "INSERT"
+  },
+  {
+   "t": "itinerary_days",
+   "g": "authenticated",
+   "p": "SELECT"
+  },
+  {
+   "t": "itinerary_days",
+   "g": "authenticated",
+   "p": "UPDATE"
+  },
+  {
+   "t": "itinerary_days",
+   "g": "authenticated",
+   "p": "DELETE"
+  },
+  {
+   "t": "itinerary_days",
+   "g": "authenticated",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "itinerary_days",
+   "g": "authenticated",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "itinerary_days",
+   "g": "authenticated",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "events",
+   "g": "anon",
+   "p": "INSERT"
+  },
+  {
+   "t": "events",
+   "g": "anon",
+   "p": "SELECT"
+  },
+  {
+   "t": "events",
+   "g": "anon",
+   "p": "UPDATE"
+  },
+  {
+   "t": "events",
+   "g": "anon",
+   "p": "DELETE"
+  },
+  {
+   "t": "events",
+   "g": "anon",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "events",
+   "g": "anon",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "events",
+   "g": "anon",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "events",
+   "g": "authenticated",
+   "p": "INSERT"
+  },
+  {
+   "t": "events",
+   "g": "authenticated",
+   "p": "SELECT"
+  },
+  {
+   "t": "events",
+   "g": "authenticated",
+   "p": "UPDATE"
+  },
+  {
+   "t": "events",
+   "g": "authenticated",
+   "p": "DELETE"
+  },
+  {
+   "t": "events",
+   "g": "authenticated",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "events",
+   "g": "authenticated",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "events",
+   "g": "authenticated",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "travel_wardrobe",
+   "g": "anon",
+   "p": "INSERT"
+  },
+  {
+   "t": "travel_wardrobe",
+   "g": "anon",
+   "p": "SELECT"
+  },
+  {
+   "t": "travel_wardrobe",
+   "g": "anon",
+   "p": "UPDATE"
+  },
+  {
+   "t": "travel_wardrobe",
+   "g": "anon",
+   "p": "DELETE"
+  },
+  {
+   "t": "travel_wardrobe",
+   "g": "anon",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "travel_wardrobe",
+   "g": "anon",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "travel_wardrobe",
+   "g": "anon",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "travel_wardrobe",
+   "g": "authenticated",
+   "p": "INSERT"
+  },
+  {
+   "t": "travel_wardrobe",
+   "g": "authenticated",
+   "p": "SELECT"
+  },
+  {
+   "t": "travel_wardrobe",
+   "g": "authenticated",
+   "p": "UPDATE"
+  },
+  {
+   "t": "travel_wardrobe",
+   "g": "authenticated",
+   "p": "DELETE"
+  },
+  {
+   "t": "travel_wardrobe",
+   "g": "authenticated",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "travel_wardrobe",
+   "g": "authenticated",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "travel_wardrobe",
+   "g": "authenticated",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "trip_budget",
+   "g": "anon",
+   "p": "INSERT"
+  },
+  {
+   "t": "trip_budget",
+   "g": "anon",
+   "p": "SELECT"
+  },
+  {
+   "t": "trip_budget",
+   "g": "anon",
+   "p": "UPDATE"
+  },
+  {
+   "t": "trip_budget",
+   "g": "anon",
+   "p": "DELETE"
+  },
+  {
+   "t": "trip_budget",
+   "g": "anon",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "trip_budget",
+   "g": "anon",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "trip_budget",
+   "g": "anon",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "trip_budget",
+   "g": "authenticated",
+   "p": "INSERT"
+  },
+  {
+   "t": "trip_budget",
+   "g": "authenticated",
+   "p": "SELECT"
+  },
+  {
+   "t": "trip_budget",
+   "g": "authenticated",
+   "p": "UPDATE"
+  },
+  {
+   "t": "trip_budget",
+   "g": "authenticated",
+   "p": "DELETE"
+  },
+  {
+   "t": "trip_budget",
+   "g": "authenticated",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "trip_budget",
+   "g": "authenticated",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "trip_budget",
+   "g": "authenticated",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "hotels",
+   "g": "anon",
+   "p": "INSERT"
+  },
+  {
+   "t": "hotels",
+   "g": "anon",
+   "p": "SELECT"
+  },
+  {
+   "t": "hotels",
+   "g": "anon",
+   "p": "UPDATE"
+  },
+  {
+   "t": "hotels",
+   "g": "anon",
+   "p": "DELETE"
+  },
+  {
+   "t": "hotels",
+   "g": "anon",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "hotels",
+   "g": "anon",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "hotels",
+   "g": "anon",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "hotels",
+   "g": "authenticated",
+   "p": "INSERT"
+  },
+  {
+   "t": "hotels",
+   "g": "authenticated",
+   "p": "SELECT"
+  },
+  {
+   "t": "hotels",
+   "g": "authenticated",
+   "p": "UPDATE"
+  },
+  {
+   "t": "hotels",
+   "g": "authenticated",
+   "p": "DELETE"
+  },
+  {
+   "t": "hotels",
+   "g": "authenticated",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "hotels",
+   "g": "authenticated",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "hotels",
+   "g": "authenticated",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "tour_groups",
+   "g": "anon",
+   "p": "INSERT"
+  },
+  {
+   "t": "tour_groups",
+   "g": "anon",
+   "p": "SELECT"
+  },
+  {
+   "t": "tour_groups",
+   "g": "anon",
+   "p": "UPDATE"
+  },
+  {
+   "t": "tour_groups",
+   "g": "anon",
+   "p": "DELETE"
+  },
+  {
+   "t": "tour_groups",
+   "g": "anon",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "tour_groups",
+   "g": "anon",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "tour_groups",
+   "g": "anon",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "tour_groups",
+   "g": "authenticated",
+   "p": "INSERT"
+  },
+  {
+   "t": "tour_groups",
+   "g": "authenticated",
+   "p": "SELECT"
+  },
+  {
+   "t": "tour_groups",
+   "g": "authenticated",
+   "p": "UPDATE"
+  },
+  {
+   "t": "tour_groups",
+   "g": "authenticated",
+   "p": "DELETE"
+  },
+  {
+   "t": "tour_groups",
+   "g": "authenticated",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "tour_groups",
+   "g": "authenticated",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "tour_groups",
+   "g": "authenticated",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "itinerary_templates",
+   "g": "anon",
+   "p": "INSERT"
+  },
+  {
+   "t": "itinerary_templates",
+   "g": "anon",
+   "p": "SELECT"
+  },
+  {
+   "t": "itinerary_templates",
+   "g": "anon",
+   "p": "UPDATE"
+  },
+  {
+   "t": "itinerary_templates",
+   "g": "anon",
+   "p": "DELETE"
+  },
+  {
+   "t": "itinerary_templates",
+   "g": "anon",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "itinerary_templates",
+   "g": "anon",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "itinerary_templates",
+   "g": "anon",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "itinerary_templates",
+   "g": "authenticated",
+   "p": "INSERT"
+  },
+  {
+   "t": "itinerary_templates",
+   "g": "authenticated",
+   "p": "SELECT"
+  },
+  {
+   "t": "itinerary_templates",
+   "g": "authenticated",
+   "p": "UPDATE"
+  },
+  {
+   "t": "itinerary_templates",
+   "g": "authenticated",
+   "p": "DELETE"
+  },
+  {
+   "t": "itinerary_templates",
+   "g": "authenticated",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "itinerary_templates",
+   "g": "authenticated",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "itinerary_templates",
+   "g": "authenticated",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "distinct_countries",
+   "g": "anon",
+   "p": "INSERT"
+  },
+  {
+   "t": "distinct_countries",
+   "g": "anon",
+   "p": "SELECT"
+  },
+  {
+   "t": "distinct_countries",
+   "g": "anon",
+   "p": "UPDATE"
+  },
+  {
+   "t": "distinct_countries",
+   "g": "anon",
+   "p": "DELETE"
+  },
+  {
+   "t": "distinct_countries",
+   "g": "anon",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "distinct_countries",
+   "g": "anon",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "distinct_countries",
+   "g": "anon",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "distinct_countries",
+   "g": "authenticated",
+   "p": "INSERT"
+  },
+  {
+   "t": "distinct_countries",
+   "g": "authenticated",
+   "p": "SELECT"
+  },
+  {
+   "t": "distinct_countries",
+   "g": "authenticated",
+   "p": "UPDATE"
+  },
+  {
+   "t": "distinct_countries",
+   "g": "authenticated",
+   "p": "DELETE"
+  },
+  {
+   "t": "distinct_countries",
+   "g": "authenticated",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "distinct_countries",
+   "g": "authenticated",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "distinct_countries",
+   "g": "authenticated",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "distinct_cities",
+   "g": "anon",
+   "p": "INSERT"
+  },
+  {
+   "t": "distinct_cities",
+   "g": "anon",
+   "p": "SELECT"
+  },
+  {
+   "t": "distinct_cities",
+   "g": "anon",
+   "p": "UPDATE"
+  },
+  {
+   "t": "distinct_cities",
+   "g": "anon",
+   "p": "DELETE"
+  },
+  {
+   "t": "distinct_cities",
+   "g": "anon",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "distinct_cities",
+   "g": "anon",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "distinct_cities",
+   "g": "anon",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "distinct_cities",
+   "g": "authenticated",
+   "p": "INSERT"
+  },
+  {
+   "t": "distinct_cities",
+   "g": "authenticated",
+   "p": "SELECT"
+  },
+  {
+   "t": "distinct_cities",
+   "g": "authenticated",
+   "p": "UPDATE"
+  },
+  {
+   "t": "distinct_cities",
+   "g": "authenticated",
+   "p": "DELETE"
+  },
+  {
+   "t": "distinct_cities",
+   "g": "authenticated",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "distinct_cities",
+   "g": "authenticated",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "distinct_cities",
+   "g": "authenticated",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "destinations_guide",
+   "g": "anon",
+   "p": "INSERT"
+  },
+  {
+   "t": "destinations_guide",
+   "g": "anon",
+   "p": "SELECT"
+  },
+  {
+   "t": "destinations_guide",
+   "g": "anon",
+   "p": "UPDATE"
+  },
+  {
+   "t": "destinations_guide",
+   "g": "anon",
+   "p": "DELETE"
+  },
+  {
+   "t": "destinations_guide",
+   "g": "anon",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "destinations_guide",
+   "g": "anon",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "destinations_guide",
+   "g": "anon",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "destinations_guide",
+   "g": "authenticated",
+   "p": "INSERT"
+  },
+  {
+   "t": "destinations_guide",
+   "g": "authenticated",
+   "p": "SELECT"
+  },
+  {
+   "t": "destinations_guide",
+   "g": "authenticated",
+   "p": "UPDATE"
+  },
+  {
+   "t": "destinations_guide",
+   "g": "authenticated",
+   "p": "DELETE"
+  },
+  {
+   "t": "destinations_guide",
+   "g": "authenticated",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "destinations_guide",
+   "g": "authenticated",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "destinations_guide",
+   "g": "authenticated",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "secret_places",
+   "g": "anon",
+   "p": "INSERT"
+  },
+  {
+   "t": "secret_places",
+   "g": "anon",
+   "p": "SELECT"
+  },
+  {
+   "t": "secret_places",
+   "g": "anon",
+   "p": "UPDATE"
+  },
+  {
+   "t": "secret_places",
+   "g": "anon",
+   "p": "DELETE"
+  },
+  {
+   "t": "secret_places",
+   "g": "anon",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "secret_places",
+   "g": "anon",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "secret_places",
+   "g": "anon",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "secret_places",
+   "g": "authenticated",
+   "p": "INSERT"
+  },
+  {
+   "t": "secret_places",
+   "g": "authenticated",
+   "p": "SELECT"
+  },
+  {
+   "t": "secret_places",
+   "g": "authenticated",
+   "p": "UPDATE"
+  },
+  {
+   "t": "secret_places",
+   "g": "authenticated",
+   "p": "DELETE"
+  },
+  {
+   "t": "secret_places",
+   "g": "authenticated",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "secret_places",
+   "g": "authenticated",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "secret_places",
+   "g": "authenticated",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "suppliers",
+   "g": "anon",
+   "p": "INSERT"
+  },
+  {
+   "t": "suppliers",
+   "g": "anon",
+   "p": "SELECT"
+  },
+  {
+   "t": "suppliers",
+   "g": "anon",
+   "p": "UPDATE"
+  },
+  {
+   "t": "suppliers",
+   "g": "anon",
+   "p": "DELETE"
+  },
+  {
+   "t": "suppliers",
+   "g": "anon",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "suppliers",
+   "g": "anon",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "suppliers",
+   "g": "anon",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "suppliers",
+   "g": "authenticated",
+   "p": "INSERT"
+  },
+  {
+   "t": "suppliers",
+   "g": "authenticated",
+   "p": "SELECT"
+  },
+  {
+   "t": "suppliers",
+   "g": "authenticated",
+   "p": "UPDATE"
+  },
+  {
+   "t": "suppliers",
+   "g": "authenticated",
+   "p": "DELETE"
+  },
+  {
+   "t": "suppliers",
+   "g": "authenticated",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "suppliers",
+   "g": "authenticated",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "suppliers",
+   "g": "authenticated",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "marketing_human_scripts",
+   "g": "anon",
+   "p": "INSERT"
+  },
+  {
+   "t": "marketing_human_scripts",
+   "g": "anon",
+   "p": "SELECT"
+  },
+  {
+   "t": "marketing_human_scripts",
+   "g": "anon",
+   "p": "UPDATE"
+  },
+  {
+   "t": "marketing_human_scripts",
+   "g": "anon",
+   "p": "DELETE"
+  },
+  {
+   "t": "marketing_human_scripts",
+   "g": "anon",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "marketing_human_scripts",
+   "g": "anon",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "marketing_human_scripts",
+   "g": "anon",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "marketing_human_scripts",
+   "g": "authenticated",
+   "p": "INSERT"
+  },
+  {
+   "t": "marketing_human_scripts",
+   "g": "authenticated",
+   "p": "SELECT"
+  },
+  {
+   "t": "marketing_human_scripts",
+   "g": "authenticated",
+   "p": "UPDATE"
+  },
+  {
+   "t": "marketing_human_scripts",
+   "g": "authenticated",
+   "p": "DELETE"
+  },
+  {
+   "t": "marketing_human_scripts",
+   "g": "authenticated",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "marketing_human_scripts",
+   "g": "authenticated",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "marketing_human_scripts",
+   "g": "authenticated",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "marketing_ai_prompts",
+   "g": "anon",
+   "p": "INSERT"
+  },
+  {
+   "t": "marketing_ai_prompts",
+   "g": "anon",
+   "p": "SELECT"
+  },
+  {
+   "t": "marketing_ai_prompts",
+   "g": "anon",
+   "p": "UPDATE"
+  },
+  {
+   "t": "marketing_ai_prompts",
+   "g": "anon",
+   "p": "DELETE"
+  },
+  {
+   "t": "marketing_ai_prompts",
+   "g": "anon",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "marketing_ai_prompts",
+   "g": "anon",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "marketing_ai_prompts",
+   "g": "anon",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "marketing_ai_prompts",
+   "g": "authenticated",
+   "p": "INSERT"
+  },
+  {
+   "t": "marketing_ai_prompts",
+   "g": "authenticated",
+   "p": "SELECT"
+  },
+  {
+   "t": "marketing_ai_prompts",
+   "g": "authenticated",
+   "p": "UPDATE"
+  },
+  {
+   "t": "marketing_ai_prompts",
+   "g": "authenticated",
+   "p": "DELETE"
+  },
+  {
+   "t": "marketing_ai_prompts",
+   "g": "authenticated",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "marketing_ai_prompts",
+   "g": "authenticated",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "marketing_ai_prompts",
+   "g": "authenticated",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "marketing_calendar",
+   "g": "anon",
+   "p": "INSERT"
+  },
+  {
+   "t": "marketing_calendar",
+   "g": "anon",
+   "p": "SELECT"
+  },
+  {
+   "t": "marketing_calendar",
+   "g": "anon",
+   "p": "UPDATE"
+  },
+  {
+   "t": "marketing_calendar",
+   "g": "anon",
+   "p": "DELETE"
+  },
+  {
+   "t": "marketing_calendar",
+   "g": "anon",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "marketing_calendar",
+   "g": "anon",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "marketing_calendar",
+   "g": "anon",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "marketing_calendar",
+   "g": "authenticated",
+   "p": "INSERT"
+  },
+  {
+   "t": "marketing_calendar",
+   "g": "authenticated",
+   "p": "SELECT"
+  },
+  {
+   "t": "marketing_calendar",
+   "g": "authenticated",
+   "p": "UPDATE"
+  },
+  {
+   "t": "marketing_calendar",
+   "g": "authenticated",
+   "p": "DELETE"
+  },
+  {
+   "t": "marketing_calendar",
+   "g": "authenticated",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "marketing_calendar",
+   "g": "authenticated",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "marketing_calendar",
+   "g": "authenticated",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "brand_identity",
+   "g": "anon",
+   "p": "INSERT"
+  },
+  {
+   "t": "brand_identity",
+   "g": "anon",
+   "p": "SELECT"
+  },
+  {
+   "t": "brand_identity",
+   "g": "anon",
+   "p": "UPDATE"
+  },
+  {
+   "t": "brand_identity",
+   "g": "anon",
+   "p": "DELETE"
+  },
+  {
+   "t": "brand_identity",
+   "g": "anon",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "brand_identity",
+   "g": "anon",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "brand_identity",
+   "g": "anon",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "brand_identity",
+   "g": "authenticated",
+   "p": "INSERT"
+  },
+  {
+   "t": "brand_identity",
+   "g": "authenticated",
+   "p": "SELECT"
+  },
+  {
+   "t": "brand_identity",
+   "g": "authenticated",
+   "p": "UPDATE"
+  },
+  {
+   "t": "brand_identity",
+   "g": "authenticated",
+   "p": "DELETE"
+  },
+  {
+   "t": "brand_identity",
+   "g": "authenticated",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "brand_identity",
+   "g": "authenticated",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "brand_identity",
+   "g": "authenticated",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "memory_vault",
+   "g": "anon",
+   "p": "INSERT"
+  },
+  {
+   "t": "memory_vault",
+   "g": "anon",
+   "p": "SELECT"
+  },
+  {
+   "t": "memory_vault",
+   "g": "anon",
+   "p": "UPDATE"
+  },
+  {
+   "t": "memory_vault",
+   "g": "anon",
+   "p": "DELETE"
+  },
+  {
+   "t": "memory_vault",
+   "g": "anon",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "memory_vault",
+   "g": "anon",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "memory_vault",
+   "g": "anon",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "memory_vault",
+   "g": "authenticated",
+   "p": "INSERT"
+  },
+  {
+   "t": "memory_vault",
+   "g": "authenticated",
+   "p": "SELECT"
+  },
+  {
+   "t": "memory_vault",
+   "g": "authenticated",
+   "p": "UPDATE"
+  },
+  {
+   "t": "memory_vault",
+   "g": "authenticated",
+   "p": "DELETE"
+  },
+  {
+   "t": "memory_vault",
+   "g": "authenticated",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "memory_vault",
+   "g": "authenticated",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "memory_vault",
+   "g": "authenticated",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "sessions",
+   "g": "anon",
+   "p": "INSERT"
+  },
+  {
+   "t": "sessions",
+   "g": "anon",
+   "p": "SELECT"
+  },
+  {
+   "t": "sessions",
+   "g": "anon",
+   "p": "UPDATE"
+  },
+  {
+   "t": "sessions",
+   "g": "anon",
+   "p": "DELETE"
+  },
+  {
+   "t": "sessions",
+   "g": "anon",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "sessions",
+   "g": "anon",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "sessions",
+   "g": "anon",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "sessions",
+   "g": "authenticated",
+   "p": "INSERT"
+  },
+  {
+   "t": "sessions",
+   "g": "authenticated",
+   "p": "SELECT"
+  },
+  {
+   "t": "sessions",
+   "g": "authenticated",
+   "p": "UPDATE"
+  },
+  {
+   "t": "sessions",
+   "g": "authenticated",
+   "p": "DELETE"
+  },
+  {
+   "t": "sessions",
+   "g": "authenticated",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "sessions",
+   "g": "authenticated",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "sessions",
+   "g": "authenticated",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "experiences",
+   "g": "anon",
+   "p": "INSERT"
+  },
+  {
+   "t": "experiences",
+   "g": "anon",
+   "p": "SELECT"
+  },
+  {
+   "t": "experiences",
+   "g": "anon",
+   "p": "UPDATE"
+  },
+  {
+   "t": "experiences",
+   "g": "anon",
+   "p": "DELETE"
+  },
+  {
+   "t": "experiences",
+   "g": "anon",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "experiences",
+   "g": "anon",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "experiences",
+   "g": "anon",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "experiences",
+   "g": "authenticated",
+   "p": "INSERT"
+  },
+  {
+   "t": "experiences",
+   "g": "authenticated",
+   "p": "SELECT"
+  },
+  {
+   "t": "experiences",
+   "g": "authenticated",
+   "p": "UPDATE"
+  },
+  {
+   "t": "experiences",
+   "g": "authenticated",
+   "p": "DELETE"
+  },
+  {
+   "t": "experiences",
+   "g": "authenticated",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "experiences",
+   "g": "authenticated",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "experiences",
+   "g": "authenticated",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "client_memories",
+   "g": "anon",
+   "p": "INSERT"
+  },
+  {
+   "t": "client_memories",
+   "g": "anon",
+   "p": "SELECT"
+  },
+  {
+   "t": "client_memories",
+   "g": "anon",
+   "p": "UPDATE"
+  },
+  {
+   "t": "client_memories",
+   "g": "anon",
+   "p": "DELETE"
+  },
+  {
+   "t": "client_memories",
+   "g": "anon",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "client_memories",
+   "g": "anon",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "client_memories",
+   "g": "anon",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "client_memories",
+   "g": "authenticated",
+   "p": "INSERT"
+  },
+  {
+   "t": "client_memories",
+   "g": "authenticated",
+   "p": "SELECT"
+  },
+  {
+   "t": "client_memories",
+   "g": "authenticated",
+   "p": "UPDATE"
+  },
+  {
+   "t": "client_memories",
+   "g": "authenticated",
+   "p": "DELETE"
+  },
+  {
+   "t": "client_memories",
+   "g": "authenticated",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "client_memories",
+   "g": "authenticated",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "client_memories",
+   "g": "authenticated",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "leads",
+   "g": "anon",
+   "p": "INSERT"
+  },
+  {
+   "t": "leads",
+   "g": "anon",
+   "p": "SELECT"
+  },
+  {
+   "t": "leads",
+   "g": "anon",
+   "p": "UPDATE"
+  },
+  {
+   "t": "leads",
+   "g": "anon",
+   "p": "DELETE"
+  },
+  {
+   "t": "leads",
+   "g": "anon",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "leads",
+   "g": "anon",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "leads",
+   "g": "anon",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "leads",
+   "g": "authenticated",
+   "p": "INSERT"
+  },
+  {
+   "t": "leads",
+   "g": "authenticated",
+   "p": "SELECT"
+  },
+  {
+   "t": "leads",
+   "g": "authenticated",
+   "p": "UPDATE"
+  },
+  {
+   "t": "leads",
+   "g": "authenticated",
+   "p": "DELETE"
+  },
+  {
+   "t": "leads",
+   "g": "authenticated",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "leads",
+   "g": "authenticated",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "leads",
+   "g": "authenticated",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "wallet_transactions",
+   "g": "anon",
+   "p": "INSERT"
+  },
+  {
+   "t": "wallet_transactions",
+   "g": "anon",
+   "p": "SELECT"
+  },
+  {
+   "t": "wallet_transactions",
+   "g": "anon",
+   "p": "UPDATE"
+  },
+  {
+   "t": "wallet_transactions",
+   "g": "anon",
+   "p": "DELETE"
+  },
+  {
+   "t": "wallet_transactions",
+   "g": "anon",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "wallet_transactions",
+   "g": "anon",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "wallet_transactions",
+   "g": "anon",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "wallet_transactions",
+   "g": "authenticated",
+   "p": "INSERT"
+  },
+  {
+   "t": "wallet_transactions",
+   "g": "authenticated",
+   "p": "SELECT"
+  },
+  {
+   "t": "wallet_transactions",
+   "g": "authenticated",
+   "p": "UPDATE"
+  },
+  {
+   "t": "wallet_transactions",
+   "g": "authenticated",
+   "p": "DELETE"
+  },
+  {
+   "t": "wallet_transactions",
+   "g": "authenticated",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "wallet_transactions",
+   "g": "authenticated",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "wallet_transactions",
+   "g": "authenticated",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "influencers",
+   "g": "anon",
+   "p": "INSERT"
+  },
+  {
+   "t": "influencers",
+   "g": "anon",
+   "p": "SELECT"
+  },
+  {
+   "t": "influencers",
+   "g": "anon",
+   "p": "UPDATE"
+  },
+  {
+   "t": "influencers",
+   "g": "anon",
+   "p": "DELETE"
+  },
+  {
+   "t": "influencers",
+   "g": "anon",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "influencers",
+   "g": "anon",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "influencers",
+   "g": "anon",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "influencers",
+   "g": "authenticated",
+   "p": "INSERT"
+  },
+  {
+   "t": "influencers",
+   "g": "authenticated",
+   "p": "SELECT"
+  },
+  {
+   "t": "influencers",
+   "g": "authenticated",
+   "p": "UPDATE"
+  },
+  {
+   "t": "influencers",
+   "g": "authenticated",
+   "p": "DELETE"
+  },
+  {
+   "t": "influencers",
+   "g": "authenticated",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "influencers",
+   "g": "authenticated",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "influencers",
+   "g": "authenticated",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "employees",
+   "g": "anon",
+   "p": "INSERT"
+  },
+  {
+   "t": "employees",
+   "g": "anon",
+   "p": "SELECT"
+  },
+  {
+   "t": "employees",
+   "g": "anon",
+   "p": "UPDATE"
+  },
+  {
+   "t": "employees",
+   "g": "anon",
+   "p": "DELETE"
+  },
+  {
+   "t": "employees",
+   "g": "anon",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "employees",
+   "g": "anon",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "employees",
+   "g": "anon",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "employees",
+   "g": "authenticated",
+   "p": "INSERT"
+  },
+  {
+   "t": "employees",
+   "g": "authenticated",
+   "p": "SELECT"
+  },
+  {
+   "t": "employees",
+   "g": "authenticated",
+   "p": "UPDATE"
+  },
+  {
+   "t": "employees",
+   "g": "authenticated",
+   "p": "DELETE"
+  },
+  {
+   "t": "employees",
+   "g": "authenticated",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "employees",
+   "g": "authenticated",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "employees",
+   "g": "authenticated",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "session_registrations",
+   "g": "anon",
+   "p": "INSERT"
+  },
+  {
+   "t": "session_registrations",
+   "g": "anon",
+   "p": "SELECT"
+  },
+  {
+   "t": "session_registrations",
+   "g": "anon",
+   "p": "UPDATE"
+  },
+  {
+   "t": "session_registrations",
+   "g": "anon",
+   "p": "DELETE"
+  },
+  {
+   "t": "session_registrations",
+   "g": "anon",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "session_registrations",
+   "g": "anon",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "session_registrations",
+   "g": "anon",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "session_registrations",
+   "g": "authenticated",
+   "p": "INSERT"
+  },
+  {
+   "t": "session_registrations",
+   "g": "authenticated",
+   "p": "SELECT"
+  },
+  {
+   "t": "session_registrations",
+   "g": "authenticated",
+   "p": "UPDATE"
+  },
+  {
+   "t": "session_registrations",
+   "g": "authenticated",
+   "p": "DELETE"
+  },
+  {
+   "t": "session_registrations",
+   "g": "authenticated",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "session_registrations",
+   "g": "authenticated",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "session_registrations",
+   "g": "authenticated",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "invoices",
+   "g": "anon",
+   "p": "INSERT"
+  },
+  {
+   "t": "invoices",
+   "g": "anon",
+   "p": "SELECT"
+  },
+  {
+   "t": "invoices",
+   "g": "anon",
+   "p": "UPDATE"
+  },
+  {
+   "t": "invoices",
+   "g": "anon",
+   "p": "DELETE"
+  },
+  {
+   "t": "invoices",
+   "g": "anon",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "invoices",
+   "g": "anon",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "invoices",
+   "g": "anon",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "invoices",
+   "g": "authenticated",
+   "p": "INSERT"
+  },
+  {
+   "t": "invoices",
+   "g": "authenticated",
+   "p": "SELECT"
+  },
+  {
+   "t": "invoices",
+   "g": "authenticated",
+   "p": "UPDATE"
+  },
+  {
+   "t": "invoices",
+   "g": "authenticated",
+   "p": "DELETE"
+  },
+  {
+   "t": "invoices",
+   "g": "authenticated",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "invoices",
+   "g": "authenticated",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "invoices",
+   "g": "authenticated",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "client_reviews",
+   "g": "anon",
+   "p": "INSERT"
+  },
+  {
+   "t": "client_reviews",
+   "g": "anon",
+   "p": "SELECT"
+  },
+  {
+   "t": "client_reviews",
+   "g": "anon",
+   "p": "UPDATE"
+  },
+  {
+   "t": "client_reviews",
+   "g": "anon",
+   "p": "DELETE"
+  },
+  {
+   "t": "client_reviews",
+   "g": "anon",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "client_reviews",
+   "g": "anon",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "client_reviews",
+   "g": "anon",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "client_reviews",
+   "g": "authenticated",
+   "p": "INSERT"
+  },
+  {
+   "t": "client_reviews",
+   "g": "authenticated",
+   "p": "SELECT"
+  },
+  {
+   "t": "client_reviews",
+   "g": "authenticated",
+   "p": "UPDATE"
+  },
+  {
+   "t": "client_reviews",
+   "g": "authenticated",
+   "p": "DELETE"
+  },
+  {
+   "t": "client_reviews",
+   "g": "authenticated",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "client_reviews",
+   "g": "authenticated",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "client_reviews",
+   "g": "authenticated",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "leader_availability",
+   "g": "anon",
+   "p": "INSERT"
+  },
+  {
+   "t": "leader_availability",
+   "g": "anon",
+   "p": "SELECT"
+  },
+  {
+   "t": "leader_availability",
+   "g": "anon",
+   "p": "UPDATE"
+  },
+  {
+   "t": "leader_availability",
+   "g": "anon",
+   "p": "DELETE"
+  },
+  {
+   "t": "leader_availability",
+   "g": "anon",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "leader_availability",
+   "g": "anon",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "leader_availability",
+   "g": "anon",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "leader_availability",
+   "g": "authenticated",
+   "p": "INSERT"
+  },
+  {
+   "t": "leader_availability",
+   "g": "authenticated",
+   "p": "SELECT"
+  },
+  {
+   "t": "leader_availability",
+   "g": "authenticated",
+   "p": "UPDATE"
+  },
+  {
+   "t": "leader_availability",
+   "g": "authenticated",
+   "p": "DELETE"
+  },
+  {
+   "t": "leader_availability",
+   "g": "authenticated",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "leader_availability",
+   "g": "authenticated",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "leader_availability",
+   "g": "authenticated",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "trip_logs",
+   "g": "anon",
+   "p": "INSERT"
+  },
+  {
+   "t": "trip_logs",
+   "g": "anon",
+   "p": "SELECT"
+  },
+  {
+   "t": "trip_logs",
+   "g": "anon",
+   "p": "UPDATE"
+  },
+  {
+   "t": "trip_logs",
+   "g": "anon",
+   "p": "DELETE"
+  },
+  {
+   "t": "trip_logs",
+   "g": "anon",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "trip_logs",
+   "g": "anon",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "trip_logs",
+   "g": "anon",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "trip_logs",
+   "g": "authenticated",
+   "p": "INSERT"
+  },
+  {
+   "t": "trip_logs",
+   "g": "authenticated",
+   "p": "SELECT"
+  },
+  {
+   "t": "trip_logs",
+   "g": "authenticated",
+   "p": "UPDATE"
+  },
+  {
+   "t": "trip_logs",
+   "g": "authenticated",
+   "p": "DELETE"
+  },
+  {
+   "t": "trip_logs",
+   "g": "authenticated",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "trip_logs",
+   "g": "authenticated",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "trip_logs",
+   "g": "authenticated",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "expert_suppliers",
+   "g": "anon",
+   "p": "INSERT"
+  },
+  {
+   "t": "expert_suppliers",
+   "g": "anon",
+   "p": "SELECT"
+  },
+  {
+   "t": "expert_suppliers",
+   "g": "anon",
+   "p": "UPDATE"
+  },
+  {
+   "t": "expert_suppliers",
+   "g": "anon",
+   "p": "DELETE"
+  },
+  {
+   "t": "expert_suppliers",
+   "g": "anon",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "expert_suppliers",
+   "g": "anon",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "expert_suppliers",
+   "g": "anon",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "expert_suppliers",
+   "g": "authenticated",
+   "p": "INSERT"
+  },
+  {
+   "t": "expert_suppliers",
+   "g": "authenticated",
+   "p": "SELECT"
+  },
+  {
+   "t": "expert_suppliers",
+   "g": "authenticated",
+   "p": "UPDATE"
+  },
+  {
+   "t": "expert_suppliers",
+   "g": "authenticated",
+   "p": "DELETE"
+  },
+  {
+   "t": "expert_suppliers",
+   "g": "authenticated",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "expert_suppliers",
+   "g": "authenticated",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "expert_suppliers",
+   "g": "authenticated",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "itineraries",
+   "g": "anon",
+   "p": "INSERT"
+  },
+  {
+   "t": "itineraries",
+   "g": "anon",
+   "p": "SELECT"
+  },
+  {
+   "t": "itineraries",
+   "g": "anon",
+   "p": "UPDATE"
+  },
+  {
+   "t": "itineraries",
+   "g": "anon",
+   "p": "DELETE"
+  },
+  {
+   "t": "itineraries",
+   "g": "anon",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "itineraries",
+   "g": "anon",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "itineraries",
+   "g": "anon",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "itineraries",
+   "g": "authenticated",
+   "p": "INSERT"
+  },
+  {
+   "t": "itineraries",
+   "g": "authenticated",
+   "p": "SELECT"
+  },
+  {
+   "t": "itineraries",
+   "g": "authenticated",
+   "p": "UPDATE"
+  },
+  {
+   "t": "itineraries",
+   "g": "authenticated",
+   "p": "DELETE"
+  },
+  {
+   "t": "itineraries",
+   "g": "authenticated",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "itineraries",
+   "g": "authenticated",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "itineraries",
+   "g": "authenticated",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "group_pricings",
+   "g": "anon",
+   "p": "INSERT"
+  },
+  {
+   "t": "group_pricings",
+   "g": "anon",
+   "p": "SELECT"
+  },
+  {
+   "t": "group_pricings",
+   "g": "anon",
+   "p": "UPDATE"
+  },
+  {
+   "t": "group_pricings",
+   "g": "anon",
+   "p": "DELETE"
+  },
+  {
+   "t": "group_pricings",
+   "g": "anon",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "group_pricings",
+   "g": "anon",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "group_pricings",
+   "g": "anon",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "group_pricings",
+   "g": "authenticated",
+   "p": "INSERT"
+  },
+  {
+   "t": "group_pricings",
+   "g": "authenticated",
+   "p": "SELECT"
+  },
+  {
+   "t": "group_pricings",
+   "g": "authenticated",
+   "p": "UPDATE"
+  },
+  {
+   "t": "group_pricings",
+   "g": "authenticated",
+   "p": "DELETE"
+  },
+  {
+   "t": "group_pricings",
+   "g": "authenticated",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "group_pricings",
+   "g": "authenticated",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "group_pricings",
+   "g": "authenticated",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "global_destinations",
+   "g": "anon",
+   "p": "INSERT"
+  },
+  {
+   "t": "global_destinations",
+   "g": "anon",
+   "p": "SELECT"
+  },
+  {
+   "t": "global_destinations",
+   "g": "anon",
+   "p": "UPDATE"
+  },
+  {
+   "t": "global_destinations",
+   "g": "anon",
+   "p": "DELETE"
+  },
+  {
+   "t": "global_destinations",
+   "g": "anon",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "global_destinations",
+   "g": "anon",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "global_destinations",
+   "g": "anon",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "global_destinations",
+   "g": "authenticated",
+   "p": "INSERT"
+  },
+  {
+   "t": "global_destinations",
+   "g": "authenticated",
+   "p": "SELECT"
+  },
+  {
+   "t": "global_destinations",
+   "g": "authenticated",
+   "p": "UPDATE"
+  },
+  {
+   "t": "global_destinations",
+   "g": "authenticated",
+   "p": "DELETE"
+  },
+  {
+   "t": "global_destinations",
+   "g": "authenticated",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "global_destinations",
+   "g": "authenticated",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "global_destinations",
+   "g": "authenticated",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "crm_record_comments",
+   "g": "anon",
+   "p": "INSERT"
+  },
+  {
+   "t": "crm_record_comments",
+   "g": "anon",
+   "p": "SELECT"
+  },
+  {
+   "t": "crm_record_comments",
+   "g": "anon",
+   "p": "UPDATE"
+  },
+  {
+   "t": "crm_record_comments",
+   "g": "anon",
+   "p": "DELETE"
+  },
+  {
+   "t": "crm_record_comments",
+   "g": "anon",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "crm_record_comments",
+   "g": "anon",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "crm_record_comments",
+   "g": "anon",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "crm_record_comments",
+   "g": "authenticated",
+   "p": "INSERT"
+  },
+  {
+   "t": "crm_record_comments",
+   "g": "authenticated",
+   "p": "SELECT"
+  },
+  {
+   "t": "crm_record_comments",
+   "g": "authenticated",
+   "p": "UPDATE"
+  },
+  {
+   "t": "crm_record_comments",
+   "g": "authenticated",
+   "p": "DELETE"
+  },
+  {
+   "t": "crm_record_comments",
+   "g": "authenticated",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "crm_record_comments",
+   "g": "authenticated",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "crm_record_comments",
+   "g": "authenticated",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "proposal_templates",
+   "g": "anon",
+   "p": "INSERT"
+  },
+  {
+   "t": "proposal_templates",
+   "g": "anon",
+   "p": "SELECT"
+  },
+  {
+   "t": "proposal_templates",
+   "g": "anon",
+   "p": "UPDATE"
+  },
+  {
+   "t": "proposal_templates",
+   "g": "anon",
+   "p": "DELETE"
+  },
+  {
+   "t": "proposal_templates",
+   "g": "anon",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "proposal_templates",
+   "g": "anon",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "proposal_templates",
+   "g": "anon",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "proposal_templates",
+   "g": "authenticated",
+   "p": "INSERT"
+  },
+  {
+   "t": "proposal_templates",
+   "g": "authenticated",
+   "p": "SELECT"
+  },
+  {
+   "t": "proposal_templates",
+   "g": "authenticated",
+   "p": "UPDATE"
+  },
+  {
+   "t": "proposal_templates",
+   "g": "authenticated",
+   "p": "DELETE"
+  },
+  {
+   "t": "proposal_templates",
+   "g": "authenticated",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "proposal_templates",
+   "g": "authenticated",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "proposal_templates",
+   "g": "authenticated",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "system_settings",
+   "g": "anon",
+   "p": "INSERT"
+  },
+  {
+   "t": "system_settings",
+   "g": "anon",
+   "p": "SELECT"
+  },
+  {
+   "t": "system_settings",
+   "g": "anon",
+   "p": "UPDATE"
+  },
+  {
+   "t": "system_settings",
+   "g": "anon",
+   "p": "DELETE"
+  },
+  {
+   "t": "system_settings",
+   "g": "anon",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "system_settings",
+   "g": "anon",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "system_settings",
+   "g": "anon",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "system_settings",
+   "g": "authenticated",
+   "p": "INSERT"
+  },
+  {
+   "t": "system_settings",
+   "g": "authenticated",
+   "p": "SELECT"
+  },
+  {
+   "t": "system_settings",
+   "g": "authenticated",
+   "p": "UPDATE"
+  },
+  {
+   "t": "system_settings",
+   "g": "authenticated",
+   "p": "DELETE"
+  },
+  {
+   "t": "system_settings",
+   "g": "authenticated",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "system_settings",
+   "g": "authenticated",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "system_settings",
+   "g": "authenticated",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "marketing_content",
+   "g": "anon",
+   "p": "INSERT"
+  },
+  {
+   "t": "marketing_content",
+   "g": "anon",
+   "p": "SELECT"
+  },
+  {
+   "t": "marketing_content",
+   "g": "anon",
+   "p": "UPDATE"
+  },
+  {
+   "t": "marketing_content",
+   "g": "anon",
+   "p": "DELETE"
+  },
+  {
+   "t": "marketing_content",
+   "g": "anon",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "marketing_content",
+   "g": "anon",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "marketing_content",
+   "g": "anon",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "marketing_content",
+   "g": "authenticated",
+   "p": "INSERT"
+  },
+  {
+   "t": "marketing_content",
+   "g": "authenticated",
+   "p": "SELECT"
+  },
+  {
+   "t": "marketing_content",
+   "g": "authenticated",
+   "p": "UPDATE"
+  },
+  {
+   "t": "marketing_content",
+   "g": "authenticated",
+   "p": "DELETE"
+  },
+  {
+   "t": "marketing_content",
+   "g": "authenticated",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "marketing_content",
+   "g": "authenticated",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "marketing_content",
+   "g": "authenticated",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "group_trips",
+   "g": "anon",
+   "p": "INSERT"
+  },
+  {
+   "t": "group_trips",
+   "g": "anon",
+   "p": "SELECT"
+  },
+  {
+   "t": "group_trips",
+   "g": "anon",
+   "p": "UPDATE"
+  },
+  {
+   "t": "group_trips",
+   "g": "anon",
+   "p": "DELETE"
+  },
+  {
+   "t": "group_trips",
+   "g": "anon",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "group_trips",
+   "g": "anon",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "group_trips",
+   "g": "anon",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "group_trips",
+   "g": "authenticated",
+   "p": "INSERT"
+  },
+  {
+   "t": "group_trips",
+   "g": "authenticated",
+   "p": "SELECT"
+  },
+  {
+   "t": "group_trips",
+   "g": "authenticated",
+   "p": "UPDATE"
+  },
+  {
+   "t": "group_trips",
+   "g": "authenticated",
+   "p": "DELETE"
+  },
+  {
+   "t": "group_trips",
+   "g": "authenticated",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "group_trips",
+   "g": "authenticated",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "group_trips",
+   "g": "authenticated",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "clients",
+   "g": "anon",
+   "p": "INSERT"
+  },
+  {
+   "t": "clients",
+   "g": "anon",
+   "p": "SELECT"
+  },
+  {
+   "t": "clients",
+   "g": "anon",
+   "p": "UPDATE"
+  },
+  {
+   "t": "clients",
+   "g": "anon",
+   "p": "DELETE"
+  },
+  {
+   "t": "clients",
+   "g": "anon",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "clients",
+   "g": "anon",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "clients",
+   "g": "anon",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "clients",
+   "g": "authenticated",
+   "p": "INSERT"
+  },
+  {
+   "t": "clients",
+   "g": "authenticated",
+   "p": "SELECT"
+  },
+  {
+   "t": "clients",
+   "g": "authenticated",
+   "p": "UPDATE"
+  },
+  {
+   "t": "clients",
+   "g": "authenticated",
+   "p": "DELETE"
+  },
+  {
+   "t": "clients",
+   "g": "authenticated",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "clients",
+   "g": "authenticated",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "clients",
+   "g": "authenticated",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "group_members",
+   "g": "anon",
+   "p": "INSERT"
+  },
+  {
+   "t": "group_members",
+   "g": "anon",
+   "p": "SELECT"
+  },
+  {
+   "t": "group_members",
+   "g": "anon",
+   "p": "UPDATE"
+  },
+  {
+   "t": "group_members",
+   "g": "anon",
+   "p": "DELETE"
+  },
+  {
+   "t": "group_members",
+   "g": "anon",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "group_members",
+   "g": "anon",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "group_members",
+   "g": "anon",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "group_members",
+   "g": "authenticated",
+   "p": "INSERT"
+  },
+  {
+   "t": "group_members",
+   "g": "authenticated",
+   "p": "SELECT"
+  },
+  {
+   "t": "group_members",
+   "g": "authenticated",
+   "p": "UPDATE"
+  },
+  {
+   "t": "group_members",
+   "g": "authenticated",
+   "p": "DELETE"
+  },
+  {
+   "t": "group_members",
+   "g": "authenticated",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "group_members",
+   "g": "authenticated",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "group_members",
+   "g": "authenticated",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "quotations",
+   "g": "anon",
+   "p": "INSERT"
+  },
+  {
+   "t": "quotations",
+   "g": "anon",
+   "p": "SELECT"
+  },
+  {
+   "t": "quotations",
+   "g": "anon",
+   "p": "UPDATE"
+  },
+  {
+   "t": "quotations",
+   "g": "anon",
+   "p": "DELETE"
+  },
+  {
+   "t": "quotations",
+   "g": "anon",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "quotations",
+   "g": "anon",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "quotations",
+   "g": "anon",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "quotations",
+   "g": "authenticated",
+   "p": "INSERT"
+  },
+  {
+   "t": "quotations",
+   "g": "authenticated",
+   "p": "SELECT"
+  },
+  {
+   "t": "quotations",
+   "g": "authenticated",
+   "p": "UPDATE"
+  },
+  {
+   "t": "quotations",
+   "g": "authenticated",
+   "p": "DELETE"
+  },
+  {
+   "t": "quotations",
+   "g": "authenticated",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "quotations",
+   "g": "authenticated",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "quotations",
+   "g": "authenticated",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "leaders",
+   "g": "anon",
+   "p": "INSERT"
+  },
+  {
+   "t": "leaders",
+   "g": "anon",
+   "p": "SELECT"
+  },
+  {
+   "t": "leaders",
+   "g": "anon",
+   "p": "UPDATE"
+  },
+  {
+   "t": "leaders",
+   "g": "anon",
+   "p": "DELETE"
+  },
+  {
+   "t": "leaders",
+   "g": "anon",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "leaders",
+   "g": "anon",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "leaders",
+   "g": "anon",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "leaders",
+   "g": "authenticated",
+   "p": "INSERT"
+  },
+  {
+   "t": "leaders",
+   "g": "authenticated",
+   "p": "SELECT"
+  },
+  {
+   "t": "leaders",
+   "g": "authenticated",
+   "p": "UPDATE"
+  },
+  {
+   "t": "leaders",
+   "g": "authenticated",
+   "p": "DELETE"
+  },
+  {
+   "t": "leaders",
+   "g": "authenticated",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "leaders",
+   "g": "authenticated",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "leaders",
+   "g": "authenticated",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "activity_logs",
+   "g": "anon",
+   "p": "INSERT"
+  },
+  {
+   "t": "activity_logs",
+   "g": "anon",
+   "p": "SELECT"
+  },
+  {
+   "t": "activity_logs",
+   "g": "anon",
+   "p": "UPDATE"
+  },
+  {
+   "t": "activity_logs",
+   "g": "anon",
+   "p": "DELETE"
+  },
+  {
+   "t": "activity_logs",
+   "g": "anon",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "activity_logs",
+   "g": "anon",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "activity_logs",
+   "g": "anon",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "activity_logs",
+   "g": "authenticated",
+   "p": "INSERT"
+  },
+  {
+   "t": "activity_logs",
+   "g": "authenticated",
+   "p": "SELECT"
+  },
+  {
+   "t": "activity_logs",
+   "g": "authenticated",
+   "p": "UPDATE"
+  },
+  {
+   "t": "activity_logs",
+   "g": "authenticated",
+   "p": "DELETE"
+  },
+  {
+   "t": "activity_logs",
+   "g": "authenticated",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "activity_logs",
+   "g": "authenticated",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "activity_logs",
+   "g": "authenticated",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "ai_consultations",
+   "g": "anon",
+   "p": "INSERT"
+  },
+  {
+   "t": "ai_consultations",
+   "g": "anon",
+   "p": "SELECT"
+  },
+  {
+   "t": "ai_consultations",
+   "g": "anon",
+   "p": "UPDATE"
+  },
+  {
+   "t": "ai_consultations",
+   "g": "anon",
+   "p": "DELETE"
+  },
+  {
+   "t": "ai_consultations",
+   "g": "anon",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "ai_consultations",
+   "g": "anon",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "ai_consultations",
+   "g": "anon",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "ai_consultations",
+   "g": "authenticated",
+   "p": "INSERT"
+  },
+  {
+   "t": "ai_consultations",
+   "g": "authenticated",
+   "p": "SELECT"
+  },
+  {
+   "t": "ai_consultations",
+   "g": "authenticated",
+   "p": "UPDATE"
+  },
+  {
+   "t": "ai_consultations",
+   "g": "authenticated",
+   "p": "DELETE"
+  },
+  {
+   "t": "ai_consultations",
+   "g": "authenticated",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "ai_consultations",
+   "g": "authenticated",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "ai_consultations",
+   "g": "authenticated",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "experts",
+   "g": "anon",
+   "p": "INSERT"
+  },
+  {
+   "t": "experts",
+   "g": "anon",
+   "p": "SELECT"
+  },
+  {
+   "t": "experts",
+   "g": "anon",
+   "p": "UPDATE"
+  },
+  {
+   "t": "experts",
+   "g": "anon",
+   "p": "DELETE"
+  },
+  {
+   "t": "experts",
+   "g": "anon",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "experts",
+   "g": "anon",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "experts",
+   "g": "anon",
+   "p": "TRIGGER"
+  },
+  {
+   "t": "experts",
+   "g": "authenticated",
+   "p": "INSERT"
+  },
+  {
+   "t": "experts",
+   "g": "authenticated",
+   "p": "SELECT"
+  },
+  {
+   "t": "experts",
+   "g": "authenticated",
+   "p": "UPDATE"
+  },
+  {
+   "t": "experts",
+   "g": "authenticated",
+   "p": "DELETE"
+  },
+  {
+   "t": "experts",
+   "g": "authenticated",
+   "p": "TRUNCATE"
+  },
+  {
+   "t": "experts",
+   "g": "authenticated",
+   "p": "REFERENCES"
+  },
+  {
+   "t": "experts",
+   "g": "authenticated",
+   "p": "TRIGGER"
+  }
+ ],
+ "colgrants": null
+}
