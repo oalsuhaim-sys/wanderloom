@@ -15,7 +15,7 @@ export default function VipBoardingBarcode({ seed, caption }: Props) {
   return (
     <div className="border-t border-dashed border-[#D4AF37]/40 bg-white px-4 py-4 sm:px-6">
       <div
-        className="mx-auto flex h-14 max-w-[280px] items-stretch justify-center gap-px overflow-hidden rounded-sm bg-white px-2"
+        className="wl-keep mx-auto flex h-14 max-w-[280px] items-stretch justify-center gap-px overflow-hidden rounded-sm bg-white px-2"
         role="img"
         aria-label={`باركود الحجز ${caption}`}
       >

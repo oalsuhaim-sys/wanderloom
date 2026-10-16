@@ -20,6 +20,8 @@ type DayWeatherPillProps = {
   startDate?: string | null
   dayIndex?: number
   className?: string
+  /** `dark` = gold-on-dark styling for the route view (default unchanged). */
+  variant?: 'light' | 'dark'
 }
 
 export default function DayWeatherPill({
@@ -29,7 +31,12 @@ export default function DayWeatherPill({
   startDate,
   dayIndex = 0,
   className = '',
+  variant = 'light',
 }: DayWeatherPillProps) {
+  const tone =
+    variant === 'dark'
+      ? 'border border-[color:var(--rv-line-strong)] bg-[color:var(--rv-gold-tint)] text-[color:var(--rv-cream)]'
+      : 'bg-blue-50 text-blue-700'
   const queryCity = useMemo(() => {
     const direct = String(city ?? '').trim()
     if (direct) return extractWeatherCity(direct)
@@ -81,7 +88,7 @@ export default function DayWeatherPill({
   if (loading && !data) {
     return (
       <span
-        className={`inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700 ${className}`}
+        className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold ${tone} ${className}`}
         aria-label="جاري تحميل الطقس"
       >
         <Loader2 className="h-3 w-3 animate-spin" aria-hidden />
@@ -96,7 +103,7 @@ export default function DayWeatherPill({
 
   return (
     <div
-      className={`inline-flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700 shadow-sm backdrop-blur-sm ${className}`}
+      className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-bold shadow-sm backdrop-blur-sm ${tone} ${className}`}
       title={`${data.condition} · ${data.city}${data.date ? ` · ${data.date}` : ''}`}
       aria-label={`طقس ${data.city}: ${data.tempMin} إلى ${data.tempMax} درجة`}
       dir="ltr"
@@ -107,7 +114,7 @@ export default function DayWeatherPill({
       <span className="font-bold tabular-nums">
         {data.tempMax}° / {data.tempMin}°
       </span>
-      <span className="hidden font-semibold text-blue-600/80 sm:inline" dir="rtl">
+      <span className={`font-semibold ${variant === 'dark' ? 'text-[color:var(--rv-gold-text)]' : 'hidden text-blue-600/80 sm:inline'}`} dir="rtl">
         {data.condition}
       </span>
     </div>

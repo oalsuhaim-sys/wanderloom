@@ -14,10 +14,12 @@ const TXT_UBER = '\u0623\u0648\u0628\u0631'
 type VipMapActivitySheetProps = {
   activity: PublicItineraryActivity
   order: number
+  /** Hide the Uber button (trips with a private driver). */
+  hideUber?: boolean
   onClose: () => void
 }
 
-export default function VipMapActivitySheet({ activity, order, onClose }: VipMapActivitySheetProps) {
+export default function VipMapActivitySheet({ activity, order, hideUber = false, onClose }: VipMapActivitySheetProps) {
   const mapsHref = googleMapsSearchUrl(activity.mapsQuery)
   const uberHref = buildUberDeepLink(activity.mapsQuery)
   const imageUrl = activity.imageUrl?.trim()
@@ -77,15 +79,17 @@ export default function VipMapActivitySheet({ activity, order, onClose }: VipMap
               <MapPin className="h-3.5 w-3.5 shrink-0" aria-hidden />
               <span>{'\uD83D\uDCCD'} {TXT_DIRECTIONS}</span>
             </a>
-            <a
-              href={uberHref}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-full border border-[#d4af37]/45 px-3 py-2 text-[11px] font-bold text-[#d4af37] transition hover:bg-[#d4af37]/10"
-            >
-              <Car className="h-3.5 w-3.5 shrink-0" aria-hidden />
-              <span>{'\uD83D\uDE95'} {TXT_UBER}</span>
-            </a>
+            {hideUber ? null : (
+              <a
+                href={uberHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-full border border-[#d4af37]/45 px-3 py-2 text-[11px] font-bold text-[#d4af37] transition hover:bg-[#d4af37]/10"
+              >
+                <Car className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                <span>{'\uD83D\uDE95'} {TXT_UBER}</span>
+              </a>
+            )}
           </div>
         </div>
       </div>

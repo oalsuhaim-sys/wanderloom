@@ -32,6 +32,8 @@ type VipMapProps = {
   day: PublicItineraryDay
   destination: string
   mapboxAccessToken?: string
+  /** Hide «Uber» in the stop sheet (trips with a private driver). */
+  hideUber?: boolean
 }
 
 function fitMapToMarkers(map: MapRef, markers: VipMapMarker[]) {
@@ -56,7 +58,7 @@ function fitMapToMarkers(map: MapRef, markers: VipMapMarker[]) {
   instance.fitBounds(bounds, { padding: 64, maxZoom: 15, duration: 900 })
 }
 
-export default function VipMap({ day, destination }: VipMapProps) {
+export default function VipMap({ day, destination, hideUber = false }: VipMapProps) {
   const mapRef = useRef<MapRef>(null)
   const [mapReady, setMapReady] = useState(false)
   const [mapError, setMapError] = useState<string | null>(null)
@@ -228,6 +230,7 @@ export default function VipMap({ day, destination }: VipMapProps) {
         <VipMapActivitySheet
           activity={selected.activity}
           order={selected.order}
+          hideUber={hideUber}
           onClose={() => setSelectedId(null)}
         />
       ) : null}
