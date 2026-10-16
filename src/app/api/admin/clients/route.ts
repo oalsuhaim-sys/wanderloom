@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server';
+export const dynamic = 'force-dynamic';
 
 import { fetchClientDirectoryAction } from '@/app/actions/clientDirectoryActions';
 import type { ClientDirectoryPayload } from '@/app/crm/clients/useClientDirectory';
