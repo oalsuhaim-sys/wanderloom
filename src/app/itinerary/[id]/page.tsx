@@ -567,6 +567,7 @@ function ClientView({
   const tripFinished = isTripFinished(itinerary?.endDate);
   /** `?view=classic` keeps the previous timeline available as a fallback. */
   const classicView = useSearchParams()?.get('view') === 'classic';
+  const theme = useItineraryTheme();
 
   if (!tripId || itinerary?.id == null || String(itinerary.id).trim() === '') {
     return (
@@ -648,6 +649,10 @@ function ClientView({
             <Map className="h-4 w-4 shrink-0 text-[#D4AF37]" strokeWidth={2} aria-hidden />
             مسار الرحلة
           </div>
+        </div>
+        {/* light / dark — also in the top bar; here with labels so it is easy to find */}
+        <div className="-mt-4 mb-6 flex justify-center px-4">
+          <ThemeToggle theme={theme} labels />
         </div>
       </div>
 

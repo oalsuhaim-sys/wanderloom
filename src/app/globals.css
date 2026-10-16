@@ -1851,3 +1851,9 @@ input[type='radio'].wanderloom-raw-radio::after {
 .wl-theme[data-theme='dark'] {
   --wl-ink: #e9e1cf;
 }
+
+/* Client itinerary page: Tajawal everywhere (codes, numbers and map labels included) */
+.wl-theme,
+.wl-theme * {
+  font-family: var(--font-tajawal), "Tajawal", system-ui, sans-serif;
+}

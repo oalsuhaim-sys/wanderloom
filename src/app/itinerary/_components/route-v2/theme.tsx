@@ -66,7 +66,7 @@ export function useItineraryTheme(): ItineraryTheme {
 }
 
 /** Small segmented switch: داكن / فاتح. */
-export function ThemeToggle({ theme, className = '' }: { theme: ItineraryTheme; className?: string }) {
+export function ThemeToggle({ theme, className = '', labels = false }: { theme: ItineraryTheme; className?: string; labels?: boolean }) {
   const item = (value: ItineraryTheme, label: string, Icon: typeof Sun) => {
     const active = theme === value
     return (
@@ -83,7 +83,7 @@ export function ThemeToggle({ theme, className = '' }: { theme: ItineraryTheme; 
         }}
       >
         <Icon className="h-3.5 w-3.5" aria-hidden />
-        <span className="hidden sm:inline">{label}</span>
+        <span className={labels ? undefined : 'hidden sm:inline'}>{label}</span>
       </button>
     )
   }
@@ -97,8 +97,8 @@ export function ThemeToggle({ theme, className = '' }: { theme: ItineraryTheme; 
         background: 'var(--rv-glass-strong)',
       }}
     >
-      {item('dark', 'داكن', Moon)}
       {item('light', 'فاتح', Sun)}
+      {item('dark', 'داكن', Moon)}
     </div>
   )
 }
