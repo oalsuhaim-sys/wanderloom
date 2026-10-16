@@ -1,3 +1,11 @@
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+import { NextResponse } from 'next/server';
+
+export async function GET(request: Request) {
+  // كود معالجة API الخاص بك...
+}
 import { NextResponse, type NextRequest } from 'next/server';
 export const dynamic = 'force-dynamic';
 
