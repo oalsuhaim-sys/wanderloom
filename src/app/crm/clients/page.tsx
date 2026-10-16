@@ -1,3 +1,9 @@
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+export default async function CrmClientsPage() {
+  // كود الصفحة والتفاعل مع الـ Server Action fetchClientDirectoryAction...
+}
 import { Suspense } from 'react'
 export const dynamic = 'force-dynamic';
 import { fetchClientDirectoryAction } from '@/app/actions/clientDirectoryActions'
