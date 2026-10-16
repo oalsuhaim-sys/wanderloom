@@ -1,4 +1,5 @@
 import type { PublicItineraryActivity, PublicItineraryDay } from '@/lib/public-itinerary'
+import { COUNTRY_ALIASES, DESTINATION_CITY_CENTERS, normalizePlaceKey } from '@/lib/vip-city-centers'
 
 export type VipMapMarker = {
   activity: PublicItineraryActivity
@@ -41,13 +42,40 @@ function normalizeCityKey(value: string): string {
   return value.trim().toLowerCase()
 }
 
+type CenterEntry = { key: string; coords: [number, number] }
+
+/** Built once: the legacy table above + Wanderloom destination cities, normalised. */
+let CENTER_INDEX: CenterEntry[] | null = null
+function centerIndex(): CenterEntry[] {
+  if (CENTER_INDEX) return CENTER_INDEX
+  const out: CenterEntry[] = []
+  for (const [name, coords] of Object.entries(CITY_CENTERS)) out.push({ key: normalizePlaceKey(name), coords })
+  for (const [lat, lng, ...names] of DESTINATION_CITY_CENTERS) {
+    for (const n of names) out.push({ key: normalizePlaceKey(n), coords: [lat, lng] })
+  }
+  CENTER_INDEX = out
+  return out
+}
+
 export function resolveCityCenter(cityLabel: string, destination: string): [number, number] {
   for (const candidate of [cityLabel, destination]) {
-    const key = normalizeCityKey(candidate)
-    if (CITY_CENTERS[key]) return CITY_CENTERS[key]!
-    for (const [name, coords] of Object.entries(CITY_CENTERS)) {
-      if (key.includes(name) || name.includes(key)) return coords
+    const raw = normalizeCityKey(candidate ?? '')
+    if (!raw) continue
+    if (CITY_CENTERS[raw]) return CITY_CENTERS[raw]!
+    const key = normalizePlaceKey(raw)
+    const index = centerIndex()
+    const exact = index.find((e) => e.key === key)
+    if (exact) return exact.coords
+    // longest name contained in the label wins («كوريا الجنوبية – بوسان» → Busan)
+    let best: CenterEntry | null = null
+    for (const e of index) {
+      const hit = (e.key.length >= 4 && key.includes(e.key)) || (key.length >= 4 && e.key.includes(key))
+      if (!hit) continue
+      const score = e.key.length - (COUNTRY_ALIASES.has(e.key) ? 100 : 0)
+      const bestScore = best ? best.key.length - (COUNTRY_ALIASES.has(best.key) ? 100 : 0) : -Infinity
+      if (score > bestScore) best = e
     }
+    if (best) return best.coords
   }
   return [25.2048, 55.2708]
 }

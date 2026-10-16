@@ -118,7 +118,7 @@ function CategoryTag({ activity }: { activity: PublicItineraryActivity }) {
   )
 }
 
-function MapsPinLink({ href }: { href: string }) {
+function MapsPinLink({ href, dark = false }: { href: string; dark?: boolean }) {
   if (!href) return null
   return (
     <a
@@ -126,7 +126,9 @@ function MapsPinLink({ href }: { href: string }) {
       target="_blank"
       rel="noopener noreferrer"
       onClick={(e) => e.stopPropagation()}
-      className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#C5A059]/25 bg-[#F9F9F6] text-[#C5A059] transition-all duration-200 hover:scale-110 hover:border-[#C5A059]/50 hover:bg-[#1A3B2A] hover:text-[#C5A059]"
+      className={dark
+        ? 'inline-flex h-10 w-10 items-center justify-center rounded-full border border-[color:var(--rv-line-strong)] bg-[color:var(--rv-gold-tint)] text-[color:var(--rv-gold-text)] transition-all duration-200 hover:scale-110'
+        : 'inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#C5A059]/25 bg-[#F9F9F6] text-[#C5A059] transition-all duration-200 hover:scale-110 hover:border-[#C5A059]/50 hover:bg-[#1A3B2A] hover:text-[#C5A059]'}
       title="عرض المكان على الخريطة"
       aria-label="عرض المكان على الخريطة"
     >
@@ -135,7 +137,7 @@ function MapsPinLink({ href }: { href: string }) {
   )
 }
 
-function ActivityActionPills({
+export function ActivityActionPills({
   activity,
   tripId,
   magicLinkId,
@@ -143,6 +145,7 @@ function ActivityActionPills({
   memoryUploadingId,
   onUploadStart,
   onUploadEnd,
+  tone = 'light',
 }: {
   activity: PublicItineraryActivity
   tripId: string
@@ -151,7 +154,10 @@ function ActivityActionPills({
   memoryUploadingId?: string | null
   onUploadStart?: (activityId: string) => void
   onUploadEnd?: () => void
+  /** `dark` restyles the pills for the dark route view — behaviour is identical. */
+  tone?: 'light' | 'dark'
 }) {
+  const dark = tone === 'dark'
   const placeName = activity.place_name?.trim() || activity.title?.trim() || ''
   const mapsHref =
     activity.googleMapsUrl?.trim() ||
@@ -233,15 +239,17 @@ function ActivityActionPills({
   }
 
   return (
-    <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-gray-100 pt-4">
-      <MapsPinLink href={mapsHref} />
+    <div className={dark ? 'mt-1 flex flex-wrap items-center gap-2' : 'mt-4 flex flex-wrap items-center gap-2 border-t border-gray-100 pt-4'}>
+      <MapsPinLink href={mapsHref} dark={dark} />
 
       {bookingRaw !== '' && bookingHref ? (
         <a
           href={bookingHref}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 rounded-full border border-[#C5A059]/30 bg-[#F9F9F6] px-3 py-2 text-xs font-bold text-[#1A3B2A] transition hover:border-[#C5A059]/50 hover:bg-[#1A3B2A] hover:text-white"
+          className={dark
+            ? 'inline-flex items-center gap-1.5 rounded-full border border-[color:var(--rv-line-strong)] bg-[color:var(--rv-gold-tint)] px-3 py-2 text-xs font-bold text-[color:var(--rv-cream)] transition'
+            : 'inline-flex items-center gap-1.5 rounded-full border border-[#C5A059]/30 bg-[#F9F9F6] px-3 py-2 text-xs font-bold text-[#1A3B2A] transition hover:border-[#C5A059]/50 hover:bg-[#1A3B2A] hover:text-white'}
         >
           <Ticket className="h-3.5 w-3.5 text-[#C5A059]" aria-hidden />
           التذاكر
@@ -255,7 +263,9 @@ function ActivityActionPills({
           document.getElementById(uploadInputId)?.click()
         }}
         disabled={isUploading || !canUpload}
-        className="inline-flex items-center gap-1.5 rounded-full border border-gray-100 bg-white px-3 py-2 text-xs font-bold text-gray-600 transition hover:border-[#C5A059]/30 hover:text-[#1A3B2A] disabled:cursor-not-allowed disabled:opacity-50"
+        className={dark
+          ? 'inline-flex items-center gap-1.5 rounded-full bg-[color:var(--rv-gold)] px-3.5 py-2 text-xs font-black text-[color:var(--rv-on-gold)] transition disabled:cursor-not-allowed disabled:opacity-50'
+          : 'inline-flex items-center gap-1.5 rounded-full border border-gray-100 bg-white px-3 py-2 text-xs font-bold text-gray-600 transition hover:border-[#C5A059]/30 hover:text-[#1A3B2A] disabled:cursor-not-allowed disabled:opacity-50'}
       >
         <Camera className="h-3.5 w-3.5" aria-hidden />
         {isUploading ? 'جاري الرفع…' : !canUpload ? 'بانتظار التأكيد' : 'وثّق اللحظة'}

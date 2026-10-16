@@ -36,9 +36,22 @@ export default function wrappedConfig(phase: string) {
       register: true,
       scope: "/",
       sw: "sw.js",
+      // Route-map outlines (public/geo) load on demand per country — never precache them all.
+      publicExcludes: ["!noprecache/**/*", "!geo/**/*"],
       workboxOptions: {
         disableDevLogs: true,
         runtimeCaching: [
+          {
+            urlPattern: /\/geo\/[a-z_]+\.json/i,
+            handler: "CacheFirst",
+            options: {
+              cacheName: "wanderloom-geo",
+              expiration: {
+                maxEntries: 8,
+                maxAgeSeconds: 30 * 24 * 60 * 60,
+              },
+            },
+          },
           {
             urlPattern: /^https:\/\/.*\.supabase\.co\/.*/i,
             handler: "NetworkFirst",

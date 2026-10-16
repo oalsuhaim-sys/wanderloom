@@ -111,7 +111,7 @@ function PremiumBarcode({ seed }: { seed: string }) {
 
   return (
     <div
-      className="mx-auto flex h-12 max-w-[260px] items-stretch justify-center gap-px overflow-hidden bg-white px-1"
+      className="wl-keep mx-auto flex h-12 max-w-[260px] items-stretch justify-center gap-px overflow-hidden rounded-sm bg-white px-1"
       role="img"
       aria-label={`Booking barcode ${seed}`}
     >

@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, type ReactNode } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, useSearchParams } from 'next/navigation'
 import {
   Bell,
   BookOpen,
@@ -19,6 +19,8 @@ import VipMedicalConciergeBanner, {
   filterNonMedicalPreTripServices,
 } from './VipMedicalConciergeBanner'
 import VipDailyItineraryTimeline from './VipDailyItineraryTimeline'
+import RouteExperience from './route-v2/RouteExperience'
+import { todayIndex } from './route-v2/route-utils'
 import VipPreTripServicesCard from './VipPreTripServicesCard'
 import VipItineraryActivitiesTab from './VipItineraryActivitiesTab'
 import VipItineraryBottomNav, { type ItineraryMainTab } from './VipItineraryBottomNav'
@@ -396,6 +398,11 @@ export default function PublicVipItineraryView({
   const [unlocking, setUnlocking] = useState(false)
   const [itineraryRevealed, setItineraryRevealed] = useState(false)
   const [sessionExpired, setSessionExpired] = useState(false)
+  /** `?view=classic` keeps the previous timeline available as a fallback. */
+  const searchParams = useSearchParams()
+  const classicView = searchParams?.get('view') === 'classic'
+  /** Until the client picks a tab, a running trip opens straight on the route. */
+  const [tabTouched, setTabTouched] = useState(false)
 
   const { sessionLocked, resetSessionLock } = useVipSessionIdleLock(
     authenticated && !!trip?.hasPin,
@@ -572,6 +579,8 @@ export default function PublicVipItineraryView({
 
   const dateRange = formatTripDateRange(trip.startDate, trip.endDate)
   const tripFinished = isTripFinished(trip.endDate)
+  const tripRunning = !tripFinished && todayIndex(trip.startDate, trip.days.length) != null
+  const currentTab: ItineraryMainTab = !tabTouched && tripRunning ? 'itinerary' : activeTab
   const fd = trip.flightDetails
   const conciergeText = `\u0645\u0631\u062d\u0628\u0627\u064b\u060c \u0623\u0646\u0627 ${trip.customerName}\u060c \u0623\u062d\u062a\u0627\u062c \u0645\u0633\u0627\u0639\u062f\u0629 \u0627\u0644\u0643\u0648\u0646\u0633\u064a\u0631\u062c \u0628\u062e\u0635\u0648\u0635 \u0631\u062d\u0644\u062a\u064a \u0625\u0644\u0649 ${trip.destination}.`
 
@@ -634,7 +643,7 @@ export default function PublicVipItineraryView({
           </div>
         ) : (
           <>
-        {activeTab === 'overview' ? (
+        {currentTab === 'overview' ? (
         <>
         <div className="relative z-10 -mt-6 mb-4 space-y-4">
           {hasFlightBoardingData(fd) ? <BoardingPassCard fd={fd!} /> : null}
@@ -676,36 +685,48 @@ export default function PublicVipItineraryView({
         </>
         ) : null}
 
-        {activeTab === 'itinerary' ? (
+        {currentTab === 'itinerary' ? (
           <section className="mb-10 pt-2 font-[family-name:var(--font-tajawal),system-ui,sans-serif]">
             {salonPreTripServices.length > 0 ? (
               <div className="mb-6">
                 <VipPreTripServicesCard services={salonPreTripServices} />
               </div>
             ) : null}
-            <VipDailyItineraryTimeline
-              days={trip.days}
-              destination={trip.destination}
-              tripTitle={trip.title}
-              coverImage={trip.coverImage}
-              startDate={trip.startDate}
-              endDate={trip.endDate}
-              mapboxAccessToken={mapboxAccessToken}
-              tripId={trip.id}
-              magicLinkId={trip.magicLinkId}
-              clientId={trip.clientId}
-            />
+            {classicView ? (
+              <VipDailyItineraryTimeline
+                days={trip.days}
+                destination={trip.destination}
+                tripTitle={trip.title}
+                coverImage={trip.coverImage}
+                startDate={trip.startDate}
+                endDate={trip.endDate}
+                mapboxAccessToken={mapboxAccessToken}
+                tripId={trip.id}
+                magicLinkId={trip.magicLinkId}
+                clientId={trip.clientId}
+              />
+            ) : (
+              <RouteExperience
+                days={trip.days}
+                destination={trip.destination}
+                startDate={trip.startDate}
+                flightDetails={trip.flightDetails}
+                tripId={trip.id}
+                magicLinkId={trip.magicLinkId}
+                clientId={trip.clientId}
+              />
+            )}
           </section>
         ) : null}
 
-        {activeTab === 'bookings' ? (
+        {currentTab === 'bookings' ? (
           <section className="mb-10 space-y-8 pt-2">
             <div>
-              <h2 className="mb-4 text-center text-base font-black text-[#1E2720]">الفنادق</h2>
+              <h2 className="mb-4 text-center text-base font-black text-white">الفنادق</h2>
               <VipItineraryHotelsTab hotels={trip.hotels} />
             </div>
             <div>
-              <h2 className="mb-4 text-center text-base font-black text-[#1E2720]">الفعاليات والتجارب</h2>
+              <h2 className="mb-4 text-center text-base font-black text-white">الفعاليات والتجارب</h2>
               <VipItineraryActivitiesTab experiences={trip.experiences} />
             </div>
           </section>
@@ -715,7 +736,13 @@ export default function PublicVipItineraryView({
       </main>
 
       {!tripFinished ? (
-      <VipItineraryBottomNav activeTab={activeTab} onTabChange={setActiveTab} />
+      <VipItineraryBottomNav
+        activeTab={currentTab}
+        onTabChange={(t) => {
+          setTabTouched(true)
+          setActiveTab(t)
+        }}
+      />
       ) : null}
 
       <a

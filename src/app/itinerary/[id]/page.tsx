@@ -18,6 +18,8 @@ import VipMedicalConciergeBanner, {
   filterNonMedicalPreTripServices,
 } from '../_components/VipMedicalConciergeBanner';
 import VipDailyItineraryTimeline from '../_components/VipDailyItineraryTimeline';
+import RouteExperience from '../_components/route-v2/RouteExperience';
+import { ThemeToggle, useItineraryTheme } from '../_components/route-v2/theme';
 import PostTripDashboard from '../_components/PostTripDashboard';
 import VipPreTripServicesCard from '../_components/VipPreTripServicesCard';
 import VipVaultCountdown from '../_components/VipVaultCountdown';
@@ -456,7 +458,7 @@ function ConfidentialWatermark() {
         {Array.from({ length: WATERMARK_TILES }, (_, i) => (
           <span
             key={i}
-            className="whitespace-nowrap text-[11px] font-bold uppercase tracking-[0.35em] text-[#1E2720]/[0.04] sm:text-xs"
+            className="whitespace-nowrap text-[11px] font-bold uppercase tracking-[0.35em] text-[color:var(--rv-watermark)] sm:text-xs"
           >
             {WATERMARK_TEXT}
           </span>
@@ -508,10 +510,12 @@ function Shell({
   children: ReactNode;
   className?: string;
 }) {
+  const theme = useItineraryTheme();
   return (
     <div
       dir="rtl"
-      className={`relative min-h-screen overflow-x-hidden bg-[#F9F9F6] font-[family-name:var(--font-tajawal),system-ui,sans-serif] text-gray-900 ${className}`}
+      data-theme={theme}
+      className={`wl-theme relative min-h-screen overflow-x-hidden bg-[#F9F9F6] font-[family-name:var(--font-tajawal),system-ui,sans-serif] text-gray-900 ${className}`}
     >
       <link href={MAPBOX_CSS_CDN} rel="stylesheet" />
       <ConfidentialWatermark />
@@ -561,6 +565,9 @@ function ClientView({
   const salonServices = filterNonMedicalPreTripServices(itinerary?.preTripServices ?? []);
   const destination = itinerary?.destination ?? '';
   const tripFinished = isTripFinished(itinerary?.endDate);
+  /** `?view=classic` keeps the previous timeline available as a fallback. */
+  const classicView = useSearchParams()?.get('view') === 'classic';
+  const theme = useItineraryTheme();
 
   if (!tripId || itinerary?.id == null || String(itinerary.id).trim() === '') {
     return (
@@ -643,6 +650,10 @@ function ClientView({
             مسار الرحلة
           </div>
         </div>
+        {/* light / dark — also in the top bar; here with labels so it is easy to find */}
+        <div className="-mt-4 mb-6 flex justify-center px-4">
+          <ThemeToggle theme={theme} labels />
+        </div>
       </div>
 
       <VipClientTabNav activeTab={clientSectionTab} onTabChange={onClientSectionTabChange} />
@@ -678,7 +689,20 @@ function ClientView({
                   <VipPreTripServicesCard services={salonServices} />
                 </div>
               ) : null}
-              {safeDays.length > 0 ? (
+              {safeDays.length > 0 && !classicView ? (
+                <RouteExperience
+                  days={safeDays}
+                  destination={destination}
+                  startDate={itinerary.startDate}
+                  flightDetails={itinerary.flightDetails}
+                  tripId={tripId}
+                  magicLinkId={magicLinkId ?? itinerary.magicLinkId}
+                  clientId={
+                    clientId ??
+                    (itinerary.clientId != null ? String(itinerary.clientId).trim() : null)
+                  }
+                />
+              ) : safeDays.length > 0 ? (
                 <VipDailyItineraryTimeline
                   days={safeDays}
                   destination={destination}
@@ -749,6 +773,7 @@ export default function VipItineraryPage() {
   const [unlocking, setUnlocking] = useState(false);
 
   const [clientSectionTab, setClientSectionTab] = useState<VipClientTab>('itinerary');
+  const theme = useItineraryTheme();
   const [sessionExpired, setSessionExpired] = useState(false);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
   const [profileUnlocked, setProfileUnlocked] = useState(false);
@@ -1062,6 +1087,7 @@ export default function VipItineraryPage() {
             العودة للموقع الأساسي
           </a>
           <div className="flex items-center gap-2">
+            <ThemeToggle theme={theme} />
             {hasLinkedClient ? (
               <button
                 type="button"

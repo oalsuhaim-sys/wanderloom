@@ -24,7 +24,8 @@ import {
 import { barcodeWidthsFromSeed } from '@/lib/vip-boarding-barcode';
 
 const MASKED_SECRET = '[يظهر بعد الاعتماد]';
-const INK = '#1e3f20';
+/** Deep green ink — follows the client's light / dark choice (see globals.css). */
+const INK = 'var(--wl-ink, #1e3f20)';
 const GOLD = '#cda04c';
 
 const TICKET_CARD =
@@ -128,7 +129,7 @@ function PnrTearOff({ pnr }: { pnr: string }) {
   return (
     <div className="text-center">
       <div
-        className="mx-auto flex h-12 max-w-[260px] items-stretch justify-center gap-px overflow-hidden bg-white px-1"
+        className="wl-keep mx-auto flex h-12 max-w-[260px] items-stretch justify-center gap-px overflow-hidden rounded-sm bg-white px-1"
         role="img"
         aria-label={`باركود الحجز ${pnr}`}
       >
