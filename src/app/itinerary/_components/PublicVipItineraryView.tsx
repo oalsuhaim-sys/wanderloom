@@ -722,11 +722,11 @@ export default function PublicVipItineraryView({
         {currentTab === 'bookings' ? (
           <section className="mb-10 space-y-8 pt-2">
             <div>
-              <h2 className="mb-4 text-center text-base font-black text-[#1E2720]">الفنادق</h2>
+              <h2 className="mb-4 text-center text-base font-black text-white">الفنادق</h2>
               <VipItineraryHotelsTab hotels={trip.hotels} />
             </div>
             <div>
-              <h2 className="mb-4 text-center text-base font-black text-[#1E2720]">الفعاليات والتجارب</h2>
+              <h2 className="mb-4 text-center text-base font-black text-white">الفعاليات والتجارب</h2>
               <VipItineraryActivitiesTab experiences={trip.experiences} />
             </div>
           </section>

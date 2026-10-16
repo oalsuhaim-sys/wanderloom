@@ -35,7 +35,7 @@ export default function DayWeatherPill({
 }: DayWeatherPillProps) {
   const tone =
     variant === 'dark'
-      ? 'border border-[#D4AF37]/35 bg-[#D4AF37]/10 text-[#F3EBDD]'
+      ? 'border border-[color:var(--rv-line-strong)] bg-[color:var(--rv-gold-tint)] text-[color:var(--rv-cream)]'
       : 'bg-blue-50 text-blue-700'
   const queryCity = useMemo(() => {
     const direct = String(city ?? '').trim()
@@ -114,7 +114,7 @@ export default function DayWeatherPill({
       <span className="font-bold tabular-nums">
         {data.tempMax}° / {data.tempMin}°
       </span>
-      <span className={`font-semibold ${variant === 'dark' ? 'text-[#D4AF37]' : 'hidden text-blue-600/80 sm:inline'}`} dir="rtl">
+      <span className={`font-semibold ${variant === 'dark' ? 'text-[color:var(--rv-gold-text)]' : 'hidden text-blue-600/80 sm:inline'}`} dir="rtl">
         {data.condition}
       </span>
     </div>

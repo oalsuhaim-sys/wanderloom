@@ -28,7 +28,7 @@ export default function TripOverviewList({ days, startDate, destination, today, 
             اضغط أي يوم وتروح له
           </p>
         </div>
-        <span className="rounded-xl border-2 px-3 py-1 text-sm font-black" style={{ borderColor: RV.gold, color: RV.gold }}>
+        <span className="rounded-xl border-2 px-3 py-1 text-sm font-black" style={{ borderColor: RV.gold, color: RV.goldText }}>
           {days.length} يوم
         </span>
       </header>
@@ -56,11 +56,11 @@ export default function TripOverviewList({ days, startDate, destination, today, 
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="flex items-center gap-2">
-                    <span className="truncate text-[15px] font-bold" style={{ color: today === i ? RV.gold : RV.cream }}>
+                    <span className="truncate text-[15px] font-bold" style={{ color: today === i ? RV.goldText : RV.cream }}>
                       {parts?.long ?? `اليوم ${i + 1}`}
                     </span>
                     {today === i ? (
-                      <span className="rounded-full px-2 py-0.5 text-[10px] font-black" style={{ background: RV.gold, color: '#141C17' }}>
+                      <span className="rounded-full px-2 py-0.5 text-[10px] font-black" style={{ background: RV.gold, color: RV.onGold }}>
                         اليوم
                       </span>
                     ) : null}

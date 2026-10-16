@@ -28,7 +28,13 @@ export default function DayStrip({ days, startDate, destination, selected, today
       scroller.current?.scrollTo({ left: 0, behavior: 'smooth' })
       return
     }
-    chipRefs.current[selected]?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' })
+    // centre the chip horizontally only (scrollIntoView would also move the page)
+    const chip = chipRefs.current[selected]
+    const box = scroller.current
+    if (!chip || !box) return
+    const c = chip.getBoundingClientRect()
+    const b = box.getBoundingClientRect()
+    box.scrollBy({ left: c.left + c.width / 2 - (b.left + b.width / 2), behavior: 'smooth' })
   }, [selected])
 
   // show the month name before the first day of each month
@@ -40,8 +46,8 @@ export default function DayStrip({ days, startDate, destination, selected, today
 
   return (
     <nav
-      className="sticky top-0 z-40 -mx-4 border-b px-4 pb-3 pt-3 backdrop-blur-xl sm:-mx-6 sm:px-6"
-      style={{ background: 'rgba(20,28,23,0.88)', borderColor: RV.line }}
+      className="sticky z-[19] -mx-4 border-b px-4 pb-3 pt-3 backdrop-blur-xl sm:-mx-6 sm:px-6"
+      style={{ top: 'var(--wl-tabnav-h, 0px)', background: RV.glass, borderColor: RV.line }}
       aria-label="أيام الرحلة"
     >
       <div
@@ -55,8 +61,8 @@ export default function DayStrip({ days, startDate, destination, selected, today
           className="flex w-[74px] shrink-0 flex-col items-center justify-center gap-1 rounded-2xl border px-1 text-center text-[11px] font-bold leading-tight transition-all duration-200 active:scale-95"
           style={{
             borderColor: selected === 'all' ? RV.gold : RV.line,
-            background: selected === 'all' ? 'rgba(212,175,55,0.14)' : RV.card,
-            color: selected === 'all' ? RV.gold : RV.muted,
+            background: selected === 'all' ? RV.goldTint2 : RV.card,
+            color: selected === 'all' ? RV.goldText : RV.muted,
           }}
         >
           <Layers className="h-5 w-5" aria-hidden />
@@ -92,11 +98,11 @@ export default function DayStrip({ days, startDate, destination, selected, today
                 className="relative flex w-[60px] flex-col items-center rounded-2xl border pb-2 pt-1.5 transition-all duration-200 active:scale-95"
                 style={{
                   borderColor: active ? RV.gold : RV.line,
-                  background: active ? 'linear-gradient(180deg,rgba(212,175,55,0.18),rgba(212,175,55,0.04))' : RV.card,
-                  boxShadow: active ? '0 6px 20px rgba(212,175,55,0.18)' : 'none',
+                  background: active ? 'linear-gradient(180deg, var(--rv-gold-tint-2), var(--rv-gold-tint))' : RV.card,
+                  boxShadow: active ? '0 6px 20px var(--rv-gold-tint-2)' : 'none',
                 }}
               >
-                <span className="h-3 text-[10px] font-bold" style={{ color: isToday ? RV.gold : 'transparent' }}>
+                <span className="h-3 text-[10px] font-bold" style={{ color: isToday ? RV.goldText : 'transparent' }}>
                   {isToday ? 'اليوم' : '.'}
                 </span>
                 <span className="text-[11px] font-semibold" style={{ color: active ? RV.cream : RV.muted }}>
@@ -105,7 +111,7 @@ export default function DayStrip({ days, startDate, destination, selected, today
                 <span
                   className="mt-0.5 flex h-9 w-9 items-center justify-center rounded-full text-[19px] font-black tabular-nums"
                   style={{
-                    color: active ? '#141C17' : RV.cream,
+                    color: active ? RV.onGold : RV.cream,
                     background: active ? RV.gold : 'transparent',
                   }}
                 >

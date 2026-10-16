@@ -56,7 +56,7 @@ function Connector({ from, to, hideUber }: { from: PublicItineraryActivity; to: 
       <span className="absolute bottom-0 right-[19px] top-0 w-px border-r border-dashed" style={{ borderColor: RV.lineStrong }} aria-hidden />
       <div className="mr-6 flex flex-wrap items-center gap-2 text-[11px] font-bold" style={{ color: RV.muted }}>
         {dur ? (
-          <span className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1" style={{ borderColor: RV.line, background: '#121914' }}>
+          <span className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1" style={{ borderColor: RV.line, background: RV.inset }}>
             <ModeIcon a={to} />
             {dur}
           </span>
@@ -86,9 +86,9 @@ function HotelRow({ name, label, mapsQuery }: { name: string; label: string; map
       target="_blank"
       rel="noopener noreferrer"
       className="flex items-center gap-3 rounded-2xl border px-4 py-3 transition active:scale-[0.99]"
-      style={{ borderColor: RV.line, background: 'rgba(212,175,55,0.05)' }}
+      style={{ borderColor: RV.line, background: RV.goldTint }}
     >
-      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border" style={{ borderColor: RV.lineStrong, color: RV.gold }}>
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border" style={{ borderColor: RV.lineStrong, color: RV.goldText }}>
         <BedDouble className="h-4 w-4" aria-hidden />
       </span>
       <span className="min-w-0 flex-1">
@@ -147,7 +147,7 @@ function StopRow({
       >
         <span
           className="flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-full border-2 text-sm font-black tabular-nums"
-          style={{ borderColor: color, color: open ? '#141C17' : color, background: open ? color : 'transparent' }}
+          style={{ borderColor: color, color: open ? RV.onGold : color, background: open ? color : 'transparent' }}
         >
           {order}
         </span>
@@ -159,7 +159,7 @@ function StopRow({
             <meta.Icon className="h-3.5 w-3.5 shrink-0" style={{ color: RV.goldSoft }} aria-hidden />
             <span className="truncate">{a.categoryLabel ?? meta.label}</span>
             {a.notes?.trim() ? (
-              <span className="inline-flex items-center gap-1" style={{ color: RV.gold }}>
+              <span className="inline-flex items-center gap-1" style={{ color: RV.goldText }}>
                 <Sparkles className="h-3 w-3" aria-hidden />
                 ملاحظة
               </span>
@@ -185,21 +185,21 @@ function StopRow({
             transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
             className="overflow-hidden"
           >
-            <div className="mx-2 mt-2 rounded-2xl border p-3" style={{ borderColor: RV.line, background: '#121914' }}>
+            <div className="mx-2 mt-2 rounded-2xl border p-3" style={{ borderColor: RV.line, background: RV.inset }}>
               {a.imageUrl?.trim() ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={a.imageUrl.trim()} alt="" loading="lazy" className="mb-3 h-40 w-full rounded-xl object-cover" />
               ) : null}
               {a.notes?.trim() ? (
-                <div className="mb-3 rounded-xl border-r-4 px-3 py-2.5 text-[13px] font-semibold leading-relaxed" style={{ borderColor: RV.gold, background: 'rgba(212,175,55,0.08)', color: RV.cream }}>
-                  <span className="ml-1 font-black" style={{ color: RV.gold }}>
+                <div className="mb-3 rounded-xl border-r-4 px-3 py-2.5 text-[13px] font-semibold leading-relaxed" style={{ borderColor: RV.gold, background: RV.goldTint, color: RV.cream }}>
+                  <span className="ml-1 font-black" style={{ color: RV.goldText }}>
                     ملاحظة خبيرتك:
                   </span>
                   {a.notes.trim()}
                 </div>
               ) : null}
               {story.map((s, i) => (
-                <p key={i} className="mb-2 text-[13px] leading-relaxed" style={{ color: 'rgba(243,235,221,0.75)' }}>
+                <p key={i} className="mb-2 text-[13px] leading-relaxed" style={{ color: RV.text2 }}>
                   {s}
                 </p>
               ))}
@@ -229,8 +229,8 @@ function StopRow({
 
 export function GroupArrivalCard({ ground }: { ground: GroundInfo }) {
   return (
-    <div className="rounded-2xl border p-4" style={{ borderColor: RV.lineStrong, background: 'linear-gradient(135deg,rgba(212,175,55,0.12),rgba(212,175,55,0.03))' }}>
-      <div className="mb-2 flex items-center gap-2 text-xs font-black" style={{ color: RV.gold }}>
+    <div className="rounded-2xl border p-4" style={{ borderColor: RV.lineStrong, background: 'linear-gradient(135deg, var(--rv-gold-tint-2), var(--rv-gold-tint))' }}>
+      <div className="mb-2 flex items-center gap-2 text-xs font-black" style={{ color: RV.goldText }}>
         <Users className="h-4 w-4" aria-hidden />
         الاستقبال عند الوصول
       </div>
@@ -240,7 +240,7 @@ export function GroupArrivalCard({ ground }: { ground: GroundInfo }) {
         </p>
       ) : null}
       {ground.meetingPoint ? (
-        <p className="mt-1 text-sm font-semibold" style={{ color: 'rgba(243,235,221,0.8)' }}>
+        <p className="mt-1 text-sm font-semibold" style={{ color: RV.text2 }}>
           نقطة اللقاء: {ground.meetingPoint}
         </p>
       ) : null}
@@ -255,7 +255,7 @@ export function GroupArrivalCard({ ground }: { ground: GroundInfo }) {
           target="_blank"
           rel="noopener noreferrer"
           className="mt-3 inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-black"
-          style={{ background: RV.gold, color: '#141C17' }}
+          style={{ background: RV.gold, color: RV.onGold }}
         >
           <MessageCircle className="h-4 w-4" aria-hidden />
           راسل الليدر
@@ -331,8 +331,8 @@ export default function DayPanel({
       {showArrival ? <GroupArrivalCard ground={ground} /> : null}
 
       {notes.length > 0 ? (
-        <div className="rounded-2xl border p-4" style={{ borderColor: RV.lineStrong, background: 'rgba(212,175,55,0.06)' }}>
-          <p className="mb-2 flex items-center gap-2 text-xs font-black" style={{ color: RV.gold }}>
+        <div className="rounded-2xl border p-4" style={{ borderColor: RV.lineStrong, background: RV.goldTint }}>
+          <p className="mb-2 flex items-center gap-2 text-xs font-black" style={{ color: RV.goldText }}>
             <Sparkles className="h-4 w-4" aria-hidden />
             ملاحظات خبيرتك لهذا اليوم
           </p>

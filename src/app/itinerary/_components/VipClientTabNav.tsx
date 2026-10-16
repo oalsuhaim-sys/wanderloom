@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useRef } from 'react';
 import { CalendarDays, Luggage, Ticket } from 'lucide-react';
 
 export type VipClientTab = 'itinerary' | 'bookings' | 'packing';
@@ -16,8 +17,26 @@ type Props = {
 };
 
 export default function VipClientTabNav({ activeTab, onTabChange }: Props) {
+  const navRef = useRef<HTMLElement>(null);
+
+  // Lets sticky bars below (the route day strip) sit right under this nav.
+  useEffect(() => {
+    const el = navRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const root = document.documentElement;
+    const ro = new ResizeObserver(() => {
+      root.style.setProperty('--wl-tabnav-h', `${Math.round(el.getBoundingClientRect().height)}px`);
+    });
+    ro.observe(el);
+    return () => {
+      ro.disconnect();
+      root.style.removeProperty('--wl-tabnav-h');
+    };
+  }, []);
+
   return (
     <nav
+      ref={navRef}
       className="sticky top-0 z-20 border-b border-gray-200 bg-[#FDFBF7]/95 px-3 py-3 backdrop-blur-md sm:px-4"
       aria-label="تنقل الرحلة"
     >

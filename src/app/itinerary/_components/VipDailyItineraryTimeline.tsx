@@ -127,7 +127,7 @@ function MapsPinLink({ href, dark = false }: { href: string; dark?: boolean }) {
       rel="noopener noreferrer"
       onClick={(e) => e.stopPropagation()}
       className={dark
-        ? 'inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#D4AF37]/35 bg-[#D4AF37]/10 text-[#D4AF37] transition-all duration-200 hover:scale-110'
+        ? 'inline-flex h-10 w-10 items-center justify-center rounded-full border border-[color:var(--rv-line-strong)] bg-[color:var(--rv-gold-tint)] text-[color:var(--rv-gold-text)] transition-all duration-200 hover:scale-110'
         : 'inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#C5A059]/25 bg-[#F9F9F6] text-[#C5A059] transition-all duration-200 hover:scale-110 hover:border-[#C5A059]/50 hover:bg-[#1A3B2A] hover:text-[#C5A059]'}
       title="عرض المكان على الخريطة"
       aria-label="عرض المكان على الخريطة"
@@ -248,7 +248,7 @@ export function ActivityActionPills({
           target="_blank"
           rel="noopener noreferrer"
           className={dark
-            ? 'inline-flex items-center gap-1.5 rounded-full border border-[#D4AF37]/35 bg-[#D4AF37]/10 px-3 py-2 text-xs font-bold text-[#F3EBDD] transition'
+            ? 'inline-flex items-center gap-1.5 rounded-full border border-[color:var(--rv-line-strong)] bg-[color:var(--rv-gold-tint)] px-3 py-2 text-xs font-bold text-[color:var(--rv-cream)] transition'
             : 'inline-flex items-center gap-1.5 rounded-full border border-[#C5A059]/30 bg-[#F9F9F6] px-3 py-2 text-xs font-bold text-[#1A3B2A] transition hover:border-[#C5A059]/50 hover:bg-[#1A3B2A] hover:text-white'}
         >
           <Ticket className="h-3.5 w-3.5 text-[#C5A059]" aria-hidden />
@@ -264,7 +264,7 @@ export function ActivityActionPills({
         }}
         disabled={isUploading || !canUpload}
         className={dark
-          ? 'inline-flex items-center gap-1.5 rounded-full bg-[#D4AF37] px-3.5 py-2 text-xs font-black text-[#141C17] transition disabled:cursor-not-allowed disabled:opacity-50'
+          ? 'inline-flex items-center gap-1.5 rounded-full bg-[color:var(--rv-gold)] px-3.5 py-2 text-xs font-black text-[color:var(--rv-on-gold)] transition disabled:cursor-not-allowed disabled:opacity-50'
           : 'inline-flex items-center gap-1.5 rounded-full border border-gray-100 bg-white px-3 py-2 text-xs font-bold text-gray-600 transition hover:border-[#C5A059]/30 hover:text-[#1A3B2A] disabled:cursor-not-allowed disabled:opacity-50'}
       >
         <Camera className="h-3.5 w-3.5" aria-hidden />

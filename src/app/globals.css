@@ -1648,3 +1648,206 @@ input[type='radio'].wanderloom-raw-radio::after {
   color: #020617 !important;
   background-image: none !important;
 }
+
+/* ——— Client itinerary page: Dark (default) / Light themes ———
+   Tokens are read by the route view (route-v2) and the page shell.
+   `:root` carries the dark values so components still render outside the scope. */
+:root,
+.wl-theme {
+  --rv-page: #161e19;
+  --rv-bg: #131a16;
+  --rv-card: #1f2a23;
+  --rv-card-hi: #26342b;
+  --rv-inset: #18211c;
+  --rv-glass: rgba(22, 30, 25, 0.9);
+  --rv-glass-strong: rgba(17, 24, 20, 0.82);
+  --rv-line: rgba(212, 175, 55, 0.2);
+  --rv-line-strong: rgba(212, 175, 55, 0.45);
+  --rv-gold: #d4af37;
+  --rv-gold-text: #d4af37;
+  --rv-gold-soft: #c9a65e;
+  --rv-gold-tint: rgba(212, 175, 55, 0.1);
+  --rv-gold-tint-2: rgba(212, 175, 55, 0.18);
+  --rv-on-gold: #141c17;
+  --rv-cream: #f6efe3;
+  --rv-text-2: rgba(246, 239, 227, 0.8);
+  --rv-muted: #aab6ae;
+  --rv-faint: rgba(246, 239, 227, 0.08);
+  --rv-shadow: 0 10px 30px rgba(0, 0, 0, 0.28);
+  --rv-watermark: rgba(255, 255, 255, 0.04);
+  --rv-hero-fade: #161e19;
+  --rv-city-0: #d4af37;
+  --rv-city-1: #8fb39a;
+  --rv-city-2: #e07a5f;
+  --rv-city-3: #7fa9c4;
+  --rv-city-4: #b39ddb;
+  --rv-city-5: #e9b872;
+  /* map */
+  --map-sea: #0d1410;
+  --map-sea-2: #121b16;
+  --map-wave: rgba(212, 175, 55, 0.075);
+  --map-land: #314439;
+  --map-land-active: #3b5246;
+  --map-land-other: #1c2621;
+  --map-border: rgba(212, 175, 55, 0.24);
+  --map-coast: rgba(212, 175, 55, 0.5);
+  --map-urban: rgba(212, 175, 55, 0.1);
+  --map-water: #121c17;
+  --map-river: rgba(127, 169, 196, 0.38);
+  --map-label: rgba(246, 239, 227, 0.5);
+  --map-label-halo: rgba(15, 23, 19, 0.85);
+  --map-pin-ring: #0f1511;
+  --map-vignette: 0.6;
+  color-scheme: dark;
+}
+
+.wl-theme[data-theme='light'] {
+  --rv-page: #f9f9f6;
+  --rv-bg: #f4f1ea;
+  --rv-card: #ffffff;
+  --rv-card-hi: #fbf8f1;
+  --rv-inset: #f9f9f6;
+  --rv-glass: rgba(253, 251, 247, 0.94);
+  --rv-glass-strong: rgba(255, 255, 255, 0.9);
+  --rv-line: rgba(197, 160, 89, 0.28);
+  --rv-line-strong: rgba(197, 160, 89, 0.55);
+  --rv-gold: #c9a33a;
+  --rv-gold-text: #8a6a14;
+  --rv-gold-soft: #86692a;
+  --rv-gold-tint: rgba(212, 175, 55, 0.1);
+  --rv-gold-tint-2: rgba(212, 175, 55, 0.2);
+  --rv-on-gold: #1e2720;
+  --rv-cream: #1e2720;
+  --rv-text-2: rgba(30, 39, 32, 0.82);
+  --rv-muted: #5f6b63;
+  --rv-faint: rgba(30, 39, 32, 0.06);
+  --rv-shadow: 0 8px 30px rgba(0, 0, 0, 0.05);
+  --rv-watermark: rgba(30, 39, 32, 0.04);
+  --rv-hero-fade: #f9f9f6;
+  --rv-city-0: #b08a1c;
+  --rv-city-1: #3f7656;
+  --rv-city-2: #bf5636;
+  --rv-city-3: #34708f;
+  --rv-city-4: #7158a8;
+  --rv-city-5: #a8741c;
+  --map-sea: #e6dfcf;
+  --map-sea-2: #ddd5c3;
+  --map-wave: rgba(26, 59, 42, 0.07);
+  --map-land: #fbf8f1;
+  --map-land-active: #f4e8c8;
+  --map-land-other: #efe9dc;
+  --map-border: rgba(26, 59, 42, 0.16);
+  --map-coast: rgba(26, 59, 42, 0.4);
+  --map-urban: rgba(194, 155, 46, 0.16);
+  --map-water: #dde3dc;
+  --map-river: rgba(52, 112, 143, 0.4);
+  --map-label: rgba(26, 59, 42, 0.55);
+  --map-label-halo: rgba(251, 248, 241, 0.9);
+  --map-pin-ring: #fffdf8;
+  --map-vignette: 0.18;
+  color-scheme: light;
+}
+
+/* travelling dashes on the «whole trip» map */
+@keyframes wl-journey-dash {
+  to {
+    stroke-dashoffset: -26;
+  }
+}
+.wl-journey-dash {
+  animation: wl-journey-dash 1.8s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .wl-journey-dash {
+    animation: none;
+  }
+}
+
+/* ——— Client itinerary page · Dark mode for the light-designed components ———
+   The page was designed light. In dark mode these common light utilities are
+   remapped (same idea as `.crm-command-center.dark`). Wrap anything that must
+   stay light (e.g. a barcode) in `.wl-keep`. Generated list — keep it in sync. */
+.wl-theme[data-theme='dark'] .bg-white:not(.wl-keep, .wl-keep *) { background-color: #1f2a23; }
+.wl-theme[data-theme='dark'] .bg-\[\#FFFBF0\]:not(.wl-keep, .wl-keep *) { background-color: #1f2a23; }
+.wl-theme[data-theme='dark'] .bg-white\/80:not(.wl-keep, .wl-keep *) { background-color: rgba(31, 42, 35, 0.88); }
+.wl-theme[data-theme='dark'] .bg-\[\#F9F9F6\]:not(.wl-keep, .wl-keep *) { background-color: #161e19; }
+.wl-theme[data-theme='dark'] .bg-\[\#FAFAFA\]:not(.wl-keep, .wl-keep *) { background-color: #161e19; }
+.wl-theme[data-theme='dark'] .bg-\[\#FDFBF7\]:not(.wl-keep, .wl-keep *) { background-color: #161e19; }
+.wl-theme[data-theme='dark'] .bg-gray-50:not(.wl-keep, .wl-keep *) { background-color: #161e19; }
+.wl-theme[data-theme='dark'] .bg-\[\#F9F9F6\]\/80:not(.wl-keep, .wl-keep *) { background-color: rgba(22, 30, 25, 0.92); }
+.wl-theme[data-theme='dark'] .bg-\[\#FDFBF7\]\/95:not(.wl-keep, .wl-keep *) { background-color: rgba(22, 30, 25, 0.92); }
+.wl-theme[data-theme='dark'] .bg-gray-50\/50:not(.wl-keep, .wl-keep *) { background-color: rgba(255, 255, 255, 0.03); }
+.wl-theme[data-theme='dark'] .bg-gray-200:not(.wl-keep, .wl-keep *) { background-color: rgba(255, 255, 255, 0.12); }
+.wl-theme[data-theme='dark'] .hover\:bg-gray-100:hover:not(.wl-keep, .wl-keep *) { background-color: rgba(255, 255, 255, 0.06); }
+.wl-theme[data-theme='dark'] .hover\:bg-gray-50:hover:not(.wl-keep, .wl-keep *) { background-color: rgba(255, 255, 255, 0.06); }
+.wl-theme[data-theme='dark'] .bg-amber-50\/80:not(.wl-keep, .wl-keep *) { background-color: rgba(212, 175, 55, 0.08); }
+.wl-theme[data-theme='dark'] .bg-amber-50\/50:not(.wl-keep, .wl-keep *) { background-color: rgba(212, 175, 55, 0.08); }
+.wl-theme[data-theme='dark'] .bg-\[\#1A3B2A\]\/5:not(.wl-keep, .wl-keep *) { background-color: rgba(212, 175, 55, 0.08); }
+.wl-theme[data-theme='dark'] .bg-\[\#1E2720\]\/5:not(.wl-keep, .wl-keep *) { background-color: rgba(212, 175, 55, 0.08); }
+.wl-theme[data-theme='dark'] .bg-\[\#1E2720\]:not(.wl-keep, .wl-keep *) { background-color: #2b3a31; }
+.wl-theme[data-theme='dark'] .bg-\[\#1A3B2A\]:not(.wl-keep, .wl-keep *) { background-color: #2b3a31; }
+.wl-theme[data-theme='dark'] .hover\:bg-\[\#1A3B2A\]:hover:not(.wl-keep, .wl-keep *) { background-color: #2b3a31; }
+.wl-theme[data-theme='dark'] .bg-emerald-50:not(.wl-keep, .wl-keep *) { background-color: rgba(52, 140, 90, 0.16); }
+.wl-theme[data-theme='dark'] .bg-rose-50:not(.wl-keep, .wl-keep *) { background-color: rgba(220, 80, 80, 0.14); }
+.wl-theme[data-theme='dark'] .bg-blue-50:not(.wl-keep, .wl-keep *) { background-color: rgba(127, 169, 196, 0.14); }
+.wl-theme[data-theme='dark'] .text-gray-900:not(.wl-keep, .wl-keep *) { color: rgb(246, 239, 227); }
+.wl-theme[data-theme='dark'] .text-gray-800:not(.wl-keep, .wl-keep *) { color: rgb(246, 239, 227); }
+.wl-theme[data-theme='dark'] .text-\[\#1E2720\]:not(.wl-keep, .wl-keep *) { color: rgb(246, 239, 227); }
+.wl-theme[data-theme='dark'] .text-\[\#1A3B2A\]:not(.wl-keep, .wl-keep *) { color: rgb(246, 239, 227); }
+.wl-theme[data-theme='dark'] .text-\[\#2C2C2C\]:not(.wl-keep, .wl-keep *) { color: rgb(246, 239, 227); }
+.wl-theme[data-theme='dark'] .hover\:text-\[\#1A3B2A\]:hover:not(.wl-keep, .wl-keep *) { color: rgb(246, 239, 227); }
+.wl-theme[data-theme='dark'] .text-gray-700:not(.wl-keep, .wl-keep *) { color: rgba(246, 239, 227, 0.88); }
+.wl-theme[data-theme='dark'] .text-\[\#1E2720\]\/85:not(.wl-keep, .wl-keep *) { color: rgba(246, 239, 227, 0.88); }
+.wl-theme[data-theme='dark'] .text-\[\#1E2720\]\/80:not(.wl-keep, .wl-keep *) { color: rgba(246, 239, 227, 0.88); }
+.wl-theme[data-theme='dark'] .text-gray-600:not(.wl-keep, .wl-keep *) { color: rgba(246, 239, 227, 0.76); }
+.wl-theme[data-theme='dark'] .text-\[\#1E2720\]\/70:not(.wl-keep, .wl-keep *) { color: rgba(246, 239, 227, 0.76); }
+.wl-theme[data-theme='dark'] .text-\[\#1E2720\]\/65:not(.wl-keep, .wl-keep *) { color: rgba(246, 239, 227, 0.76); }
+.wl-theme[data-theme='dark'] .text-\[\#1E2720\]\/60:not(.wl-keep, .wl-keep *) { color: rgba(246, 239, 227, 0.76); }
+.wl-theme[data-theme='dark'] .text-gray-500:not(.wl-keep, .wl-keep *) { color: rgba(246, 239, 227, 0.64); }
+.wl-theme[data-theme='dark'] .text-\[\#1E2720\]\/55:not(.wl-keep, .wl-keep *) { color: rgba(246, 239, 227, 0.64); }
+.wl-theme[data-theme='dark'] .text-\[\#1E2720\]\/50:not(.wl-keep, .wl-keep *) { color: rgba(246, 239, 227, 0.64); }
+.wl-theme[data-theme='dark'] .text-\[\#1E2720\]\/45:not(.wl-keep, .wl-keep *) { color: rgba(246, 239, 227, 0.64); }
+.wl-theme[data-theme='dark'] .text-gray-400:not(.wl-keep, .wl-keep *) { color: rgba(246, 239, 227, 0.5); }
+.wl-theme[data-theme='dark'] .text-\[\#1E2720\]\/40:not(.wl-keep, .wl-keep *) { color: rgba(246, 239, 227, 0.5); }
+.wl-theme[data-theme='dark'] .text-\[\#1E2720\]\/35:not(.wl-keep, .wl-keep *) { color: rgba(246, 239, 227, 0.5); }
+.wl-theme[data-theme='dark'] .text-\[\#1E2720\]\/30:not(.wl-keep, .wl-keep *) { color: rgba(246, 239, 227, 0.5); }
+.wl-theme[data-theme='dark'] .text-gray-300:not(.wl-keep, .wl-keep *) { color: rgba(246, 239, 227, 0.36); }
+.wl-theme[data-theme='dark'] .text-\[\#1E2720\]\/\[0\.04\]:not(.wl-keep, .wl-keep *) { color: rgba(255, 255, 255, 0.035); }
+.wl-theme[data-theme='dark'] .text-emerald-800:not(.wl-keep, .wl-keep *) { color: #8fd3a8; }
+.wl-theme[data-theme='dark'] .text-emerald-600:not(.wl-keep, .wl-keep *) { color: #8fd3a8; }
+.wl-theme[data-theme='dark'] .text-amber-900:not(.wl-keep, .wl-keep *) { color: #e8d2a7; }
+.wl-theme[data-theme='dark'] .text-blue-700:not(.wl-keep, .wl-keep *) { color: #9cc3e6; }
+.wl-theme[data-theme='dark'] .text-blue-600\/80:not(.wl-keep, .wl-keep *) { color: #9cc3e6; }
+.wl-theme[data-theme='dark'] .text-rose-700:not(.wl-keep, .wl-keep *) { color: #f29b9b; }
+.wl-theme[data-theme='dark'] .text-rose-600:not(.wl-keep, .wl-keep *) { color: #f29b9b; }
+.wl-theme[data-theme='dark'] .border-gray-100:not(.wl-keep, .wl-keep *) { border-color: rgba(212, 175, 55, 0.16); }
+.wl-theme[data-theme='dark'] .border-gray-200:not(.wl-keep, .wl-keep *) { border-color: rgba(212, 175, 55, 0.16); }
+.wl-theme[data-theme='dark'] .border-gray-300:not(.wl-keep, .wl-keep *) { border-color: rgba(212, 175, 55, 0.16); }
+.wl-theme[data-theme='dark'] .border-\[\#1E2720\]\/8:not(.wl-keep, .wl-keep *) { border-color: rgba(212, 175, 55, 0.16); }
+.wl-theme[data-theme='dark'] .border-\[\#1E2720\]\/10:not(.wl-keep, .wl-keep *) { border-color: rgba(212, 175, 55, 0.16); }
+.wl-theme[data-theme='dark'] .border-amber-100\/50:not(.wl-keep, .wl-keep *) { border-color: rgba(212, 175, 55, 0.16); }
+.wl-theme[data-theme='dark'] .border-amber-200:not(.wl-keep, .wl-keep *) { border-color: rgba(212, 175, 55, 0.16); }
+.wl-theme[data-theme='dark'] .border-emerald-200:not(.wl-keep, .wl-keep *) { border-color: rgba(212, 175, 55, 0.16); }
+.wl-theme[data-theme='dark'] .border-rose-200:not(.wl-keep, .wl-keep *) { border-color: rgba(212, 175, 55, 0.16); }
+.wl-theme[data-theme='dark'] .ring-gray-200:not(.wl-keep, .wl-keep *) { --tw-ring-color: rgba(212, 175, 55, 0.16); }
+.wl-theme[data-theme='dark'] .ring-\[\#1E2720\]\/5:not(.wl-keep, .wl-keep *) { --tw-ring-color: rgba(212, 175, 55, 0.16); }
+.wl-theme[data-theme='dark'] .ring-\[\#1E2720\]\/10:not(.wl-keep, .wl-keep *) { --tw-ring-color: rgba(212, 175, 55, 0.16); }
+.wl-theme[data-theme='dark'] .decoration-gray-200:not(.wl-keep, .wl-keep *) { text-decoration-color: rgba(246, 239, 227, 0.25); }
+.wl-theme[data-theme='dark'] .from-white:not(.wl-keep, .wl-keep *) { --tw-gradient-from: #1f2a23; }
+.wl-theme[data-theme='dark'] .from-\[\#F5F3EE\]:not(.wl-keep, .wl-keep *) { --tw-gradient-from: #1f2a23; }
+.wl-theme[data-theme='dark'] .from-\[\#FFFBF0\]:not(.wl-keep, .wl-keep *) { --tw-gradient-from: #1f2a23; }
+.wl-theme[data-theme='dark'] .from-emerald-50\/90:not(.wl-keep, .wl-keep *) { --tw-gradient-from: rgba(52, 140, 90, 0.16); }
+.wl-theme[data-theme='dark'] .to-white:not(.wl-keep, .wl-keep *) { --tw-gradient-to: #1f2a23; }
+.wl-theme[data-theme='dark'] .to-\[\#FAFAFA\]:not(.wl-keep, .wl-keep *) { --tw-gradient-to: #1f2a23; }
+.wl-theme[data-theme='dark'] .to-\[\#F5F3EE\]:not(.wl-keep, .wl-keep *) { --tw-gradient-to: #1f2a23; }
+.wl-theme[data-theme='dark'] .to-\[\#FDFBF7\]:not(.wl-keep, .wl-keep *) { --tw-gradient-to: #1f2a23; }
+.wl-theme[data-theme='dark'] .via-\[\#FAFAFA\]:not(.wl-keep, .wl-keep *) { --tw-gradient-via: #1f2a23; }
+.wl-theme[data-theme='dark'] .via-white:not(.wl-keep, .wl-keep *) { --tw-gradient-via: #1f2a23; }
+
+/* deep-green "ink" used inline by the bookings cards */
+.wl-theme[data-theme='light'] {
+  --wl-ink: #1e3f20;
+}
+.wl-theme[data-theme='dark'] {
+  --wl-ink: #e9e1cf;
+}

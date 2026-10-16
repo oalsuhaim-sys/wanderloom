@@ -1,21 +1,35 @@
 import type { PublicItineraryActivity, PublicItineraryDay } from '@/lib/public-itinerary'
 
-/** Brand tokens for the dark route experience. */
+/**
+ * Theme tokens for the route experience. Values are CSS variables defined in
+ * globals.css (`.wl-theme` dark by default, `[data-theme='light']` for light),
+ * so every component follows the client's chosen theme without re-rendering.
+ */
 export const RV = {
-  bg: '#141C17',
-  card: '#1A241E',
-  cardHi: '#212D26',
-  line: 'rgba(212,175,55,0.18)',
-  lineStrong: 'rgba(212,175,55,0.45)',
-  gold: '#D4AF37',
-  goldSoft: '#C5A059',
-  cream: '#F3EBDD',
-  muted: '#9AA79F',
-  faint: 'rgba(243,235,221,0.08)',
+  page: 'var(--rv-page)',
+  bg: 'var(--rv-bg)',
+  card: 'var(--rv-card)',
+  cardHi: 'var(--rv-card-hi)',
+  inset: 'var(--rv-inset)',
+  glass: 'var(--rv-glass)',
+  glassStrong: 'var(--rv-glass-strong)',
+  line: 'var(--rv-line)',
+  lineStrong: 'var(--rv-line-strong)',
+  gold: 'var(--rv-gold)',
+  goldText: 'var(--rv-gold-text)',
+  goldSoft: 'var(--rv-gold-soft)',
+  goldTint: 'var(--rv-gold-tint)',
+  goldTint2: 'var(--rv-gold-tint-2)',
+  onGold: 'var(--rv-on-gold)',
+  cream: 'var(--rv-cream)',
+  text2: 'var(--rv-text-2)',
+  muted: 'var(--rv-muted)',
+  faint: 'var(--rv-faint)',
+  shadow: 'var(--rv-shadow)',
 } as const
 
 /** Colours given to cities in order of first appearance (multi-city trips). */
-const CITY_COLORS = ['#D4AF37', '#8FB39A', '#E07A5F', '#7FA9C4', '#B39DDB', '#E9B872'] as const
+const CITY_COLORS = [0, 1, 2, 3, 4, 5].map((i) => `var(--rv-city-${i})`)
 
 const WEEKDAYS_SHORT = ['أحد', 'اثنين', 'ثلاثاء', 'أربعاء', 'خميس', 'جمعة', 'سبت'] as const
 const WEEKDAYS_LONG = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'] as const

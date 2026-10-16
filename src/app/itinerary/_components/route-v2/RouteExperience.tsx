@@ -21,18 +21,10 @@ type RouteExperienceProps = {
 }
 
 /**
- * Interactive route: sticky day strip → stylised route map → the day itself.
+ * Interactive route: sticky day strip → real map of the day (flies between days) → the day itself.
  * Opens on today's day while the trip is running, otherwise on day one.
  */
-export default function RouteExperience({
-  days,
-  destination,
-  startDate,
-  flightDetails,
-  tripId,
-  magicLinkId = null,
-  clientId,
-}: RouteExperienceProps) {
+export default function RouteExperience({ days, destination, startDate, flightDetails, tripId, magicLinkId = null, clientId }: RouteExperienceProps) {
   const today = useMemo(() => todayIndex(startDate, days.length), [startDate, days.length])
   const [selected, setSelected] = useState<DaySelection>(() => today ?? 0)
   const [selectedStopId, setSelectedStopId] = useState<string | null>(null)
@@ -43,10 +35,13 @@ export default function RouteExperience({
   // Positions: instant approximations first, refined (geocoded) per visited day.
   const baseMarkers = useMemo(() => days.map((d) => buildDayMarkersSync(d, destination)), [days, destination])
   const signature = useMemo(() => `${destination}|${days.map((d) => d.activities.map((a) => a.id).join(',')).join('/')}`, [days, destination])
-  const [refinedState, setRefinedState] = useState<{ sig: string; byDay: Record<number, VipMapMarker[]> }>({ sig: '', byDay: {} })
+  const [refinedState, setRefinedState] = useState<{
+    sig: string
+    byDay: Record<number, VipMapMarker[]>
+  }>({ sig: '', byDay: {} })
   const requested = useRef<Set<string>>(new Set())
   const markersByDay = useMemo(
-    () => baseMarkers.map((m, i) => (refinedState.sig === signature ? refinedState.byDay[i] ?? m : m)),
+    () => baseMarkers.map((m, i) => (refinedState.sig === signature ? (refinedState.byDay[i] ?? m) : m)),
     [baseMarkers, refinedState, signature],
   )
 
@@ -60,7 +55,10 @@ export default function RouteExperience({
     let cancelled = false
     void refineDayMarkersWithGeocoding(baseMarkers[i]!, destination).then((r) => {
       if (cancelled) return
-      setRefinedState((prev) => ({ sig: signature, byDay: { ...(prev.sig === signature ? prev.byDay : {}), [i]: r } }))
+      setRefinedState((prev) => ({
+        sig: signature,
+        byDay: { ...(prev.sig === signature ? prev.byDay : {}), [i]: r },
+      }))
     })
     return () => {
       cancelled = true
@@ -71,8 +69,12 @@ export default function RouteExperience({
   const select = (s: DaySelection) => {
     setSelected(s)
     setSelectedStopId(null)
-    const top = topRef.current?.getBoundingClientRect().top ?? 0
-    if (top < -40) topRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    // bring the map back into view when the client picked a day far down the page
+    const el = topRef.current
+    if (!el) return
+    const navH = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--wl-tabnav-h')) || 0
+    const top = el.getBoundingClientRect().top
+    if (top < navH - 40) window.scrollTo({ top: window.scrollY + top - navH, behavior: 'smooth' })
   }
 
   if (days.length === 0) {
@@ -88,28 +90,22 @@ export default function RouteExperience({
 
   return (
     <div ref={topRef} className="scroll-mt-0 font-[family-name:var(--font-tajawal),system-ui,sans-serif]" dir="rtl">
-      <DayStrip
-        days={days}
-        startDate={startDate}
-        destination={destination}
-        selected={selected}
-        today={today}
-        cityColors={cityColors}
-        onSelect={select}
-      />
+      <DayStrip days={days} startDate={startDate} destination={destination} selected={selected} today={today} cityColors={cityColors} onSelect={select} />
 
-      <div className="mt-4 space-y-4">
-        <RouteMapCard
-          days={days}
-          destination={destination}
-          selected={selected}
-          markersByDay={markersByDay}
-          cityColors={cityColors}
-          selectedStopId={selectedStopId}
-          hideUber={ground.privateDriver}
-          onSelectDay={select}
-          onSelectStop={setSelectedStopId}
-        />
+      <div className="mt-4 space-y-4 lg:grid lg:grid-cols-2 lg:items-start lg:gap-5 lg:space-y-0">
+        <div className="lg:sticky lg:top-[calc(var(--wl-tabnav-h,0px)+104px)]">
+          <RouteMapCard
+            days={days}
+            destination={destination}
+            selected={selected}
+            markersByDay={markersByDay}
+            cityColors={cityColors}
+            selectedStopId={selectedStopId}
+            hideUber={ground.privateDriver}
+            onSelectDay={select}
+            onSelectStop={setSelectedStopId}
+          />
+        </div>
 
         {day ? (
           <DayPanel
@@ -127,14 +123,7 @@ export default function RouteExperience({
             ground={ground}
           />
         ) : (
-          <TripOverviewList
-            days={days}
-            startDate={startDate}
-            destination={destination}
-            today={today}
-            cityColors={cityColors}
-            onSelectDay={select}
-          />
+          <TripOverviewList days={days} startDate={startDate} destination={destination} today={today} cityColors={cityColors} onSelectDay={select} />
         )}
       </div>
     </div>
