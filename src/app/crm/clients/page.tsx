@@ -1,5 +1,5 @@
 import { Suspense } from 'react'
-
+export const dynamic = 'force-dynamic';
 import { fetchClientDirectoryAction } from '@/app/actions/clientDirectoryActions'
 import { ClientsLoyaltyClient } from '@/app/crm/clients/ClientsLoyaltyClient'
 import type { ClientDirectoryPayload } from '@/app/crm/clients/useClientDirectory'
