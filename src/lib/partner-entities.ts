@@ -67,6 +67,7 @@ export type CelebrityRecord = {
   availabilityStatus: string | null;
   category: string | null;
   iban: string | null;
+  referralCode: string | null;
 };
 
 function pickString(row: Record<string, unknown>, keys: string[]): string | null {
@@ -170,7 +171,7 @@ export function mapExpertRow(row: Record<string, unknown>): ExpertRecord | null 
 
 export function mapCelebrityRow(row: Record<string, unknown>): CelebrityRecord | null {
   const id = row.id != null ? String(row.id) : '';
-  const name = pickString(row, ['name']);
+  const name = pickString(row, ['name', 'full_name']);
   if (!id || !name) return null;
 
   return {
@@ -185,5 +186,6 @@ export function mapCelebrityRow(row: Record<string, unknown>): CelebrityRecord |
     createdAt: pickString(row, ['created_at']),
     dnaProfile: parsePartnerDnaProfile(row.dna_profile),
     ...pickPartnerIntelligence(row),
+    referralCode: pickString(row, ['referral_code', 'ref_code']),
   };
 }

@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 
 import ClientPaymentWhatsAppButton from '@/app/crm/clients/_components/ClientPaymentWhatsAppButton'
+import { ClientReferralBadge } from '@/components/crm/ClientReferralBadge'
 import ClientSalesStageControl from '@/app/crm/clients/_components/ClientSalesStageControl'
 import {
   clientDisplayTierBadge,
@@ -217,6 +218,15 @@ export default function ClientCard({
           />
         </div>
       </div>
+
+      {client.used_code?.trim() ? (
+        <div className="mb-3 w-full text-right" onClick={(e) => e.stopPropagation()}>
+          <ClientReferralBadge
+            clientName={displayName}
+            referralCodeUsed={client.used_code.trim()}
+          />
+        </div>
+      ) : null}
 
       {activity ? (
         <div className="mb-2 flex w-full justify-center">

@@ -1,12 +1,13 @@
 ﻿'use client';
 
 import { useState, useTransition } from 'react';
-import { Heart, Loader2, MapPin, Phone, User } from 'lucide-react';
+import { Heart, Loader2, MapPin, User } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 import { submitInterestAction } from '@/app/actions/submitInterest';
 import { ReferralCodeField } from '@/components/ReferralCodeField';
-import { requireValidPhone } from '@/lib/phoneUtils';
+import { WhatsAppInput } from '@/components/WhatsAppInput';
+import { requireValidPhone, WHATSAPP_INCOMPLETE_ERROR } from '@/lib/phoneUtils';
 import { normalizeAffiliateRef, persistAffiliateRef } from '@/lib/referral-url';
 
 const INPUT_CLASS =
@@ -22,6 +23,7 @@ type InterestFormProps = {
 export function InterestForm({ variant = 'default', onSuccess }: InterestFormProps) {
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
+  const [isPhoneValid, setIsPhoneValid] = useState(false);
   const [destination, setDestination] = useState('');
   const [referralCode, setReferralCode] = useState('');
   const [error, setError] = useState('');
@@ -37,8 +39,8 @@ export function InterestForm({ variant = 'default', onSuccess }: InterestFormPro
     if (referral) persistAffiliateRef(referral);
 
     const phoneCheck = requireValidPhone(phone);
-    if (!phoneCheck.isValid) {
-      const message = phoneCheck.error ?? 'يرجى إدخال رقم جوال سعودي صحيح';
+    if (!isPhoneValid || !phoneCheck.isValid) {
+      const message = phoneCheck.error ?? WHATSAPP_INCOMPLETE_ERROR;
       setError(message);
       toast.error(message);
       return;
@@ -61,6 +63,7 @@ export function InterestForm({ variant = 'default', onSuccess }: InterestFormPro
       toast.success(result.message);
       setFullName('');
       setPhone('');
+      setIsPhoneValid(false);
       setDestination('');
       setReferralCode('');
       onSuccess?.();
@@ -125,26 +128,14 @@ export function InterestForm({ variant = 'default', onSuccess }: InterestFormPro
           </div>
         </label>
 
-        <label className="block">
-          <span className={FIELD_LABEL}>رقم الواتساب</span>
-          <div className="relative">
-            <Phone
-              className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400"
-              aria-hidden
-            />
-            <input
-              type="tel"
-              name="phone_wa"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              required
-              autoComplete="tel"
-              placeholder="05xxxxxxxx"
-              dir="ltr"
-              className={`${INPUT_CLASS} pr-10 text-left`}
-            />
-          </div>
-        </label>
+        <WhatsAppInput
+          value={phone}
+          onChange={(fullNumber, isValid) => {
+            setPhone(fullNumber);
+            setIsPhoneValid(isValid);
+          }}
+          required
+        />
 
         <label className="block">
           <span className={FIELD_LABEL}>
@@ -181,7 +172,7 @@ export function InterestForm({ variant = 'default', onSuccess }: InterestFormPro
 
       <button
         type="submit"
-        disabled={pending}
+        disabled={pending || !isPhoneValid}
         className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-[#1C2E3A] py-3.5 text-sm font-black text-[#F4EFE6] transition hover:bg-[#122029] disabled:opacity-60"
       >
         {pending ? <Loader2 className="h-5 w-5 animate-spin" aria-hidden /> : null}

@@ -349,12 +349,16 @@ const PROFILE_BY_COUNTRY: Record<TripCountryId, 'temperate' | 'mediterranean' | 
   switzerland: 'cold',
 };
 
-export function getCountryAdvisorData(countryId: TripCountryId): CountryAdvisorData {
-  const deep = DEEP_OVERRIDES[countryId];
+export function getCountryAdvisorData(
+  countryId: string,
+  displayName?: string,
+): CountryAdvisorData {
+  const id = countryId as TripCountryId;
+  const deep = DEEP_OVERRIDES[id];
   if (deep) return deep;
   const meta = TRIP_DESTINATIONS.find((c) => c.id === countryId);
-  const name = meta?.labelAr ?? countryId;
-  return buildStandardCountry(name, PROFILE_BY_COUNTRY[countryId] ?? 'temperate');
+  const name = displayName?.trim() || meta?.labelAr || countryId;
+  return buildStandardCountry(name, PROFILE_BY_COUNTRY[id] ?? 'temperate');
 }
 
 export const ADVISOR_COUNTRY_IDS = TRIP_DESTINATIONS.map((c) => c.id) as TripCountryId[];

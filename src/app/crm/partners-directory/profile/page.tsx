@@ -40,7 +40,9 @@ import {
 } from '@/lib/partner-dna';
 import { whatsAppHrefWithText } from '@/lib/client-intake-pipeline';
 import { getClientAccessToken } from '@/lib/crm-session-token';
-import { useCountries } from '@/hooks/useCountries';
+import PlacesBankSpecialtyPicker from '@/components/PlacesBankSpecialtyPicker';
+import { buildInfluencerReferralLink } from '@/components/crm/AddInfluencerDrawer';
+import { buildAffiliateReferralUrl } from '@/lib/referral-url';
 import {
   CRM_BTN_PRIMARY,
   CRM_INPUT,
@@ -137,7 +139,6 @@ function sanitizeReferralCode(raw: string): string {
 function PartnerProfileInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { countries: destinationCountries } = useCountries();
   const id = searchParams.get('id')?.trim() ?? '';
   const type = parseType(searchParams.get('type'));
 
@@ -520,7 +521,7 @@ function PartnerProfileInner() {
   };
 
   const handleSaveCustomCode = async () => {
-    if (!apiBase || !type || (type !== 'leaders' && type !== 'experts')) return;
+    if (!apiBase || !type || (type !== 'leaders' && type !== 'experts' && type !== 'celebrities')) return;
     const cleanCode = sanitizeReferralCode(customReferralCode);
     if (!cleanCode) {
       toast.error('يرجى إدخال كود إحالة صالح');
@@ -533,18 +534,23 @@ function PartnerProfileInner() {
       const res = await fetch(apiBase, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          referral_code: cleanCode,
-          commission_rate: resolveCommissionRate(
-            profile?.commissionRate ?? DEFAULT_PARTNER_COMMISSION_RATE,
-          ),
-        }),
+        body: JSON.stringify(
+          type === 'celebrities'
+            ? { referral_code: cleanCode }
+            : {
+                referral_code: cleanCode,
+                commission_rate: resolveCommissionRate(
+                  profile?.commissionRate ?? DEFAULT_PARTNER_COMMISSION_RATE,
+                ),
+              },
+        ),
       });
       const payload = (await res.json()) as {
         ok?: boolean;
         error?: string;
         leader?: { referralCode?: string | null; commissionRate?: number };
         expert?: { referralCode?: string | null; commissionRate?: number };
+        celebrity?: { referralCode?: string | null };
       };
       if (!res.ok || !payload.ok) {
         throw new Error(
@@ -557,7 +563,7 @@ function PartnerProfileInner() {
           ? payload.leader
           : type === 'experts'
             ? payload.expert
-            : null;
+            : payload.celebrity;
       const nextCode =
         String(updated?.referralCode ?? cleanCode).trim() || cleanCode;
       const nextRate = resolveCommissionRate(
@@ -618,14 +624,6 @@ function PartnerProfileInner() {
     } finally {
       setAssigningTripId(null);
     }
-  };
-
-  const toggleEditSpecialty = (destination: string) => {
-    const current = splitTags(editSpecialty);
-    const next = current.includes(destination)
-      ? current.filter((item) => item !== destination)
-      : [...current, destination];
-    setEditSpecialty(next.join('، '));
   };
 
   const toggleTagList = (
@@ -1169,7 +1167,7 @@ function PartnerProfileInner() {
               </div>
             </section>
 
-            {(type === 'leaders' || type === 'experts') ? (
+            {(type === 'leaders' || type === 'experts' || type === 'celebrities') ? (
               <section className="mb-6 space-y-2 rounded-2xl border border-slate-200/80 bg-white p-3.5 text-right shadow-[0_1px_0_rgba(15,23,42,0.04)]">
                 <div className="flex items-center justify-between">
                   <button
@@ -1244,9 +1242,25 @@ function PartnerProfileInner() {
                     )}
 
                     <p className="text-center text-[10px] font-medium text-slate-400">
-                      احصل على {resolveCommissionRate(profile.commissionRate)}% عمولة من
-                      الفائدة لكل حجز عبر هذا الكود
+                      {type === 'celebrities'
+                        ? 'يظهر هذا الكود ورابط الإحالة مباشرة في كارت المؤثر'
+                        : `احصل على ${resolveCommissionRate(profile.commissionRate)}% عمولة من الفائدة لكل حجز عبر هذا الكود`}
                     </p>
+                    {profile.referralCode ? (
+                      <p
+                        className="truncate text-center font-mono text-[10px] font-semibold text-[#BA8E48]"
+                        dir="ltr"
+                        title={
+                          type === 'celebrities'
+                            ? buildInfluencerReferralLink(profile.referralCode)
+                            : buildAffiliateReferralUrl(profile.referralCode)
+                        }
+                      >
+                        {type === 'celebrities'
+                          ? buildInfluencerReferralLink(profile.referralCode)
+                          : buildAffiliateReferralUrl(profile.referralCode)}
+                      </p>
+                    ) : null}
                   </div>
                 )}
               </section>
@@ -1417,33 +1431,12 @@ function PartnerProfileInner() {
 
               {type === 'experts' ? (
                 <>
-                  <fieldset className="space-y-2">
-                    <legend className={KV_LABEL}>الوجهات المعتمدة</legend>
-                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-3">
-                      {destinationCountries.map((country) => {
-                        const selected = splitTags(editSpecialty).includes(
-                          country.name,
-                        );
-                        return (
-                          <button
-                            key={country.id}
-                            type="button"
-                            aria-pressed={selected}
-                            onClick={() => toggleEditSpecialty(country.name)}
-                            className={`rounded-xl border px-3 py-2 text-xs font-medium transition ${
-                              selected
-                                ? 'border-slate-900 bg-slate-900 text-white dark:border-[#D4AF37]/50 dark:bg-[#D4AF37]/20 dark:text-[#D4AF37]'
-                                : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 dark:border-[#2D3F3A] dark:bg-[#1A2421] dark:text-slate-300'
-                            }`}
-                          >
-                            {selected ? '✓ ' : ''}
-                            {country.flag ? `${country.flag} ` : ''}
-                            {country.name}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </fieldset>
+                  <PlacesBankSpecialtyPicker
+                    value={editSpecialty}
+                    onChange={setEditSpecialty}
+                    legend="البلد / المدن المغطاة (من بنك الأماكن)"
+                    disabled={saving}
+                  />
                   <fieldset className="space-y-2">
                     <legend className={KV_LABEL}>أسلوب تصميم المسارات</legend>
                     <div className="flex flex-wrap gap-2">

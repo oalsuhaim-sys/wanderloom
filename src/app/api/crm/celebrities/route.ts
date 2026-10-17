@@ -38,6 +38,15 @@ export async function POST(request: Request) {
   ).trim();
   const profileUrl = String(body.profile_url ?? body.profileUrl ?? '').trim();
   const email = String(body.email ?? '').trim();
+  const requestedCode = String(
+    body.referral_code ?? body.referralCode ?? '',
+  )
+    .trim()
+    .toUpperCase()
+    .replace(/\s+/g, '');
+  const referralCode =
+    requestedCode ||
+    `WNDR-${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
 
   if (!name) {
     return NextResponse.json({ ok: false, error: 'اسم المؤثر مطلوب.' }, { status: 400 });
@@ -50,46 +59,23 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: 'server_config' }, { status: 503 });
   }
 
-  const attempts: Record<string, unknown>[] = [
-    {
-      name,
-      phone: phone || null,
-      platforms: platforms || null,
-      content_type: contentType || null,
-      content_focus: contentType || null,
-      profile_url: profileUrl || null,
-      email: email || null,
-      status: 'active',
-    },
-    {
-      name,
-      phone: phone || null,
-      platforms: platforms || null,
-      content_type: contentType || null,
-      email: email || null,
-      status: 'active',
-    },
-    {
-      name,
-      phone: phone || null,
-      platforms: platforms || null,
-      content_focus: contentType || null,
-      email: email || null,
-      status: 'active',
-    },
-    {
-      name,
-      phone: phone || null,
-      platforms: platforms || null,
-      email: email || null,
-      status: 'active',
-    },
-  ];
+  let payload: Record<string, unknown> = {
+    name,
+    full_name: name,
+    phone: phone || null,
+    platforms: platforms || null,
+    content_type: contentType || null,
+    content_focus: contentType || null,
+    profile_url: profileUrl || null,
+    email: email || null,
+    status: 'active',
+    referral_code: referralCode,
+  };
 
   let data: Record<string, unknown> | null = null;
   let lastError = '';
 
-  for (const payload of attempts) {
+  for (let attempt = 0; attempt < 12; attempt += 1) {
     const result = await admin
       .from(INFLUENCERS_TABLE)
       .insert(payload)
@@ -104,9 +90,20 @@ export async function POST(request: Request) {
     lastError = result.error?.message || 'insert_failed';
     console.warn('[crm/celebrities→influencers] insert retry:', lastError);
 
-    if (!/column|schema cache|does not exist/i.test(lastError)) {
-      break;
+    if (/duplicate|unique|23505/i.test(lastError)) {
+      return NextResponse.json(
+        { ok: false, error: 'كود الإحالة مستخدم مسبقاً. ولّد كوداً آخر.' },
+        { status: 409 },
+      );
     }
+
+    const missing = lastError.match(/Could not find the '([^']+)' column/i)?.[1]
+      ?? lastError.match(/column "([^"]+)"/i)?.[1];
+    if (!missing || !(missing in payload)) break;
+
+    const next = { ...payload };
+    delete next[missing];
+    payload = next;
   }
 
   if (!data) {

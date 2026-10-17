@@ -80,6 +80,7 @@ const CRM_LEAD_SELECT_WITH_INTERVIEW_SLOT = `${CRM_LEAD_SELECT}, meeting_date, i
 const CRM_LEAD_SELECT_WITH_INTERVIEW_DATE = `${CRM_LEAD_SELECT}, meeting_date, interview_date, preferred_trip_id`;
 const CRM_LEAD_SELECT_WITH_INTERVIEW_DATE_ONLY = `${CRM_LEAD_SELECT}, meeting_date, interview_date`;
 const CRM_LEAD_SELECT_WITH_MEETING_TS = `${CRM_LEAD_SELECT}, meeting_date`;
+const CRM_LEAD_SELECT_WITH_MEETING_RAW = `${CRM_LEAD_SELECT_WITH_MEETING_TS}, meeting_raw_timestamp`;
 const CRM_LEAD_SELECT_WITH_PREFERRED = `${CRM_LEAD_SELECT}, preferred_trip_id`;
 
 export function joinDestinations(destinations: string[] | null | undefined): string {
@@ -486,6 +487,19 @@ export function formatMeetingDateLabel(meetingDate: string | null | undefined): 
   }
 }
 
+/** True once the Cal start time has passed. Undated meetings stay visible. */
+export function isExpiredClientMeeting(
+  lead: { meeting_date?: string | null; meeting_raw_timestamp?: string | null },
+  now = Date.now(),
+): boolean {
+  const raw =
+    String(lead.meeting_raw_timestamp ?? '').trim() || String(lead.meeting_date ?? '').trim();
+  if (!raw) return false;
+  const meetingTime = new Date(raw).getTime();
+  if (Number.isNaN(meetingTime)) return false;
+  return now > meetingTime;
+}
+
 /** Value for `<input type="datetime-local" />` from timestamptz (Riyadh wall clock). */
 export function meetingDateToDatetimeLocal(meetingDate: string | null | undefined): string {
   const raw = String(meetingDate ?? '').trim();
@@ -706,6 +720,71 @@ export async function fetchNewCrmLeads(
   }
 
   throw new Error(msg || 'تعذر تحميل الطلبات الجديدة.');
+}
+
+/** Client-meeting column on the radar — canonical `meeting`, plus the alias `meeting_scheduled`. */
+export const CLIENT_MEETING_DB_STATUSES = ['meeting', 'meeting_scheduled', 'scheduled'] as const;
+
+export async function fetchClientMeetingLeads(
+  supabase: SupabaseClient,
+  limit = 50,
+): Promise<{ leads: CrmLeadWithIntake[]; warning?: string }> {
+  const withRaw = await supabase
+    .from('leads')
+    .select(CRM_LEAD_SELECT_WITH_MEETING_RAW)
+    .in('status', [...CLIENT_MEETING_DB_STATUSES])
+    .order('created_at', { ascending: false })
+    .limit(limit);
+
+  const withMeeting =
+    withRaw.error && /meeting_raw_timestamp|column|schema cache|does not exist/i.test(withRaw.error.message ?? '')
+      ? await supabase
+          .from('leads')
+          .select(CRM_LEAD_SELECT_WITH_MEETING_TS)
+          .in('status', [...CLIENT_MEETING_DB_STATUSES])
+          .order('created_at', { ascending: false })
+          .limit(limit)
+      : withRaw;
+
+  const withStatus =
+    withMeeting.error && /meeting_date|column|schema cache|does not exist/i.test(withMeeting.error.message ?? '')
+      ? await supabase
+          .from('leads')
+          .select(CRM_LEAD_SELECT)
+          .in('status', [...CLIENT_MEETING_DB_STATUSES])
+          .order('created_at', { ascending: false })
+          .limit(limit)
+      : withMeeting;
+
+  if (!withStatus.error) {
+    const raw = (withStatus.data as CrmLeadRow[]) ?? [];
+    const leads = await enrichLeadsWithIntake(supabase, raw);
+    return { leads };
+  }
+
+  const msg = withStatus.error.message ?? '';
+  if (/meeting_scheduled|check constraint/i.test(msg)) {
+    const meetingOnly = await supabase
+      .from('leads')
+      .select(CRM_LEAD_SELECT)
+      .eq('status', 'meeting')
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    if (!meetingOnly.error) {
+      const raw = (meetingOnly.data as CrmLeadRow[]) ?? [];
+      const leads = await enrichLeadsWithIntake(supabase, raw);
+      return { leads };
+    }
+  }
+
+  if (/status|column|schema cache|does not exist/i.test(msg)) {
+    return {
+      leads: [],
+      warning: 'تعذر قراءة مواعيد الاجتماعات. نفّذ supabase/sql/leads_kanban_status.sql.',
+    };
+  }
+
+  throw new Error(msg || 'تعذر تحميل مواعيد الاجتماعات.');
 }
 
 /** Marketing sign-ups — interest_only / interest (not in quote pipeline) */

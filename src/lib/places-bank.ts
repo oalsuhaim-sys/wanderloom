@@ -373,6 +373,127 @@ export async function fetchPlacesBankPage(
   };
 }
 
+/** مصدر الحقيقة الوحيد لدول/مدن القوائم المنسدلة والأزرار */
+export type PlacesBankDestinations = {
+  countries: string[];
+  citiesByCountry: Record<string, string[]>;
+};
+
+const EMPTY_PLACES_BANK_DESTINATIONS: PlacesBankDestinations = {
+  countries: [],
+  citiesByCountry: {},
+};
+
+function slugifyDestinationToken(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '_')
+    .replace(/[^\w\u0600-\u06FF-]/g, '');
+}
+
+function resolvePlacesBankCountryMeta(countryLabel: string): { id: string; labelAr: string } {
+  const known = findTripCountry(countryLabel);
+  if (known) return { id: known.id, labelAr: known.labelAr };
+
+  const normalized = normalizeGeoToken(countryLabel);
+  for (const [id, aliases] of Object.entries(COUNTRY_ENGLISH_ALIASES)) {
+    if (aliases.some((alias) => normalizeGeoToken(alias) === normalized)) {
+      const def = TRIP_DESTINATIONS.find((c) => c.id === id);
+      return { id, labelAr: def?.labelAr ?? countryLabel };
+    }
+  }
+
+  return {
+    id: slugifyDestinationToken(countryLabel) || countryLabel,
+    labelAr: countryLabel,
+  };
+}
+
+/**
+ * يجلب الدول والمدن المميزة من جدول بنك الأماكن (`places`).
+ * الناتج: `{ countries, citiesByCountry }` — مصدر الحقيقة لكل قوائم الوجهات.
+ */
+export async function getPlacesBankDestinations(
+  client: SupabaseClient,
+): Promise<PlacesBankDestinations> {
+  const map = new Map<string, Set<string>>();
+  const pageSize = 1000;
+
+  for (let offset = 0; offset < PLACES_BANK_FETCH_LIMIT; offset += pageSize) {
+    const { data, error } = await client
+      .from(PLACES_BANK_TABLE)
+      .select('country, city')
+      .order('country', { ascending: true })
+      .range(offset, offset + pageSize - 1);
+
+    if (error) {
+      console.error('[getPlacesBankDestinations]', error.message);
+      throw error;
+    }
+    if (!data?.length) break;
+
+    for (const row of data) {
+      const country = String((row as { country?: string | null }).country ?? '').trim();
+      if (!country) continue;
+      const city = String((row as { city?: string | null }).city ?? '').trim();
+      if (!map.has(country)) map.set(country, new Set());
+      if (city) map.get(country)!.add(city);
+    }
+
+    if (data.length < pageSize) break;
+  }
+
+  const countries = [...map.keys()].sort((a, b) => a.localeCompare(b, 'ar'));
+  const citiesByCountry: Record<string, string[]> = {};
+  for (const country of countries) {
+    citiesByCountry[country] = [...(map.get(country) ?? [])].sort((a, b) =>
+      a.localeCompare(b, 'ar'),
+    );
+  }
+
+  return countries.length
+    ? { countries, citiesByCountry }
+    : EMPTY_PLACES_BANK_DESTINATIONS;
+}
+
+/** يحوّل ناتج بنك الأماكن إلى شكل TripCountryDef للنماذج العامة والـ DNA */
+export function placesBankToTripDestinations(
+  destinations: PlacesBankDestinations,
+): TripCountryDef[] {
+  const byId = new Map<string, TripCountryDef>();
+
+  for (const countryLabel of destinations.countries) {
+    const { id, labelAr } = resolvePlacesBankCountryMeta(countryLabel);
+    const cityLabels = destinations.citiesByCountry[countryLabel] ?? [];
+    const nextCities = cityLabels.map((city) => ({
+      id: slugifyDestinationToken(city) || city,
+      labelAr: city,
+    }));
+
+    const existing = byId.get(id);
+    if (!existing) {
+      byId.set(id, { id, labelAr, cities: nextCities });
+      continue;
+    }
+
+    const seen = new Set(existing.cities.map((c) => c.labelAr));
+    const mergedCities = [...existing.cities];
+    for (const city of nextCities) {
+      if (seen.has(city.labelAr)) continue;
+      seen.add(city.labelAr);
+      mergedCities.push(city);
+    }
+    byId.set(id, {
+      ...existing,
+      labelAr: existing.labelAr || labelAr,
+      cities: mergedCities.sort((a, b) => a.labelAr.localeCompare(b.labelAr, 'ar')),
+    });
+  }
+
+  return [...byId.values()].sort((a, b) => a.labelAr.localeCompare(b.labelAr, 'ar'));
+}
+
 /** مدن مميزة لفلتر الواجهة — مسح خفيف لعمود city فقط */
 export async function fetchPlacesBankCityOptions(
   client: SupabaseClient,

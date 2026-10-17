@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { ArrowRight, ExternalLink, Loader2, MapPin, Plus, Sparkles, X } from 'lucide-react';
 
+import { usePlacesBankDestinations } from '@/hooks/usePlacesBankDestinations';
 import { toast } from '@/lib/crm-toast';
 import { supabase } from '@/lib/supabase';
 import {
@@ -82,7 +83,7 @@ function isMissingColumnError(message: string, column: string): boolean {
 
 export default function ExperiencesCRMPage() {
   const [rows, setRows] = useState<ExperienceRow[]>([]);
-  const [countries, setCountries] = useState<string[]>([]);
+  const { countries, citiesByCountry } = usePlacesBankDestinations();
   const [filterCountry, setFilterCountry] = useState('');
   const [filterCategory, setFilterCategory] = useState('');
   const [loading, setLoading] = useState(true);
@@ -110,17 +111,14 @@ export default function ExperiencesCRMPage() {
     return options;
   }, [category]);
 
-  useEffect(() => {
-    if (!supabase) return;
-    void (async () => {
-      const { data, error } = await supabase.from('experiences').select('country');
-      if (error || !data) return;
-      const u = [...new Set(data.map((x: { country?: string }) => x.country).filter(Boolean))].sort((a, b) =>
-        String(a).localeCompare(String(b), 'ar'),
-      );
-      setCountries(u as string[]);
-    })();
-  }, []);
+  const formCityOptions = useMemo(() => {
+    const country = formData.country.trim();
+    if (!country) return [];
+    const list = citiesByCountry[country] ?? [];
+    const cur = formData.city.trim();
+    if (cur && !list.includes(cur)) return [...list, cur].sort((a, b) => a.localeCompare(b, 'ar'));
+    return list;
+  }, [formData.country, formData.city, citiesByCountry]);
 
   const load = useCallback(async () => {
     if (!supabase) {
@@ -450,20 +448,40 @@ export default function ExperiencesCRMPage() {
                 onChange={(ev) => setFormData({ ...formData, title: ev.target.value })}
                 className={INPUT}
               />
-              <input
+              <select
                 required
-                placeholder="الدولة"
                 value={formData.country}
-                onChange={(ev) => setFormData({ ...formData, country: ev.target.value })}
+                onChange={(ev) =>
+                  setFormData({ ...formData, country: ev.target.value, city: '' })
+                }
                 className={INPUT}
-              />
-              <input
+              >
+                <option value="">اختر الدولة (بنك الأماكن)</option>
+                {countries.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+                {formData.country && !countries.includes(formData.country) ? (
+                  <option value={formData.country}>{formData.country}</option>
+                ) : null}
+              </select>
+              <select
                 required
-                placeholder="المدينة"
                 value={formData.city}
                 onChange={(ev) => setFormData({ ...formData, city: ev.target.value })}
-                className={INPUT}
-              />
+                disabled={!formData.country}
+                className={`${INPUT} disabled:cursor-not-allowed disabled:opacity-55`}
+              >
+                <option value="">
+                  {formData.country ? 'اختر المدينة' : 'اختر الدولة أولاً'}
+                </option>
+                {formCityOptions.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
               <label className="flex flex-col gap-1.5">
                 <span className="text-xs font-semibold text-slate-600">التصنيف (VIP)</span>
                 <select

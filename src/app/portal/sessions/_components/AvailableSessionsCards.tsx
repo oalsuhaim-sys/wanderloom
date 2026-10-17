@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import { CalendarClock, Loader2, MapPin, Tag, Ticket, Users, X } from 'lucide-react';
 
 import { registerSessionAction } from '@/app/actions/registerSession';
+import { WHATSAPP_INCOMPLETE_ERROR } from '@/lib/phoneUtils';
+import { WhatsAppInput } from '@/components/WhatsAppInput';
 import type { Session } from '@/types/session-tables';
 import { ar } from '@/messages/ar';
 
@@ -79,6 +81,7 @@ export function AvailableSessionsCards({
   const [openFor, setOpenFor] = useState<Session | null>(null);
   const [name, setName] = useState('');
   const [whatsapp, setWhatsapp] = useState('');
+  const [isPhoneValid, setIsPhoneValid] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [formMsg, setFormMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
 
@@ -98,8 +101,8 @@ export function AvailableSessionsCards({
       setFormMsg({ type: 'err', text: s.clientMissingSession });
       return;
     }
-    if (!name.trim() || !whatsapp.trim()) {
-      setFormMsg({ type: 'err', text: s.clientNameWaRequired });
+    if (!name.trim() || !isPhoneValid || !whatsapp.trim()) {
+      setFormMsg({ type: 'err', text: !isPhoneValid ? WHATSAPP_INCOMPLETE_ERROR : s.clientNameWaRequired });
       return;
     }
 
@@ -141,6 +144,7 @@ export function AvailableSessionsCards({
       setOpenFor(null);
       setName('');
       setWhatsapp('');
+      setIsPhoneValid(false);
       setFormMsg(null);
     }, 1600);
   }
@@ -220,6 +224,7 @@ export function AvailableSessionsCards({
                   setOpenFor(s);
                   setName('');
                   setWhatsapp('');
+                  setIsPhoneValid(false);
                   setFormMsg(null);
                 }}
                 className="mt-4 w-full rounded-xl bg-gradient-to-l from-[#8A6B2A] to-[#C9A84C] py-2.5 text-sm font-black text-[#1C4532] shadow-lg shadow-black/20 disabled:cursor-not-allowed disabled:opacity-50"
@@ -283,18 +288,14 @@ export function AvailableSessionsCards({
                   placeholder={s.namePlaceholder}
                 />
               </div>
-              <div>
-                <label className="mb-1 block text-xs font-black text-white/80">{s.waLabel}</label>
-                <input
-                  type="tel"
-                  className="w-full rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-sm font-bold text-white outline-none ring-[#C9A84C] placeholder:text-white/30 focus:ring-2"
-                  value={whatsapp}
-                  onChange={(e) => setWhatsapp(e.target.value)}
-                  placeholder={s.waPlaceholder}
-                  dir="ltr"
-                  autoComplete="tel"
-                />
-              </div>
+              <WhatsAppInput
+                required
+                value={whatsapp}
+                onChange={(fullNumber, isValid) => {
+                  setWhatsapp(fullNumber);
+                  setIsPhoneValid(isValid);
+                }}
+              />
 
               {formMsg && (
                 <div
@@ -310,7 +311,7 @@ export function AvailableSessionsCards({
 
               <button
                 type="submit"
-                disabled={submitting || spotsLeft(openFor) < 1}
+                disabled={submitting || spotsLeft(openFor) < 1 || !isPhoneValid}
                 className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-l from-[#8A6B2A] to-[#C9A84C] py-3 text-sm font-black text-[#1C4532] disabled:opacity-60"
               >
                 {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}

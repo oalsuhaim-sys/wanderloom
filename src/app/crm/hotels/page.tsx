@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { ArrowRight, ExternalLink, Hotel, MessageCircle, Pencil, Phone, Plus, Save, Trash2, UserRound, X } from 'lucide-react';
+import { ArrowRight, ExternalLink, Hotel, Mail, MapPin, MessageCircle, Pencil, Plus, Save, Trash2, UserRound, X } from 'lucide-react';
 
+import { usePlacesBankDestinations } from '@/hooks/usePlacesBankDestinations';
 import { supabase } from '@/lib/supabase';
 import type { HotelCategory, HotelRow } from '@/types/hotel';
 
@@ -60,6 +61,22 @@ function categoryOptionsForEdit(current: string): { value: string; label: string
   ];
 }
 
+const OPTIONAL_EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function invalidOptionalEmail(value: string): boolean {
+  const email = value.trim();
+  return Boolean(email) && !OPTIONAL_EMAIL_RE.test(email);
+}
+
+function dbErrorMessage(err: unknown): string {
+  if (err && typeof err === 'object' && 'message' in err) {
+    const message = String((err as { message?: unknown }).message ?? '').trim();
+    if (message) return message;
+  }
+  if (err instanceof Error && err.message.trim()) return err.message.trim();
+  return 'خطأ في الاتصال بقاعدة البيانات';
+}
+
 function normalizeUrl(raw: string | null | undefined): string | null {
   const s = String(raw ?? '').trim();
   if (!s) return null;
@@ -67,15 +84,10 @@ function normalizeUrl(raw: string | null | undefined): string | null {
   return `https://${s}`;
 }
 
-function formatHotelWhatsApp(h: HotelRow): string {
-  const url = normalizeUrl(h.booking_url) ?? '—';
-  const why = h.notes?.trim() || '—';
-  const loc = h.city?.trim() ? h.city.trim() : h.country;
-  return `🏨 الفندق: ${h.name}
-⭐ التصنيف: ${categoryLabel(h.category)}
-📍 الموقع: ${loc}
-💡 لماذا اخترناه لك؟ ${why}
-🔗 رابط الفندق: ${url}`;
+/** رقم واتساب: whatsapp → contact_number */
+function hotelWhatsAppDigits(h: HotelRow): string {
+  const raw = String(h.whatsapp ?? h.contact_number ?? '').trim();
+  return raw.replace(/[^0-9]/g, '');
 }
 
 /** حقول النماذج — ثيم فاخر ثنائي (فاتح/داكن) */
@@ -93,18 +105,31 @@ const CARD =
   'rounded-xl border border-slate-200 bg-white shadow-sm dark:border-[#2D3F3A] dark:bg-[#22302C]';
 
 const CATEGORY_BADGE =
-  'inline-flex rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-800 dark:bg-[#D4AF37]/10 dark:text-[#D4AF37]';
+  'inline-flex bg-amber-50 text-amber-700 border border-amber-200/60 px-2.5 py-0.5 rounded-full text-xs font-medium dark:bg-[#D4AF37]/10 dark:text-[#D4AF37] dark:border-[#D4AF37]/30';
+
+const FILTER_BAR =
+  'rounded-xl border border-slate-200/80 bg-white p-3 shadow-sm dark:border-[#2D3F3A] dark:bg-[#22302C]';
+
+const ROW =
+  'border-b border-slate-100 transition-colors hover:bg-slate-50/50 dark:border-[#2D3F3A] dark:hover:bg-[#1A2421]/40';
+
+const BTN_WA =
+  'p-1.5 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100 text-xs flex items-center gap-1 font-medium transition dark:bg-emerald-950/30 dark:text-emerald-300 dark:hover:bg-emerald-950/50';
+const BTN_LINK =
+  'p-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 text-xs flex items-center gap-1 font-medium transition dark:bg-[#1A2421] dark:text-slate-300 dark:hover:bg-[#2D3F3A]';
+const BTN_ICON =
+  'p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition dark:hover:bg-[#1A2421] dark:hover:text-[#D4AF37]';
 
 export default function HotelsCRMPage() {
-  const [countries, setCountries] = useState<string[]>([]);
+  const { countries, citiesByCountry } = usePlacesBankDestinations();
   const [filterCountry, setFilterCountry] = useState('');
   const [filterCategory, setFilterCategory] = useState<'' | HotelCategory>('');
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [editing, setEditing] = useState<HotelRow | null>(null);
   const [adding, setAdding] = useState(false);
   const [banner, setBanner] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
-  const [toast, setToast] = useState<string | null>(null);
 
   const [newRow, setNewRow] = useState({
     name: '',
@@ -115,24 +140,28 @@ export default function HotelsCRMPage() {
     notes: '',
     manager_name: '',
     contact_number: '',
+    email: '',
+    whatsapp: '',
   });
 
-  const loadCountries = useCallback(async () => {
-    if (!supabase) return;
-    try {
-      const { data, error } = await supabase.from('hotels').select('country');
-      if (error) {
-        console.error('[CRM hotels] loadCountries Supabase error:', error);
-        throw error;
-      }
-      const list = (data ?? [])
-        .map((r: { country?: string }) => r.country)
-        .filter((c): c is string => Boolean(c?.trim()));
-      setCountries([...new Set(list)].sort((a, b) => a.localeCompare(b, 'ar')));
-    } catch (e) {
-      console.error('[CRM hotels] loadCountries failed:', e);
-    }
-  }, []);
+  const newCityOptions = useMemo(() => {
+    const country = newRow.country.trim();
+    if (!country) return [];
+    const list = citiesByCountry[country] ?? [];
+    const cur = newRow.city.trim();
+    if (cur && !list.includes(cur)) return [...list, cur];
+    return list;
+  }, [newRow.country, newRow.city, citiesByCountry]);
+
+  const editCityOptions = useMemo(() => {
+    if (!editing) return [];
+    const country = String(editing.country ?? '').trim();
+    if (!country) return [];
+    const list = citiesByCountry[country] ?? [];
+    const cur = String(editing.city ?? '').trim();
+    if (cur && !list.includes(cur)) return [...list, cur];
+    return list;
+  }, [editing, citiesByCountry]);
 
   const [allRows, setAllRows] = useState<HotelRow[]>([]);
 
@@ -187,35 +216,26 @@ export default function HotelsCRMPage() {
       const name = String(h.name ?? '').toLowerCase();
       const city = String(h.city ?? '').toLowerCase();
       const notes = String(h.notes ?? '').toLowerCase();
-      return name.includes(qsearch) || city.includes(qsearch) || notes.includes(qsearch);
+      const email = String(h.email ?? '').toLowerCase();
+      return (
+        name.includes(qsearch) ||
+        city.includes(qsearch) ||
+        notes.includes(qsearch) ||
+        email.includes(qsearch)
+      );
     });
   }, [allRows, search]);
 
   useEffect(() => {
-    loadCountries();
-  }, [loadCountries]);
-
-  useEffect(() => {
-    loadHotels();
+    void loadHotels();
   }, [loadHotels]);
-
-  useEffect(() => {
-    if (!toast) return;
-    const t = window.setTimeout(() => setToast(null), 2200);
-    return () => window.clearTimeout(t);
-  }, [toast]);
-
-  async function copyHotelWhatsApp(h: HotelRow) {
-    try {
-      await navigator.clipboard.writeText(formatHotelWhatsApp(h));
-      setToast('تم النسخ بنجاح!');
-    } catch {
-      setToast('تعذر النسخ — تأكد من HTTPS والأذونات.');
-    }
-  }
 
   const saveEdit = async () => {
     if (!supabase || !editing) return;
+    if (invalidOptionalEmail(editing.email ?? '')) {
+      setBanner({ type: 'err', text: 'يرجى إدخال بريد إلكتروني صحيح بدون مسافات.' });
+      return;
+    }
     setBanner(null);
     try {
       const { error } = await supabase
@@ -229,13 +249,14 @@ export default function HotelsCRMPage() {
           notes: editing.notes?.trim() || null,
           manager_name: editing.manager_name?.trim() || null,
           contact_number: editing.contact_number?.trim() || null,
+          email: editing.email?.trim() || null,
+          whatsapp: editing.whatsapp?.trim() || null,
         })
         .eq('id', editing.id);
       if (error) throw error;
       setEditing(null);
       setBanner({ type: 'ok', text: 'تم حفظ التعديلات.' });
       await loadHotels();
-      await loadCountries();
     } catch (e) {
       setBanner({
         type: 'err',
@@ -244,15 +265,21 @@ export default function HotelsCRMPage() {
     }
   };
 
-  const addHotel = async () => {
+  const addHotel = async (event?: React.FormEvent) => {
+    event?.preventDefault();
     if (!supabase) return;
-    if (!newRow.name.trim() || !newRow.country.trim()) {
-      setBanner({ type: 'err', text: 'اسم الفندق والدولة حقول مطلوبة.' });
+    if (!newRow.name.trim() || !newRow.country.trim() || !newRow.city.trim()) {
+      setBanner({ type: 'err', text: 'يرجى تعبئة اسم الفندق والدولة والمدينة على الأقل.' });
+      return;
+    }
+    if (invalidOptionalEmail(newRow.email)) {
+      setBanner({ type: 'err', text: 'يرجى إدخال بريد إلكتروني صحيح بدون مسافات.' });
       return;
     }
     setBanner(null);
+    setSaving(true);
     try {
-      const { error } = await supabase.from('hotels').insert({
+      const payload = {
         name: newRow.name.trim(),
         country: newRow.country.trim(),
         city: newRow.city.trim(),
@@ -261,8 +288,14 @@ export default function HotelsCRMPage() {
         notes: newRow.notes.trim() || null,
         manager_name: newRow.manager_name.trim() || null,
         contact_number: newRow.contact_number.trim() || null,
-      });
-      if (error) throw error;
+        email: newRow.email.trim() || null,
+        whatsapp: newRow.whatsapp.trim() || null,
+      };
+      const { error } = await supabase.from('hotels').insert(payload);
+      if (error) {
+        console.error('Supabase Error:', error);
+        throw error;
+      }
       setAdding(false);
       setNewRow({
         name: '',
@@ -273,15 +306,19 @@ export default function HotelsCRMPage() {
         notes: '',
         manager_name: '',
         contact_number: '',
+        email: '',
+        whatsapp: '',
       });
-      setBanner({ type: 'ok', text: 'تمت إضافة الفندق.' });
+      setBanner({ type: 'ok', text: 'تمت إضافة الفندق بنجاح إلى القائمة!' });
       await loadHotels();
-      await loadCountries();
-    } catch (e) {
+    } catch (err) {
+      console.error('تفاصيل خطأ إضافة الفندق:', err);
       setBanner({
         type: 'err',
-        text: e instanceof Error ? e.message : 'تعذر إضافة الفندق.',
+        text: `تعذر إضافة الفندق: ${dbErrorMessage(err)}`,
       });
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -293,7 +330,6 @@ export default function HotelsCRMPage() {
       if (error) throw error;
       setBanner({ type: 'ok', text: 'تم الحذف.' });
       await loadHotels();
-      await loadCountries();
     } catch (e) {
       setBanner({
         type: 'err',
@@ -305,18 +341,9 @@ export default function HotelsCRMPage() {
   return (
     <div
       dir="rtl"
-      className="min-h-full bg-[#F9FAFB] font-sans dark:bg-[#1A2421]"
+      className="min-h-screen bg-[#F8F5EE] p-6 font-sans"
     >
       <div className="mx-auto max-w-7xl space-y-4">
-        {toast ? (
-          <div
-            role="status"
-            className="fixed bottom-6 left-1/2 z-[9999] -translate-x-1/2 rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white shadow-lg dark:border dark:border-[#D4AF37]/40 dark:bg-[#22302C] dark:text-[#D4AF37]"
-          >
-            {toast}
-          </div>
-        ) : null}
-
         <button
           type="button"
           onClick={() => window.history.back()}
@@ -360,31 +387,29 @@ export default function HotelsCRMPage() {
         {banner ? (
           <div
             role="alert"
-            className={`rounded-xl border px-4 py-3 text-sm font-medium ${
+            className={`rounded-2xl border p-4 text-xs font-bold shadow-sm ${
               banner.type === 'ok'
-                ? 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-300'
-                : 'border-rose-200 bg-rose-50 text-rose-800 dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-200'
+                ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+                : 'border-red-200 bg-red-50 text-red-700'
             }`}
           >
+            {banner.type === 'ok' ? '✅ ' : '⚠️ '}
             {banner.text}
           </div>
         ) : null}
 
-        <div className={`${CARD} space-y-3 p-5`}>
-          <h2 className="text-sm font-semibold text-slate-900 dark:text-gray-100">
-            دليل التصنيف للموظف — اختر الأنسب لملف العميل
-          </h2>
-          <ul className="space-y-2 text-xs leading-relaxed text-slate-600 dark:text-gray-300">
-            {CATEGORY_OPTIONS.map((o) => (
-              <li key={o.value}>
-                <span className="font-semibold text-slate-800 dark:text-[#D4AF37]">{o.label}:</span>{' '}
-                {o.hint}
-              </li>
-            ))}
-          </ul>
+        <div className="space-y-2 rounded-3xl border border-slate-200 bg-white p-6 text-xs text-slate-700 shadow-sm">
+          <h3 className="text-sm font-bold text-slate-900">
+            دليل التصنيف للموظف – اختر الأنسب لملف العميل
+          </h3>
+          {CATEGORY_OPTIONS.map((o) => (
+            <p key={o.value}>
+              <strong>{o.label}:</strong> {o.hint}
+            </p>
+          ))}
         </div>
 
-        <div className={`${CARD} grid grid-cols-1 gap-3 p-4 sm:grid-cols-3`}>
+        <div className={`${FILTER_BAR} grid grid-cols-1 gap-2.5 sm:grid-cols-3`}>
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -418,9 +443,12 @@ export default function HotelsCRMPage() {
         </div>
 
         {adding ? (
-          <div className={`${CARD} space-y-4 border-[#D4AF37]/30 p-5 dark:border-[#D4AF37]/40`}>
+          <form
+            onSubmit={(e) => void addHotel(e)}
+            className="space-y-4 rounded-3xl border border-slate-200 bg-white p-6 text-right shadow-sm"
+          >
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-slate-900 dark:text-[#D4AF37]">فندق جديد</h3>
+              <h2 className="text-base font-bold text-slate-900">فندق جديد</h2>
               <button
                 type="button"
                 onClick={() => setAdding(false)}
@@ -430,29 +458,44 @@ export default function HotelsCRMPage() {
                 <X className="h-4 w-4" aria-hidden />
               </button>
             </div>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid grid-cols-1 gap-3 text-xs md:grid-cols-3">
               <input
                 value={newRow.name}
                 onChange={(e) => setNewRow({ ...newRow, name: e.target.value })}
                 placeholder="اسم الفندق *"
-                className={CRM_FORM_FIELD}
+                className="rounded-2xl border border-slate-200 bg-[#F8F5EE]/50 p-3 font-bold outline-none focus:border-[#C59B4B]"
               />
-              <input
+              <select
                 value={newRow.country}
-                onChange={(e) => setNewRow({ ...newRow, country: e.target.value })}
-                placeholder="الدولة *"
-                className={CRM_FORM_FIELD}
-              />
-              <input
+                onChange={(e) => setNewRow({ ...newRow, country: e.target.value, city: '' })}
+                className="rounded-2xl border border-slate-200 bg-[#F8F5EE]/50 p-3 font-bold outline-none focus:border-[#C59B4B]"
+                required
+              >
+                <option value="">الدولة * (بنك الأماكن)</option>
+                {countries.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+              <select
                 value={newRow.city}
                 onChange={(e) => setNewRow({ ...newRow, city: e.target.value })}
-                placeholder="المدينة"
-                className={CRM_FORM_FIELD}
-              />
+                className="rounded-2xl border border-slate-200 bg-[#F8F5EE]/50 p-3 font-bold outline-none focus:border-[#C59B4B] disabled:opacity-60"
+                disabled={!newRow.country}
+                required
+              >
+                <option value="">{newRow.country ? 'المدينة' : 'اختر الدولة أولاً'}</option>
+                {newCityOptions.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
               <select
                 value={newRow.category}
                 onChange={(e) => setNewRow({ ...newRow, category: e.target.value as HotelCategory })}
-                className={CRM_FORM_FIELD}
+                className="rounded-2xl border border-slate-200 bg-[#F8F5EE]/50 p-3 font-bold outline-none focus:border-[#C59B4B]"
               >
                 {CATEGORY_OPTIONS.map((o) => (
                   <option key={o.value} value={o.value} title={o.hint}>
@@ -463,35 +506,50 @@ export default function HotelsCRMPage() {
               <input
                 value={newRow.booking_url}
                 onChange={(e) => setNewRow({ ...newRow, booking_url: e.target.value })}
-                placeholder="رابط Booking / الموقع"
+                placeholder="رابط خرائط جوجل (Google Maps URL)"
                 dir="ltr"
-                className={CRM_FORM_FIELD_LTR}
+                className="rounded-2xl border border-slate-200 bg-[#F8F5EE]/50 p-3 outline-none focus:border-[#C59B4B] md:col-span-2"
               />
               <input
                 value={newRow.manager_name}
                 onChange={(e) => setNewRow({ ...newRow, manager_name: e.target.value })}
                 placeholder="اسم المسؤول"
-                className={CRM_FORM_FIELD}
+                className="rounded-2xl border border-slate-200 bg-[#F8F5EE]/50 p-3 outline-none focus:border-[#C59B4B]"
               />
               <input
+                type="text"
+                inputMode="email"
+                autoComplete="email"
+                value={newRow.email}
+                onChange={(e) => setNewRow({ ...newRow, email: e.target.value.trim() })}
+                placeholder="(Email) البريد الإلكتروني"
+                dir="ltr"
+                className="rounded-2xl border border-slate-200 bg-[#F8F5EE]/50 p-3 text-right font-mono outline-none focus:border-[#C59B4B]"
+              />
+              <input
+                type="tel"
                 value={newRow.contact_number}
                 onChange={(e) => setNewRow({ ...newRow, contact_number: e.target.value })}
-                placeholder="رقم التواصل"
+                placeholder="رقم التواصل / واتساب"
                 dir="ltr"
-                className={CRM_FORM_FIELD_LTR}
+                className="rounded-2xl border border-slate-200 bg-[#F8F5EE]/50 p-3 outline-none focus:border-[#C59B4B]"
+              />
+              <textarea
+                value={newRow.notes}
+                onChange={(e) => setNewRow({ ...newRow, notes: e.target.value })}
+                placeholder="ملاحظاتك عن الفندق..."
+                rows={2}
+                className="resize-y rounded-2xl border border-slate-200 bg-[#F8F5EE]/50 p-3 outline-none focus:border-[#C59B4B] md:col-span-3"
               />
             </div>
-            <textarea
-              value={newRow.notes}
-              onChange={(e) => setNewRow({ ...newRow, notes: e.target.value })}
-              placeholder="ملاحظاتك عن الفندق…"
-              rows={3}
-              className={`${CRM_FORM_FIELD} resize-y`}
-            />
-            <button type="button" onClick={addHotel} className={BTN_PRIMARY}>
-              <Save className="h-4 w-4" aria-hidden /> حفظ الفندق
+            <button
+              type="submit"
+              disabled={saving}
+              className="rounded-2xl bg-[#1B242F] px-8 py-3.5 text-xs font-bold text-white shadow-sm transition-all hover:bg-slate-800 disabled:opacity-50"
+            >
+              {saving ? 'جاري الحفظ...' : 'حفظ الفندق'}
             </button>
-          </div>
+          </form>
         ) : null}
 
         {loading ? (
@@ -503,28 +561,26 @@ export default function HotelsCRMPage() {
             لا توجد فنادق بعد أو لا نتائج للتصفية. أضف فندقاً أو غيّر الدولة.
           </div>
         ) : (
-          <div className="w-full overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm dark:border-[#2D3F3A] dark:bg-[#22302C]">
+          <div className="w-full overflow-x-auto rounded-xl border border-slate-200/80 bg-white shadow-sm dark:border-[#2D3F3A] dark:bg-[#22302C]">
               <table className="min-w-full text-right text-sm">
-                <thead className="bg-slate-50 text-sm font-semibold text-slate-600 dark:bg-[#1A2421] dark:text-slate-300">
+                <thead className="bg-slate-50/80 text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:bg-[#1A2421] dark:text-slate-400">
                   <tr className="border-b border-slate-200 dark:border-[#2D3F3A]">
-                    <th className="whitespace-nowrap px-4 py-3">الفندق</th>
-                    <th className="whitespace-nowrap px-4 py-3">الموقع</th>
-                    <th className="whitespace-nowrap px-4 py-3">التصنيف</th>
-                    <th className="whitespace-nowrap px-4 py-3">التواصل</th>
-                    <th className="whitespace-nowrap px-4 py-3">إجراءات</th>
+                    <th className="whitespace-nowrap px-4 py-2.5">اسم الفندق</th>
+                    <th className="whitespace-nowrap px-4 py-2.5">الموقع</th>
+                    <th className="whitespace-nowrap px-4 py-2.5">التصنيف</th>
+                    <th className="whitespace-nowrap px-4 py-2.5">التواصل</th>
+                    <th className="whitespace-nowrap px-4 py-2.5 text-left">إجراءات</th>
                   </tr>
                 </thead>
                 <tbody>
                   {rows.map((h) => {
                     const bookingHref = normalizeUrl(h.booking_url);
                     const isEditing = editing?.id === h.id;
+                    const locationLabel = [h.city?.trim(), h.country?.trim()].filter(Boolean).join(' · ');
                     return (
-                      <tr
-                        key={h.id}
-                        className="border-b border-slate-100 align-top dark:border-[#2D3F3A]"
-                      >
+                      <tr key={h.id} className={ROW}>
                         {isEditing && editing ? (
-                          <td colSpan={5} className="px-4 py-4">
+                          <td colSpan={5} className="px-4 py-3">
                             <div className="space-y-3">
                               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                                 <input
@@ -532,16 +588,35 @@ export default function HotelsCRMPage() {
                                   onChange={(e) => setEditing({ ...editing, name: e.target.value })}
                                   className={CRM_FORM_FIELD}
                                 />
-                                <input
+                                <select
                                   value={editing.country}
-                                  onChange={(e) => setEditing({ ...editing, country: e.target.value })}
+                                  onChange={(e) =>
+                                    setEditing({ ...editing, country: e.target.value, city: '' })
+                                  }
                                   className={CRM_FORM_FIELD}
-                                />
-                                <input
-                                  value={editing.city}
+                                >
+                                  <option value="">الدولة</option>
+                                  {countries.map((c) => (
+                                    <option key={c} value={c}>
+                                      {c}
+                                    </option>
+                                  ))}
+                                  {editing.country && !countries.includes(editing.country) ? (
+                                    <option value={editing.country}>{editing.country}</option>
+                                  ) : null}
+                                </select>
+                                <select
+                                  value={editing.city ?? ''}
                                   onChange={(e) => setEditing({ ...editing, city: e.target.value })}
                                   className={CRM_FORM_FIELD}
-                                />
+                                >
+                                  <option value="">المدينة</option>
+                                  {editCityOptions.map((c) => (
+                                    <option key={c} value={c}>
+                                      {c}
+                                    </option>
+                                  ))}
+                                </select>
                                 <select
                                   value={editing.category}
                                   onChange={(e) =>
@@ -569,9 +644,21 @@ export default function HotelsCRMPage() {
                                   className={CRM_FORM_FIELD}
                                 />
                                 <input
+                                  type="text"
+                                  inputMode="email"
+                                  autoComplete="email"
+                                  value={editing.email ?? ''}
+                                  onChange={(e) =>
+                                    setEditing({ ...editing, email: e.target.value.trim() })
+                                  }
+                                  placeholder="(Email) البريد الإلكتروني"
+                                  dir="ltr"
+                                  className={`${CRM_FORM_FIELD_LTR} text-right font-mono`}
+                                />
+                                <input
                                   value={editing.contact_number ?? ''}
                                   onChange={(e) => setEditing({ ...editing, contact_number: e.target.value })}
-                                  placeholder="رقم التواصل"
+                                  placeholder="رقم التواصل / واتساب"
                                   dir="ltr"
                                   className={CRM_FORM_FIELD_LTR}
                                 />
@@ -598,69 +685,81 @@ export default function HotelsCRMPage() {
                           </td>
                         ) : (
                           <>
-                            <td className="px-4 py-3.5 text-slate-900 dark:text-gray-100">
-                              <div className="font-semibold">{h.name}</div>
-                              {h.notes ? (
-                                <p className="mt-1 line-clamp-2 text-xs font-normal text-slate-500 dark:text-gray-400">
-                                  {h.notes}
+                            <td className="max-w-[280px] px-4 py-2.5">
+                              <div className="font-bold text-sm text-slate-800 dark:text-gray-100">
+                                {h.name}
+                              </div>
+                              {h.notes?.trim() ? (
+                                <p className="mt-0.5 line-clamp-1 text-[11px] text-slate-400">
+                                  {h.notes.trim()}
                                 </p>
                               ) : null}
                             </td>
-                            <td className="whitespace-nowrap px-4 py-3.5 text-slate-900 dark:text-gray-100">
-                              {h.city ? `${h.city} · ` : ''}
-                              {h.country}
+                            <td className="whitespace-nowrap px-4 py-2.5">
+                              {locationLabel ? (
+                                <span className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600 dark:text-slate-300">
+                                  <MapPin className="h-3.5 w-3.5 shrink-0 text-slate-400" aria-hidden />
+                                  {locationLabel}
+                                </span>
+                              ) : (
+                                <span className="text-xs text-slate-400">—</span>
+                              )}
                             </td>
-                            <td className="whitespace-nowrap px-4 py-3.5">
+                            <td className="whitespace-nowrap px-4 py-2.5">
                               <span className={CATEGORY_BADGE}>{categoryLabel(h.category)}</span>
                             </td>
-                            <td className="px-4 py-3.5 text-slate-900 dark:text-gray-100">
-                              <div className="space-y-1 text-xs">
+                            <td className="px-4 py-2.5">
+                              <div className="space-y-0.5">
                                 {h.manager_name?.trim() ? (
-                                  <p className="inline-flex items-center gap-1.5">
-                                    <UserRound className="h-3.5 w-3.5 text-slate-400 dark:text-[#D4AF37]" aria-hidden />
+                                  <p className="inline-flex items-center gap-1 text-[11px] text-slate-600 dark:text-slate-300">
+                                    <UserRound className="h-3 w-3 text-slate-400" aria-hidden />
                                     {h.manager_name.trim()}
                                   </p>
                                 ) : null}
-                                {h.contact_number?.trim() ? (
+                                {h.email?.trim() ? (
                                   <a
-                                    href={`tel:${h.contact_number.trim().replace(/\s+/g, '')}`}
-                                    className="inline-flex items-center gap-1.5 font-medium text-slate-700 hover:underline dark:text-gray-200"
+                                    href={`mailto:${h.email.trim()}`}
+                                    className="flex items-center gap-1 font-mono text-xs text-slate-700 transition-colors hover:text-amber-600 dark:text-slate-300 dark:hover:text-[#D4AF37]"
                                     dir="ltr"
                                   >
-                                    <Phone className="h-3.5 w-3.5 text-slate-400 dark:text-[#D4AF37]" aria-hidden />
-                                    {h.contact_number.trim()}
+                                    <Mail className="h-3 w-3 shrink-0 text-slate-400" aria-hidden />
+                                    {h.email.trim()}
                                   </a>
-                                ) : null}
-                                {!h.manager_name?.trim() && !h.contact_number?.trim() ? (
-                                  <span className="text-slate-400">—</span>
-                                ) : null}
+                                ) : (
+                                  <span className="text-xs text-slate-400">غير محدد</span>
+                                )}
                               </div>
                             </td>
-                            <td className="px-4 py-3.5">
-                              <div className="flex flex-wrap items-center gap-2">
-                                <button
-                                  type="button"
-                                  onClick={() => copyHotelWhatsApp(h)}
-                                  className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-xs font-medium text-emerald-800 transition hover:bg-emerald-100 dark:border-emerald-900/40 dark:bg-emerald-950/30 dark:text-emerald-300"
-                                >
-                                  <MessageCircle className="h-3.5 w-3.5" aria-hidden />
-                                  واتساب
-                                </button>
+                            <td className="px-4 py-2.5">
+                              <div className="flex items-center justify-end gap-1.5">
+                                {hotelWhatsAppDigits(h) ? (
+                                  <a
+                                    href={`https://wa.me/${hotelWhatsAppDigits(h)}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className={BTN_WA}
+                                    title="فتح واتساب"
+                                  >
+                                    <MessageCircle className="h-3.5 w-3.5" aria-hidden />
+                                    <span className="hidden lg:inline">واتساب</span>
+                                  </a>
+                                ) : null}
                                 {bookingHref ? (
                                   <a
                                     href={bookingHref}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-100 dark:border-[#2D3F3A] dark:bg-[#1A2421] dark:text-gray-300"
+                                    className={BTN_LINK}
+                                    title="فتح الرابط"
                                   >
                                     <ExternalLink className="h-3.5 w-3.5" aria-hidden />
-                                    رابط
+                                    <span className="hidden lg:inline">رابط</span>
                                   </a>
                                 ) : null}
                                 <button
                                   type="button"
                                   onClick={() => setEditing({ ...h })}
-                                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-amber-50 text-amber-700 transition hover:bg-amber-100 dark:bg-[#D4AF37]/10 dark:text-[#D4AF37]"
+                                  className={BTN_ICON}
                                   aria-label="تعديل"
                                 >
                                   <Pencil className="h-3.5 w-3.5" aria-hidden />
@@ -668,7 +767,7 @@ export default function HotelsCRMPage() {
                                 <button
                                   type="button"
                                   onClick={() => deleteHotel(h.id)}
-                                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-rose-50 text-rose-600 transition hover:bg-rose-100 dark:bg-rose-950/40 dark:text-rose-300"
+                                  className={`${BTN_ICON} hover:text-rose-600`}
                                   aria-label="حذف"
                                 >
                                   <Trash2 className="h-3.5 w-3.5" aria-hidden />

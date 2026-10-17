@@ -592,10 +592,9 @@ export default function PlacesCsvUploader({ onImported }: Props) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="flex items-center gap-2 rounded-xl border border-slate-300/80 bg-slate-100 px-4 py-2.5 text-sm font-extrabold text-slate-800 shadow-sm transition-all hover:bg-slate-200"
+        className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-xs font-bold text-slate-700 shadow-sm"
       >
-        <Upload className="h-4 w-4" aria-hidden />
-        استيراد CSV
+        <span>📥 استيراد CSV</span>
       </button>
 
       {open ? (

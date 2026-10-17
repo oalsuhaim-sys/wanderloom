@@ -14,6 +14,7 @@ import {
   type VipInTransit,
 } from '@/lib/live-radar-dashboard';
 import {
+  fetchClientMeetingLeads,
   fetchGroupOnboardingLeads,
   fetchInterestOnlyLeads,
   fetchNewCrmLeads,
@@ -45,6 +46,8 @@ export type RadarDashboardPayload = {
   leadsWarning?: string;
   interestLeads: CrmLeadRow[];
   interestWarning?: string;
+  meetingLeads: CrmLeadWithIntake[];
+  meetingWarning?: string;
   groupOnboardingLeads: CrmLeadRow[];
   groupOnboardingError?: string;
   groupFulfillment: GroupFulfillmentClient[];
@@ -196,6 +199,18 @@ export async function fetchRadarDashboardPayload(): Promise<RadarDashboardPayloa
     dataWarning = dataWarning ? `${dataWarning} · ${interestMsg}` : interestMsg;
   }
 
+  let meetingLeads: CrmLeadWithIntake[] = [];
+  let meetingWarning: string | undefined;
+  try {
+    const meetingResult = await fetchClientMeetingLeads(supabase);
+    meetingLeads = meetingResult.leads;
+    meetingWarning = meetingResult.warning;
+  } catch (meetingErr) {
+    const meetingMsg =
+      meetingErr instanceof Error ? meetingErr.message : 'تعذر تحميل مواعيد الاجتماعات.';
+    dataWarning = dataWarning ? `${dataWarning} · ${meetingMsg}` : meetingMsg;
+  }
+
   let groupOnboardingLeads: CrmLeadRow[] = [];
   let groupOnboardingError: string | undefined;
   try {
@@ -218,6 +233,8 @@ export async function fetchRadarDashboardPayload(): Promise<RadarDashboardPayloa
     leadsWarning,
     interestLeads,
     interestWarning,
+    meetingLeads,
+    meetingWarning,
     groupOnboardingLeads,
     groupOnboardingError,
     groupFulfillment: groupResult.clients,

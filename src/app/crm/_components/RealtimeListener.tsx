@@ -44,6 +44,8 @@ function leadMovedToDnaOrMeeting(nextRaw: unknown, prevRaw: unknown): boolean {
   if (!nextStatus || nextStatus === prevStatus) return false;
   return (
     nextStatus === 'meeting' ||
+    nextStatus === 'meeting_scheduled' ||
+    nextStatus === 'scheduled' ||
     nextStatus === 'dna_completed' ||
     nextStatus.includes('dna_complete')
   );
@@ -83,9 +85,26 @@ export function RealtimeListener() {
         { event: 'UPDATE', schema: 'public', table: 'leads' },
         (payload) => {
           dispatchCrmRealtimeRefresh({ source: 'leads', reason: 'update' });
-          if (!leadMovedToDnaOrMeeting(payload.new, payload.old)) return;
           const row = asRecord(payload.new);
+          const previous = asRecord(payload.old);
           const name = String(row.full_name ?? row.name ?? '').trim();
+          const nextMeeting = String(row.meeting_date ?? '').trim();
+          const prevMeeting = String(previous.meeting_date ?? '').trim();
+          if (nextMeeting && nextMeeting !== prevMeeting) {
+            toast.success(
+              name ? `تم تحديث موعد Cal.com: ${name}` : 'تم تحديث موعد الاجتماع من Cal.com',
+              { icon: '📅', duration: 5000, id: `cal-meeting-${String(row.id ?? Date.now())}` },
+            );
+            return;
+          }
+          if (prevMeeting && !nextMeeting) {
+            toast.success(
+              name ? `تم إلغاء موعد Cal.com: ${name}` : 'تم إلغاء موعد الاجتماع من Cal.com',
+              { icon: '📅', duration: 5000, id: `cal-cancel-${String(row.id ?? Date.now())}` },
+            );
+            return;
+          }
+          if (!leadMovedToDnaOrMeeting(payload.new, payload.old)) return;
           toast.success(
             name
               ? `عميل أكمل DNA / انتقل لاجتماع: ${name}`

@@ -18,7 +18,11 @@ import {
   UserRound,
 } from "lucide-react";
 
-import { CrmSlideOver, CRM_DRAWER_SAVE } from "@/app/crm/_components/CrmSlideOver";
+import {
+  AddInfluencerDrawer,
+  type AddInfluencerPayload,
+  buildInfluencerReferralLink,
+} from "@/components/crm/AddInfluencerDrawer";
 import type {
   CelebrityRecord,
   ExpertRecord,
@@ -26,7 +30,7 @@ import type {
 } from "@/lib/partner-entities";
 import { whatsAppHref } from "@/lib/crm-lead-actions";
 import { getClientAccessToken } from "@/lib/crm-session-token";
-import { CRM_BTN_PRIMARY, CRM_INPUT, partnerInitials } from "@/lib/crm-luxury-ui";
+import { CRM_BTN_PRIMARY, partnerInitials } from "@/lib/crm-luxury-ui";
 import {
   formatCompletedTrips,
   formatPartnerLocation,
@@ -56,6 +60,7 @@ type PartnerCardModel = {
   iban: string | null;
   /** Show copy availability magic-link (leaders only) */
   showCalendarLink?: boolean;
+  referralCode?: string | null;
 };
 
 const TABS: { id: PartnerTab; label: string; badge: string }[] = [
@@ -151,14 +156,6 @@ async function copyLeaderCalendarLink(leaderId: string) {
   }
 }
 
-const EMPTY_INFLUENCER_FORM = {
-  name: "",
-  phone: "",
-  email: "",
-  platforms: "",
-  content_type: "",
-};
-
 const FILTER_ACTIVE =
   "rounded-xl border border-transparent bg-slate-900 px-4 py-2 text-sm font-medium text-white shadow-sm dark:border-[#D4AF37]/50 dark:bg-[#D4AF37]/20 dark:text-[#D4AF37]";
 
@@ -182,9 +179,6 @@ export default function PartnersDirectoryClient() {
   const [error, setError] = useState<string | null>(null);
 
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [influencerForm, setInfluencerForm] = useState(EMPTY_INFLUENCER_FORM);
-  const [savingInfluencer, setSavingInfluencer] = useState(false);
-  const [influencerError, setInfluencerError] = useState<string | null>(null);
 
   useEffect(() => {
     setActiveTab(parseTab(searchParams.get("tab")));
@@ -274,56 +268,48 @@ export default function PartnersDirectoryClient() {
   }, [load]);
 
   const openAddInfluencer = () => {
-    setInfluencerForm(EMPTY_INFLUENCER_FORM);
-    setInfluencerError(null);
     setDrawerOpen(true);
   };
 
   const closeAddInfluencer = () => {
-    if (savingInfluencer) return;
     setDrawerOpen(false);
-    setInfluencerError(null);
   };
 
-  const handleSaveInfluencer = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const name = influencerForm.name.trim();
+  const handleSaveInfluencer = async (data: AddInfluencerPayload) => {
+    const name = data.name.trim();
     if (!name) {
-      setInfluencerError("اسم المؤثر مطلوب.");
-      return;
+      throw new Error("اسم المؤثر مطلوب.");
     }
 
-    setSavingInfluencer(true);
-    setInfluencerError(null);
-    try {
-      const res = await fetch("/api/crm/celebrities", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name,
-          phone: influencerForm.phone.trim() || null,
-          platforms: influencerForm.platforms.trim() || null,
-          content_type: influencerForm.content_type.trim() || null,
-          email: influencerForm.email.trim() || null,
-        }),
-      });
-      const payload = (await res.json()) as {
-        ok?: boolean;
-        row?: CelebrityRecord;
-        error?: string;
-      };
-      if (!res.ok || !payload.ok || !payload.row) {
-        throw new Error(payload.error || "تعذر إضافة المؤثر");
-      }
-
-      setCelebrities((prev) => [payload.row!, ...prev]);
-      setDrawerOpen(false);
-      setInfluencerForm(EMPTY_INFLUENCER_FORM);
-    } catch (err) {
-      setInfluencerError(err instanceof Error ? err.message : "تعذر إضافة المؤثر");
-    } finally {
-      setSavingInfluencer(false);
+    const res = await fetch("/api/crm/celebrities", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name,
+        phone: data.phone,
+        platforms: data.platforms,
+        content_type: data.content_type,
+        email: data.email,
+        referral_code: data.referral_code,
+        referralCode: data.referral_code,
+      }),
+    });
+    const payload = (await res.json().catch(() => ({}))) as {
+      ok?: boolean;
+      row?: CelebrityRecord;
+      error?: string;
+    };
+    if (!res.ok || !payload.ok || !payload.row) {
+      throw new Error(payload.error || "تعذر إضافة المؤثر");
     }
+
+    const savedCode = payload.row.referralCode || data.referral_code;
+    const row: CelebrityRecord = {
+      ...payload.row,
+      referralCode: savedCode || null,
+    };
+    setCelebrities((prev) => [row, ...prev]);
+    toast.success(savedCode ? `تمت الإضافة · ${savedCode}` : "تمت إضافة المؤثر");
   };
 
   const q = search.trim().toLowerCase();
@@ -444,6 +430,7 @@ export default function PartnersDirectoryClient() {
       availabilityStatus: row.availabilityStatus,
       category: row.category,
       iban: row.iban,
+      referralCode: row.referralCode,
     }));
   }, [
     activeTab,
@@ -602,118 +589,11 @@ export default function PartnersDirectoryClient() {
         <PartnersDenseTable rows={cardModels} />
       )}
 
-      <CrmSlideOver
-        open={drawerOpen}
+      <AddInfluencerDrawer
+        isOpen={drawerOpen}
         onClose={closeAddInfluencer}
-        busy={savingInfluencer}
-        title="إضافة مؤثر جديد"
-        subtitle="يُحفظ مباشرة بحالة نشط — بدون رادار."
-        labelledBy="add-influencer-title"
-        footer={
-          <div className="flex gap-2">
-            <button
-              type="submit"
-              form="add-influencer-form"
-              disabled={savingInfluencer}
-              className={CRM_DRAWER_SAVE}
-            >
-              {savingInfluencer ? (
-                <span className="inline-flex items-center justify-center gap-2">
-                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-                  جاري الحفظ…
-                </span>
-              ) : (
-                "حفظ المؤثر"
-              )}
-            </button>
-            <button
-              type="button"
-              onClick={closeAddInfluencer}
-              disabled={savingInfluencer}
-              className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50 disabled:opacity-50 dark:border-[#2D3F3A] dark:bg-[#1A2421] dark:text-gray-300"
-            >
-              إلغاء
-            </button>
-          </div>
-        }
-      >
-        <form
-          id="add-influencer-form"
-          onSubmit={(e) => void handleSaveInfluencer(e)}
-          className="space-y-4"
-        >
-          <label className="block">
-            <span className="mb-1.5 block text-xs font-medium text-slate-600 dark:text-slate-400">
-              اسم المؤثر *
-            </span>
-            <input
-              value={influencerForm.name}
-              onChange={(e) =>
-                setInfluencerForm((f) => ({ ...f, name: e.target.value }))
-              }
-              required
-              className={CRM_INPUT}
-            />
-          </label>
-          <label className="block">
-            <span className="mb-1.5 block text-xs font-medium text-slate-600 dark:text-slate-400">
-              رقم التواصل
-            </span>
-            <input
-              value={influencerForm.phone}
-              onChange={(e) =>
-                setInfluencerForm((f) => ({ ...f, phone: e.target.value }))
-              }
-              className={CRM_INPUT}
-              dir="ltr"
-            />
-          </label>
-          <label className="block">
-            <span className="mb-1.5 block text-xs font-medium text-slate-600 dark:text-slate-400">
-              البريد الإلكتروني
-            </span>
-            <input
-              type="email"
-              value={influencerForm.email}
-              onChange={(e) =>
-                setInfluencerForm((f) => ({ ...f, email: e.target.value }))
-              }
-              className={CRM_INPUT}
-              dir="ltr"
-            />
-          </label>
-          <label className="block">
-            <span className="mb-1.5 block text-xs font-medium text-slate-600 dark:text-slate-400">
-              المنصات
-            </span>
-            <input
-              value={influencerForm.platforms}
-              onChange={(e) =>
-                setInfluencerForm((f) => ({ ...f, platforms: e.target.value }))
-              }
-              className={CRM_INPUT}
-            />
-          </label>
-          <label className="block">
-            <span className="mb-1.5 block text-xs font-medium text-slate-600 dark:text-slate-400">
-              نوع المحتوى
-            </span>
-            <input
-              value={influencerForm.content_type}
-              onChange={(e) =>
-                setInfluencerForm((f) => ({ ...f, content_type: e.target.value }))
-              }
-              className={CRM_INPUT}
-            />
-          </label>
-
-          {influencerError ? (
-            <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm font-bold text-rose-800">
-              {influencerError}
-            </p>
-          ) : null}
-        </form>
-      </CrmSlideOver>
+        onSubmit={handleSaveInfluencer}
+      />
     </div>
   );
 }
@@ -734,6 +614,7 @@ function PartnerCard({
   category,
   iban,
   showCalendarLink = false,
+  referralCode = null,
 }: PartnerCardModel) {
   const [copyingLink, setCopyingLink] = useState(false);
   const location = formatPartnerLocation(countryCode, city);
@@ -799,6 +680,32 @@ function PartnerCard({
           </span>
         ) : null}
       </div>
+
+      {referralCode ? (
+        <div className="mb-3 w-full space-y-1">
+          <p
+            className="rounded-lg border border-[#BA8E48]/30 bg-[#F8F5EE] px-2 py-1 font-mono text-[11px] font-bold tracking-wide text-[#111827]"
+            dir="ltr"
+          >
+            {referralCode}
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              const link = buildInfluencerReferralLink(referralCode);
+              if (!link) return;
+              void navigator.clipboard.writeText(link).then(
+                () => toast.success("تم نسخ رابط الإحالة"),
+                () => toast.error("تعذر نسخ الرابط"),
+              );
+            }}
+            className="inline-flex w-full items-center justify-center gap-1 text-[10px] font-bold text-[#BA8E48] hover:underline"
+          >
+            <Link2 className="h-3 w-3" aria-hidden />
+            نسخ رابط الإحالة
+          </button>
+        </div>
+      ) : null}
 
       {phone ? (
         <div className="mb-3 flex items-center justify-center gap-1.5 text-xs text-slate-400 dark:text-slate-500">

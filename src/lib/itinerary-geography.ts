@@ -58,14 +58,21 @@ export function parseItineraryGeography(
     row?.countries ?? fd.countries ?? fd.trip_countries,
   );
   const cities = parseStringArray(row?.cities ?? fd.cities ?? fd.trip_cities);
-  const geoTripType = parseGeoTripType(
-    row?.geo_trip_type ??
-      row?.destination_trip_type ??
-      fd.geo_trip_type ??
-      fd.destination_trip_type ??
-      fd.trip_type_geo ??
-      (countries.length > 1 ? 'multi' : 'single'),
-  );
+  const multiFlag =
+    row?.is_multi_country === true ||
+    row?.is_multi_country === 'true' ||
+    fd.is_multi_country === true ||
+    fd.is_multi_country === 'true';
+  const geoTripType = multiFlag
+    ? 'multi'
+    : parseGeoTripType(
+        row?.geo_trip_type ??
+          row?.destination_trip_type ??
+          fd.geo_trip_type ??
+          fd.destination_trip_type ??
+          fd.trip_type_geo ??
+          (countries.length > 1 ? 'multi' : 'single'),
+      );
 
   if (countries.length || cities.length) {
     return { geoTripType, countries, cities };

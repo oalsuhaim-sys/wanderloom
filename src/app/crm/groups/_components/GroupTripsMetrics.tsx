@@ -78,27 +78,26 @@ export default function GroupTripsMetrics({ trips }: Props) {
   const { activeGroups, bookedSeats, expectedRevenue } =
     computeGroupDashboardMetrics(trips);
 
+  /** Western digits for CRM analytics cards (avoid ar-SA Eastern numerals). */
+  const enNum = (n: number) => n.toLocaleString('en-US');
+
   return (
     <div className="mb-6 grid grid-cols-1 gap-6 sm:grid-cols-3">
       <MetricCard
         label="إجمالي القروبات النشطة"
-        value={String(activeGroups)}
-        sub={`من أصل ${trips.length} قروب`}
+        value={enNum(activeGroups)}
+        sub={`من أصل ${enNum(trips.length)} قروب`}
         icon={<CalendarCheck2 className="h-4 w-4" />}
       />
       <MetricCard
         label="إجمالي المقاعد المباعة"
-        value={bookedSeats.toLocaleString('ar-SA')}
+        value={enNum(bookedSeats)}
         sub="من الحجوزات المسجّلة"
         icon={<Users className="h-4 w-4" />}
       />
       <MetricCard
         label="الإيرادات المتوقعة"
-        value={
-          expectedRevenue > 0
-            ? `${expectedRevenue.toLocaleString('en-US')} ر.س`
-            : '—'
-        }
+        value={expectedRevenue > 0 ? `${enNum(expectedRevenue)} ر.س` : '—'}
         sub="السعر × سعة القروب"
         icon={<Wallet className="h-4 w-4" />}
       />

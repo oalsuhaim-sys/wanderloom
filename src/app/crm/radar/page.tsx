@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Heart, Inbox, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 import {
@@ -20,10 +19,10 @@ import {
 } from '@/lib/crm-permissions';
 
 import GroupOperationsFulfillment from './_components/GroupOperationsFulfillment';
-import { InterestListInbox } from './_components/InterestListInbox';
 import { GroupOnboardingInbox } from './_components/GroupOnboardingInbox';
 import { NewLeadsInbox } from './_components/NewLeadsInbox';
 import { RADAR_SECTION_INITIAL_LIMIT, ShowAllToggle } from './_components/ShowAllToggle';
+import { isExpiredClientMeeting } from '@/lib/crm-leads';
 import { useRadarDashboard } from './useRadarDashboard';
 
 function todayIsoLocal(): string {
@@ -58,7 +57,7 @@ export default function RadarPage() {
     refresh: fetchRadar,
   } = useRadarDashboard();
 
-  const [leadsPanelTab, setLeadsPanelTab] = useState<'inbox' | 'interest'>('inbox');
+  const [leadsPanelTab, setLeadsPanelTab] = useState<'inbox' | 'meetings' | 'interests'>('meetings');
   const [showAllTravelers, setShowAllTravelers] = useState(false);
   const [showAllPassports, setShowAllPassports] = useState(false);
   const [showAllLazySuppliers, setShowAllLazySuppliers] = useState(false);
@@ -71,9 +70,30 @@ export default function RadarPage() {
 
   if (showFullPageSpinner) {
     return (
-      <div className="flex min-h-screen items-center justify-center gap-3 bg-slate-50 text-slate-500" dir="rtl">
-        <Loader2 className="h-8 w-8 animate-spin text-slate-400" aria-hidden />
-        <span className="text-sm font-medium">جاري مسح الرادار الحي…</span>
+      <div className="flex min-h-screen items-center justify-center bg-[#F8F5EE] p-6" dir="rtl">
+        <div className="space-y-3 text-center">
+          <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-[#BA8E48] border-t-transparent" />
+          <p className="text-xs font-bold text-slate-700">جاري تحميل رادار الطلبات...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error && !data) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#F8F5EE] p-6" dir="rtl">
+        <div className="max-w-md space-y-4 rounded-3xl border border-red-200 bg-white p-8 text-center shadow-lg">
+          <span className="text-3xl">⚠️</span>
+          <h2 className="text-lg font-bold text-slate-900">تعذر تحميل بيانات الرادار</h2>
+          <p className="text-xs text-slate-500">حدث خطأ أثناء الاتصال بالخادم، يرجى المحاولة مرة أخرى.</p>
+          <button
+            type="button"
+            onClick={() => void fetchRadar()}
+            className="rounded-full bg-[#1B242F] px-6 py-2.5 text-xs font-bold text-white shadow-md transition-all hover:bg-slate-800"
+          >
+            إعادة التحميل
+          </button>
+        </div>
       </div>
     );
   }
@@ -105,8 +125,12 @@ export default function RadarPage() {
     : lazySuppliers.slice(0, RADAR_SECTION_INITIAL_LIMIT);
   const newLeads = data?.newLeads ?? [];
   const leadsWarning = data?.leadsWarning;
+  const meetingLeads = (data?.meetingLeads ?? []).filter((lead) => !isExpiredClientMeeting(lead));
   const interestLeads = data?.interestLeads ?? [];
-  const interestWarning = data?.interestWarning;
+  const showDemoMeeting =
+    newLeads.length === 0 &&
+    (data?.meetingLeads.length ?? 0) === 0 &&
+    interestLeads.length === 0;
   const groupOnboardingLeads = data?.groupOnboardingLeads ?? [];
   const groupOnboardingError = data?.groupOnboardingError;
   const groupFulfillment = data?.groupFulfillment ?? [];
@@ -257,91 +281,94 @@ export default function RadarPage() {
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-2 xl:items-start">
         {showInbox ? (
-          <div className="space-y-5">
-            <div className="flex gap-1 rounded-2xl border border-slate-200/80 bg-white p-1 shadow-sm">
-              <button
-                type="button"
-                onClick={() => setLeadsPanelTab('inbox')}
-                className={`flex flex-1 items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm transition-all ${
-                  leadsPanelTab === 'inbox'
-                    ? 'bg-[#D4AF37] font-extrabold text-black shadow-sm'
-                    : 'bg-slate-100 font-bold text-slate-700 hover:bg-slate-200'
-                }`}
-              >
-                <Inbox className="h-4 w-4 shrink-0 opacity-80" aria-hidden />
-                صندوق الوارد
-                {newLeads.length > 0 ? (
-                  <span
-                    className={`rounded-full px-2 py-0.5 text-xs font-bold ${
-                      leadsPanelTab === 'inbox'
-                        ? 'bg-black/10 text-black'
-                        : 'bg-white text-slate-600 ring-1 ring-slate-200'
-                    }`}
-                  >
+          <div className="space-y-5 xl:col-span-2">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="flex flex-wrap items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setLeadsPanelTab('inbox')}
+                  className={`flex items-center gap-2 rounded-full px-6 py-3 text-xs font-bold shadow-sm transition-all ${
+                    leadsPanelTab === 'inbox'
+                      ? 'bg-[#C59B4B] text-white'
+                      : 'border border-slate-200 bg-white text-slate-700'
+                  }`}
+                >
+                  <span>📫 صندوق الوارد</span>
+                  <span className="rounded-full bg-[#1B242F] px-2 py-0.5 text-[10px] text-white">
                     {newLeads.length}
                   </span>
-                ) : null}
-              </button>
-              <button
-                type="button"
-                onClick={() => setLeadsPanelTab('interest')}
-                className={`flex flex-1 items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm transition-all ${
-                  leadsPanelTab === 'interest'
-                    ? 'bg-[#D4AF37] font-extrabold text-black shadow-sm'
-                    : 'bg-slate-100 font-bold text-slate-700 hover:bg-slate-200'
-                }`}
-              >
-                <Heart className="h-4 w-4 shrink-0 opacity-80" aria-hidden />
-                قائمة الاهتمامات
-                {interestLeads.length > 0 ? (
-                  <span
-                    className={`rounded-full px-2 py-0.5 text-xs font-bold ${
-                      leadsPanelTab === 'interest'
-                        ? 'bg-black/10 text-black'
-                        : 'bg-rose-50 text-rose-700 ring-1 ring-rose-200'
-                    }`}
-                  >
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLeadsPanelTab('meetings')}
+                  className={`flex items-center gap-2 rounded-full px-6 py-3 text-xs font-bold shadow-sm transition-all ${
+                    leadsPanelTab === 'meetings'
+                      ? 'bg-[#C59B4B] text-white'
+                      : 'border border-slate-200 bg-white text-slate-700'
+                  }`}
+                >
+                  <span>📅 مواعيد اجتماعات العملاء (Cal)</span>
+                  <span className="rounded-full bg-[#1B242F] px-2 py-0.5 text-[10px] text-white">
+                    {meetingLeads.length}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLeadsPanelTab('interests')}
+                  className={`flex items-center gap-2 rounded-full px-6 py-3 text-xs font-bold shadow-sm transition-all ${
+                    leadsPanelTab === 'interests'
+                      ? 'bg-[#C59B4B] text-white'
+                      : 'border border-slate-200 bg-white text-slate-700'
+                  }`}
+                >
+                  <span>♡ قائمة الاهتمامات</span>
+                  <span className="rounded-full bg-[#1B242F] px-2 py-0.5 text-[10px] text-white">
                     {interestLeads.length}
                   </span>
-                ) : null}
-              </button>
+                </button>
+              </div>
+              <Link
+                href="/crm/pipeline"
+                className="flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-5 py-2.5 text-xs font-bold text-slate-700 shadow-sm hover:bg-slate-50"
+              >
+                <span>📊 لوحة الكانبان</span>
+              </Link>
             </div>
 
-            {leadsPanelTab === 'inbox' ? (
-              <NewLeadsInbox
-                leads={newLeads}
-                loading={false}
-                warning={leadsWarning}
-                onRefresh={fetchRadar}
-                onLeadApproved={(leadId) => {
-                  setData((prev) =>
-                    prev
-                      ? {
-                          ...prev,
-                          newLeads: prev.newLeads.filter((l) => l.id !== leadId),
-                        }
-                      : prev,
-                  );
-                }}
-              />
-            ) : (
-              <InterestListInbox
-                leads={interestLeads}
-                loading={false}
-                warning={interestWarning}
-                onRefresh={() => fetchRadar({ soft: true })}
-                onLeadConverted={(leadId) => {
-                  setData((prev) =>
-                    prev
-                      ? {
-                          ...prev,
-                          interestLeads: prev.interestLeads.filter((l) => String(l.id) !== leadId),
-                        }
-                      : prev,
-                  );
-                }}
-              />
-            )}
+            <NewLeadsInbox
+              panel={leadsPanelTab}
+              leads={newLeads}
+              meetingLeads={meetingLeads}
+              interestLeads={interestLeads}
+              showSample={showDemoMeeting}
+              loading={false}
+              warning={
+                leadsPanelTab === 'meetings'
+                  ? data?.meetingWarning
+                  : leadsPanelTab === 'interests'
+                    ? data?.interestWarning
+                    : leadsWarning
+              }
+              onRefresh={fetchRadar}
+              onShowMeetings={() => setLeadsPanelTab('meetings')}
+              onMovedToMeeting={(leadId) => {
+                setLeadsPanelTab('meetings');
+                setData((prev) => {
+                  if (!prev) return prev;
+                  const moved = prev.newLeads.find((lead) => lead.id === leadId);
+                  return {
+                    ...prev,
+                    newLeads: prev.newLeads.filter((lead) => lead.id !== leadId),
+                    meetingLeads: moved
+                      ? [
+                          { ...moved, status: 'meeting_scheduled' },
+                          ...prev.meetingLeads.filter((lead) => lead.id !== leadId),
+                        ]
+                      : prev.meetingLeads,
+                  };
+                });
+              }}
+            />
           </div>
         ) : null}
         <MarketingPublishingRadar

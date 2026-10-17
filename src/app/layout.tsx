@@ -60,7 +60,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#1A3B2A",
+  themeColor: "#1B242F",
   colorScheme: "dark",
 };
 
@@ -82,7 +82,7 @@ export default function RootLayout({
         <meta name="application-name" content={VIP_APP_NAME} />
         <meta name="apple-mobile-web-app-title" content="Wanderloom" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="theme-color" content="#1A3B2A" />
+        <meta name="theme-color" content="#1B242F" />
         <meta name="description" content={VIP_APP_DESCRIPTION} />
         <link rel="apple-touch-icon" href="/icon-192.png" />
       </head>

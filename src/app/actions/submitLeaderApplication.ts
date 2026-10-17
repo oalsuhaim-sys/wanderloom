@@ -9,6 +9,7 @@ import {
   sanitizeClientWritePayload,
 } from '@/lib/clientsTravelDna'
 import { normalizeAffiliateRef } from '@/lib/referral-url'
+import { requireValidPhone } from '@/lib/phoneUtils'
 import { createServerSupabase } from '@/lib/supabase/server'
 
 export type LeaderApplicationState = {
@@ -67,7 +68,7 @@ async function findLeaderByReferralCode(code: string) {
 export async function submitLeaderApplication(formData: FormData): Promise<LeaderApplicationState> {
   try {
     const name = s(formData.get('name'))
-    const phone_wa = s(formData.get('phone_wa'))
+    const phoneCheck = requireValidPhone(s(formData.get('phone_wa')))
     const email = s(formData.get('email'))
     const leader_code = normalizeAffiliateRef(s(formData.get('leader_code')))
 
@@ -81,9 +82,13 @@ export async function submitLeaderApplication(formData: FormData): Promise<Leade
       return { ok: false, error: 'رابط الدعوة غير صالح. استخدم رابط أو باركود الشريك الذي دعاك.' }
     }
 
-    if (!name || !phone_wa) {
+    if (!name) {
       return { ok: false, error: 'الاسم ورقم الجوال مطلوبان.' }
     }
+    if (!phoneCheck.isValid) {
+      return { ok: false, error: phoneCheck.error ?? 'يرجى إدخال رقم واتساب صحيح.' }
+    }
+    const phone_wa = phoneCheck.formattedPhone
 
     const leader = await findLeaderByReferralCode(leader_code)
     if (!leader) {

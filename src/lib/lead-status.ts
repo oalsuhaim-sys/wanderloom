@@ -187,7 +187,7 @@ export function normalizeLeadStatus(raw: unknown): LeadStatus {
     return 'awaiting_dna';
   }
 
-  if (s === 'meeting' || s === 'client_meeting') {
+  if (s === 'meeting' || s === 'client_meeting' || s === 'meeting_scheduled' || s === 'scheduled') {
     return 'meeting';
   }
 

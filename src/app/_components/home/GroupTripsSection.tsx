@@ -7,6 +7,7 @@ import { Loader2, Users } from 'lucide-react';
 import { GroupOnboardingStepNav } from '@/app/group-onboarding/_components/GroupOnboardingStepNav';
 import GroupTripLeaderBadge from '@/app/crm/groups/_components/GroupTripLeaderBadge';
 import { ReferralCodeField } from '@/components/ReferralCodeField';
+import { WhatsAppInput } from '@/components/WhatsAppInput';
 import { useLanguage } from '@/context/LanguageContext';
 import {
   brandGoldBadgeStyle,
@@ -19,7 +20,7 @@ import {
   buildGroupConfirmHref,
   persistGroupRegistrationDraft,
 } from '@/lib/group-registration-contact';
-import { requireValidPhone } from '@/lib/phoneUtils';
+import { requireValidPhone, WHATSAPP_INCOMPLETE_ERROR } from '@/lib/phoneUtils';
 import { supabaseClient } from '@/lib/supabaseClient';
 import type { GroupTripRow } from '@/types/group-trip';
 
@@ -78,6 +79,7 @@ export function GroupTripsSection() {
 
   const [open, setOpen] = useState<DisplayTrip | null>(null);
   const [formData, setFormData] = useState(INITIAL_REG_FORM);
+  const [isPhoneValid, setIsPhoneValid] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [msg, setMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
   const [portalReady, setPortalReady] = useState(false);
@@ -178,6 +180,7 @@ export function GroupTripsSection() {
 
   function resetRegForm() {
     setFormData(INITIAL_REG_FORM);
+    setIsPhoneValid(false);
   }
 
   async function onSubmit(e: React.FormEvent) {
@@ -192,8 +195,8 @@ export function GroupTripsSection() {
       return;
     }
     const phoneCheck = requireValidPhone(formData.whatsapp);
-    if (!phoneCheck.isValid) {
-      setMsg({ type: 'err', text: phoneCheck.error ?? g.errors.namePhone });
+    if (!isPhoneValid || !phoneCheck.isValid) {
+      setMsg({ type: 'err', text: phoneCheck.error ?? WHATSAPP_INCOMPLETE_ERROR });
       return;
     }
     if (emailTrimmed && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailTrimmed)) {
@@ -389,24 +392,14 @@ export function GroupTripsSection() {
                       />
                     </div>
 
-                    <div className="space-y-1 text-right">
-                      <label className={REG_LABEL_CLASS} style={brandOliveLabelStyle}>
-                        {g.modal.waLabel.replace(/\s*\*$/, '')}{' '}
-                        <span className="text-rose-500">*</span>
-                      </label>
-                      <input
-                        type="tel"
-                        required
-                        dir="ltr"
-                        className={`${REG_FIELD_CLASS} text-right`}
-                        placeholder={g.modal.waPlaceholder}
-                        value={formData.whatsapp || ''}
-                        onChange={(e) =>
-                          setFormData((prev) => ({ ...prev, whatsapp: e.target.value }))
-                        }
-                        autoComplete="tel"
-                      />
-                    </div>
+                    <WhatsAppInput
+                      required
+                      value={formData.whatsapp}
+                      onChange={(fullNumber, isValid) => {
+                        setIsPhoneValid(isValid);
+                        setFormData((prev) => ({ ...prev, whatsapp: fullNumber }));
+                      }}
+                    />
 
                     <div className="space-y-1 text-right">
                       <label className={REG_LABEL_CLASS} style={brandOliveLabelStyle}>
@@ -456,7 +449,7 @@ export function GroupTripsSection() {
 
                   <button
                     type="submit"
-                    disabled={submitting}
+                    disabled={submitting || !isPhoneValid}
                     style={brandGoldButtonStyle}
                     className="mt-4 flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl py-3.5 text-xs font-extrabold shadow-sm transition-all hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
                   >

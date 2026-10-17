@@ -6,6 +6,7 @@ import { useSearchParams } from 'next/navigation'
 import { CheckCircle2, Loader2, Sparkles } from 'lucide-react'
 
 import { PublicNavbar } from '@/app/_components/home/PublicNavbar'
+import PlacesBankSpecialtyPicker from '@/components/PlacesBankSpecialtyPicker'
 
 const FIELD =
   'h-12 w-full rounded-2xl border border-[#1e3f20]/15 bg-white/90 px-4 text-sm font-semibold text-[#0f1e16] outline-none transition placeholder:text-gray-400 focus:border-[#cda04c] focus:ring-2 focus:ring-[#cda04c]/25'
@@ -24,6 +25,7 @@ function JoinPartnerFormInner() {
   const searchParams = useSearchParams()
   const urlDestination = destinationFromSearchParams(searchParams)
   const [partnerType, setPartnerType] = useState<PartnerType>('leader')
+  const [specialty, setSpecialty] = useState(urlDestination)
   const [pending, setPending] = useState(false)
   const [done, setDone] = useState(false)
   const [error, setError] = useState('')
@@ -35,8 +37,12 @@ function JoinPartnerFormInner() {
 
     try {
       const form = new FormData(e.currentTarget)
-      // الوجهة تُستمد من رابط الدعوة فقط — لا تُطلب من المستخدم.
-      const destinations = destinationFromSearchParams(searchParams)
+      const destinations =
+        destinationFromSearchParams(searchParams) ||
+        (partnerType === 'expert' ? specialty.trim() : '')
+      if (partnerType === 'expert' && !destinations) {
+        throw new Error('اختر بلداً أو مدينة واحدة على الأقل من بنك الأماكن')
+      }
       const payload = {
         type: partnerType,
         partnerType,
@@ -60,6 +66,7 @@ function JoinPartnerFormInner() {
       }
       setDone(true)
       e.currentTarget.reset()
+      setSpecialty(urlDestination)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'تعذر إرسال الطلب')
     } finally {
@@ -139,6 +146,15 @@ function JoinPartnerFormInner() {
           الوجهة المرتبطة بالرابط:{' '}
           <span className="font-black text-[#1e3f20]">{urlDestination}</span>
         </div>
+      ) : null}
+
+      {partnerType === 'expert' && !urlDestination ? (
+        <PlacesBankSpecialtyPicker
+          value={specialty}
+          onChange={setSpecialty}
+          legend="البلد / المدن المغطاة *"
+          disabled={pending}
+        />
       ) : null}
 
       {partnerType === 'leader' ? (

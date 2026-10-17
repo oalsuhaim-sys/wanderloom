@@ -1,5 +1,5 @@
 {
-  "name": "Wanderloom CRM",
+  "name": "Wanderloom Luxury Travel CRM",
   "short_name": "Wanderloom",
   "description": "لوحة تحكم Wanderloom لإدارة الرحلات الفاخرة، وعروض الأسعار، ونقاشات الفريق.",
   "start_url": "/crm",
@@ -7,8 +7,8 @@
   "id": "/",
   "display": "standalone",
   "orientation": "any",
-  "background_color": "#1A3B2A",
-  "theme_color": "#1A3B2A",
+  "background_color": "#F8F5EE",
+  "theme_color": "#1B242F",
   "lang": "ar",
   "dir": "rtl",
   "categories": ["business", "travel"],

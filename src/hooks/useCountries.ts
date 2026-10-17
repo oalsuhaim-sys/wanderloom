@@ -9,6 +9,7 @@ import {
   type CountryOption,
 } from '@/lib/countries';
 import type { TripCountryDef } from '@/lib/trip-destination-data';
+import { usePlacesBankDestinations } from '@/hooks/usePlacesBankDestinations';
 
 export function useCountries() {
   const [countries, setCountries] = useState<CountryOption[]>(DEFAULT_COUNTRIES);
@@ -37,16 +38,33 @@ export function useCountries() {
   return { countries, loading, error, reload };
 }
 
-/** دول + مدن للنماذج التي تحتاج اختيار مدينة (سجّل رحلتك، المسارات، إلخ) */
+/**
+ * دول + مدن للنماذج العامة — مصدر الحقيقة: بنك الأماكن (`places`).
+ * عند فراغ البنك يُستخدم الدمج الاحتياطي (countries + TRIP_DESTINATIONS).
+ */
 export function useTripDestinations() {
-  const { countries, loading, error, reload } = useCountries();
+  const places = usePlacesBankDestinations();
+  const { countries, loading: countriesLoading, error: countriesError, reload: reloadCountries } =
+    useCountries();
 
-  const tripDestinations = useMemo(
-    () => mergeTripDestinationsWithCountries(countries),
-    [countries],
-  );
+  const tripDestinations = useMemo(() => {
+    if (places.tripDestinations.length > 0) return places.tripDestinations;
+    return mergeTripDestinationsWithCountries(countries);
+  }, [places.tripDestinations, countries]);
 
-  return { countries, tripDestinations, loading, error, reload };
+  const reload = useCallback(async () => {
+    await Promise.all([places.reload(), reloadCountries()]);
+  }, [places, reloadCountries]);
+
+  return {
+    countries,
+    tripDestinations,
+    placesCountries: places.countries,
+    citiesByCountry: places.citiesByCountry,
+    loading: places.loading || countriesLoading,
+    error: places.error || countriesError,
+    reload,
+  };
 }
 
 export type { CountryOption, TripCountryDef };

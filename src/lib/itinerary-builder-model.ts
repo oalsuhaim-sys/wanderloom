@@ -480,6 +480,13 @@ export function buildStrictSimpleItinerarySavePayload(
   if (title) payload.title = title;
   if (destination || title) payload.destination = destination || title;
 
+  // جغرافيا المسار — تُحفظ صراحةً حتى لا يُعاد نوع المسار إلى «دولة واحدة» بعد الحفظ
+  payload.geo_trip_type = geoTripType;
+  payload.destination_trip_type = geoTripType;
+  payload.is_multi_country = geoTripType === 'multi';
+  payload.countries = countries;
+  payload.cities = cities;
+
   applyItineraryTripDatesToPayload(payload, input.datesFrom, input.datesTo, {
     // Status is applied below from input; still re-open when end is future.
     resetStatusWhenFuture: true,
@@ -525,8 +532,10 @@ export function buildStrictSimpleItinerarySavePayload(
     arrival_country: input.arrivalCountry?.trim() ?? '',
     geo_trip_type: geoTripType,
     destination_trip_type: geoTripType,
+    is_multi_country: geoTripType === 'multi',
     countries,
     cities,
+    country: countries.join(' · '),
     // Durable expert mirror (flight_details JSONB exists in production)
     ...(String(input.expertId ?? '').trim()
       ? { expert_id: String(input.expertId).trim() }
@@ -771,6 +780,11 @@ const SCHEMA_OPTIONAL_ITINERARY_COLUMNS = [
   'expert_id',
   'expert_name',
   'trip_type',
+  'geo_trip_type',
+  'destination_trip_type',
+  'is_multi_country',
+  'countries',
+  'cities',
   'group_name',
   'total_price',
   'total_budget',

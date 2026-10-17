@@ -8,13 +8,14 @@ import { Loader2, Send } from 'lucide-react';
 import { submitCustomerLead, type CustomerLeadState } from '@/app/actions/submitCustomerLead';
 import { useLanguage } from '@/context/LanguageContext';
 import { ReferralCodeField } from '@/components/ReferralCodeField';
+import { WhatsAppInput } from '@/components/WhatsAppInput';
 import { useTripDestinations } from '@/hooks/useCountries';
 import {
   normalizeAffiliateRef,
   persistAffiliateRef,
   readPersistedAffiliateRef,
 } from '@/lib/referral-url';
-import { requireValidPhone } from '@/lib/phoneUtils';
+import { requireValidPhone, WHATSAPP_INCOMPLETE_ERROR } from '@/lib/phoneUtils';
 import { getTripCountryById } from '@/lib/trip-destination-data';
 
 const INPUT_CLASS =
@@ -277,6 +278,8 @@ function TripDesignFormInner() {
   const [lodgingOtherText, setLodgingOtherText] = useState('');
   const [referralCode, setReferralCode] = useState('');
   const [formData, setFormData] = useState({ birth_date: '' });
+  const [fullPhone, setFullPhone] = useState('');
+  const [isPhoneValid, setIsPhoneValid] = useState(false);
 
   useEffect(() => {
     const fromUrl = normalizeAffiliateRef(searchParams.get('ref'));
@@ -373,9 +376,9 @@ function TripDesignFormInner() {
 
     const form = e.currentTarget;
     const fd = new FormData(form);
-    const phoneCheck = requireValidPhone(String(fd.get('phone_wa') ?? ''));
-    if (!phoneCheck.isValid) {
-      setState({ ok: false, error: phoneCheck.error ?? 'يرجى إدخال رقم جوال سعودي صحيح' });
+    const phoneCheck = requireValidPhone(fullPhone || String(fd.get('phone_wa') ?? ''));
+    if (!isPhoneValid || !phoneCheck.isValid) {
+      setState({ ok: false, error: phoneCheck.error ?? WHATSAPP_INCOMPLETE_ERROR });
       return;
     }
     fd.set('phone_wa', phoneCheck.formattedPhone);
@@ -498,18 +501,15 @@ function TripDesignFormInner() {
             placeholder={f.fullNamePlaceholder}
           />
         </div>
-        <div>
-          <label className={FIELD_LABEL}>{f.phoneWa}</label>
-          <input
-            name="phone_wa"
-            required
-            type="tel"
-            autoComplete="tel"
-            dir="ltr"
-            className={INPUT_CLASS}
-            placeholder={f.phonePlaceholder}
-          />
-        </div>
+        <WhatsAppInput
+          name="phone_wa"
+          value={fullPhone}
+          onChange={(phone, isValid) => {
+            setFullPhone(phone);
+            setIsPhoneValid(isValid);
+          }}
+          required
+        />
         <div>
           <label className={FIELD_LABEL}>{f.birthDateLabel}</label>
           <input
@@ -814,7 +814,7 @@ function TripDesignFormInner() {
       <div className="flex justify-center pb-2 pt-1">
         <button
           type="submit"
-          disabled={pending || isSubmitting}
+          disabled={pending || isSubmitting || !isPhoneValid}
           className={`inline-flex h-11 min-w-[220px] items-center justify-center gap-2 rounded-full bg-[#1C2E3A] px-8 text-sm font-black text-[#F4EFE6] shadow-sm transition-all hover:bg-[#122029] disabled:cursor-not-allowed disabled:opacity-50 ${
             pending || isSubmitting ? 'opacity-50 cursor-not-allowed' : ''
           }`}

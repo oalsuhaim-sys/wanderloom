@@ -10,13 +10,13 @@ export type BeforeInstallPromptEvent = Event & {
 const PWA_INSTALLED_KEY = 'wanderloom_pwa_installed';
 
 export const PWA_TOAST_ALREADY_INSTALLED =
-  '✔️ النظام مثبت لديك بالفعل على هذا الجهاز.';
+  'النظام مثبت بالفعل على جهازك وهو جاهز للاستخدام.';
 
 export const PWA_TOAST_IOS =
-  "📱 أجهزة آبل: يرجى الضغط على أيقونة المشاركة (Share) ثم 'إضافة للشاشة الرئيسية'.";
+  'لتثبيت تطبيق Wanderloom على جهازك: اضغط أيقونة المشاركة ثم «إضافة إلى الشاشة الرئيسية».';
 
 export const PWA_TOAST_BROWSER_MENU =
-  "💡 لتثبيت النظام: يرجى اختيار 'تثبيت التطبيق' (Install App) من قائمة المتصفح العلوية (⋮).";
+  'لتثبيت تطبيق Wanderloom على جهازك: من خيارات المتصفح (⋮) اختر «إضافة إلى الشاشة الرئيسية» أو «تثبيت التطبيق».';
 
 function isStandaloneDisplay(): boolean {
   if (typeof window === 'undefined') return false;
@@ -62,8 +62,7 @@ function subscribeStandaloneDisplay(onStoreChange: () => void) {
 }
 
 /**
- * Native PWA install — captures `beforeinstallprompt`; button stays visible always
- * (hidden only when already running as installed standalone app).
+ * Native PWA install — captures `beforeinstallprompt` and keeps one listener for the app.
  */
 export function usePwaInstallPrompt() {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
@@ -73,10 +72,16 @@ export function usePwaInstallPrompt() {
     isStandaloneDisplay,
     () => false
   );
+  const [acceptedInstall, setAcceptedInstall] = useState(false);
+  const [sessionInstalled, setSessionInstalled] = useState(false);
   const [busy, setBusy] = useState(false);
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    setSessionInstalled(isPwaMarkedInstalled());
+  }, []);
 
   useEffect(() => {
     if (isStandalone) return;
@@ -87,6 +92,7 @@ export function usePwaInstallPrompt() {
     };
 
     const onInstalled = () => {
+      setAcceptedInstall(true);
       setDeferredPrompt(null);
       try {
         sessionStorage.setItem(PWA_INSTALLED_KEY, '1');
@@ -115,14 +121,21 @@ export function usePwaInstallPrompt() {
     }, 5000);
   }, []);
 
+  const isInstalled = isStandalone || acceptedInstall || sessionInstalled;
+
   const handleInstallClick = useCallback(async () => {
+    if (isInstalled) {
+      showFallbackToast(PWA_TOAST_ALREADY_INSTALLED);
+      return;
+    }
+
     if (deferredPrompt) {
       setBusy(true);
       try {
         await deferredPrompt.prompt();
         const { outcome } = await deferredPrompt.userChoice;
         if (outcome === 'accepted') {
-          setDeferredPrompt(null);
+          setAcceptedInstall(true);
           try {
             sessionStorage.setItem(PWA_INSTALLED_KEY, '1');
           } catch {
@@ -137,10 +150,11 @@ export function usePwaInstallPrompt() {
     }
 
     showFallbackToast(resolvePwaFallbackToastMessage());
-  }, [deferredPrompt, showFallbackToast]);
+  }, [deferredPrompt, isInstalled, showFallbackToast]);
 
   return {
     isStandalone,
+    isInstalled,
     busy,
     showToast,
     toastMessage,

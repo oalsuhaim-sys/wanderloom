@@ -140,6 +140,13 @@ export async function PATCH(request: Request, context: RouteContext) {
   if (body.status !== undefined) {
     patch.status = String(body.status ?? '').trim() || 'active';
   }
+  if (body.referral_code !== undefined || body.referralCode !== undefined) {
+    patch.referral_code =
+      String(body.referral_code ?? body.referralCode ?? '')
+        .trim()
+        .toUpperCase()
+        .replace(/\s+/g, '') || null;
+  }
   if (body.dna_profile !== undefined || body.dnaProfile !== undefined) {
     patch.dna_profile = serializePartnerDnaProfile(
       parsePartnerDnaProfile(body.dna_profile ?? body.dnaProfile),
@@ -174,6 +181,11 @@ export async function PATCH(request: Request, context: RouteContext) {
       delete p.dna_profile;
       delete p.content_type;
       delete p.content_focus;
+      return p;
+    })(),
+    (() => {
+      const p = { ...patch };
+      delete p.referral_code;
       return p;
     })(),
   ].filter((p) => Object.keys(p).length > 0);

@@ -1,8 +1,9 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { usePlacesBankDestinations } from '@/hooks/usePlacesBankDestinations'
 import { supabase } from '@/lib/supabase'
-import { CalendarDays, Filter, Globe, Loader2, MapPin, Pencil, Plus, Repeat, Save, Tags, X, Zap } from 'lucide-react'
+import { AlertCircle, CalendarDays, Filter, Globe, Loader2, MapPin, Pencil, Plus, Repeat, Save, Tags, X, Zap } from 'lucide-react'
 
 type EventRow = {
   id: number
@@ -22,20 +23,28 @@ type EventRow = {
 type MetaRow = { country: string | null; city: string | null; season: string | null }
 
 const CARD =
+  'bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all space-y-3'
+const FILTER_CARD =
   'bg-white border border-slate-200/90 rounded-2xl p-5 shadow-sm mb-4 hover:border-[#D4AF37]/40 transition-all'
 const INNER = 'bg-slate-50 border border-slate-200 rounded-xl p-4'
 const INPUT =
   'w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-bold text-slate-800 placeholder:text-slate-400 outline-none focus:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37]/25'
-const TAG = 'bg-slate-100 text-slate-700 border border-slate-200 rounded-lg px-3 py-1 text-xs font-bold'
-const TAG_GO = 'bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg px-3 py-1 text-xs font-bold'
-const TAG_AVOID = 'bg-rose-50 text-rose-700 border border-rose-200 rounded-lg px-3 py-1 text-xs font-bold'
+const META_TAG =
+  'inline-flex items-center gap-1.5 bg-slate-50 border border-slate-200 text-slate-700 text-xs px-2.5 py-1 rounded-lg font-semibold'
+const TAG_GO =
+  'bg-emerald-50 text-emerald-700 border border-emerald-200 px-3 py-1 rounded-full text-xs font-bold'
+const TAG_AVOID =
+  'bg-rose-50 text-rose-700 border border-rose-200 px-3 py-1 rounded-full text-xs font-bold'
+const TAG_NEUTRAL =
+  'bg-slate-50 text-slate-600 border border-slate-200 px-3 py-1 rounded-full text-xs font-bold'
 const BTN_PRIMARY =
   'bg-[#D4AF37] hover:bg-[#b8952d] text-black font-extrabold py-2.5 px-4 rounded-xl text-sm inline-flex items-center justify-center gap-2 transition-all shadow-sm disabled:cursor-not-allowed disabled:opacity-60'
-const EDIT_LINK = 'text-slate-500 hover:text-[#b8952d] text-xs font-bold cursor-pointer inline-flex items-center gap-1.5 transition-colors'
+const EDIT_LINK =
+  'text-slate-400 hover:text-[#b8952d] text-xs font-bold cursor-pointer inline-flex items-center gap-1.5 transition-colors shrink-0'
 const BTN_SECONDARY =
   'rounded-xl border border-slate-200 bg-slate-100 px-4 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-50'
 const NOTE_BOX =
-  'bg-amber-50/70 text-amber-900 border border-amber-200/80 rounded-xl p-3 text-sm font-semibold leading-relaxed'
+  'bg-amber-50/80 border-r-4 border-amber-400 p-3 rounded-l-xl text-amber-900 text-xs font-medium flex items-start gap-2'
 
 const emptyForm = () => ({
   name: '',
@@ -66,34 +75,16 @@ async function fetchEventsMeta(client: NonNullable<typeof supabase>) {
   return rows
 }
 
-function buildCountryCityMap(rows: MetaRow[]) {
-  const countrySet = new Set<string>()
-  const map: Record<string, Set<string>> = {}
-  rows.forEach((r) => {
-    const ctry = r.country ? String(r.country) : ''
-    const cty = r.city ? String(r.city) : ''
-    if (ctry) {
-      countrySet.add(ctry)
-      if (!map[ctry]) map[ctry] = new Set()
-      if (cty) map[ctry].add(cty)
-    }
-  })
-  const countries = Array.from(countrySet).sort((a, b) => a.localeCompare(b))
-  const citiesByCountry: Record<string, string[]> = {}
-  Object.entries(map).forEach(([k, set]) => {
-    citiesByCountry[k] = Array.from(set).sort((a, b) => a.localeCompare(b))
-  })
-  return { countries, citiesByCountry }
-}
-
 export default function CRMEventsPage() {
   const [initLoading, setInitLoading] = useState(true)
   const [listLoading, setListLoading] = useState(false)
   const [error, setError] = useState('')
 
   const [metaRows, setMetaRows] = useState<MetaRow[]>([])
-  const [countryOptions, setCountryOptions] = useState<string[]>([])
-  const [citiesByCountry, setCitiesByCountry] = useState<Record<string, string[]>>({})
+  const {
+    countries: countryOptions,
+    citiesByCountry,
+  } = usePlacesBankDestinations()
 
   const [filterCountry, setFilterCountry] = useState('all')
   const [filterCity, setFilterCity] = useState('all')
@@ -111,7 +102,6 @@ export default function CRMEventsPage() {
     if (filterCountry === 'all') return []
     return citiesByCountry[filterCountry] || []
   }, [filterCountry, citiesByCountry])
-
   const seasonOptionsForFilter = useMemo(() => {
     const s = new Set<string>()
     metaRows.forEach((r) => {
@@ -192,9 +182,6 @@ export default function CRMEventsPage() {
         const rows = await fetchEventsMeta(supabase)
         if (cancelled) return
         setMetaRows(rows)
-        const { countries, citiesByCountry: cbc } = buildCountryCityMap(rows)
-        setCountryOptions(countries)
-        setCitiesByCountry(cbc)
       } catch (e: any) {
         if (!cancelled) setError(e?.message || 'تعذر تهيئة الفعاليات.')
       } finally {
@@ -289,9 +276,6 @@ export default function CRMEventsPage() {
         if (!supabase) return
         const rows = await fetchEventsMeta(supabase)
         setMetaRows(rows)
-        const { countries, citiesByCountry: cbc } = buildCountryCityMap(rows)
-        setCountryOptions(countries)
-        setCitiesByCountry(cbc)
       } catch {
         /* ignore */
       }
@@ -354,7 +338,7 @@ export default function CRMEventsPage() {
       ) : null}
 
       {/* Filters */}
-      <div className={`${CARD} mb-4 !p-4 sm:!p-6`}>
+      <div className={`${FILTER_CARD} mb-4 !p-4 sm:!p-6`}>
         <div className="mb-4 flex items-center gap-2">
           <Filter size={16} className="text-[#b8952d]" />
           <span className="text-lg font-extrabold text-slate-900">فلترة</span>
@@ -436,7 +420,7 @@ export default function CRMEventsPage() {
       </div>
 
       {/* Cards */}
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-3">
         {events.length === 0 && !listLoading ? (
           <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 p-10 text-center text-sm font-semibold text-slate-500">
             لا توجد فعاليات مطابقة.
@@ -446,71 +430,97 @@ export default function CRMEventsPage() {
             const imp = String(e.impact || '')
             const isFeature = imp === 'feature'
             const isObstacle = imp === 'obstacle'
-            const badgeClass = isFeature ? TAG_GO : isObstacle ? TAG_AVOID : TAG
+            const badgeClass = isFeature ? TAG_GO : isObstacle ? TAG_AVOID : TAG_NEUTRAL
             const badgeText = isFeature ? 'اذهب' : isObstacle ? 'تجنب' : imp || '—'
+            const start = e.start_date ? String(e.start_date).slice(0, 10) : ''
+            const end = e.end_date ? String(e.end_date).slice(0, 10) : ''
+            const dateLabel =
+              start || end
+                ? `${start || '—'} → ${end || '—'}`
+                : null
 
             return (
-              <article key={e.id ?? i} className={`${CARD} overflow-hidden !p-0`}>
-                <div className="flex items-start justify-between gap-3 border-b border-slate-100 p-4 sm:p-6">
-                  <div className="min-w-0 flex-1">
-                    <h2 className="mb-2 text-xl font-black leading-snug text-slate-900">
+              <article key={e.id ?? i} className={CARD}>
+                {/* Header: title + recommendation + edit */}
+                <div className="flex items-center justify-between gap-3 border-b border-slate-100 pb-3">
+                  <div className="flex min-w-0 flex-1 items-center gap-3">
+                    <h2 className="truncate text-base font-black leading-snug text-slate-900 sm:text-lg">
                       {e.name || `فعالية #${e.id}`}
                     </h2>
-                    <span className={`inline-flex items-center ${badgeClass}`}>
-                      {isFeature ? '✓ ' : isObstacle ? '✗ ' : ''}
+                    <span className={`inline-flex shrink-0 items-center ${badgeClass}`}>
                       {badgeText}
                     </span>
                   </div>
                   <button type="button" title="تعديل" onClick={() => openEdit(e)} className={EDIT_LINK}>
-                    <Pencil size={14} /> تعديل
+                    <Pencil size={14} />
+                    <span className="hidden sm:inline">تعديل</span>
                   </button>
                 </div>
 
-                <div className="grid gap-4 p-4 sm:p-6">
-                  <div className="flex flex-wrap gap-2">
+                {/* Tags + date */}
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="flex flex-wrap items-center gap-2">
                     {e.country ? (
-                      <span className={TAG}>🌍 {e.country}</span>
+                      <span className={META_TAG}>
+                        <Globe size={12} className="text-slate-400" />
+                        {e.country}
+                      </span>
                     ) : null}
                     {e.city ? (
-                      <span className={TAG}>📍 {e.city}</span>
+                      <span className={META_TAG}>
+                        <MapPin size={12} className="text-slate-400" />
+                        {e.city}
+                      </span>
                     ) : null}
                     {e.season != null && String(e.season) !== '' ? (
-                      <span className={TAG}>📅 {e.season}</span>
+                      <span className={META_TAG}>
+                        <CalendarDays size={12} className="text-slate-400" />
+                        {e.season}
+                      </span>
                     ) : null}
                     {e.category ? (
-                      <span className={`${TAG} inline-flex items-center gap-1`}>
-                        <Tags size={12} />
+                      <span className={META_TAG}>
+                        <Tags size={12} className="text-slate-400" />
                         {e.category}
                       </span>
                     ) : null}
                     {e.crowd_level ? (
-                      <span className={TAG}>👥 {e.crowd_level}</span>
+                      <span className={META_TAG}>👥 {e.crowd_level}</span>
+                    ) : null}
+                    {imp ? (
+                      <span className={META_TAG}>
+                        <Zap size={12} className="text-slate-400" />
+                        {isFeature ? 'feature' : isObstacle ? 'obstacle' : imp}
+                      </span>
                     ) : null}
                     {e.is_recurring ? (
-                      <span className={`${TAG} inline-flex items-center gap-1`}>
-                        <Repeat size={12} />
+                      <span className={META_TAG}>
+                        <Repeat size={12} className="text-slate-400" />
                         متكررة
                       </span>
                     ) : null}
                   </div>
 
-                  <p className="text-sm font-semibold text-slate-500">
-                    {e.start_date || e.end_date ? (
-                      <>
-                        📆 {e.start_date ? String(e.start_date).slice(0, 10) : '—'}
-                        {e.end_date ? ` → ${String(e.end_date).slice(0, 10)}` : ''}
-                      </>
-                    ) : (
-                      '— لا تواريخ'
-                    )}
-                  </p>
-
-                  {e.notes ? (
-                    <div className={NOTE_BOX}>{e.notes}</div>
+                  {dateLabel ? (
+                    <p
+                      className="inline-flex shrink-0 items-center gap-1.5 text-xs font-bold tracking-wide text-slate-600"
+                      dir="ltr"
+                    >
+                      <CalendarDays size={14} className="text-[#b8952d]" />
+                      {dateLabel}
+                    </p>
                   ) : (
-                    <p className="text-xs font-medium text-slate-500">لا ملاحظات</p>
+                    <p className="text-xs font-medium text-slate-400">لا تواريخ</p>
                   )}
                 </div>
+
+                {/* Note / warning */}
+                {e.notes ? (
+                  <div className={NOTE_BOX}>
+                    <AlertCircle size={16} className="mt-0.5 shrink-0 text-amber-500" aria-hidden />
+                    <span className="leading-relaxed">{e.notes}</span>
+                  </div>
+                ) : null}
               </article>
             )
           })

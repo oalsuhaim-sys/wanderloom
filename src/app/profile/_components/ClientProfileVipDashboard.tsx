@@ -32,6 +32,7 @@ import {
 } from '@/lib/memory-maps-url';
 import { formatShortArabicDate, formatTripDateRange, googleMapsSearchUrl } from '@/lib/public-itinerary';
 import { formatWalletAmount } from '@/lib/vip-wallet-ledger';
+import { PrivateVaultSection } from '@/components/PrivateVaultSection';
 
 type ClientProfileVipDashboardProps = {
   client: ClientProfileSummary;
@@ -745,6 +746,19 @@ export default function ClientProfileVipDashboard({
   const walletBalance = client.walletBalance ?? 0;
   const archiveTrips = pastTrips.length > 0 ? pastTrips : clientTrips;
   const referralCode = client.referralCode?.trim() || null;
+  const souvenirCards = useMemo(() => {
+    const byId = new Map<string, ClientItineraryBridge>();
+    for (const trip of [...pastTrips, ...clientTrips]) {
+      if (trip?.id) byId.set(String(trip.id), trip);
+    }
+    return [...byId.values()].map((trip) => ({
+      destination: trip.destination?.trim() || trip.title?.trim() || 'رحلة Wanderloom',
+      dateRange: formatTripDateRange(trip.startDate, trip.endDate),
+      tripId: trip.slug?.trim() || trip.id,
+      stampText: 'معتمد من Wanderloom',
+    }));
+  }, [pastTrips, clientTrips]);
+
   const tripsForAlbums = useMemo(() => {
     const byId = new Map<string, ClientItineraryBridge>();
     for (const trip of [...clientTrips, ...pastTrips]) {
@@ -839,6 +853,27 @@ export default function ClientProfileVipDashboard({
               onMemoriesChange={onMemoriesChange}
             />
           ) : null}
+
+          <PrivateVaultSection>
+            {souvenirCards.length > 0 ? (
+              <ul className="space-y-3">
+                {souvenirCards.map((card) => (
+                  <li
+                    key={card.tripId}
+                    className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3"
+                  >
+                    <div className="min-w-0 text-right">
+                      <p className="truncate text-sm font-bold text-[#1B242F]">{card.destination}</p>
+                      <p className="mt-0.5 text-[11px] font-medium text-slate-500">{card.dateRange}</p>
+                    </div>
+                    <span className="shrink-0 font-mono text-[10px] font-bold text-[#BA8E48]" dir="ltr">
+                      {card.tripId}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </PrivateVaultSection>
         </div>
       </div>
     </div>

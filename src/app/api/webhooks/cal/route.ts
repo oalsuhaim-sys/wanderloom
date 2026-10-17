@@ -8,18 +8,32 @@ import { assertServiceRoleKeyConfigured } from '@/lib/supabase/server-action-aut
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
+type CalAttendee = {
+  email?: string | null;
+  phone?: string | null;
+  phoneNumber?: string | null;
+};
+
+type CalPayload = {
+  startTime?: string | null;
+  start_time?: string | null;
+  booking_time?: string | null;
+  endTime?: string | null;
+  end_time?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  phoneNumber?: string | null;
+  attendees?: CalAttendee[] | null;
+  responses?: Record<string, unknown> | null;
+  metadata?: Record<string, unknown> | null;
+  uid?: string | null;
+};
+
 type CalWebhookBody = {
   triggerEvent?: string;
-  payload?: {
-    startTime?: string | null;
-    attendees?: Array<{ email?: string | null }> | null;
-    responses?: {
-      email?: { value?: string | null } | string | null;
-    } | null;
-    metadata?: Record<string, unknown> | null;
-    uid?: string | null;
-  };
-};
+  event?: string;
+  payload?: CalPayload;
+} & CalPayload;
 
 function verifyCalSignature(rawBody: string, signatureHeader: string | null, secret: string): boolean {
   if (!secret) return true;
@@ -36,24 +50,147 @@ function verifyCalSignature(rawBody: string, signatureHeader: string | null, sec
   }
 }
 
-function extractClientEmail(payload: NonNullable<CalWebhookBody['payload']>): string {
+function readLooseString(value: unknown): string {
+  if (typeof value === 'string') return value.trim();
+  if (value && typeof value === 'object' && 'value' in value) {
+    return String((value as { value?: unknown }).value ?? '').trim();
+  }
+  return '';
+}
+
+function extractClientEmail(payload: CalPayload): string {
   const fromAttendee = String(payload.attendees?.[0]?.email ?? '')
     .trim()
     .toLowerCase();
   if (fromAttendee.includes('@')) return fromAttendee;
 
-  const responsesEmail = payload.responses?.email;
-  const fromResponses =
-    typeof responsesEmail === 'string'
-      ? responsesEmail
-      : String(responsesEmail?.value ?? '');
-  const normalized = fromResponses.trim().toLowerCase();
-  return normalized.includes('@') ? normalized : '';
+  const direct = String(payload.email ?? '').trim().toLowerCase();
+  if (direct.includes('@')) return direct;
+
+  const fromResponses = readLooseString(payload.responses?.email).toLowerCase();
+  return fromResponses.includes('@') ? fromResponses : '';
+}
+
+function extractPhoneDigits(payload: CalPayload): string {
+  const attendee = payload.attendees?.[0];
+  const candidates = [
+    payload.phoneNumber,
+    payload.phone,
+    attendee?.phoneNumber,
+    attendee?.phone,
+    readLooseString(payload.responses?.phone),
+    readLooseString(payload.responses?.phoneNumber),
+    readLooseString(payload.metadata?.phone),
+    readLooseString(payload.metadata?.phone_wa),
+  ];
+  for (const candidate of candidates) {
+    const digits = String(candidate ?? '').replace(/\D/g, '');
+    if (digits.length >= 8) return digits;
+  }
+  return '';
+}
+
+function formatMeetingDateRiyadh(iso: string): string {
+  return new Date(iso).toLocaleString('ar-SA-u-ca-gregory-nu-latn', {
+    timeZone: 'Asia/Riyadh',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true,
+  });
+}
+
+function readInstant(payload: CalPayload, keys: Array<keyof CalPayload>): string | null {
+  for (const key of keys) {
+    const raw = String(payload[key] ?? '').trim();
+    if (!raw) continue;
+    const parsed = new Date(raw);
+    if (!Number.isNaN(parsed.getTime())) return parsed.toISOString();
+  }
+  return null;
+}
+
+type LeadPatch = Record<string, string | null>;
+
+type LeadMatch = {
+  leadId: string;
+  email: string;
+  phoneDigits: string;
+};
+
+/** Writes the patch, drops unknown columns, and falls back if `meeting_scheduled` is not allowed yet. */
+async function updateLeadRows(
+  supabase: ReturnType<typeof createSupabaseAdminClient>,
+  match: LeadMatch,
+  patch: LeadPatch,
+) {
+  const current: LeadPatch = { ...patch };
+  const filters: Array<'id' | 'email' | 'phone'> = [];
+  if (match.leadId) filters.push('id');
+  else {
+    if (match.email) filters.push('email');
+    if (match.phoneDigits) filters.push('phone');
+  }
+
+  let lastError = 'leads update failed';
+  for (const filter of filters) {
+    const attemptPatch: LeadPatch = { ...current };
+    for (let attempt = 0; attempt < 8; attempt += 1) {
+      let query = supabase.from('leads').update(attemptPatch);
+      if (filter === 'id') query = query.eq('id', match.leadId);
+      else if (filter === 'email') query = query.ilike('email', match.email);
+      else query = query.ilike('phone_wa', `%${match.phoneDigits}%`);
+
+      const { data, error } = await query.select('id, email, meeting_date, status');
+      if (!error) {
+        const rows = data ?? [];
+        if (rows.length > 0 || filter === filters[filters.length - 1]) {
+          return { data: rows, error: null as string | null };
+        }
+        break;
+      }
+
+      const message = error.message ?? '';
+      lastError = message || lastError;
+      const missing = message.match(/Could not find the '([^']+)' column/i)?.[1];
+      if (missing && missing in attemptPatch) {
+        delete attemptPatch[missing];
+        delete current[missing];
+        continue;
+      }
+      if (
+        attemptPatch.meeting_date &&
+        attemptPatch.meeting_raw_timestamp &&
+        attemptPatch.meeting_date !== attemptPatch.meeting_raw_timestamp &&
+        /timestamp|timestamptz|invalid input syntax|date\/time/i.test(message)
+      ) {
+        attemptPatch.meeting_date = attemptPatch.meeting_raw_timestamp;
+        current.meeting_date = current.meeting_raw_timestamp;
+        continue;
+      }
+      if (
+        attemptPatch.status === 'meeting_scheduled' &&
+        /check constraint|meeting_scheduled|invalid input value/i.test(message)
+      ) {
+        attemptPatch.status = 'meeting';
+        current.status = 'meeting';
+        continue;
+      }
+      if (/phone_wa|column|schema cache|does not exist/i.test(message) && filter === 'phone') {
+        break;
+      }
+      return { data: [], error: message || 'leads update failed' };
+    }
+  }
+
+  return { data: [], error: filters.length ? null : lastError };
 }
 
 /**
  * POST /api/webhooks/cal
- * Cal.com → update leads.meeting_date by client email.
+ * Cal.com → meeting instant + radar column (inbox ↔ meetings) by email or WhatsApp.
  */
 export async function POST(request: Request) {
   const serviceKeyError = assertServiceRoleKeyConfigured();
@@ -77,69 +214,82 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: 'Invalid JSON' }, { status: 400 });
   }
 
-  const triggerEvent = String(body.triggerEvent ?? '').trim().toUpperCase();
+  const triggerEvent = String(body.triggerEvent ?? body.event ?? '')
+    .trim()
+    .toUpperCase();
+  const isSchedule = triggerEvent === 'BOOKING_CREATED' || triggerEvent === 'BOOKING_RESCHEDULED';
+  const isCancel = triggerEvent === 'BOOKING_CANCELLED';
 
-  // Accept created + reschedule (same email → meeting_date write)
-  if (triggerEvent !== 'BOOKING_CREATED' && triggerEvent !== 'BOOKING_RESCHEDULED') {
+  if (!isSchedule && !isCancel) {
     return NextResponse.json({ ok: true, ignored: true, triggerEvent });
   }
 
-  const payload = body.payload ?? {};
+  const payload: CalPayload = body.payload ?? body;
   const clientEmail = extractClientEmail(payload);
-  const meetingTimeRaw = String(payload.startTime ?? '').trim();
+  const phoneDigits = extractPhoneDigits(payload);
 
-  if (!clientEmail) {
-    console.warn('[cal/webhook] missing attendee email', { triggerEvent, uid: payload.uid });
-    return NextResponse.json({ ok: false, error: 'Missing attendees[0].email' }, { status: 400 });
-  }
-  if (!meetingTimeRaw) {
-    console.warn('[cal/webhook] missing startTime', { triggerEvent, clientEmail });
-    return NextResponse.json({ ok: false, error: 'Missing payload.startTime' }, { status: 400 });
+  if (!clientEmail && !phoneDigits) {
+    console.warn('[cal/webhook] missing attendee email and phone', { triggerEvent, uid: payload.uid });
+    return NextResponse.json({ ok: false, error: 'Missing attendee email or phone' }, { status: 400 });
   }
 
-  const parsed = new Date(meetingTimeRaw);
-  if (Number.isNaN(parsed.getTime())) {
-    return NextResponse.json({ ok: false, error: 'Invalid startTime' }, { status: 400 });
+  let meetingTime: string | null = null;
+  let meetingEnd: string | null = null;
+  if (isSchedule) {
+    meetingTime = readInstant(payload, ['startTime', 'start_time', 'booking_time']);
+    if (!meetingTime) {
+      console.warn('[cal/webhook] missing startTime', { triggerEvent, clientEmail });
+      return NextResponse.json({ ok: false, error: 'لا يوجد توقيت صالح' }, { status: 400 });
+    }
+    meetingEnd = readInstant(payload, ['endTime', 'end_time']);
   }
-  const meetingTime = parsed.toISOString();
 
-  // Optional: prefer metadata.leadId when embed sends it
-  const metaLeadId = String(
-    payload.metadata?.leadId ?? payload.metadata?.lead_id ?? '',
-  ).trim();
+  const metaLeadId = String(payload.metadata?.leadId ?? payload.metadata?.lead_id ?? '').trim();
+
+  const patch: LeadPatch = isCancel
+    ? {
+        status: 'new',
+        booking_status: 'تم إلغاء الموعد',
+        meeting_date: null,
+        meeting_raw_timestamp: null,
+        meeting_end_timestamp: null,
+      }
+    : {
+        status: 'meeting_scheduled',
+        booking_status: triggerEvent === 'BOOKING_RESCHEDULED' ? 'تم تعديل الموعد' : 'تمت جدولة الاجتماع',
+        meeting_date: meetingTime ? formatMeetingDateRiyadh(meetingTime) : meetingTime,
+        meeting_raw_timestamp: meetingTime,
+        meeting_end_timestamp: meetingEnd,
+      };
 
   try {
     const supabase = createSupabaseAdminClient();
-
-    let query = supabase.from('leads').update({ meeting_date: meetingTime });
-
-    if (metaLeadId) {
-      query = query.eq('id', metaLeadId);
-    } else {
-      query = query.ilike('email', clientEmail);
-    }
-
-    const { data, error } = await query.select('id, email, meeting_date');
+    const { data, error } = await updateLeadRows(
+      supabase,
+      { leadId: metaLeadId, email: clientEmail, phoneDigits },
+      patch,
+    );
 
     if (error) {
-      console.error('[cal/webhook] leads update failed:', error.message);
-      return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+      console.error('[cal/webhook] leads update failed:', error);
+      return NextResponse.json({ ok: false, error }, { status: 500 });
     }
 
-    const updated = data ?? [];
-    console.log('[cal/webhook] meeting_date updated', {
+    console.log('[cal/webhook] lead radar status updated', {
       triggerEvent,
       clientEmail,
+      phoneDigits: phoneDigits ? 'present' : '',
       meetingTime,
-      rows: updated.length,
-      ids: updated.map((r) => r.id),
+      rows: data.length,
+      ids: data.map((row) => row.id),
+      statuses: data.map((row) => row.status),
     });
 
-    if (updated.length === 0) {
+    if (data.length === 0) {
       return NextResponse.json(
         {
           ok: false,
-          error: `No lead found for email: ${clientEmail}`,
+          error: `No lead found for email: ${clientEmail || phoneDigits}`,
           clientEmail,
           meeting_date: meetingTime,
         },
@@ -150,17 +300,20 @@ export async function POST(request: Request) {
     revalidatePath('/crm/radar');
 
     return NextResponse.json({
+      success: true,
+      message: 'Cal event synced',
       ok: true,
       triggerEvent,
       clientEmail,
       meeting_date: meetingTime,
-      updated: updated.length,
-      leadIds: updated.map((r) => r.id),
+      status: data[0]?.status ?? patch.status,
+      updated: data.length,
+      leadIds: data.map((row) => row.id),
     });
   } catch (err) {
-    console.error('[cal/webhook]', err);
+    console.error('Cal Webhook Processing Error:', err);
     return NextResponse.json(
-      { ok: false, error: err instanceof Error ? err.message : 'Webhook failed' },
+      { error: err instanceof Error ? err.message : 'Internal Error' },
       { status: 500 },
     );
   }
@@ -172,8 +325,9 @@ export async function GET() {
     ok: true,
     endpoint: '/api/webhooks/cal',
     method: 'POST',
-    updates: 'leads.meeting_date by email (= attendees[0].email)',
-    events: ['BOOKING_CREATED', 'BOOKING_RESCHEDULED'],
+    updates:
+      'BOOKING_CREATED/RESCHEDULED → status meeting_scheduled + meeting_date ISO; BOOKING_CANCELLED → status new and meeting cleared. Match by email, then phone_wa.',
+    events: ['BOOKING_CREATED', 'BOOKING_RESCHEDULED', 'BOOKING_CANCELLED'],
     configure:
       'Cal.com → Settings → Developer → Webhooks → https://YOUR_DOMAIN/api/webhooks/cal',
   });

@@ -35,3 +35,17 @@ create policy influencers_authenticated_all
 
 comment on table public.influencers is
   'مشاهير ومؤثرون — مصدر الحقيقة بدل celebrities';
+
+-- Upgrade an existing thinner table (create table if not exists does not add columns).
+alter table public.influencers add column if not exists email text;
+alter table public.influencers add column if not exists phone text;
+alter table public.influencers add column if not exists platforms text;
+alter table public.influencers add column if not exists content_type text;
+alter table public.influencers add column if not exists content_focus text;
+alter table public.influencers add column if not exists profile_url text;
+alter table public.influencers add column if not exists status text not null default 'active';
+alter table public.influencers add column if not exists referral_code text;
+
+create unique index if not exists influencers_referral_code_uidx
+  on public.influencers (referral_code)
+  where referral_code is not null and referral_code <> '';

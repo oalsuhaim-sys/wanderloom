@@ -4,7 +4,7 @@ import React, { Suspense, useState, useEffect, useCallback, useMemo, useRef } fr
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { DragDropContext } from '@hello-pangea/dnd';
-import { ArrowRight, Copy, FileStack, Loader2, Plus, Sparkles, Trash2 } from 'lucide-react';
+import { ArrowRight, Copy, Loader2, Plus, Sparkles, Trash2 } from 'lucide-react';
 
 import { getQuoteLedgerAction } from '@/app/actions/invoiceActions';
 import { saveItineraryClientLinkAction } from '@/app/actions/itineraryClientActions';
@@ -21,6 +21,8 @@ import ItineraryPlacesSourceTabs, {
   type ItineraryPlacesSource,
 } from '@/app/crm/itineraries/_components/ItineraryPlacesSourceTabs';
 import TripGeographySelectors from '@/app/crm/itineraries/_components/TripGeographySelectors';
+import { usePlacesBankDestinations } from '@/hooks/usePlacesBankDestinations';
+import { groupExpertsByDestination } from '@/lib/expert-itinerary-matching';
 import ItineraryHotelsEditor from '@/app/crm/itineraries/_components/ItineraryHotelsEditor';
 import BoardingFlightFieldsPanel from '@/app/crm/itineraries/_components/BoardingFlightFieldsPanel';
 import ActivityTicketsEditor from '@/app/crm/itineraries/_components/ActivityTicketsEditor';
@@ -57,8 +59,9 @@ import {
   geographyFromDestinationLabels,
   parseItineraryBuilderPrefill,
 } from '@/lib/itinerary-builder-prefill';
+import { ItineraryTemplateManager } from '@/app/crm/itineraries/_components/ItineraryTemplateManager';
 import {
-  applyTemplateToBuilder,
+  applyTemplatesToBuilder,
   buildTemplateFlightDetails,
   fetchItineraryTemplates,
   saveItineraryTemplate,
@@ -114,6 +117,86 @@ const IDLE_TRIP_KIND_SUB = 'mt-1 block text-xs font-semibold text-slate-500';
 const LOCKED_FIELD =
   'cursor-not-allowed border-slate-200 bg-slate-50 text-slate-500 opacity-80';
 const BUILDER_FIELD = WL_INPUT;
+
+/** localStorage draft for itinerary builder — survives refresh / accidental navigation */
+const BUILDER_DRAFT_VERSION = 1 as const;
+
+type BuilderLocalDraft = {
+  v: typeof BUILDER_DRAFT_VERSION;
+  savedAt: string;
+  tripKind: 'private' | 'group' | null;
+  selectedQuoteId: string;
+  selectedGroupId: string;
+  groupTripName: string;
+  selectedClientId: string;
+  accessCode: string;
+  tripTitle: string;
+  geoTripType: GeoTripType;
+  tripCountries: string[];
+  tripCities: string[];
+  customCitiesText: string;
+  tripDateFrom: string;
+  tripDateTo: string;
+  originCity: string;
+  flightArrivalCity: string;
+  budget: string;
+  paid: string;
+  departureTime: string;
+  arrivalTime: string;
+  gate: string;
+  seat: string;
+  flightNumber: string;
+  terminal: string;
+  flightClass: string;
+  departureCountry: string;
+  arrivalCountry: string;
+  pnr: string;
+  hotels: ItineraryHotelEntry[];
+  itineraryDays: SimpleItineraryDay[];
+  documents: ItineraryDocument[];
+  activityTickets: ActivityTicket[];
+  preTripServices: PreTripService[];
+  supplierRequests: SupplierRequest[];
+  expertId: string;
+  expertName: string;
+};
+
+function builderDraftStorageKey(proposalId: string): string {
+  const id = String(proposalId ?? '').trim() || 'new';
+  return `draft_itinerary_${id}`;
+}
+
+function readBuilderDraft(key: string): BuilderLocalDraft | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = window.localStorage.getItem(key);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as BuilderLocalDraft;
+    if (!parsed || parsed.v !== BUILDER_DRAFT_VERSION) return null;
+    if (!Array.isArray(parsed.itineraryDays)) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function writeBuilderDraft(key: string, draft: BuilderLocalDraft): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(key, JSON.stringify(draft));
+  } catch {
+    /* quota / private mode */
+  }
+}
+
+function clearBuilderDraft(key: string): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.removeItem(key);
+  } catch {
+    /* ignore */
+  }
+}
 
 type ExpertMini = {
   id: string;
@@ -230,6 +313,8 @@ function ItineraryBuilderPageContent() {
     [searchParams],
   );
   const urlPrefillApplied = useRef(false);
+  const draftHydratedRef = useRef(false);
+  const draftSaveTimerRef = useRef<number | null>(null);
   // --- 1. States (الحالات) ---
   const [places, setPlaces] = useState<Record<string, unknown>[]>([]);
   const [placesTotal, setPlacesTotal] = useState(0);
@@ -241,6 +326,17 @@ function ItineraryBuilderPageContent() {
   const [expertsLoadError, setExpertsLoadError] = useState<string | null>(null);
   const [expertId, setExpertId] = useState('');
   const [expertName, setExpertName] = useState('');
+  const {
+    countries: placesBankCountries,
+    citiesByCountry: placesBankCitiesByCountry,
+  } = usePlacesBankDestinations();
+  const placesBankDestinations = useMemo(
+    () => ({
+      countries: placesBankCountries,
+      citiesByCountry: placesBankCitiesByCountry,
+    }),
+    [placesBankCountries, placesBankCitiesByCountry],
+  );
   const [quotes, setQuotes] = useState<QuoteOption[]>([]);
   const [readyGroups, setReadyGroups] = useState<ReadyGroupOption[]>([]);
   /** null حتى يختار الأدمن — إلزامي قبل الحفظ */
@@ -258,10 +354,19 @@ function ItineraryBuilderPageContent() {
   const [originCity, setOriginCity] = useState('');
   const [flightArrivalCity, setFlightArrivalCity] = useState('');
   const [tripTitle, setTripTitle] = useState('');
-  const [geoTripType, setGeoTripType] = useState<GeoTripType>('single');
+  const [geoTripType, setGeoTripType] = useState<GeoTripType>('multi');
   const [tripCountries, setTripCountries] = useState<string[]>([]);
   const [tripCities, setTripCities] = useState<string[]>([]);
   const [customCitiesText, setCustomCitiesText] = useState('');
+  const expertDestinationGroups = useMemo(
+    () =>
+      groupExpertsByDestination(
+        expertsList,
+        [...tripCountries, ...tripCities, tripTitle],
+        placesBankDestinations,
+      ),
+    [expertsList, tripCountries, tripCities, tripTitle, placesBankDestinations],
+  );
   const [tripDateFrom, setTripDateFrom] = useState('');
   const [tripDateTo, setTripDateTo] = useState('');
   const [filterCity, setFilterCity] = useState('');
@@ -290,7 +395,6 @@ function ItineraryBuilderPageContent() {
   const [hotels, setHotels] = useState<ItineraryHotelEntry[]>([createEmptyHotelEntry()]);
 
   const [templates, setTemplates] = useState<ItineraryTemplateRow[]>([]);
-  const [selectedTemplateId, setSelectedTemplateId] = useState('');
   const [templateSaveTitle, setTemplateSaveTitle] = useState('');
   const [templateBusy, setTemplateBusy] = useState(false);
   const [templatesNotice, setTemplatesNotice] = useState('');
@@ -324,6 +428,29 @@ function ItineraryBuilderPageContent() {
   const [aiGenerateOpen, setAiGenerateOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveNotice, setSaveNotice] = useState<string | null>(null);
+  const [draftHint, setDraftHint] = useState<string | null>(null);
+
+  /** Stable draft key — prefer URL quote/client so key doesn't jump after select */
+  const draftProposalId = useMemo(() => {
+    return (
+      urlPrefill.quoteId ||
+      selectedQuoteId ||
+      urlPrefill.clientId ||
+      selectedClientId ||
+      selectedGroupId ||
+      'new'
+    );
+  }, [
+    urlPrefill.quoteId,
+    selectedQuoteId,
+    urlPrefill.clientId,
+    selectedClientId,
+    selectedGroupId,
+  ]);
+  const draftStorageKey = useMemo(
+    () => builderDraftStorageKey(draftProposalId),
+    [draftProposalId],
+  );
 
   // --- 2. جلب البيانات (تخطي أخطاء التايب سكريبت) ---
   useEffect(() => {
@@ -540,6 +667,177 @@ function ItineraryBuilderPageContent() {
     if (urlPrefill.clientId) setSelectedClientId(urlPrefill.clientId);
     if (urlPrefill.quoteId) setSelectedQuoteId(urlPrefill.quoteId);
   }, [urlPrefill]);
+
+  // Restore local draft once per draft key (after URL prefill has had a tick)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    // New key → allow re-hydrate for that proposal
+    draftHydratedRef.current = false;
+
+    const timer = window.setTimeout(() => {
+      draftHydratedRef.current = true;
+
+      const draft = readBuilderDraft(draftStorageKey);
+      if (!draft) return;
+
+      const hasContent =
+        (Array.isArray(draft.itineraryDays) &&
+          draft.itineraryDays.some(
+            (d) =>
+              (Array.isArray(d.places) && d.places.length > 0) ||
+              Boolean(String(d.title ?? '').trim()) ||
+              Boolean(String(d.city ?? '').trim()),
+          )) ||
+        (Array.isArray(draft.hotels) &&
+          draft.hotels.some((h) => Boolean(String(h.name ?? '').trim()))) ||
+        Boolean(String(draft.tripTitle ?? '').trim()) ||
+        Boolean(String(draft.flightNumber ?? '').trim()) ||
+        Boolean(String(draft.pnr ?? '').trim());
+
+      if (!hasContent) return;
+
+      if (draft.tripKind) setTripKind(draft.tripKind);
+      if (draft.selectedQuoteId) setSelectedQuoteId(draft.selectedQuoteId);
+      if (draft.selectedGroupId) setSelectedGroupId(draft.selectedGroupId);
+      if (draft.groupTripName) setGroupTripName(draft.groupTripName);
+      if (draft.selectedClientId) setSelectedClientId(draft.selectedClientId);
+      if (draft.accessCode) setAccessCode(draft.accessCode);
+      if (draft.tripTitle) setTripTitle(draft.tripTitle);
+      if (draft.geoTripType) setGeoTripType(draft.geoTripType);
+      if (Array.isArray(draft.tripCountries)) setTripCountries(draft.tripCountries);
+      if (Array.isArray(draft.tripCities)) setTripCities(draft.tripCities);
+      if (draft.customCitiesText) setCustomCitiesText(draft.customCitiesText);
+      if (draft.tripDateFrom) setTripDateFrom(draft.tripDateFrom);
+      if (draft.tripDateTo) setTripDateTo(draft.tripDateTo);
+      if (draft.originCity) setOriginCity(draft.originCity);
+      if (draft.flightArrivalCity) setFlightArrivalCity(draft.flightArrivalCity);
+      if (draft.budget) setBudget(draft.budget);
+      if (draft.paid) setPaid(draft.paid);
+      if (draft.departureTime) setDepartureTime(draft.departureTime);
+      if (draft.arrivalTime) setArrivalTime(draft.arrivalTime);
+      if (draft.gate) setGate(draft.gate);
+      if (draft.seat) setSeat(draft.seat);
+      if (draft.flightNumber) setFlightNumber(draft.flightNumber);
+      if (draft.terminal) setTerminal(draft.terminal);
+      if (draft.flightClass) setFlightClass(draft.flightClass);
+      if (draft.departureCountry) setDepartureCountry(draft.departureCountry);
+      if (draft.arrivalCountry) setArrivalCountry(draft.arrivalCountry);
+      if (draft.pnr) setPnr(draft.pnr);
+      if (Array.isArray(draft.hotels) && draft.hotels.length) setHotels(draft.hotels);
+      if (Array.isArray(draft.itineraryDays) && draft.itineraryDays.length) {
+        setItineraryDays(draft.itineraryDays);
+      }
+      if (Array.isArray(draft.documents)) setDocuments(draft.documents);
+      if (Array.isArray(draft.activityTickets)) setActivityTickets(draft.activityTickets);
+      if (Array.isArray(draft.preTripServices)) setPreTripServices(draft.preTripServices);
+      if (Array.isArray(draft.supplierRequests)) setSupplierRequests(draft.supplierRequests);
+      if (draft.expertId) setExpertId(draft.expertId);
+      if (draft.expertName) setExpertName(draft.expertName);
+
+      setDraftHint('تم استعادة مسودة محلية محفوظة مسبقاً.');
+      toast.success('تم استعادة مسودة المسار من هذا الجهاز');
+    }, 80);
+
+    return () => window.clearTimeout(timer);
+  }, [draftStorageKey, setItineraryDays]);
+
+  // Continuous auto-save draft → localStorage whenever builder state changes
+  useEffect(() => {
+    if (!draftHydratedRef.current) return;
+    if (typeof window === 'undefined') return;
+
+    if (draftSaveTimerRef.current != null) {
+      window.clearTimeout(draftSaveTimerRef.current);
+    }
+
+    draftSaveTimerRef.current = window.setTimeout(() => {
+      const itineraryData: BuilderLocalDraft = {
+        v: BUILDER_DRAFT_VERSION,
+        savedAt: new Date().toISOString(),
+        tripKind,
+        selectedQuoteId,
+        selectedGroupId,
+        groupTripName,
+        selectedClientId,
+        accessCode,
+        tripTitle,
+        geoTripType,
+        tripCountries,
+        tripCities,
+        customCitiesText,
+        tripDateFrom,
+        tripDateTo,
+        originCity,
+        flightArrivalCity,
+        budget,
+        paid,
+        departureTime,
+        arrivalTime,
+        gate,
+        seat,
+        flightNumber,
+        terminal,
+        flightClass,
+        departureCountry,
+        arrivalCountry,
+        pnr,
+        hotels,
+        itineraryDays,
+        documents,
+        activityTickets,
+        preTripServices,
+        supplierRequests,
+        expertId,
+        expertName,
+      };
+      writeBuilderDraft(draftStorageKey, itineraryData);
+      setDraftHint((prev) => prev ?? 'المسودة تُحفظ تلقائياً على هذا الجهاز.');
+    }, 400);
+
+    return () => {
+      if (draftSaveTimerRef.current != null) {
+        window.clearTimeout(draftSaveTimerRef.current);
+      }
+    };
+  }, [
+    draftStorageKey,
+    tripKind,
+    selectedQuoteId,
+    selectedGroupId,
+    groupTripName,
+    selectedClientId,
+    accessCode,
+    tripTitle,
+    geoTripType,
+    tripCountries,
+    tripCities,
+    customCitiesText,
+    tripDateFrom,
+    tripDateTo,
+    originCity,
+    flightArrivalCity,
+    budget,
+    paid,
+    departureTime,
+    arrivalTime,
+    gate,
+    seat,
+    flightNumber,
+    terminal,
+    flightClass,
+    departureCountry,
+    arrivalCountry,
+    pnr,
+    hotels,
+    itineraryDays,
+    documents,
+    activityTickets,
+    preTripServices,
+    supplierRequests,
+    expertId,
+    expertName,
+  ]);
 
   useEffect(() => {
     if (!urlPrefill.hasAny || urlPrefill.quoteId || !urlPrefill.clientId || !quotes.length) {
@@ -915,28 +1213,44 @@ function ItineraryBuilderPageContent() {
     [allSuppliers, tripCountries, tripCities, geographyDestinationLabel],
   );
 
-  const handleLoadTemplate = useCallback(() => {
-    if (!selectedTemplateId) {
-      setSaveNotice('اختر قالباً من القائمة أولاً.');
-      return;
-    }
-    const template = templates.find((t) => t.id === selectedTemplateId);
-    if (!template) return;
-
-    const applied = applyTemplateToBuilder(template, { currentDateFrom: tripDateFrom });
-    setItineraryDays(applied.days);
-    if (applied.destination) {
-      const dest = applied.destination.trim();
-      if (dest) {
-        applyDestinationsToGeography([dest], { force: true });
-        if (!tripTitle.trim()) setTripTitle(dest);
+  const handleApplyTemplates = useCallback(
+    (options: {
+      templateIds: string[];
+      appendToCurrent: boolean;
+      clearDayTitles: boolean;
+    }) => {
+      const selected = options.templateIds
+        .map((id) => templates.find((t) => t.id === id))
+        .filter((t): t is ItineraryTemplateRow => Boolean(t));
+      if (!selected.length) {
+        setSaveNotice('اختر قالباً من القائمة أولاً.');
+        return;
       }
-    }
-    if (applied.hotels.length > 0) setHotels(applied.hotels);
-    if (applied.datesFrom) setTripDateFrom(applied.datesFrom);
-    if (applied.datesTo) setTripDateTo(applied.datesTo);
-    setSaveNotice(`تم استدعاء القالب: ${template.title}`);
-  }, [selectedTemplateId, templates, tripDateFrom, tripTitle, setItineraryDays]);
+
+      const applied = applyTemplatesToBuilder(selected, {
+        currentDays: itineraryDays,
+        currentHotels: hotels,
+        currentDateFrom: tripDateFrom,
+        appendToCurrent: options.appendToCurrent,
+        clearDayTitles: options.clearDayTitles,
+      });
+      setItineraryDays(applied.days);
+      if (applied.destination && !options.appendToCurrent) {
+        const dest = applied.destination.trim();
+        if (dest) {
+          applyDestinationsToGeography([dest], { force: true });
+          if (!tripTitle.trim()) setTripTitle(dest);
+        }
+      }
+      if (applied.hotels.length > 0) setHotels(applied.hotels);
+      if (applied.datesFrom) setTripDateFrom(applied.datesFrom);
+      if (applied.datesTo) setTripDateTo(applied.datesTo);
+      setSaveNotice(
+        `تم استدعاء ${applied.templateTitles.length} قالب: ${applied.templateTitles.join(' · ')}`,
+      );
+    },
+    [templates, itineraryDays, hotels, tripDateFrom, tripTitle, setItineraryDays],
+  );
 
   const handleSaveAsTemplate = useCallback(async () => {
     if (!supabase) return;
@@ -1171,6 +1485,8 @@ function ItineraryBuilderPageContent() {
 
       setSaveNotice('تم حفظ المسار بنجاح.');
       toast.success('تم حفظ المسار بنجاح!');
+      clearBuilderDraft(draftStorageKey);
+      setDraftHint(null);
       if (itineraryId != null) {
         router.push(`/crm/itineraries/${itineraryId}/edit`);
       }
@@ -1220,6 +1536,7 @@ function ItineraryBuilderPageContent() {
     expertId,
     expertName,
     expertsList,
+    draftStorageKey,
   ]);
 
   const handleDragEnd = useCallback(
@@ -1303,6 +1620,10 @@ function ItineraryBuilderPageContent() {
         >
           {saveNotice}
         </div>
+      ) : null}
+
+      {draftHint ? (
+        <p className="mb-4 text-xs font-medium text-slate-500 dark:text-slate-400">{draftHint}</p>
       ) : null}
 
       {/* نوع المسار — إلزامي قبل البناء */}
@@ -1469,12 +1790,32 @@ function ItineraryBuilderPageContent() {
                 className={BUILDER_FIELD}
               >
                 <option value="">-- اختر الخبير الذي صمم المسار --</option>
-                {expertsList.map((expert) => (
-                  <option key={expert.id} value={expert.id}>
-                    {expert.name}
-                    {expert.specialty_regions ? ` · ${expert.specialty_regions}` : ''}
-                  </option>
-                ))}
+                {expertDestinationGroups.recommended.length > 0 ? (
+                  <optgroup
+                    label={
+                      tripCountries.length || tripCities.length
+                        ? `موصى بهم لـ ${[...tripCountries, ...tripCities].slice(0, 3).join(' · ')}`
+                        : 'خبراء الوجهة'
+                    }
+                  >
+                    {expertDestinationGroups.recommended.map((expert) => (
+                      <option key={expert.id} value={expert.id}>
+                        {expert.name}
+                        {expert.specialty_regions ? ` · ${expert.specialty_regions}` : ''}
+                      </option>
+                    ))}
+                  </optgroup>
+                ) : null}
+                {expertDestinationGroups.others.length > 0 ? (
+                  <optgroup label="خبراء آخرون">
+                    {expertDestinationGroups.others.map((expert) => (
+                      <option key={expert.id} value={expert.id}>
+                        {expert.name}
+                        {expert.specialty_regions ? ` · ${expert.specialty_regions}` : ''}
+                      </option>
+                    ))}
+                  </optgroup>
+                ) : null}
               </select>
               <p
                 className={`mt-1.5 text-[11px] font-bold ${
@@ -1483,7 +1824,9 @@ function ItineraryBuilderPageContent() {
               >
                 {expertsLoadError
                   ? `تعذر تحميل الخبراء: ${expertsLoadError}`
-                  : `تم تحميل ${expertsList.length} خبير من قاعدة البيانات`}
+                  : tripCountries.length || tripCities.length
+                    ? `${expertDestinationGroups.recommended.length} خبير مطابق للوجهة · ${expertsList.length} إجمالي`
+                    : `تم تحميل ${expertsList.length} خبير من قاعدة البيانات — اختر دولة/مدينة لترشيح الخبراء`}
               </p>
             </div>
 
@@ -1591,63 +1934,37 @@ function ItineraryBuilderPageContent() {
       ) : null}
 
       {/* القوالب الجاهزة — متاحة دائماً قبل الحفظ */}
-      <section className={`mb-6 ${WL_SECTION}`}>
-        <h3 className={WL_TITLE}>
-          <FileStack className="h-5 w-5 text-[#D4AF37]" aria-hidden />
-          إدارة القوالب الجاهزة 📁
-        </h3>
-
+      <section className="mb-6 space-y-4">
         {templatesNotice ? (
-          <p className="rounded-xl border border-amber-500/40 bg-amber-950/30 px-3 py-2 text-xs font-bold text-amber-200">
+          <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-800">
             {templatesNotice}
           </p>
         ) : null}
 
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-5 text-slate-800 shadow-sm">
-            <p className="mb-3 block text-base font-bold text-[#D4AF37]">استدعاء قالب جاهز</p>
-            <select
-              value={selectedTemplateId}
-              onChange={(e) => setSelectedTemplateId(e.target.value)}
-              className={BUILDER_FIELD}
-            >
-              <option value="">— اختر قالباً —</option>
-              {templates.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.title}
-                  {t.destination ? ` · ${t.destination}` : ''}
-                </option>
-              ))}
-            </select>
-            <button
-              type="button"
-              onClick={handleLoadTemplate}
-              disabled={!selectedTemplateId}
-              className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#D4AF37] px-4 py-3 font-extrabold text-black shadow-md transition-all hover:bg-[#b8952d] disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              استدعاء القالب إلى المسار
-            </button>
-          </div>
+        <ItineraryTemplateManager
+          currentDayCount={itineraryDays.length}
+          availableTemplates={templates}
+          onApply={handleApplyTemplates}
+        />
 
-          <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-5 text-slate-800 shadow-sm">
-            <p className="mb-3 block text-base font-bold text-[#D4AF37]">حفظ كقالب</p>
-            <input
-              type="text"
-              value={templateSaveTitle}
-              onChange={(e) => setTemplateSaveTitle(e.target.value)}
-              placeholder="اسم القالب — مثال: باريس 5 أيام"
-              className={BUILDER_FIELD}
-            />
-            <button
-              type="button"
-              onClick={() => void handleSaveAsTemplate()}
-              disabled={templateBusy}
-              className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#D4AF37]/40 bg-slate-100 px-4 py-2.5 text-sm font-bold text-[#D4AF37] transition-all hover:bg-slate-200 disabled:opacity-60"
-            >
-              <Copy className="h-4 w-4" aria-hidden />
-              {templateBusy ? 'جاري الحفظ…' : 'حفظ كقالب'}
-            </button>
-          </div>
+        <div className="flex flex-col gap-3 rounded-3xl border border-slate-200 bg-white p-5 text-slate-800 shadow-sm">
+          <p className="text-sm font-bold text-[#111827]">حفظ كقالب</p>
+          <input
+            type="text"
+            value={templateSaveTitle}
+            onChange={(e) => setTemplateSaveTitle(e.target.value)}
+            placeholder="اسم القالب — مثال: باريس 5 أيام"
+            className={BUILDER_FIELD}
+          />
+          <button
+            type="button"
+            onClick={() => void handleSaveAsTemplate()}
+            disabled={templateBusy}
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#C59B4B]/40 bg-[#F8F5EE] px-4 py-2.5 text-sm font-bold text-[#8C6D2D] transition-all hover:bg-[#F2E8D7] disabled:opacity-60"
+          >
+            <Copy className="h-4 w-4" aria-hidden />
+            {templateBusy ? 'جاري الحفظ…' : 'حفظ كقالب'}
+          </button>
         </div>
       </section>
 

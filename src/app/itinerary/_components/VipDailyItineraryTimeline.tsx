@@ -24,7 +24,11 @@ import {
   type VipTransitIconKind,
 } from '@/lib/public-itinerary'
 import { getVipPlaceCategoryMeta } from '@/lib/vip-place-category'
+import ClientItineraryMapView from './ClientItineraryMapView'
 import DayWeatherPill from './DayWeatherPill'
+import VipItineraryViewToggle, {
+  type ItineraryDayViewMode,
+} from './VipItineraryViewToggle'
 
 const TXT_EMPTY_DAYS = 'جاري تنسيق تفاصيل أيام رحلتك'
 const TXT_DAY_PREFIX = 'اليوم'
@@ -725,6 +729,7 @@ export default function VipDailyItineraryTimeline({
 }: VipDailyItineraryTimelineProps) {
   const [memoryUploadingId, setMemoryUploadingId] = useState<string | null>(null)
   const [activeDayNav, setActiveDayNav] = useState(0)
+  const [viewMode, setViewMode] = useState<ItineraryDayViewMode>('timeline')
   const resolvedTripId = String(tripId ?? itineraryId ?? '').trim()
 
   const rangeLabel =
@@ -771,46 +776,66 @@ export default function VipDailyItineraryTimeline({
 
       {heroFooter}
 
-      <nav
-        className="sticky top-4 z-40 mb-10 flex gap-2 overflow-x-auto rounded-2xl border border-gray-100 bg-white/80 p-2 shadow-sm backdrop-blur-md [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-        aria-label="التنقل بين أيام الرحلة"
-      >
-        {days.map((day, index) => {
-          const isActive = activeDayNav === index
-          return (
-            <button
-              key={`day-nav-${day.index}`}
-              type="button"
-              onClick={() => scrollToDay(index)}
-              className={`whitespace-nowrap rounded-xl border px-5 py-2 text-sm font-bold transition-colors ${
-                isActive
-                  ? 'border-[#1A3B2A] bg-[#1A3B2A] text-white'
-                  : 'border-gray-200 bg-[#F9F9F6] text-gray-700 hover:bg-[#1A3B2A] hover:text-white'
-              }`}
-            >
-              {day.tabLabel?.trim() || `${TXT_DAY_PREFIX} ${index + 1}`}
-            </button>
-          )
-        })}
-      </nav>
+      <div className="mb-6 px-1">
+        <VipItineraryViewToggle mode={viewMode} onChange={setViewMode} />
+      </div>
 
-      <div className="relative mr-4 space-y-12 border-r-2 border-[#C5A059]/20 pr-10 md:mr-8 md:pr-12">
-        {days.map((day, index) => (
-          <DayBlock
-            key={`day-${day.index}`}
-            day={day}
-            dayIndex={index}
+      {viewMode === 'map' ? (
+        <div className="-mx-1 overflow-hidden rounded-3xl bg-[#0B0F17] shadow-2xl">
+          <ClientItineraryMapView
+            days={days}
+            tripTitle={tripTitle}
             destination={destination}
             startDate={startDate}
-            tripId={resolvedTripId}
-            magicLinkId={magicLinkId}
-            clientId={clientId}
-            memoryUploadingId={memoryUploadingId}
-            onUploadStart={setMemoryUploadingId}
-            onUploadEnd={() => setMemoryUploadingId(null)}
+            endDate={endDate}
+            subtitle={rangeLabel === 'التواريخ قريباً' ? destination : rangeLabel}
+            hideTitle
           />
-        ))}
-      </div>
+        </div>
+      ) : (
+        <>
+          <nav
+            className="sticky top-4 z-40 mb-10 flex gap-2 overflow-x-auto rounded-2xl border border-gray-100 bg-white/80 p-2 shadow-sm backdrop-blur-md [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            aria-label="التنقل بين أيام الرحلة"
+          >
+            {days.map((day, index) => {
+              const isActive = activeDayNav === index
+              return (
+                <button
+                  key={`day-nav-${day.index}`}
+                  type="button"
+                  onClick={() => scrollToDay(index)}
+                  className={`whitespace-nowrap rounded-xl border px-5 py-2 text-sm font-bold transition-colors ${
+                    isActive
+                      ? 'border-[#1A3B2A] bg-[#1A3B2A] text-white'
+                      : 'border-gray-200 bg-[#F9F9F6] text-gray-700 hover:bg-[#1A3B2A] hover:text-white'
+                  }`}
+                >
+                  {day.tabLabel?.trim() || `${TXT_DAY_PREFIX} ${index + 1}`}
+                </button>
+              )
+            })}
+          </nav>
+
+          <div className="relative mr-4 space-y-12 border-r-2 border-[#C5A059]/20 pr-10 md:mr-8 md:pr-12">
+            {days.map((day, index) => (
+              <DayBlock
+                key={`day-${day.index}`}
+                day={day}
+                dayIndex={index}
+                destination={destination}
+                startDate={startDate}
+                tripId={resolvedTripId}
+                magicLinkId={magicLinkId}
+                clientId={clientId}
+                memoryUploadingId={memoryUploadingId}
+                onUploadStart={setMemoryUploadingId}
+                onUploadEnd={() => setMemoryUploadingId(null)}
+              />
+            ))}
+          </div>
+        </>
+      )}
     </div>
   )
 }

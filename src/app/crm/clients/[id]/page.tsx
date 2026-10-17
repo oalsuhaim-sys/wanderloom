@@ -24,6 +24,7 @@ import Client360Profile from '@/app/crm/clients/_components/Client360Profile';
 import ClientFinancialHub from '@/app/crm/clients/_components/ClientFinancialHub';
 import ClientWalletLedgerCard from '@/app/crm/clients/_components/ClientWalletLedgerCard';
 import ReferralQrCard from '@/app/crm/clients/_components/ReferralQrCard';
+import { ClientReferralBadge } from '@/components/crm/ClientReferralBadge';
 import VipSpendingTierBadge from '@/components/VipSpendingTierBadge';
 import {
   formatWalletAmount,
@@ -1664,6 +1665,15 @@ export default function ClientDetailPage() {
               <Gift size={16} />
               كود الإحالة
             </h2>
+            {String(client.used_code ?? '').trim() ? (
+              <div className="mb-4">
+                <p className="mb-2 text-xs font-medium text-slate-500">الكود المستخدم عند التسجيل</p>
+                <ClientReferralBadge
+                  clientName={String(client.name ?? '')}
+                  referralCodeUsed={String(client.used_code).trim()}
+                />
+              </div>
+            ) : null}
             {client.ref_code ? (
               <div>
                 {editingCode ? (

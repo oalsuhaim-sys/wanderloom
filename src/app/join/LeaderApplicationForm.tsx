@@ -5,6 +5,8 @@ import { useSearchParams } from 'next/navigation'
 import { Loader2, Send, Sparkles } from 'lucide-react'
 
 import { submitLeaderApplication, type LeaderApplicationState } from '@/app/actions/submitLeaderApplication'
+import { WhatsAppInput } from '@/components/WhatsAppInput'
+import { WHATSAPP_INCOMPLETE_ERROR } from '@/lib/phoneUtils'
 import ClientDnaAdvancedFieldsEditor from '@/app/crm/clients/_components/ClientDnaAdvancedFieldsEditor'
 import {
   normalizeAffiliateRef,
@@ -25,6 +27,8 @@ function LeaderApplicationFormInner() {
   const [state, setState] = useState<LeaderApplicationState | null>(null)
   const [pending, startTransition] = useTransition()
   const [leaderCode, setLeaderCode] = useState('')
+  const [fullPhone, setFullPhone] = useState('')
+  const [isPhoneValid, setIsPhoneValid] = useState(false)
   const [dna, setDna] = useState({
     dna_interests: '',
     dna_special_requests: '',
@@ -44,6 +48,10 @@ function LeaderApplicationFormInner() {
 
   function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
+    if (!isPhoneValid) {
+      setState({ ok: false, error: WHATSAPP_INCOMPLETE_ERROR })
+      return
+    }
     const form = e.currentTarget
     const fd = new FormData(form)
     const ref = normalizeAffiliateRef(leaderCode) || normalizeAffiliateRef(fd.get('leader_code') as string)
@@ -113,17 +121,17 @@ function LeaderApplicationFormInner() {
           <span className={FIELD_LABEL}>الاسم الكامل *</span>
           <input name="name" required className={INPUT_CLASS} dir="rtl" placeholder="اسمك كما في الجواز" />
         </label>
-        <label className="block">
-          <span className={FIELD_LABEL}>رقم الجوال (واتساب) *</span>
-          <input
+        <div className="block">
+          <WhatsAppInput
             name="phone_wa"
+            value={fullPhone}
+            onChange={(phone, isValid) => {
+              setFullPhone(phone)
+              setIsPhoneValid(isValid)
+            }}
             required
-            type="tel"
-            className={INPUT_CLASS}
-            dir="ltr"
-            placeholder="+966…"
           />
-        </label>
+        </div>
         <label className="block">
           <span className={FIELD_LABEL}>البريد الإلكتروني</span>
           <input name="email" type="email" className={INPUT_CLASS} dir="ltr" placeholder="email@…" />
@@ -134,7 +142,7 @@ function LeaderApplicationFormInner() {
 
       <button
         type="submit"
-        disabled={pending}
+        disabled={pending || !isPhoneValid}
         className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[#1e3f20] px-6 py-4 text-sm font-black text-white shadow-lg shadow-[#1e3f20]/20 transition hover:bg-[#163018] disabled:cursor-not-allowed disabled:opacity-60"
       >
         {pending ? (

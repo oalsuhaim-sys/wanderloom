@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowRight, Loader2, MessageCircle, Plus, Trash2, Copy, CopyPlus, FileStack, Camera, Sparkles } from 'lucide-react';
+import { ArrowRight, Loader2, MessageCircle, Plus, Trash2, Copy, CopyPlus, Camera, Sparkles } from 'lucide-react';
 import { DragDropContext } from '@hello-pangea/dnd';
 
 import {
@@ -27,6 +27,8 @@ import ItineraryPlacesSourceTabs, {
   type ItineraryPlacesSource,
 } from '@/app/crm/itineraries/_components/ItineraryPlacesSourceTabs';
 import TripGeographySelectors from '@/app/crm/itineraries/_components/TripGeographySelectors';
+import { usePlacesBankDestinations } from '@/hooks/usePlacesBankDestinations';
+import { groupExpertsByDestination } from '@/lib/expert-itinerary-matching';
 import ItineraryHotelsEditor from '@/app/crm/itineraries/_components/ItineraryHotelsEditor';
 import BoardingFlightFieldsPanel from '@/app/crm/itineraries/_components/BoardingFlightFieldsPanel';
 import ActivityTicketsEditor from '@/app/crm/itineraries/_components/ActivityTicketsEditor';
@@ -62,8 +64,9 @@ import {
   WL_SELECT,
   WL_TITLE,
 } from '@/lib/itinerary-builder-ui';
+import { ItineraryTemplateManager } from '@/app/crm/itineraries/_components/ItineraryTemplateManager';
 import {
-  applyTemplateToBuilder,
+  applyTemplatesToBuilder,
   buildTemplateFlightDetails,
   fetchItineraryTemplates,
   saveItineraryTemplate,
@@ -338,6 +341,17 @@ export default function EditItineraryPage() {
   const [expertsLoadError, setExpertsLoadError] = useState<string | null>(null);
   const [expertId, setExpertId] = useState('');
   const [expertName, setExpertName] = useState('');
+  const {
+    countries: placesBankCountries,
+    citiesByCountry: placesBankCitiesByCountry,
+  } = usePlacesBankDestinations();
+  const placesBankDestinations = useMemo(
+    () => ({
+      countries: placesBankCountries,
+      citiesByCountry: placesBankCitiesByCountry,
+    }),
+    [placesBankCountries, placesBankCitiesByCountry],
+  );
   const [clientId, setClientId] = useState('');
   const [clientLinkSaving, setClientLinkSaving] = useState(false);
   const [itineraryShareSlug, setItineraryShareSlug] = useState('');
@@ -348,12 +362,21 @@ export default function EditItineraryPage() {
   const [originCity, setOriginCity] = useState('');
   const [flightArrivalCity, setFlightArrivalCity] = useState('');
   const [tripTitle, setTripTitle] = useState('');
-  const [geoTripType, setGeoTripType] = useState<GeoTripType>('single');
+  const [geoTripType, setGeoTripType] = useState<GeoTripType>('multi');
   const [tripCountries, setTripCountries] = useState<string[]>([]);
   const [tripCities, setTripCities] = useState<string[]>([]);
   const [customCitiesText, setCustomCitiesText] = useState('');
   const [tripDateFrom, setTripDateFrom] = useState('');
   const [tripDateTo, setTripDateTo] = useState('');
+  const expertDestinationGroups = useMemo(
+    () =>
+      groupExpertsByDestination(
+        expertsList,
+        [...tripCountries, ...tripCities, tripTitle],
+        placesBankDestinations,
+      ),
+    [expertsList, tripCountries, tripCities, tripTitle, placesBankDestinations],
+  );
   const [filterCity, setFilterCity] = useState('');
   const [filterCategory, setFilterCategory] = useState('');
   const [placesSourceTab, setPlacesSourceTab] = useState<ItineraryPlacesSource>('bank');
@@ -376,7 +399,6 @@ export default function EditItineraryPage() {
   const [preTripServices, setPreTripServices] = useState<PreTripService[]>([]);
 
   const [templates, setTemplates] = useState<ItineraryTemplateRow[]>([]);
-  const [selectedTemplateId, setSelectedTemplateId] = useState('');
   const [templateSaveTitle, setTemplateSaveTitle] = useState('');
   const [templateBusy, setTemplateBusy] = useState(false);
   const [templatesNotice, setTemplatesNotice] = useState('');
@@ -1023,25 +1045,41 @@ export default function EditItineraryPage() {
     }
   }, [templateSaveTitle, geographyDestinationLabel, flightArrivalCity, itineraryDays, hotels, id, originCity, departureTime, arrivalTime, gate, seat, pnr, flightNumber, terminal, flightClass, departureCountry, arrivalCountry, supabase]);
 
-  const handleLoadTemplate = useCallback(() => {
-    if (!selectedTemplateId) {
-      setNotice('اختر قالباً من القائمة أولاً.');
-      return;
-    }
-    const template = templates.find((t) => t.id === selectedTemplateId);
-    if (!template) return;
+  const handleApplyTemplates = useCallback(
+    (options: {
+      templateIds: string[];
+      appendToCurrent: boolean;
+      clearDayTitles: boolean;
+    }) => {
+      const selected = options.templateIds
+        .map((id) => templates.find((t) => t.id === id))
+        .filter((t): t is ItineraryTemplateRow => Boolean(t));
+      if (!selected.length) {
+        setNotice('اختر قالباً من القائمة أولاً.');
+        return;
+      }
 
-    const applied = applyTemplateToBuilder(template, { currentDateFrom: tripDateFrom });
-    setItineraryDays(applied.days);
-    if (applied.destination) {
-      const dest = applied.destination.trim();
-      if (dest) setTripCities([dest]);
-    }
-    if (applied.hotels.length > 0) setHotels(applied.hotels);
-    if (applied.datesFrom) setTripDateFrom(applied.datesFrom);
-    if (applied.datesTo) setTripDateTo(applied.datesTo);
-    setNotice(`✅ تم استدعاء القالب: ${template.title}`);
-  }, [selectedTemplateId, templates, tripDateFrom]);
+      const applied = applyTemplatesToBuilder(selected, {
+        currentDays: itineraryDays,
+        currentHotels: hotels,
+        currentDateFrom: tripDateFrom,
+        appendToCurrent: options.appendToCurrent,
+        clearDayTitles: options.clearDayTitles,
+      });
+      setItineraryDays(applied.days);
+      if (applied.destination && !options.appendToCurrent) {
+        const dest = applied.destination.trim();
+        if (dest) setTripCities([dest]);
+      }
+      if (applied.hotels.length > 0) setHotels(applied.hotels);
+      if (applied.datesFrom) setTripDateFrom(applied.datesFrom);
+      if (applied.datesTo) setTripDateTo(applied.datesTo);
+      setNotice(
+        `✅ تم استدعاء ${applied.templateTitles.length} قالب: ${applied.templateTitles.join(' · ')}`,
+      );
+    },
+    [templates, itineraryDays, hotels, tripDateFrom],
+  );
 
   const handleShareWhatsApp = useCallback(() => {
     const tripId = String(id ?? '').trim();
@@ -1633,12 +1671,32 @@ export default function EditItineraryPage() {
                 className={EDIT_HEADER_FIELD}
               >
                 <option value="">-- اختر الخبير الذي صمم المسار --</option>
-                {expertsList.map((expert) => (
-                  <option key={expert.id} value={expert.id}>
-                    {expert.name}
-                    {expert.specialty_regions ? ` · ${expert.specialty_regions}` : ''}
-                  </option>
-                ))}
+                {expertDestinationGroups.recommended.length > 0 ? (
+                  <optgroup
+                    label={
+                      tripCountries.length || tripCities.length
+                        ? `موصى بهم لـ ${[...tripCountries, ...tripCities].slice(0, 3).join(' · ')}`
+                        : 'خبراء الوجهة'
+                    }
+                  >
+                    {expertDestinationGroups.recommended.map((expert) => (
+                      <option key={expert.id} value={expert.id}>
+                        {expert.name}
+                        {expert.specialty_regions ? ` · ${expert.specialty_regions}` : ''}
+                      </option>
+                    ))}
+                  </optgroup>
+                ) : null}
+                {expertDestinationGroups.others.length > 0 ? (
+                  <optgroup label="خبراء آخرون">
+                    {expertDestinationGroups.others.map((expert) => (
+                      <option key={expert.id} value={expert.id}>
+                        {expert.name}
+                        {expert.specialty_regions ? ` · ${expert.specialty_regions}` : ''}
+                      </option>
+                    ))}
+                  </optgroup>
+                ) : null}
               </select>
               <p
                 className={`mt-1.5 text-[11px] font-bold ${
@@ -1647,7 +1705,9 @@ export default function EditItineraryPage() {
               >
                 {expertsLoadError
                   ? `تعذر تحميل الخبراء: ${expertsLoadError}`
-                  : `تم تحميل ${expertsList.length} خبير من قاعدة البيانات`}
+                  : tripCountries.length || tripCities.length
+                    ? `${expertDestinationGroups.recommended.length} خبير مطابق للوجهة · ${expertsList.length} إجمالي`
+                    : `تم تحميل ${expertsList.length} خبير — اختر دولة/مدينة لترشيح الخبراء`}
               </p>
             </div>
 
@@ -1727,63 +1787,37 @@ export default function EditItineraryPage() {
         </p>
       ) : null}
 
-      <section className={`mb-6 ${WL_SECTION}`}>
-        <h3 className="mb-4 flex items-center gap-2 text-lg font-bold text-[#D4AF37]">
-          <FileStack className="h-5 w-5 text-[#D4AF37]" aria-hidden />
-          إدارة القوالب الجاهزة 📁
-        </h3>
-
+      <section className="mb-6 space-y-4">
         {templatesNotice ? (
-          <p className="rounded-xl border border-amber-500/40 bg-amber-950/30 px-3 py-2 text-xs font-bold text-amber-200">
+          <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-800">
             {templatesNotice}
           </p>
         ) : null}
 
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-5 text-slate-800 shadow-sm">
-            <p className="mb-3 block text-base font-bold text-[#D4AF37]">استدعاء قالب جاهز</p>
-            <select
-              value={selectedTemplateId}
-              onChange={(e) => setSelectedTemplateId(e.target.value)}
-              className={WL_INPUT}
-            >
-              <option value="">— اختر قالباً —</option>
-              {templates.map((t) => (
-                <option key={t?.id ?? ''} value={t?.id ?? ''}>
-                  {t?.title ?? 'قالب'}
-                  {t?.destination ? ` · ${t.destination}` : ''}
-                </option>
-              ))}
-            </select>
-            <button
-              type="button"
-              onClick={handleLoadTemplate}
-              disabled={!selectedTemplateId}
-              className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#D4AF37] px-4 py-3 font-extrabold text-black shadow-md transition-all hover:bg-[#b8952d] disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              استدعاء القالب إلى المسار
-            </button>
-          </div>
+        <ItineraryTemplateManager
+          currentDayCount={itineraryDays.length}
+          availableTemplates={templates}
+          onApply={handleApplyTemplates}
+        />
 
-          <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-5 text-slate-800 shadow-sm">
-            <p className="mb-3 block text-base font-bold text-[#D4AF37]">حفظ كقالب</p>
-            <input
-              type="text"
-              value={templateSaveTitle}
-              onChange={(e) => setTemplateSaveTitle(e.target.value)}
-              placeholder="اسم القالب — مثال: باريس 5 أيام"
-              className={WL_INPUT}
-            />
-            <button
-              type="button"
-              onClick={() => void handleSaveAsTemplate()}
-              disabled={templateBusy || readOnly}
-              className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#D4AF37]/40 bg-slate-100 px-4 py-2.5 text-sm font-bold text-[#D4AF37] transition-all hover:bg-slate-200 disabled:opacity-60"
-            >
-              <Copy className="h-4 w-4" aria-hidden />
-              {templateBusy ? 'جاري الحفظ…' : readOnly ? 'قراءة فقط' : 'حفظ كقالب'}
-            </button>
-          </div>
+        <div className="flex flex-col gap-3 rounded-3xl border border-slate-200 bg-white p-5 text-slate-800 shadow-sm">
+          <p className="text-sm font-bold text-[#111827]">حفظ كقالب</p>
+          <input
+            type="text"
+            value={templateSaveTitle}
+            onChange={(e) => setTemplateSaveTitle(e.target.value)}
+            placeholder="اسم القالب — مثال: باريس 5 أيام"
+            className={WL_INPUT}
+          />
+          <button
+            type="button"
+            onClick={() => void handleSaveAsTemplate()}
+            disabled={templateBusy || readOnly}
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#C59B4B]/40 bg-[#F8F5EE] px-4 py-2.5 text-sm font-bold text-[#8C6D2D] transition-all hover:bg-[#F2E8D7] disabled:opacity-60"
+          >
+            <Copy className="h-4 w-4" aria-hidden />
+            {templateBusy ? 'جاري الحفظ…' : readOnly ? 'قراءة فقط' : 'حفظ كقالب'}
+          </button>
         </div>
       </section>
 

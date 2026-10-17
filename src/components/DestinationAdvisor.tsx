@@ -14,13 +14,11 @@ import {
 
 import { useTripDestinations } from '@/hooks/useCountries';
 import {
-  ADVISOR_COUNTRY_IDS,
   getCountryAdvisorData,
   SEASON_KEYS,
   SEASON_LABELS,
   type SeasonKey,
 } from '@/lib/destination-advisor-data';
-import type { TripCountryId } from '@/lib/trip-destination-data';
 
 type Step = 1 | 2 | 3;
 
@@ -63,18 +61,16 @@ function AdvisorImage({
 export default function DestinationAdvisor() {
   const { tripDestinations } = useTripDestinations();
   const [step, setStep] = useState<Step>(1);
-  const [countryId, setCountryId] = useState<TripCountryId | null>(null);
+  const [countryId, setCountryId] = useState<string | null>(null);
   const [seasonKey, setSeasonKey] = useState<SeasonKey | null>(null);
 
-  const advisorCountryIds = useMemo(() => {
-    const dynamicIds = tripDestinations.map((country) => country.id);
-    return Array.from(new Set([...ADVISOR_COUNTRY_IDS, ...dynamicIds])) as TripCountryId[];
-  }, [tripDestinations]);
+  const advisorCountries = useMemo(() => tripDestinations, [tripDestinations]);
 
-  const countryData = useMemo(
-    () => (countryId ? getCountryAdvisorData(countryId) : null),
-    [countryId],
-  );
+  const countryData = useMemo(() => {
+    if (!countryId) return null;
+    const label = tripDestinations.find((c) => c.id === countryId)?.labelAr;
+    return getCountryAdvisorData(countryId, label);
+  }, [countryId, tripDestinations]);
 
   const seasonData = useMemo(() => {
     if (!countryData || !seasonKey) return null;
@@ -84,7 +80,7 @@ export default function DestinationAdvisor() {
   const countryLabel =
     tripDestinations.find((c) => c.id === countryId)?.labelAr ?? countryData?.name ?? '';
 
-  const selectCountry = (id: TripCountryId) => {
+  const selectCountry = (id: string) => {
     setCountryId(id);
     setSeasonKey(null);
     setStep(2);
@@ -173,26 +169,31 @@ export default function DestinationAdvisor() {
       <div className="w-full rounded-3xl border border-[#1C2E3A]/10 bg-white/80 p-6 shadow-sm backdrop-blur-sm sm:p-8">
         {step === 1 ? (
           <div className="flex flex-wrap justify-center gap-3.5 leading-relaxed">
-            {advisorCountryIds.map((id) => {
-              const label = tripDestinations.find((c) => c.id === id)?.labelAr ?? id;
-              const hasAdvisorData = Boolean(getCountryAdvisorData(id));
-              const isSelected = countryId === id;
-              return (
-                <button
-                  key={id}
-                  type="button"
-                  onClick={() => hasAdvisorData && selectCountry(id)}
-                  disabled={!hasAdvisorData}
-                  className={`wl-dest-tag inline-flex cursor-pointer select-none rounded-full border px-5 py-2.5 text-sm transition-all duration-300 disabled:cursor-not-allowed disabled:opacity-45 ${
-                    isSelected
-                      ? 'border-[#9C7A3C] bg-[#1C2E3A] font-medium text-[#F4EFE6] shadow-md'
-                      : 'border-[#1C2E3A]/10 bg-white/90 font-medium text-[#1C2E3A] shadow-sm hover:border-[#9C7A3C] hover:text-[#9C7A3C]'
-                  }`}
-                >
-                  {label}
-                </button>
-              );
-            })}
+            {advisorCountries.length === 0 ? (
+              <p className="text-sm font-bold text-gray-500">
+                لا وجهات في بنك الأماكن بعد — أضف أماكن من الخزنة لتظهر هنا.
+              </p>
+            ) : (
+              advisorCountries.map((country) => {
+                const id = country.id;
+                const label = country.labelAr;
+                const isSelected = countryId === id;
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => selectCountry(id)}
+                    className={`wl-dest-tag inline-flex cursor-pointer select-none rounded-full border px-5 py-2.5 text-sm transition-all duration-300 ${
+                      isSelected
+                        ? 'border-[#9C7A3C] bg-[#1C2E3A] font-medium text-[#F4EFE6] shadow-md'
+                        : 'border-[#1C2E3A]/10 bg-white/90 font-medium text-[#1C2E3A] shadow-sm hover:border-[#9C7A3C] hover:text-[#9C7A3C]'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                );
+              })
+            )}
           </div>
         ) : null}
 

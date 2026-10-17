@@ -20,6 +20,11 @@ export type HotelRow = {
   booking_url: string | null;
   notes: string | null;
   manager_name: string | null;
+  /** رقم الهاتف / واتساب الأساسي */
   contact_number: string | null;
+  /** بريد التواصل الأساسي (يُعرض في عمود التواصل) */
+  email: string | null;
+  /** رقم واتساب اختياري إن اختلف عن contact_number */
+  whatsapp?: string | null;
   created_at: string;
 };

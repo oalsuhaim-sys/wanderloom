@@ -1,4 +1,5 @@
 import { CRM_DESTINATIONS_GUIDE } from '@/lib/crm-destinations-guide-data';
+import type { PlacesBankDestinations } from '@/lib/places-bank';
 import { parsePartnerDnaProfile } from '@/lib/partner-dna';
 
 export type MatchableExpert = {
@@ -44,7 +45,10 @@ function isActiveExpertStatus(status: unknown): boolean {
 }
 
 /** Expand Arabic/English destination tokens so "روسيا" also matches "Russia" / guide ids / cities. */
-function expandDestinationTokens(raw: string): string[] {
+function expandDestinationTokens(
+  raw: string,
+  placesBank?: PlacesBankDestinations | null,
+): string[] {
   const base = normalizeDestination(raw);
   if (!base) return [];
 
@@ -65,6 +69,23 @@ function expandDestinationTokens(raw: string): string[] {
     }
   }
 
+  if (placesBank?.countries?.length) {
+    for (const country of placesBank.countries) {
+      const countryNorm = normalizeDestination(country);
+      const cities = (placesBank.citiesByCountry[country] ?? []).map(normalizeDestination);
+      const related = [countryNorm, ...cities].filter(Boolean);
+      const hits = related.some(
+        (token) =>
+          token &&
+          (base === token || base.includes(token) || token.includes(base)),
+      );
+      if (!hits) continue;
+      for (const token of related) {
+        if (token) out.add(token);
+      }
+    }
+  }
+
   return [...out];
 }
 
@@ -82,22 +103,28 @@ export function expertSpecialtyDestinations(expert: MatchableExpert): string[] {
   );
 }
 
-function expertSpecialtyTokens(expert: MatchableExpert): string[] {
+function expertSpecialtyTokens(
+  expert: MatchableExpert,
+  placesBank?: PlacesBankDestinations | null,
+): string[] {
   return Array.from(
     new Set(
       expertSpecialtyDestinations(expert).flatMap((dest) =>
-        expandDestinationTokens(dest),
+        expandDestinationTokens(dest, placesBank),
       ),
     ),
   ).filter(Boolean);
 }
 
-function tripHaystackTokens(fields: unknown[]): string[] {
+function tripHaystackTokens(
+  fields: unknown[],
+  placesBank?: PlacesBankDestinations | null,
+): string[] {
   return Array.from(
     new Set(
       fields
         .flatMap(splitDestinationText)
-        .flatMap((part) => expandDestinationTokens(part)),
+        .flatMap((part) => expandDestinationTokens(part, placesBank)),
     ),
   ).filter(Boolean);
 }
@@ -115,10 +142,11 @@ function tokensOverlap(a: string[], b: string[]): boolean {
 export function expertMatchesDestination(
   expert: MatchableExpert,
   destinations: unknown[],
+  placesBank?: PlacesBankDestinations | null,
 ): boolean {
   return tokensOverlap(
-    expertSpecialtyTokens(expert),
-    tripHaystackTokens(destinations),
+    expertSpecialtyTokens(expert, placesBank),
+    tripHaystackTokens(destinations, placesBank),
   );
 }
 
@@ -141,35 +169,50 @@ export function expertMatchesTripFields(
     badgeAr?: unknown;
     badgeEn?: unknown;
   },
+  placesBank?: PlacesBankDestinations | null,
 ): boolean {
-  return expertMatchesDestination(expert, [
-    fields.destination,
-    fields.country,
-    fields.title,
-    fields.titleAr,
-    fields.titleEn,
-    fields.description,
-    fields.descriptionAr,
-    fields.descriptionEn,
-    fields.badge,
-    fields.badgeAr,
-    fields.badgeEn,
-  ]);
+  return expertMatchesDestination(
+    expert,
+    [
+      fields.destination,
+      fields.country,
+      fields.title,
+      fields.titleAr,
+      fields.titleEn,
+      fields.description,
+      fields.descriptionAr,
+      fields.descriptionEn,
+      fields.badge,
+      fields.badgeAr,
+      fields.badgeEn,
+    ],
+    placesBank,
+  );
 }
 
 export function groupExpertsByDestination<T extends MatchableExpert>(
   experts: T[],
   destinations: unknown[],
+  placesBank?: PlacesBankDestinations | null,
 ): { recommended: T[]; others: T[] } {
   const activeExperts = experts.filter((expert) =>
     isActiveExpertStatus(expert.status),
   );
+  const haystack = destinations
+    .flatMap(splitDestinationText)
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  if (!haystack.length) {
+    return { recommended: activeExperts, others: [] };
+  }
+
   return {
     recommended: activeExperts.filter((expert) =>
-      expertMatchesDestination(expert, destinations),
+      expertMatchesDestination(expert, destinations, placesBank),
     ),
     others: activeExperts.filter(
-      (expert) => !expertMatchesDestination(expert, destinations),
+      (expert) => !expertMatchesDestination(expert, destinations, placesBank),
     ),
   };
 }

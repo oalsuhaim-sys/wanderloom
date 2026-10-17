@@ -7,6 +7,7 @@ import { Loader2 } from 'lucide-react';
 
 import { GroupOnboardingStepNav } from '@/app/group-onboarding/_components/GroupOnboardingStepNav';
 import { ReferralCodeField } from '@/components/ReferralCodeField';
+import { WhatsAppInput } from '@/components/WhatsAppInput';
 import {
   brandGoldBadgeStyle,
   brandGoldButtonStyle,
@@ -21,7 +22,7 @@ import {
   buildGroupConfirmHref,
   persistGroupRegistrationDraft,
 } from '@/lib/group-registration-contact';
-import { requireValidPhone } from '@/lib/phoneUtils';
+import { requireValidPhone, WHATSAPP_INCOMPLETE_ERROR } from '@/lib/phoneUtils';
 import { supabaseClient } from '@/lib/supabaseClient';
 
 type TripInfo = {
@@ -50,6 +51,7 @@ function GroupOnboardingForm() {
 
   const [fullName, setFullName] = useState('');
   const [whatsapp, setWhatsapp] = useState('');
+  const [isPhoneValid, setIsPhoneValid] = useState(false);
   const [email, setEmail] = useState('');
   const [birthDate, setBirthDate] = useState('');
   const [referralCode, setReferralCode] = useState('');
@@ -132,8 +134,8 @@ function GroupOnboardingForm() {
       return;
     }
     const phoneCheck = requireValidPhone(whatsapp);
-    if (!phoneCheck.isValid) {
-      setFormError(phoneCheck.error ?? 'يرجى إدخال رقم جوال سعودي صحيح');
+    if (!isPhoneValid || !phoneCheck.isValid) {
+      setFormError(phoneCheck.error ?? WHATSAPP_INCOMPLETE_ERROR);
       return;
     }
     const emailTrimmed = email.trim();
@@ -261,19 +263,14 @@ function GroupOnboardingForm() {
                   required
                 />
               </label>
-              <label className={FIELD_LABEL} style={brandOliveLabelStyle}>
-                واتساب
-                <input
-                  className={`${FIELD} mt-1.5`}
-                  value={whatsapp}
-                  onChange={(e) => setWhatsapp(e.target.value)}
-                  placeholder="05xxxxxxxx"
-                  inputMode="tel"
-                  autoComplete="tel"
-                  required
-                  dir="ltr"
-                />
-              </label>
+              <WhatsAppInput
+                required
+                value={whatsapp}
+                onChange={(fullNumber, isValid) => {
+                  setWhatsapp(fullNumber);
+                  setIsPhoneValid(isValid);
+                }}
+              />
               <label className={FIELD_LABEL} style={brandOliveLabelStyle}>
                 البريد الإلكتروني{' '}
                 <span className="font-normal text-slate-400">(اختياري)</span>
@@ -329,7 +326,7 @@ function GroupOnboardingForm() {
 
               <button
                 type="submit"
-                disabled={submitting}
+                disabled={submitting || !isPhoneValid}
                 style={brandGoldButtonStyle}
                 className="inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3.5 text-sm font-extrabold shadow-sm transition-all hover:opacity-90 disabled:opacity-60"
               >

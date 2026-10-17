@@ -7,8 +7,6 @@ import { useRouter } from 'next/navigation';
 import {
   Copy,
   FileText,
-  Inbox,
-  Kanban,
   Loader2,
   MessageCircle,
   Trash2,
@@ -19,6 +17,7 @@ import toast from 'react-hot-toast';
 import {
   revalidateCrmAfterRadarApprovalAction,
 } from '@/app/actions/leadDnaWhatsAppActions';
+import { ClientReferralBadge } from '@/components/crm/ClientReferralBadge';
 import { approveGroupLeadFromInbox } from '@/app/actions/groupOnboardingActions';
 import {
   handleAcceptRequest,
@@ -44,29 +43,26 @@ import {
   formatTravelDateArabic,
   isExplicitGroupTripLead,
   joinDestinations,
-  parseBookedTripLabelFromLead,
+  resolveLeadBookingChannelLabel,
 } from '@/lib/crm-leads';
 import { translateLeadData, translateLeadList } from '@/lib/lead-data-localization';
-import {
-  InboxBookingChannelCell,
-  InboxLuxuryTripBadge,
-  InboxMediaConsentInline,
-  inboxCompactPrimaryBtnClass,
-  inboxCompactWhatsAppClass,
-  inboxLuxuryCardClass,
-  inboxLuxuryDetailsClass,
-  inboxLuxuryMetaGridClass,
-  inboxLuxuryPrimaryButtonStyle,
-} from './inbox-luxury-ui';
-import { BRAND_GOLD } from '@/lib/brand-gold';
 
 type NewLeadsInboxProps = {
   leads: CrmLeadWithIntake[];
+  meetingLeads?: CrmLeadWithIntake[];
+  interestLeads?: CrmLeadWithIntake[];
+  panel?: 'inbox' | 'meetings' | 'interests';
+  /** Demo meeting card when inbox, meetings, and interests are all empty. */
+  showSample?: boolean;
   loading: boolean;
   warning?: string;
   onRefresh: () => void | Promise<void>;
   /** Optimistic remove from radar inbox after approval */
   onLeadApproved?: (leadId: string) => void;
+  /** Inbox lead moved to the client-meetings column. */
+  onMovedToMeeting?: (leadId: string) => void;
+  /** Switch the radar tabs to the meetings column. `sample` counts the demo card. */
+  onShowMeetings?: (options?: { sample?: boolean }) => void;
 };
 
 const MODAL_SCROLL_CLASS =
@@ -178,43 +174,6 @@ function WhatsAppLink({ phone }: { phone: string }) {
       <MessageCircle className="h-4 w-4 shrink-0 text-emerald-600" aria-hidden />
       <span>{phone}</span>
     </a>
-  );
-}
-
-function IntakeStatusBadge({ lead }: { lead: CrmLeadWithIntake }) {
-  const intake = lead.intake;
-  if (!intake) {
-    return (
-      <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-700">
-        قبل قبول العرض
-      </span>
-    );
-  }
-  if (intake.onboardingCompleted) {
-    return (
-      <span className="rounded-md bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-800">
-        DNA مكتمل
-      </span>
-    );
-  }
-  if (intake.dnaLinkSentAt) {
-    return (
-      <span className="rounded-md bg-sky-50 px-2 py-0.5 text-[10px] font-bold text-sky-800">
-        رُسلت الدعوة
-      </span>
-    );
-  }
-  return (
-    <span
-      className="rounded-md border px-2 py-0.5 text-[10px] font-bold"
-      style={{
-        backgroundColor: BRAND_GOLD.MUTED_BG,
-        borderColor: BRAND_GOLD.LIGHT_BORDER,
-        color: BRAND_GOLD.TEXT,
-      }}
-    >
-      DNA جاهز
-    </span>
   );
 }
 
@@ -486,7 +445,15 @@ function LeadDetailModal({
             </div>
             {lead.email ? <DetailRow label="البريد" value={lead.email} /> : null}
             {lead.referral_code ? (
-              <DetailRow label="كود الإحالة" value={lead.referral_code} />
+              <div className="w-full border-b border-slate-100 py-3 text-right last:border-0">
+                <p className="text-right text-xs font-medium tracking-wide text-slate-400">كود الإحالة</p>
+                <div className="mt-2">
+                  <ClientReferralBadge
+                    clientName={String(lead.full_name ?? '').trim() || 'عميل'}
+                    referralCodeUsed={lead.referral_code}
+                  />
+                </div>
+              </div>
             ) : null}
             {lead.budget ? (
               <DetailRow label="الميزانية" value={translateLeadData(lead.budget)} />
@@ -693,15 +660,210 @@ function LeadDetailModal({
   );
 }
 
+type InboxCardLead = {
+  id: string;
+  name: string;
+  phone: string;
+  created_at: string;
+  dna_status: string;
+  opt_in: boolean;
+  photography_consent: string;
+  destinations: string[];
+  country: string;
+  passengers_count: number;
+  booking_status: string;
+  travel_date: string;
+  meeting_date: string;
+  interests: string[];
+  referral_code: string;
+  notes: string;
+  email: string;
+  isSample?: boolean;
+  source?: CrmLeadWithIntake;
+};
+
+function splitStoredDestination(raw: string): { country: string; city: string } {
+  const text = String(raw ?? '').trim();
+  if (!text) return { country: '', city: '' };
+  const dash = text.split(/\s*[—–]\s*/);
+  if (dash.length >= 2 && dash[0]?.trim() && dash[1]?.trim()) {
+    return { country: dash[0].trim(), city: dash.slice(1).join(' — ').trim() };
+  }
+  const colon = text.split(/\s*:\s*/);
+  if (colon.length >= 2 && colon[0]?.trim() && colon[1]?.trim()) {
+    return { country: colon[0].trim(), city: colon.slice(1).join(': ').trim() };
+  }
+  return { country: '', city: text };
+}
+
+function citiesAndCountryFromLead(lead: CrmLeadWithIntake): { cities: string[]; country: string } {
+  const raw = Array.isArray(lead.destinations)
+    ? lead.destinations.map((item) => String(item ?? '').trim()).filter(Boolean)
+    : [];
+  const cities: string[] = [];
+  const countries: string[] = [];
+  for (const item of raw) {
+    const parts = splitStoredDestination(item);
+    const label =
+      parts.city && parts.country && !parts.city.includes('(')
+        ? `${parts.city} (${parts.country})`
+        : parts.city;
+    if (label && !cities.includes(label)) cities.push(label);
+    if (parts.country && !countries.includes(parts.country)) countries.push(parts.country);
+  }
+  return {
+    cities: cities.length ? cities : ['غير محددة'],
+    country: countries.join(' · '),
+  };
+}
+
+function formatCalMeetingLabel(raw: string | null | undefined): string {
+  const text = String(raw ?? '').trim();
+  if (!text) return '';
+  const parsed = new Date(text);
+  if (Number.isNaN(parsed.getTime())) return text;
+  try {
+    return parsed.toLocaleString('ar-SA-u-ca-gregory-nu-latn', {
+      timeZone: 'Asia/Riyadh',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
+    });
+  } catch {
+    return text;
+  }
+}
+
+function yesterdayAt6pm(): Date {
+  const slot = new Date();
+  slot.setDate(slot.getDate() - 1);
+  slot.setHours(18, 0, 0, 0);
+  return slot;
+}
+
+/** Demo card stays off the active meetings list once yesterday 18:00 has passed. */
+function sampleInboxLead(): InboxCardLead | null {
+  const slot = yesterdayAt6pm();
+  const ended = Date.now() > slot.getTime();
+  if (ended) return null;
+  return {
+    id: 'lead-001',
+    name: 'ناصر العجلان',
+    phone: '966554492291',
+    created_at: '2026/10/06',
+    dna_status: 'DNA جاهز',
+    opt_in: true,
+    photography_consent: 'موافق (Opt-in)',
+    destinations: ['سيؤول (كوريا الجنوبية)', 'بوسان (كوريا الجنوبية)', 'طوكيو', 'كيوتو', 'أوساكا'],
+    country: '',
+    passengers_count: 2,
+    booking_status: 'تمت جدولة الاجتماع',
+    travel_date: '25 أكتوبر 2026',
+    meeting_date: 'أمس الساعة 06:00 مساءً (توقيت الرياض عبر Cal.com)',
+    interests: ['فنادق بوتيك', 'طعام فاخر VVIP', 'سكينة وطبيعة'],
+    referral_code: 'WNDR-VIP2026',
+    notes: 'يفضّل الإقامة في فنادق البوتيك بالحي الهادئ، ميزانية مفتوحة.',
+    email: 'nasser@example.com',
+    isSample: true,
+  };
+}
+
+function toInboxCard(lead: CrmLeadWithIntake): InboxCardLead {
+  const booking = resolveLeadBookingChannelLabel(lead as CrmLeadWithIntake & Record<string, unknown>);
+  const created = lead.created_at
+    ? new Date(lead.created_at).toLocaleDateString('en-CA')
+    : '';
+  const places = citiesAndCountryFromLead(lead);
+  const optedIn = lead.media_consent !== false;
+  const rawStatus = String(lead.status ?? '').trim().toLowerCase();
+  const isMeeting =
+    rawStatus === 'meeting' || rawStatus === 'meeting_scheduled' || rawStatus === 'scheduled';
+  return {
+    id: lead.id,
+    name: lead.full_name?.trim() || 'عميل جديد',
+    phone: String(lead.phone_wa ?? '').trim(),
+    created_at: created,
+    dna_status: lead.intake?.onboardingCompleted ? 'DNA مكتمل' : 'DNA جاهز',
+    opt_in: optedIn,
+    photography_consent: optedIn ? 'موافق (Opt-in)' : 'غير موافق (Opt-out)',
+    destinations: places.cities,
+    country: places.country,
+    passengers_count: lead.travelers_count || 2,
+    booking_status: isMeeting
+      ? 'تمت جدولة الاجتماع'
+      : booking.detail
+        ? `${booking.label} · ${booking.detail}`
+        : booking.label || 'بانتظار الجدولة',
+    travel_date: lead.travel_date ? formatTravelDateArabic(lead.travel_date) : 'غير محدد',
+    meeting_date: formatCalMeetingLabel(lead.meeting_date),
+    interests: Array.isArray(lead.interests)
+      ? lead.interests.map((item) => translateLeadData(String(item))).filter(Boolean)
+      : [],
+    referral_code: String(lead.referral_code ?? '').trim(),
+    notes: String(lead.final_thoughts ?? '').trim(),
+    email: String(lead.email ?? '').trim(),
+    source: lead,
+  };
+}
+
 export function NewLeadsInbox({
   leads,
+  meetingLeads = [],
+  interestLeads = [],
+  panel = 'inbox',
+  showSample = false,
   loading,
   warning,
   onRefresh,
   onLeadApproved,
+  onMovedToMeeting,
+  onShowMeetings,
 }: NewLeadsInboxProps) {
-  const [selected, setSelected] = useState<CrmLeadWithIntake | null>(null);
   const [busyApproveId, setBusyApproveId] = useState<string | null>(null);
+  const [movingId, setMovingId] = useState<string | null>(null);
+  const [selectedLead, setSelectedLead] = useState<InboxCardLead | null>(null);
+  const [demoMeeting, setDemoMeeting] = useState<InboxCardLead | null>(null);
+
+  async function persistMeetingStatus(leadId: string) {
+    const preferred = await supabase.from('leads').update({ status: 'meeting_scheduled' }).eq('id', leadId);
+    if (!preferred.error) return;
+    const message = preferred.error.message ?? '';
+    if (/check constraint|meeting_scheduled|invalid input value/i.test(message)) {
+      const fallback = await supabase.from('leads').update({ status: 'meeting' }).eq('id', leadId);
+      if (fallback.error) throw new Error(fallback.error.message);
+      return;
+    }
+    throw new Error(message || 'تعذر تحديث حالة الطلب.');
+  }
+
+  async function handleApproveAndMoveToMeeting(lead: InboxCardLead) {
+    if (movingId) return;
+    setMovingId(lead.id);
+    try {
+      if (lead.isSample) {
+        setDemoMeeting({
+          ...lead,
+          booking_status: 'تمت جدولة الاجتماع',
+          dna_status: '📅 موعد مجدول',
+        });
+      } else {
+        onMovedToMeeting?.(lead.id);
+        onLeadApproved?.(lead.id);
+      }
+      setSelectedLead(null);
+      onShowMeetings?.(lead.isSample ? { sample: true } : undefined);
+      if (!lead.isSample) {
+        await persistMeetingStatus(lead.id);
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'خطأ أثناء نقل الطلب.');
+    } finally {
+      setMovingId(null);
+    }
+  }
 
   async function handleQuickGroupApprove(leadId: string) {
     if (busyApproveId) return;
@@ -725,16 +887,13 @@ export function NewLeadsInbox({
   return (
     <div dir="rtl" lang="ar" className="w-full text-right">
       <section className="mb-10 w-full" aria-label="الطلبات الجديدة">
-        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-lg font-extrabold text-slate-900">صندوق الوارد — الطلبات الجديدة</h2>
-          <Link
-            href="/crm/pipeline"
-            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-100 px-4 py-2 text-xs font-semibold text-slate-700 transition-all hover:bg-slate-200"
-          >
-            <Kanban className="h-3.5 w-3.5 text-[#b8952d]" />
-            لوحة الكانبان
-          </Link>
-        </div>
+        <h2 className="mb-5 pt-2 text-2xl font-bold text-[#1B242F]">
+          {panel === 'meetings'
+            ? 'جدول اجتماعات العملاء (منعكس تلقائياً من Cal.com)'
+            : panel === 'interests'
+              ? 'قائمة اهتمامات العملاء'
+              : 'صندوق الوارد - الطلبات الجديدة'}
+        </h2>
 
         {warning ? (
           <div className="mb-4 rounded-xl border border-amber-100 bg-amber-50 px-4 py-3 text-right text-xs font-medium text-amber-800 ring-1 ring-amber-600/10">
@@ -743,141 +902,284 @@ export function NewLeadsInbox({
         ) : null}
 
         {loading ? (
-          <div className="flex min-h-[160px] flex-row items-center justify-center gap-3 rounded-xl border border-dashed border-slate-200 bg-slate-50/80 shadow-sm">
-            <Loader2 className="h-6 w-6 animate-spin text-[#b8952d]" aria-hidden />
-            <span className="text-sm font-medium text-slate-500">جاري تحميل الطلبات…</span>
-          </div>
-        ) : leads.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/80 px-6 py-12 text-center">
-            <Inbox className="mx-auto h-10 w-10 text-slate-300" aria-hidden />
-            <p className="mt-4 text-sm font-medium text-slate-500">لا توجد طلبات جديدة حالياً</p>
+          <div className="flex min-h-[160px] flex-col items-center justify-center gap-3 rounded-3xl border border-slate-200 bg-white">
+            <div className="h-10 w-10 animate-spin rounded-full border-4 border-[#C59B4B] border-t-transparent" />
+            <span className="text-xs font-bold text-slate-700">جاري تحميل رادار الطلبات...</span>
           </div>
         ) : (
-          <div className="flex w-full flex-col gap-2">
-            {leads.map((lead) => {
-              const isGroupLead = isExplicitGroupTripLead(lead);
-              const tripLabel = parseBookedTripLabelFromLead(lead) || joinDestinations(lead.destinations);
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {(() => {
+              const meetingCards = [
+                ...(demoMeeting ? [demoMeeting] : []),
+                ...meetingLeads.map(toInboxCard),
+              ];
+              const sampleLead = showSample ? sampleInboxLead() : null;
+              if (sampleLead && meetingCards.length === 0) meetingCards.push(sampleLead);
+              const inboxCards = leads.map(toInboxCard);
+              const interestCards = interestLeads.map(toInboxCard);
+              const visible =
+                panel === 'meetings' ? meetingCards : panel === 'interests' ? interestCards : inboxCards;
+              if (visible.length === 0) {
+                return (
+                  <div className="col-span-full rounded-[28px] border border-slate-200 bg-white p-12 text-center text-xs font-bold text-slate-500">
+                    {panel === 'meetings'
+                      ? 'لا توجد اجتماعات مجدولة حالياً.'
+                      : panel === 'interests'
+                        ? 'لا توجد اهتمامات مسجلة حالياً.'
+                        : 'لا توجد طلبات معلقة بـ صندوق الوارد.'}
+                  </div>
+                );
+              }
+              return visible.map((lead) => {
+              const isGroupLead = Boolean(panel === 'inbox' && lead.source && isExplicitGroupTripLead(lead.source));
               const isBusyApprove = busyApproveId === lead.id;
-              const timeAgo = formatRelativeTimeArabic(lead.created_at) || 'الآن';
-              const wa = String(lead.phone_wa ?? '').trim();
-              const travelersLabel = `${lead.travelers_count || 1} مسافر${
-                lead.travel_days ? ` (${lead.travel_days} يوم)` : ''
-              }`;
+              const wa = lead.phone.replace(/\D/g, '');
 
               return (
               <article
                 key={lead.id}
-                className={`${inboxLuxuryCardClass} group hover:border-[rgba(205,160,76,0.45)]`}
+                className="max-w-sm space-y-4 rounded-[28px] border border-slate-200/80 bg-white p-6 shadow-sm transition-all hover:shadow-md"
               >
-                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
-                  <div className="flex min-w-0 flex-wrap items-center gap-2">
-                    <h3 className="text-sm font-extrabold text-slate-900 sm:text-base">{lead.full_name}</h3>
-                    {isGroupLead ? <InboxLuxuryTripBadge isGroup /> : null}
-                    <IntakeStatusBadge lead={lead} />
-                    {lead.intake ? (
-                      <span className="rounded-md bg-violet-50 px-2 py-0.5 text-[10px] font-bold text-violet-800">
-                        DNA
-                      </span>
-                    ) : null}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="rounded-lg bg-[#F2E8D7] px-3 py-1 text-[11px] font-bold text-[#8C6D2D]">
+                      {panel === 'meetings' ? '📅 موعد مجدول (Cal)' : lead.dna_status || 'DNA جاهز'}
+                    </span>
+                    <h3 className="text-xl font-bold text-[#111827]">{lead.name}</h3>
                   </div>
-                  <div className="flex shrink-0 items-center gap-2">
-                    <span className="text-[11px] font-semibold text-slate-400">{timeAgo}</span>
+
+                  <div className="flex items-center justify-end gap-2 text-xs">
+                    <span className="font-mono text-[11px] text-slate-400">{lead.created_at}</span>
                     {wa ? (
                       <a
                         href={whatsAppHref(wa)}
                         target="_blank"
-                        rel="noopener noreferrer"
-                        className={inboxCompactWhatsAppClass}
+                        rel="noreferrer"
+                        className="flex items-center gap-1 rounded-full border border-[#A7F3D0] bg-[#E8F8F0] px-3 py-1 text-xs font-bold text-[#10B981]"
                         dir="ltr"
                       >
-                        💬 {wa}
+                        <span className="text-sm">💬</span>
+                        <span>{lead.phone}</span>
                       </a>
-                    ) : null}
-                  </div>
-                </div>
-
-                <div className={inboxLuxuryDetailsClass}>
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="flex min-w-0 items-center gap-1.5 font-extrabold text-slate-900">
-                      <span className="shrink-0" style={{ color: BRAND_GOLD.TEXT }}>
-                        📍 الرحلة:
+                    ) : (
+                      <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-bold text-slate-400">
+                        بدون رقم
                       </span>
-                      <span className="truncate">{tripLabel || '—'}</span>
-                    </div>
-                    <InboxMediaConsentInline mediaConsent={lead.media_consent} />
-                  </div>
-
-                  <div className={inboxLuxuryMetaGridClass}>
-                    <div>
-                      👥 العدد: <span className="font-bold text-slate-800">{travelersLabel}</span>
-                    </div>
-                    <InboxBookingChannelCell lead={lead as CrmLeadWithIntake & Record<string, unknown>} />
-                    {!isGroupLead && lead.travel_date ? (
-                      <div>
-                        📅 السفر:{' '}
-                        <span className="font-bold text-slate-800">
-                          {formatTravelDateArabic(lead.travel_date)}
-                        </span>
-                      </div>
-                    ) : null}
-                    {lead.referral_code ? (
-                      <div className="flex items-center gap-1 font-bold text-slate-700">
-                        <span>🎁 إحالة:</span>
-                        <span
-                          className="rounded px-2 py-0.5 text-[10px] font-extrabold"
-                          style={{
-                            backgroundColor: '#F7F0E1',
-                            color: '#8C6D23',
-                          }}
-                        >
-                          {lead.referral_code}
-                        </span>
-                      </div>
-                    ) : null}
+                    )}
                   </div>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-2 pt-0.5">
-                  {isGroupLead ? (
-                    <button
-                      type="button"
-                      disabled={isBusyApprove}
-                      onClick={() => void handleQuickGroupApprove(lead.id)}
-                      style={inboxLuxuryPrimaryButtonStyle(isBusyApprove)}
-                      className={`${inboxCompactPrimaryBtnClass} flex flex-row-reverse flex-1 items-center justify-center gap-1.5 sm:flex-none`}
+                <hr className="border-slate-100" />
+
+                <div className="space-y-2.5 rounded-2xl border border-slate-200/60 bg-[#FDFBF7] p-4 text-right text-xs">
+                  <div className="flex items-center justify-between gap-2 pb-1">
+                    <span
+                      className={`rounded-md px-2.5 py-0.5 text-[10px] font-bold ${
+                        lead.opt_in ? 'bg-[#DCFCE7] text-[#15803D]' : 'bg-rose-100 text-rose-700'
+                      }`}
                     >
-                      {isBusyApprove ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden /> : null}
-                      <span>موافقة وترحيل</span>
-                      <span aria-hidden>➔</span>
-                    </button>
+                      {lead.photography_consent}
+                    </span>
+                    <span className="font-bold text-[#111827]">📷 التصوير:</span>
+                  </div>
+                  <div className="flex items-start justify-between gap-1">
+                    <div className="flex flex-1 flex-wrap justify-end gap-1">
+                      {lead.destinations.map((city) => (
+                        <span
+                          key={city}
+                          className="rounded-md bg-amber-100/80 px-2 py-0.5 text-[11px] font-bold text-[#8C6D2D]"
+                        >
+                          {city}
+                        </span>
+                      ))}
+                    </div>
+                    <span className="shrink-0 font-bold text-[#C59B4B]">📍 الرحلة:</span>
+                  </div>
+
+                  {lead.interests.length > 0 ? (
+                    <div className="flex flex-wrap justify-end gap-1 pt-1">
+                      {lead.interests.map((interest) => (
+                        <span
+                          key={interest}
+                          className="rounded-md border border-amber-200/60 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-[#8C6D2D]"
+                        >
+                          ♡ {interest}
+                        </span>
+                      ))}
+                    </div>
                   ) : null}
+
+                  <div className="space-y-1 pt-1 font-medium text-slate-600">
+                    <p>👥 العدد: {lead.passengers_count || 2} مسافر</p>
+                    <p>
+                      📞 الحجز:{' '}
+                      <span className="font-bold text-[#111827]">{lead.booking_status}</span>
+                    </p>
+                    {lead.meeting_date ? (
+                      <p className="font-bold text-[#8C6D2D]">🗓️ الموعد: {lead.meeting_date}</p>
+                    ) : (
+                      <p>📅 السفر: {lead.travel_date}</p>
+                    )}
+                  </div>
+                </div>
+
+                {isGroupLead && lead.source ? (
                   <button
                     type="button"
-                    onClick={() => setSelected(lead)}
-                    className={`cursor-pointer rounded-xl border py-2 text-xs font-extrabold transition-all ${
-                      isGroupLead
-                        ? 'border-slate-200 bg-white px-4 text-slate-700 hover:bg-slate-50'
-                        : `${inboxCompactPrimaryBtnClass} flex-1 border-transparent`
-                    }`}
-                    style={!isGroupLead ? inboxLuxuryPrimaryButtonStyle() : undefined}
+                    disabled={isBusyApprove}
+                    onClick={() => void handleQuickGroupApprove(lead.source!.id)}
+                    className="w-full rounded-2xl border border-slate-200 bg-white py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
                   >
-                    عرض التفاصيل
+                    {isBusyApprove ? 'جارٍ الترحيل...' : 'موافقة وترحيل'}
                   </button>
-                </div>
+                ) : null}
+
+                <button
+                  type="button"
+                  onClick={() => setSelectedLead(lead)}
+                  className="w-full rounded-2xl bg-[#C59B4B] py-3.5 text-center text-xs font-bold text-slate-900 shadow-sm transition-all hover:bg-[#B2883A]"
+                >
+                  عرض التفاصيل
+                </button>
               </article>
             );
-            })}
+              });
+            })()}
           </div>
         )}
       </section>
 
-      {selected ? (
-        <LeadDetailModal
-          lead={selected}
-          onClose={() => setSelected(null)}
-          onRefresh={onRefresh}
-          onLeadApproved={onLeadApproved}
-        />
+      {selectedLead ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
+          <div className="max-h-[90vh] w-full max-w-2xl space-y-6 overflow-y-auto rounded-3xl border border-[#EADBCC] bg-[#F8F5EE] p-6 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-200 pb-4">
+              <div>
+                <h2 className="text-xl font-bold text-[#111827]">
+                  تفاصيل الطلب الكاملة · {selectedLead.name}
+                </h2>
+                <p className="mt-1 text-xs text-slate-500">
+                  تاريخ تقديم الطلب: {selectedLead.created_at}
+                  {selectedLead.isSample ? ' · بطاقة تجريبية' : ''}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedLead(null)}
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-200 text-xs font-bold text-slate-700"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 gap-3 text-xs md:grid-cols-2">
+              <div className="space-y-1 rounded-2xl border border-[#EADBCC] bg-[#F2E8D7]/80 p-4 md:col-span-2">
+                <span className="block font-bold text-[#8C6D2D]">📅 تاريخ ووقت الموعد المنعكس تلقائياً من Cal.com</span>
+                <span className="text-sm font-bold text-slate-900">
+                  {selectedLead.meeting_date || 'بانتظار وصول التحديث من Cal.com'}
+                </span>
+              </div>
+              <div className="space-y-1.5 rounded-2xl border border-slate-200 bg-white p-4 md:col-span-2">
+                <span className="block font-bold text-slate-400">♡ اهتمامات وتفضيلات العميل</span>
+                <div className="flex flex-wrap gap-1.5">
+                  {selectedLead.interests.length > 0 ? (
+                    selectedLead.interests.map((interest) => (
+                      <span
+                        key={interest}
+                        className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-bold text-[#8C6D2D]"
+                      >
+                        ♡ {interest}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-slate-500">سفر فاخر، إقامات ممتازة</span>
+                  )}
+                </div>
+              </div>
+              <div className="space-y-1.5 rounded-2xl border border-slate-200 bg-white p-4 md:col-span-2">
+                <span className="block font-bold text-slate-400">المدن والجهات المستهدفة بالرحلة</span>
+                <div className="flex flex-wrap gap-1.5">
+                  {selectedLead.destinations.map((city) => (
+                    <span
+                      key={city}
+                      className="rounded-lg border border-amber-200 bg-amber-100 px-3 py-1 text-xs font-bold text-[#8C6D2D]"
+                    >
+                      📍 {city}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              <div className="space-y-1 rounded-2xl border border-slate-200 bg-white p-4">
+                <span className="block font-bold text-slate-400">الاسم الكامل</span>
+                <span className="text-sm font-bold text-slate-900">{selectedLead.name}</span>
+              </div>
+              <div className="space-y-1 rounded-2xl border border-slate-200 bg-white p-4">
+                <span className="block font-bold text-slate-400">رقم التواصل (واتساب)</span>
+                <span className="block text-right text-sm font-bold text-emerald-600" dir="ltr">
+                  {selectedLead.phone || 'بدون رقم'}
+                </span>
+              </div>
+              <div className="space-y-1 rounded-2xl border border-slate-200 bg-white p-4">
+                <span className="block font-bold text-slate-400">تاريخ السفر المقترح</span>
+                <span className="text-sm font-bold text-slate-900">{selectedLead.travel_date}</span>
+              </div>
+              <div className="space-y-1 rounded-2xl border border-slate-200 bg-white p-4">
+                <span className="block font-bold text-slate-400">عدد المسافرين</span>
+                <span className="text-sm font-bold text-slate-900">{selectedLead.passengers_count} مسافر</span>
+              </div>
+              <div className="space-y-1 rounded-2xl border border-slate-200 bg-white p-4">
+                <span className="block font-bold text-slate-400">كود الإحالة (Referral)</span>
+                {selectedLead.referral_code ? (
+                  <Link
+                    href={`/influencers/${encodeURIComponent(selectedLead.referral_code)}`}
+                    className="font-mono text-sm font-bold text-slate-900 hover:text-[#C59B4B]"
+                  >
+                    {selectedLead.referral_code}
+                  </Link>
+                ) : (
+                  <span className="font-mono text-sm font-bold text-slate-900">بدون كود</span>
+                )}
+              </div>
+              <div className="space-y-1 rounded-2xl border border-slate-200 bg-white p-4">
+                <span className="block font-bold text-slate-400">حالة الموافقة والتصوير</span>
+                <span className={`text-sm font-bold ${selectedLead.opt_in ? 'text-emerald-600' : 'text-rose-600'}`}>
+                  {selectedLead.opt_in ? 'موافق Opt-in' : 'غير موافق Opt-out'}
+                </span>
+              </div>
+            </div>
+
+            <div className="space-y-2 rounded-2xl border border-slate-200 bg-white p-4 text-xs">
+              <span className="block font-bold text-slate-400">ملاحظات هندسة المسار والتفضيلات:</span>
+              <p className="font-medium leading-relaxed text-slate-700">
+                {selectedLead.notes || 'يفضّل الإقامة في فنادق البوتيك بالحي الهادئ، ميزانية مفتوحة.'}
+              </p>
+            </div>
+
+            <div className="flex flex-col items-center gap-3 pt-2 sm:flex-row">
+              {panel === 'inbox' ? (
+                <button
+                  type="button"
+                  disabled={movingId === selectedLead.id}
+                  onClick={() => void handleApproveAndMoveToMeeting(selectedLead)}
+                  className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#C59B4B] py-3.5 text-center text-xs font-bold text-slate-900 shadow-md transition-all hover:bg-[#B2883A] disabled:opacity-60 sm:flex-1"
+                >
+                  <span>📅</span>
+                  <span>
+                    {movingId === selectedLead.id
+                      ? 'جاري النقل...'
+                      : 'تأكيد الموعد ونقل الطلب لخانات الاجتماعات'}
+                  </span>
+                </button>
+              ) : null}
+              <button
+                type="button"
+                onClick={() => setSelectedLead(null)}
+                className="w-full rounded-2xl border border-slate-300 bg-white px-5 py-3.5 text-xs font-bold text-slate-700 hover:bg-slate-100 sm:w-auto"
+              >
+                إغلاق
+              </button>
+            </div>
+          </div>
+        </div>
       ) : null}
     </div>
   );

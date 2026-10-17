@@ -106,6 +106,81 @@ export function applyTemplateToBuilder(
   return result;
 }
 
+export type ApplyTemplatesOptions = {
+  currentDays?: SimpleItineraryDay[];
+  currentHotels?: ItineraryHotelEntry[];
+  currentDateFrom?: string;
+  /** دمج الأيام بعد المسار الحالي بدل الاستبدال */
+  appendToCurrent?: boolean;
+  /** تفريغ عناوين الأيام المستدعاة */
+  clearDayTitles?: boolean;
+};
+
+function reindexTemplateDays(
+  days: SimpleItineraryDay[],
+  startIndex: number,
+  clearDayTitles: boolean,
+): SimpleItineraryDay[] {
+  const stamp = Date.now();
+  return days.map((day, idx) => ({
+    ...day,
+    id: stamp + startIndex + idx,
+    title: clearDayTitles ? '' : day.title,
+    places: (day.places ?? []).map((place, placeIdx) =>
+      withTransportDefaults({
+        ...place,
+        _dragId: `place-${stamp}-${startIndex + idx}-${placeIdx}-${Math.random().toString(36).slice(2, 7)}`,
+      }),
+    ),
+  }));
+}
+
+/** استدعاء قالب أو عدة قوالب مع خيار الدمج أو الاستبدال وتفريغ العناوين */
+export function applyTemplatesToBuilder(
+  templates: ItineraryTemplateRow[],
+  options: ApplyTemplatesOptions = {},
+): ApplyTemplateResult & { templateTitles: string[] } {
+  const appendToCurrent = options.appendToCurrent !== false;
+  const clearDayTitles = options.clearDayTitles !== false;
+  const currentDays = options.currentDays ?? [];
+  const currentHotels = options.currentHotels ?? [];
+
+  let importedDays: SimpleItineraryDay[] = [];
+  let importedHotels: ItineraryHotelEntry[] = [];
+  const destinations: string[] = [];
+  const templateTitles: string[] = [];
+
+  for (const template of templates) {
+    const applied = applyTemplateToBuilder(template);
+    importedDays = [...importedDays, ...applied.days];
+    importedHotels = [...importedHotels, ...applied.hotels];
+    if (applied.destination) destinations.push(applied.destination);
+    templateTitles.push(template.title);
+  }
+
+  const startIndex = appendToCurrent ? currentDays.length : 0;
+  const processedImported = reindexTemplateDays(importedDays, startIndex, clearDayTitles);
+  const days = appendToCurrent ? [...currentDays, ...processedImported] : processedImported;
+  const hotels = appendToCurrent
+    ? [...currentHotels, ...importedHotels.filter((h) => h.name.trim())]
+    : importedHotels;
+
+  const result: ApplyTemplateResult & { templateTitles: string[] } = {
+    days,
+    destination: destinations[0] ?? '',
+    hotels,
+    templateTitles,
+  };
+
+  const from = options.currentDateFrom?.trim();
+  if (from) {
+    result.datesFrom = from;
+    result.datesTo = computeTripEndFromStart(from, days.length);
+  }
+
+  return result;
+}
+
 export function formatSupabaseTemplateError(error: {
   message?: string;
   details?: string;
