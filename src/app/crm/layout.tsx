@@ -6,6 +6,10 @@ import { CrmShell } from './_components/CrmShell';
 import { CrmSwrProvider } from './_components/CrmSwrProvider';
 import { CrmThemeProvider } from './_components/CrmThemeProvider';
 
+/** Route Segment Config — يجب أن يكون في Server Component وليس في صفحة 'use client' */
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export default function CRMLayout({ children }: { children: ReactNode }) {
   return (
     <CrmEmployeeProvider>

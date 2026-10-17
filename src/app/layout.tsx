@@ -16,18 +16,26 @@ const localeBootstrapScript = `(function(){try{var l=localStorage.getItem("${LAN
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
+  display: "swap",
+  fallback: ["system-ui", "Segoe UI", "Arial", "sans-serif"],
+  adjustFontFallback: true,
 });
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+  display: "swap",
+  fallback: ["ui-monospace", "SFMono-Regular", "Menlo", "Consolas", "monospace"],
+  adjustFontFallback: true,
 });
 
 const tajawal = Tajawal({
-  variable: "--font-tajawal",
-  subsets: ["arabic", "latin"],
-  weight: ["300", "400", "500", "700", "800", "900"],
+  subsets: ["arabic"],
+  weight: ["400", "500", "700"],
   display: "swap",
+  variable: "--font-tajawal",
+  fallback: ["Tahoma", "Arial", "system-ui", "sans-serif"],
+  adjustFontFallback: true,
 });
 
 export const metadata: Metadata = {

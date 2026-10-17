@@ -1,19 +1,12 @@
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
-
-import { NextResponse } from 'next/server';
-
-export async function GET(request: Request) {
-  // كود معالجة API الخاص بك...
-}
 import { NextResponse, type NextRequest } from 'next/server';
-export const dynamic = 'force-dynamic';
 
 import { fetchClientDirectoryAction } from '@/app/actions/clientDirectoryActions';
 import type { ClientDirectoryPayload } from '@/app/crm/clients/useClientDirectory';
 import type { VipClientProfile } from '@/lib/clientsTravelDna';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { getAuthenticatedCrmUser } from '@/lib/supabase/route-handler';
+
+export const dynamic = 'force-dynamic';
 
 /** Next.js route segment cache hint (paired with Cache-Control below). */
 export const revalidate = 10;
