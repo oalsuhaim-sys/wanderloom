@@ -3,7 +3,16 @@ import {
   PHASE_DEVELOPMENT_SERVER,
   PHASE_PRODUCTION_BUILD,
 } from "next/constants";
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  // إجبار Next.js على معاملة مسارات API والـ CRM كمسارات ديناميكية دائماً
+  experimental: {
+    // تفعيل الخيار إن كنت تستخدم إصدار Next.js الحديث
+  },
+  // إعدادات المشروع الحالية...
+};
 
+module.exports = nextConfig;
 const nextConfig: NextConfig = {
   transpilePackages: ["mapbox-gl", "react-map-gl"],
   typescript: {

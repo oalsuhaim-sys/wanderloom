@@ -1,5 +1,14 @@
-import { Suspense } from 'react'
+export const dynamic = 'force-dynamic';
+export const dynamicParams = true;
+export const revalidate = 0;
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
+export default async function CrmClientsPage() {
+  // كود الصفحة والتفاعل مع الـ Server Action fetchClientDirectoryAction...
+}
+import { Suspense } from 'react'
+export const dynamic = 'force-dynamic';
 import { fetchClientDirectoryAction } from '@/app/actions/clientDirectoryActions'
 import { ClientsLoyaltyClient } from '@/app/crm/clients/ClientsLoyaltyClient'
 import type { ClientDirectoryPayload } from '@/app/crm/clients/useClientDirectory'
