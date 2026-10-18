@@ -320,6 +320,29 @@ export default function ItineraryVipLightDualPane() {
     });
   };
 
+  const handleDeleteDay = (dayIndex: number) => {
+    setDraft((d) => {
+      if (d.days.length <= 1) return d;
+      if (dayIndex < 0 || dayIndex >= d.days.length) return d;
+      const removedId = d.days[dayIndex]!.id;
+      const nextDays = d.days
+        .filter((_, i) => i !== dayIndex)
+        .map((day, index) => {
+          const title = String(day.title ?? '').trim();
+          const isAuto = !title || title === 'اليوم الأول' || /^اليوم\s+\d+$/.test(title);
+          if (!isAuto) return day;
+          return { ...day, title: index === 0 ? 'اليوم الأول' : `اليوم ${index + 1}` };
+        });
+      const fallbackIndex = Math.max(0, dayIndex - 1);
+      const nextActive =
+        activeDayId === removedId || !nextDays.some((day) => day.id === activeDayId)
+          ? (nextDays[fallbackIndex]?.id ?? nextDays[0]!.id)
+          : activeDayId;
+      setActiveDayId(nextActive);
+      return { ...d, days: nextDays };
+    });
+  };
+
   const saveItinerary = useCallback(async (): Promise<boolean> => {
     if (!supabase) return false;
     if (!draft.customerName.trim() || !draft.title.trim()) {
@@ -906,18 +929,44 @@ export default function ItineraryVipLightDualPane() {
 
           <div className="mb-4 flex flex-wrap gap-2">
             {draft.days.map((day, i) => (
-              <button
+              <div
                 key={day.id}
-                type="button"
-                onClick={() => setActiveDayId(day.id)}
-                className={`rounded-md px-3 py-1.5 text-xs font-bold ${
+                className={`group relative inline-flex items-center rounded-md ${
                   day.id === activeDayId
-                    ? 'bg-[#D4AF37] text-black hover:bg-yellow-500'
-                    : `${BTN_GHOST}`
+                    ? 'bg-[#D4AF37] text-black'
+                    : BTN_GHOST
                 }`}
               >
-                اليوم {i + 1}
-              </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveDayId(day.id)}
+                  className="rounded-md px-3 py-1.5 text-xs font-bold"
+                >
+                  اليوم {i + 1}
+                </button>
+                {draft.days.length > 1 ? (
+                  <button
+                    type="button"
+                    title="حذف اليوم"
+                    aria-label={`حذف اليوم ${i + 1}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const ok = window.confirm(
+                        `هل أنت متأكد من حذف «اليوم ${i + 1}»؟ لا يمكن التراجع عن هذا الإجراء.`,
+                      );
+                      if (!ok) return;
+                      handleDeleteDay(i);
+                    }}
+                    className={`mr-1 rounded p-0.5 opacity-0 transition group-hover:opacity-100 focus:opacity-100 ${
+                      day.id === activeDayId
+                        ? 'text-black/60 hover:bg-black/10 hover:text-red-700'
+                        : 'text-slate-400 hover:bg-red-50 hover:text-red-600'
+                    }`}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" aria-hidden />
+                  </button>
+                ) : null}
+              </div>
             ))}
             <button
               type="button"

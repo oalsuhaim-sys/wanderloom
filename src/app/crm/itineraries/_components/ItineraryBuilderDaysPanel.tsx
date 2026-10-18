@@ -195,6 +195,28 @@ export default function ItineraryBuilderDaysPanel({
     [days, onDaysChange],
   );
 
+  const handleDeleteDay = useCallback(
+    (dayIndex: number) => {
+      if (days.length <= 1) return;
+      if (dayIndex < 0 || dayIndex >= days.length) return;
+      const removedId = days[dayIndex]!.id;
+      const next = days
+        .filter((_, i) => i !== dayIndex)
+        .map((day, index) => {
+          const title = String(day.title ?? '').trim();
+          const isAuto = !title || title === 'اليوم الأول' || /^اليوم\s+\d+$/.test(title);
+          if (!isAuto) return day;
+          return { ...day, title: index === 0 ? 'اليوم الأول' : `اليوم ${index + 1}` };
+        });
+      onDaysChange(next);
+      if (activeDayId === removedId || !next.some((d) => d.id === activeDayId)) {
+        const fallbackIndex = Math.max(0, dayIndex - 1);
+        setActiveDayId(next[fallbackIndex]?.id ?? next[0]?.id ?? '');
+      }
+    },
+    [days, onDaysChange, activeDayId],
+  );
+
   const enrichCoords = useCallback(
     async (dayId: string, activityId: string, query: string) => {
       if (!query.trim()) return;
@@ -328,11 +350,9 @@ export default function ItineraryBuilderDaysPanel({
     <div className="space-y-4">
       <div className="flex flex-wrap gap-2">
         {days.map((day, idx) => (
-          <button
+          <div
             key={day.id}
-            type="button"
-            onClick={() => setActiveDayId(day.id)}
-            className={`rounded-xl px-3 py-2 text-xs font-black transition ${
+            className={`group relative inline-flex items-center rounded-xl transition ${
               day.id === activeDayId
                 ? 'bg-[#D4AF37] text-[#1E2720]'
                 : isLight
@@ -340,9 +360,37 @@ export default function ItineraryBuilderDaysPanel({
                   : 'bg-white/10 text-gray-200 ring-1 ring-white/15 hover:bg-white/15'
             }`}
           >
-            اليوم {idx + 1}
-            {day.city ? ` · ${day.city}` : ''}
-          </button>
+            <button
+              type="button"
+              onClick={() => setActiveDayId(day.id)}
+              className="rounded-xl px-3 py-2 text-xs font-black"
+            >
+              اليوم {idx + 1}
+              {day.city ? ` · ${day.city}` : ''}
+            </button>
+            {days.length > 1 ? (
+              <button
+                type="button"
+                title="حذف اليوم"
+                aria-label={`حذف اليوم ${idx + 1}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const ok = window.confirm(
+                    `هل أنت متأكد من حذف «اليوم ${idx + 1}»؟ لا يمكن التراجع عن هذا الإجراء.`,
+                  );
+                  if (!ok) return;
+                  handleDeleteDay(idx);
+                }}
+                className={`mr-1.5 rounded-lg p-1 opacity-0 transition group-hover:opacity-100 focus:opacity-100 ${
+                  day.id === activeDayId
+                    ? 'text-[#1E2720]/70 hover:bg-black/10 hover:text-red-700'
+                    : 'text-current/50 hover:bg-red-50 hover:text-red-600'
+                }`}
+              >
+                <Trash2 className="h-3.5 w-3.5" aria-hidden />
+              </button>
+            ) : null}
+          </div>
         ))}
       </div>
 

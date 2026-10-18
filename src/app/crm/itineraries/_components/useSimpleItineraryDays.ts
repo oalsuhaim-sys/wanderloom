@@ -39,6 +39,19 @@ export function useSimpleItineraryDays(initialDays?: SimpleItineraryDay[]) {
     return activeDay.title?.trim() || `اليوم ${idx + 1}`;
   }, [activeDay, itineraryDays]);
 
+  const renumberAutoDayTitles = useCallback((days: SimpleItineraryDay[]) => {
+    return days.map((day, index) => {
+      const title = String(day.title ?? '').trim();
+      const isAuto =
+        !title || title === 'اليوم الأول' || /^اليوم\s+\d+$/.test(title);
+      if (!isAuto) return day;
+      return {
+        ...day,
+        title: index === 0 ? 'اليوم الأول' : `اليوم ${index + 1}`,
+      };
+    });
+  }, []);
+
   const handleAddDay = useCallback((opts?: { title?: string; city?: string }) => {
     setItineraryDays((prev) => {
       const next = createEmptyDay(prev.length);
@@ -49,36 +62,54 @@ export function useSimpleItineraryDays(initialDays?: SimpleItineraryDay[]) {
   }, []);
 
   /**
+   * حذف يوم بالمؤشر (0-based) مع إعادة ترقيم العناوين التلقائية.
+   * يمنع الحذف إن بقي يوم واحد فقط.
+   */
+  const handleDeleteDay = useCallback(
+    (dayIndex: number) => {
+      setItineraryDays((prev) => {
+        if (prev.length <= 1) return prev;
+        if (dayIndex < 0 || dayIndex >= prev.length) return prev;
+
+        const removedId = prev[dayIndex]!.id;
+        const renumbered = renumberAutoDayTitles(prev.filter((_, i) => i !== dayIndex));
+        const fallbackIndex = Math.max(0, dayIndex - 1);
+        const nextActiveId = renumbered[fallbackIndex]?.id ?? renumbered[0]!.id;
+
+        setActiveDayId((current) =>
+          current === removedId || !renumbered.some((d) => d.id === current)
+            ? nextActiveId
+            : current,
+        );
+
+        return renumbered;
+      });
+    },
+    [renumberAutoDayTitles],
+  );
+
+  /**
    * Reorder entire day cards (places/hotel/city move with the day).
    * Calendar position = array index; day_number is rewritten on save as index+1.
    */
-  const moveDay = useCallback((dayId: number, direction: 'up' | 'down') => {
-    setItineraryDays((prev) => {
-      const currentIndex = prev.findIndex((d) => d.id === dayId);
-      if (currentIndex < 0) return prev;
-      const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
-      if (targetIndex < 0 || targetIndex >= prev.length) return prev;
+  const moveDay = useCallback(
+    (dayId: number, direction: 'up' | 'down') => {
+      setItineraryDays((prev) => {
+        const currentIndex = prev.findIndex((d) => d.id === dayId);
+        if (currentIndex < 0) return prev;
+        const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+        if (targetIndex < 0 || targetIndex >= prev.length) return prev;
 
-      const next = [...prev];
-      const tmp = next[currentIndex]!;
-      next[currentIndex] = next[targetIndex]!;
-      next[targetIndex] = tmp;
+        const next = [...prev];
+        const tmp = next[currentIndex]!;
+        next[currentIndex] = next[targetIndex]!;
+        next[targetIndex] = tmp;
 
-      // Refresh auto-generated titles so «اليوم الأول» stays chronological
-      return next.map((day, index) => {
-        const title = String(day.title ?? '').trim();
-        const isAuto =
-          !title ||
-          title === 'اليوم الأول' ||
-          /^اليوم\s+\d+$/.test(title);
-        if (!isAuto) return day;
-        return {
-          ...day,
-          title: index === 0 ? 'اليوم الأول' : `اليوم ${index + 1}`,
-        };
+        return renumberAutoDayTitles(next);
       });
-    });
-  }, []);
+    },
+    [renumberAutoDayTitles],
+  );
 
   const handleAddPlace = useCallback(
     (place: Record<string, unknown>, targetDayId?: number) => {
@@ -316,6 +347,7 @@ export function useSimpleItineraryDays(initialDays?: SimpleItineraryDay[]) {
     activeDay,
     activeDayLabel,
     handleAddDay,
+    handleDeleteDay,
     moveDay,
     handleAddPlace,
     handleRemovePlace,

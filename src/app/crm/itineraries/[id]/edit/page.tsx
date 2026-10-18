@@ -415,6 +415,7 @@ export default function EditItineraryPage() {
     setActiveDayId,
     activeDayLabel,
     handleAddDay,
+    handleDeleteDay,
     moveDay,
     handleAddPlace,
     handleRemovePlace,
@@ -2193,6 +2194,7 @@ export default function EditItineraryPage() {
           activeDayId={activeDayId}
           onActiveDayIdChange={setActiveDayId}
           onAddDay={handleAddDay}
+          onDeleteDay={handleDeleteDay}
           onMoveDay={moveDay}
           onRemovePlace={handleRemovePlace}
           onMovePlaceToDay={movePlaceToDay}

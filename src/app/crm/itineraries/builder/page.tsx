@@ -411,6 +411,7 @@ function ItineraryBuilderPageContent() {
     setActiveDayId,
     activeDayLabel,
     handleAddDay,
+    handleDeleteDay,
     moveDay,
     handleAddPlace,
     handleRemovePlace,
@@ -2266,6 +2267,7 @@ function ItineraryBuilderPageContent() {
           activeDayId={activeDayId}
           onActiveDayIdChange={setActiveDayId}
           onAddDay={handleAddDay}
+          onDeleteDay={handleDeleteDay}
           onMoveDay={moveDay}
           onRemovePlace={handleRemovePlace}
           onMovePlaceToDay={movePlaceToDay}

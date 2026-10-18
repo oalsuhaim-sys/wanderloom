@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useCallback, useMemo, useRef, useState } from 'react';
-import { Plus } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 
 import { CrmSlideOver, CRM_DRAWER_SAVE } from '@/app/crm/_components/CrmSlideOver';
 import SimpleItineraryDayCard from '@/app/crm/itineraries/_components/SimpleItineraryDayCard';
@@ -20,6 +20,7 @@ type Props = {
   activeDayId: number;
   onActiveDayIdChange: (dayId: number) => void;
   onAddDay: (opts?: { title?: string; city?: string }) => void;
+  onDeleteDay?: (dayIndex: number) => void;
   onMoveDay?: (dayId: number, direction: 'up' | 'down') => void;
   onRemovePlace: (dayId: number, placeIndex: number) => void;
   onMovePlaceToDay: (currentDayId: number, placeIndex: number, targetDayId: number) => void;
@@ -47,6 +48,7 @@ export default function SimpleItineraryDayPlanner({
   activeDayId,
   onActiveDayIdChange,
   onAddDay,
+  onDeleteDay,
   onMoveDay,
   onRemovePlace,
   onMovePlaceToDay,
@@ -141,28 +143,58 @@ export default function SimpleItineraryDayPlanner({
         </div>
 
         <div className="flex flex-wrap gap-2">
-          {days.map((day, idx) => (
-            <button
-              key={day.id}
-              type="button"
-              onClick={() => onActiveDayIdChange(day.id)}
-              className={`rounded-xl px-3 py-2 text-xs font-black transition ${
-                day.id === activeDayId
-                  ? 'bg-[#D4AF37] text-[#0F172A]'
-                  : 'border border-slate-200 bg-white text-slate-700 hover:border-[#D4AF37]/40'
-              }`}
-            >
-              {formatAdminDayLabel(day, idx)}
-              {day.places.length > 0 ? ` (${day.places.length})` : ''}
-            </button>
-          ))}
+          {days.map((day, idx) => {
+            const canDelete = days.length > 1 && Boolean(onDeleteDay);
+            return (
+              <div
+                key={day.id}
+                className={`group relative inline-flex items-center gap-1 rounded-xl transition ${
+                  day.id === activeDayId
+                    ? 'bg-[#D4AF37] text-[#0F172A]'
+                    : 'border border-slate-200 bg-white text-slate-700 hover:border-[#D4AF37]/40'
+                }`}
+              >
+                <button
+                  type="button"
+                  onClick={() => onActiveDayIdChange(day.id)}
+                  className="rounded-xl px-3 py-2 text-xs font-black"
+                >
+                  {formatAdminDayLabel(day, idx)}
+                  {day.places.length > 0 ? ` (${day.places.length})` : ''}
+                </button>
+                {canDelete ? (
+                  <button
+                    type="button"
+                    title="حذف اليوم"
+                    aria-label={`حذف ${formatAdminDayLabel(day, idx)}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const label = formatAdminDayLabel(day, idx);
+                      const ok = window.confirm(
+                        `هل أنت متأكد من حذف «${label}»؟ لا يمكن التراجع عن هذا الإجراء.`,
+                      );
+                      if (!ok) return;
+                      onDeleteDay?.(idx);
+                    }}
+                    className={`ml-0.5 mr-1.5 rounded-lg p-1 opacity-0 transition group-hover:opacity-100 focus:opacity-100 ${
+                      day.id === activeDayId
+                        ? 'text-[#0F172A]/70 hover:bg-black/10 hover:text-red-700'
+                        : 'text-slate-400 hover:bg-red-50 hover:text-red-600'
+                    }`}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" aria-hidden />
+                  </button>
+                ) : null}
+              </div>
+            );
+          })}
         </div>
       </div>
 
       <p className="mb-4 text-xs font-bold text-slate-600">
         زر «إضافة للمسار» يضيف المعلم إلى اليوم المحدّد بالذهبي. اسحب من بنك الأماكن أو بين
-        الأيام لإعادة ترتيب الأماكن. استخدم ✏️ لتسمية اليوم، و⬆️⬇️ لنقل اليوم بالكامل
-        (الأماكن والأوقات والنقل معه).
+        الأيام لإعادة ترتيب الأماكن. مرّر على تبويب اليوم لإظهار زر الحذف 🗑️ (لا يمكن حذف
+        اليوم الوحيد). استخدم ✏️ لتسمية اليوم، و⬆️⬇️ لنقل اليوم بالكامل.
       </p>
 
       {predictiveWishContext ? (
