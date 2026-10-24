@@ -46,6 +46,7 @@ import {
   resolveLeadBookingChannelLabel,
 } from '@/lib/crm-leads';
 import { translateLeadData, translateLeadList } from '@/lib/lead-data-localization';
+import { instantDnaStage, instantDnaStageLabel, type InstantDnaStage } from '@/lib/instant-dna-status';
 
 type NewLeadsInboxProps = {
   leads: CrmLeadWithIntake[];
@@ -666,6 +667,9 @@ type InboxCardLead = {
   phone: string;
   created_at: string;
   dna_status: string;
+  /** Zero-Wait onboarding — awaiting / complete (from clients.onboarding_completed) */
+  dna_stage?: InstantDnaStage;
+  dna_url?: string;
   opt_in: boolean;
   photography_consent: string;
   destinations: string[];
@@ -771,6 +775,15 @@ function sampleInboxLead(): InboxCardLead | null {
   };
 }
 
+function safeInboxDnaUrl(lead: CrmLeadWithIntake): string {
+  try {
+    if (lead.intake?.clientId != null) return buildClientDnaWelcomeUrlByClientId(lead.intake.clientId);
+  } catch {
+    /* fall through to the server-built link */
+  }
+  return String(lead.intake?.dnaUrl ?? '');
+}
+
 function toInboxCard(lead: CrmLeadWithIntake): InboxCardLead {
   const booking = resolveLeadBookingChannelLabel(lead as CrmLeadWithIntake & Record<string, unknown>);
   const created = lead.created_at
@@ -786,7 +799,9 @@ function toInboxCard(lead: CrmLeadWithIntake): InboxCardLead {
     name: lead.full_name?.trim() || 'عميل جديد',
     phone: String(lead.phone_wa ?? '').trim(),
     created_at: created,
-    dna_status: lead.intake?.onboardingCompleted ? 'DNA مكتمل' : 'DNA جاهز',
+    dna_status: instantDnaStageLabel(instantDnaStage(lead.intake)) || 'DNA جاهز',
+    dna_stage: instantDnaStage(lead.intake),
+    dna_url: safeInboxDnaUrl(lead),
     opt_in: optedIn,
     photography_consent: optedIn ? 'موافق (Opt-in)' : 'غير موافق (Opt-out)',
     destinations: places.cities,
@@ -942,8 +957,16 @@ export function NewLeadsInbox({
               >
                 <div className="space-y-3">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="rounded-lg bg-[#F2E8D7] px-3 py-1 text-[11px] font-bold text-[#8C6D2D]">
-                      {panel === 'meetings' ? '📅 موعد مجدول (Cal)' : lead.dna_status || 'DNA جاهز'}
+                    <span
+                      className={`rounded-lg px-3 py-1 text-[11px] font-bold ${
+                        panel !== 'meetings' && lead.dna_stage === 'complete'
+                          ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200'
+                          : 'bg-[#F2E8D7] text-[#8C6D2D]'
+                      }`}
+                    >
+                      {panel === 'meetings'
+                        ? '📅 موعد مجدول (Cal)'
+                        : `${lead.dna_stage === 'complete' ? '✓ ' : lead.dna_stage === 'awaiting' ? '⏳ ' : ''}${lead.dna_status || 'DNA جاهز'}`}
                     </span>
                     <h3 className="text-xl font-bold text-[#111827]">{lead.name}</h3>
                   </div>
@@ -968,6 +991,36 @@ export function NewLeadsInbox({
                     )}
                   </div>
                 </div>
+
+                {panel !== 'meetings' && lead.dna_url && lead.dna_stage === 'awaiting' ? (
+                  <div className="flex items-center justify-between gap-2 rounded-xl border border-[#D4AF37]/30 bg-[#FFFBF0] px-3 py-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const url = lead.dna_url ?? '';
+                        void navigator.clipboard
+                          .writeText(url)
+                          .then(() => toast.success('تم نسخ رابط الـ DNA 📋'))
+                          .catch(() => toast.error('تعذر النسخ إلى الحافظة.'));
+                      }}
+                      className="inline-flex shrink-0 items-center gap-1 rounded-full bg-white px-2.5 py-1 text-[11px] font-bold text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50"
+                    >
+                      <Copy className="h-3 w-3 text-slate-400" aria-hidden />
+                      نسخ
+                    </button>
+                    <a
+                      href={lead.dna_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      dir="ltr"
+                      className="min-w-0 truncate text-left font-mono text-[11px] font-semibold text-[#8C6D2D] underline-offset-2 hover:underline"
+                      title={lead.dna_url}
+                    >
+                      {lead.dna_url.replace(/^https?:\/\//, '')}
+                    </a>
+                    <span className="shrink-0 text-[11px] font-bold text-[#C59B4B]">🧬 رابط DNA</span>
+                  </div>
+                ) : null}
 
                 <hr className="border-slate-100" />
 
