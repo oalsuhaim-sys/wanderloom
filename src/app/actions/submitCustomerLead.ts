@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { after } from 'next/server';
 
 import { runWebsiteLeadIntakeAutomation } from '@/lib/client-intake-pipeline';
 import { ensureLeadClientIntakeAdmin, ensureClientFromDirectoryFieldsAdmin } from '@/lib/client-intake-pipeline-server';
@@ -12,6 +13,8 @@ import { labelForCityComposite, labelForCountryId } from '@/lib/trip-destination
 import { normalizeAffiliateRef, readAffiliateRefFromFormData } from '@/lib/referral-url';
 import { requireValidPhone } from '@/lib/phoneUtils';
 import { runRegistrationAutomationPipeline } from '@/lib/registration-automation';
+import { deliverInstantDnaWelcome, isInstantDnaAutoMessagesEnabled } from '@/lib/instant-dna-delivery';
+import { dnaPathFromUrl } from '@/lib/instant-dna-status';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { assertServiceRoleKeyConfigured } from '@/lib/supabase/server-action-auth';
 import { ar } from '@/messages/ar';
@@ -22,7 +25,18 @@ export type CustomerLeadState = {
   ok: boolean;
   error?: string;
   message?: string;
+  /** Zero-Wait onboarding — present when the request + client profile were created */
+  leadId?: string;
+  clientId?: number | null;
+  /** Absolute DNA link (NEXT_PUBLIC_SITE_URL) — what staff / WhatsApp share */
+  dnaUrl?: string | null;
+  /** Host-independent path (/welcome/{clientId}) — what the success screen redirects to */
+  dnaPath?: string | null;
+  /** True when the opt-in automatic welcome (WhatsApp/email) was queued */
+  autoWelcomeQueued?: boolean;
 };
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 type SupabaseInsertError = {
   message?: string;
@@ -282,6 +296,11 @@ export async function submitCustomerLead(formData: FormData): Promise<CustomerLe
     const admin = createSupabaseAdminClient();
 
     const full_name = s(formData.get('full_name'));
+    const emailRaw = s(formData.get('email')).toLowerCase();
+    if (emailRaw && !EMAIL_RE.test(emailRaw)) {
+      return { ok: false, error: 'يرجى إدخال بريد إلكتروني صحيح أو ترك الحقل فارغاً.' };
+    }
+    const email = emailRaw || null;
     const phoneCheck = requireValidPhone(s(formData.get('phone_wa')));
     if (!phoneCheck.isValid) {
       return { ok: false, error: phoneCheck.error ?? ar.errors.trip.namePhone };
@@ -402,7 +421,7 @@ export async function submitCustomerLead(formData: FormData): Promise<CustomerLe
 
     const row: LeadsInsertRow = {
       full_name,
-      email: null,
+      email,
       phone_wa,
       age: ageNum,
       birth_date: birthDate,
@@ -507,8 +526,9 @@ export async function submitCustomerLead(formData: FormData): Promise<CustomerLe
       ? destinations.join('، ')
       : destCountries.map((cid) => resolveCountryLabel(cid, customCountry)).join('، ');
 
-    await sendEmailAlert(
-      '✈️ طلب رحلة جديد بانتظار المراجعة - Wanderloom',
+    // Zero-Wait: the team alert must never delay the visitor's DNA link → runs after the response.
+    const teamAlertSubject = '✈️ طلب رحلة جديد بانتظار المراجعة - Wanderloom';
+    const teamAlertHtml = 
       `
         <div dir="rtl" style="background:#f7f5ef;padding:32px;font-family:Arial,Tahoma,sans-serif;color:#17251d">
           <div style="max-width:620px;margin:0 auto;background:#ffffff;border:1px solid #e8dcc0;border-radius:20px;overflow:hidden">
@@ -530,8 +550,16 @@ export async function submitCustomerLead(formData: FormData): Promise<CustomerLe
             </div>
           </div>
         </div>
-      `,
-    );
+      `;
+    after(async () => {
+      try {
+        await sendEmailAlert(teamAlertSubject, teamAlertHtml);
+      } catch (alertErr) {
+        console.warn('[submitCustomerLead] team alert:', alertErr);
+      }
+    });
+
+    let intakeResult: { clientId: number; dnaUrl: string } | null = null;
 
     try {
       const siteOrigin =
@@ -546,7 +574,9 @@ export async function submitCustomerLead(formData: FormData): Promise<CustomerLe
         source: 'website_trip_request',
         origin: siteOrigin,
       });
-      if (!automation.intake) {
+      if (automation.intake) {
+        intakeResult = { clientId: automation.intake.clientId, dnaUrl: automation.intake.dnaUrl };
+      } else {
         console.warn(
           '[submitCustomerLead] intake not ready:',
           automation.errors.join('; ') || 'unknown',
@@ -563,13 +593,14 @@ export async function submitCustomerLead(formData: FormData): Promise<CustomerLe
       // Lead is already saved — do not fail the user for WhatsApp/notification issues.
       // Still attempt legacy intake so DNA token exists (no second WhatsApp attempt here).
       try {
-        await runWebsiteLeadIntakeAutomation(admin, {
+        const fallbackIntake = await runWebsiteLeadIntakeAutomation(admin, {
           id: insertedLead.id,
           full_name: insertedLead.full_name,
           phone_wa: insertedLead.phone_wa || phone_wa,
           email: insertedLead.email,
           referral_code: insertedLead.referral_code ?? null,
         });
+        intakeResult = { clientId: fallbackIntake.clientId, dnaUrl: fallbackIntake.dnaUrl };
       } catch (fallbackErr) {
         console.error('[submitCustomerLead] client intake fallback:', fallbackErr);
       }
@@ -588,9 +619,34 @@ export async function submitCustomerLead(formData: FormData): Promise<CustomerLe
     revalidatePath('/sessions');
     revalidatePath('/crm/radar');
     revalidatePath('/crm/clients');
+
+    // Optional multi-channel welcome (OFF unless INSTANT_DNA_AUTO_MESSAGES=on)
+    const autoWelcomeQueued = Boolean(intakeResult) && isInstantDnaAutoMessagesEnabled();
+    if (intakeResult && autoWelcomeQueued) {
+      const welcome = {
+        clientId: intakeResult.clientId,
+        fullName: insertedLead.full_name || full_name,
+        phoneWa: insertedLead.phone_wa || phone_wa,
+        email,
+        dnaUrl: intakeResult.dnaUrl,
+        destinations: destinationText ? destinationText.split('، ').filter(Boolean) : [],
+        travelDate: travel_date,
+        travelDays: travel_days,
+        travelersCount: travelers_count,
+      };
+      after(async () => {
+        await deliverInstantDnaWelcome(welcome);
+      });
+    }
+
     return {
       ok: true,
       message: ar.success.tripLeadSent,
+      leadId: insertedLead.id,
+      clientId: intakeResult?.clientId ?? null,
+      dnaUrl: intakeResult?.dnaUrl ?? null,
+      dnaPath: dnaPathFromUrl(intakeResult?.dnaUrl),
+      autoWelcomeQueued,
     };
   } catch (error) {
     console.error('Supabase Error:', error);

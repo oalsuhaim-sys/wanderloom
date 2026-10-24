@@ -66,3 +66,36 @@ export async function sendEmailAlert(subject, htmlBody) {
     return false;
   }
 }
+
+/**
+ * Sends a customer-facing email (e.g. Zero-Wait DNA welcome) through the same SMTP account.
+ * Never throws; returns true only when the SMTP server accepts the message.
+ */
+export async function sendCustomerEmail(to, subject, htmlBody) {
+  try {
+    const smtp = smtpConfiguration();
+    const recipient = String(to ?? '').trim();
+    if (!smtp || !recipient) return false;
+
+    const transporter = nodemailer.createTransport({
+      host: smtp.host,
+      port: smtp.port,
+      secure: smtp.port === 465,
+      auth: { user: smtp.user, pass: smtp.pass },
+      connectionTimeout: 10_000,
+      greetingTimeout: 10_000,
+      socketTimeout: 15_000,
+    });
+
+    await transporter.sendMail({
+      from: `Wanderloom <${smtp.user}>`,
+      to: recipient,
+      subject: String(subject),
+      html: String(htmlBody),
+    });
+    return true;
+  } catch (error) {
+    console.error('[emailAlert] Failed to send customer email:', error);
+    return false;
+  }
+}

@@ -774,5 +774,40 @@
         "zermatt": "Zermatt"
       }
     }
+  },
+  "instant": {
+    "stepOf": "Step {n} of {total}",
+    "stepContact": "You",
+    "stepDestination": "Destination",
+    "stepStyle": "Style",
+    "stepDream": "Taste & dream",
+    "next": "Next",
+    "back": "Back",
+    "emailLabel": "Email (optional)",
+    "emailPlaceholder": "So we can send you a copy of your DNA link",
+    "emailInvalid": "Please enter a valid email or leave it empty.",
+    "nameRequired": "Please enter your name.",
+    "countryRequired": "Pick at least one destination.",
+    "cityRequired": "Pick at least one city.",
+    "dreamRequired": "Write one sentence about how you want to feel.",
+    "popularTitle": "Most requested — one tap",
+    "draftSaved": "Draft saved automatically on this device",
+    "draftRestored": "We restored your previous draft — continue where you left off.",
+    "draftClear": "Start over",
+    "successKicker": "Your trip request is in",
+    "successTitle": "Welcome {name}, your journey starts now",
+    "successBody": "One last step that makes the difference: your Travel DNA — so we can tailor the trip to your pace and taste.",
+    "successCta": "Start customizing your Travel DNA now",
+    "copyLink": "Copy link",
+    "copied": "Copied ✓",
+    "sendWhatsApp": "Send via WhatsApp",
+    "redirectIn": "Taking you there in {s}s…",
+    "redirectCancel": "Keep me here",
+    "redirectPaused": "Auto-redirect paused — your link is saved above.",
+    "linkLabel": "Your private Travel DNA link",
+    "autoWelcome": "We also sent you a copy of the link.",
+    "noLinkBody": "The Wanderloom team will message you on WhatsApp with your Travel DNA link shortly.",
+    "whatsAppSelfMessage": "My Wanderloom Travel DNA link:",
+    "newRequest": "Send another request"
   }
 }

@@ -26,6 +26,7 @@ import {
   type LeadKanbanColumnId,
 } from '@/lib/leads-kanban';
 import { subscribeCrmRealtimeRefresh } from '@/lib/crm-realtime-events';
+import { instantDnaStage, instantDnaStageLabel } from '@/lib/instant-dna-status';
 import { supabase } from '@/lib/supabase';
 
 type ColumnsState = Record<LeadKanbanColumnId, CrmKanbanLead[]>;
@@ -114,6 +115,8 @@ function KanbanCard({
     lead.client_id != null ? `/crm/clients/${lead.client_id}` : `/crm/radar`;
   const isFinalStage = lead.kanbanStatus === 'payment_confirmed';
   const missingRoute = isFinalStage && !lead.hasLinkedItinerary;
+  const dnaStage = instantDnaStage(lead.intake);
+  const dnaUrl = String(lead.intake?.dnaUrl ?? '');
   const itineraryHref = lead.linkedItineraryId
     ? `/crm/itineraries/${encodeURIComponent(lead.linkedItineraryId)}/edit`
     : '/crm/itineraries';
@@ -302,6 +305,40 @@ function KanbanCard({
             <p className="mt-2 truncate text-[10px] font-medium text-slate-400 dark:text-slate-500">
               خبير: {lead.expertName}
             </p>
+          ) : null}
+
+          {dnaStage !== 'none' && !isFinalStage ? (
+            <div
+              className={`mt-2 flex items-center justify-between gap-2 rounded-md px-2 py-1.5 text-[10px] font-bold leading-snug ${
+                dnaStage === 'complete'
+                  ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:ring-emerald-900/50'
+                  : 'bg-amber-50 text-[#8C6D2D] ring-1 ring-amber-200/70 dark:bg-amber-950/30 dark:text-amber-200 dark:ring-amber-900/40'
+              }`}
+            >
+              <span>
+                {dnaStage === 'complete' ? '✓ ' : '⏳ '}
+                {instantDnaStageLabel(dnaStage)}
+              </span>
+              {dnaStage === 'awaiting' && dnaUrl ? (
+                <button
+                  type="button"
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    void navigator.clipboard
+                      .writeText(dnaUrl)
+                      .then(() => toast.success('تم نسخ رابط الـ DNA 📋'))
+                      .catch(() => toast.error('تعذر النسخ إلى الحافظة.'));
+                  }}
+                  className="shrink-0 rounded-full bg-white px-2 py-0.5 text-[10px] font-bold text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50 dark:bg-[#1A2421] dark:text-slate-300 dark:ring-[#2D3F3A]"
+                  title={dnaUrl}
+                >
+                  نسخ رابط DNA
+                </button>
+              ) : null}
+            </div>
           ) : null}
 
           {missingRoute ? (

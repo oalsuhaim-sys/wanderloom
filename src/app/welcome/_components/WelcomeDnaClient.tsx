@@ -35,6 +35,8 @@ export type WelcomeDnaClientProps = {
   view: WelcomeDnaView;
   errorMessage?: string | null;
   profile?: OnboardingProfileRow | null;
+  /** Zero-Wait onboarding — visitor was redirected here right after «سجّل رحلتك» */
+  arrivedFromRequest?: boolean;
 };
 
 export function WelcomeDnaClient({
@@ -42,6 +44,7 @@ export function WelcomeDnaClient({
   view,
   errorMessage = null,
   profile = null,
+  arrivedFromRequest = false,
 }: WelcomeDnaClientProps) {
   const router = useRouter();
   const displayName = profile?.display_name ?? '';
@@ -120,6 +123,25 @@ export function WelcomeDnaClient({
       <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,transparent_0%,rgba(0,0,0,0.45)_100%)]" />
 
       <div className="relative z-10 mx-auto flex min-h-screen max-w-2xl flex-col px-4 py-10 sm:px-6 sm:py-14">
+        {arrivedFromRequest && view === 'form' ? (
+          <div
+            role="status"
+            className="mb-8 flex items-center gap-3 rounded-2xl border border-[#D4AF37]/30 bg-[#D4AF37]/[0.07] px-4 py-3 text-right"
+          >
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#D4AF37] text-sm font-black text-[#0D0F0E]" aria-hidden>
+              ✓
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-black text-white">استلمنا طلب رحلتك</p>
+              <p className="mt-0.5 text-xs font-bold text-[#C8C4BC]">الخطوة الأخيرة: بصمة سفرك (Travel DNA) — بعدها مباشرة نبدأ تفصيل مسارك وتسعير رحلتك.</p>
+            </div>
+            <div className="hidden shrink-0 gap-1 sm:flex" aria-hidden>
+              <span className="h-1.5 w-6 rounded-full bg-[#D4AF37]" />
+              <span className="h-1.5 w-6 rounded-full bg-[#D4AF37]/40" />
+            </div>
+          </div>
+        ) : null}
+
         <header className="mb-10 text-center">
           <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-[#D4AF37]/30 bg-[#D4AF37]/10 px-4 py-1.5 text-xs font-bold tracking-widest text-[#D4AF37]">
             <Sparkles className="h-3.5 w-3.5" aria-hidden />

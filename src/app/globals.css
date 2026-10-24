@@ -1901,3 +1901,45 @@ input[type='radio'].wanderloom-raw-radio::after {
 .wl-theme * {
   font-family: var(--font-tajawal), "Tajawal", system-ui, sans-serif;
 }
+
+/* ── Zero-Wait onboarding: multi-step form + DNA success screen ── */
+@keyframes wl-step-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+.wl-step-panel:not([hidden]) { animation: wl-step-in 320ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+@keyframes wl-instant-pop {
+  0% { opacity: 0; transform: scale(0.6); }
+  60% { opacity: 1; transform: scale(1.08); }
+  100% { transform: scale(1); }
+}
+.wl-instant-pop { animation: wl-instant-pop 520ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+@keyframes wl-instant-rise {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: none; }
+}
+.wl-instant-success { animation: wl-instant-rise 420ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+@keyframes wl-instant-sheen {
+  0% { background-position: -160% 0; }
+  55%, 100% { background-position: 260% 0; }
+}
+.wl-instant-cta { position: relative; overflow: hidden; isolation: isolate; }
+.wl-instant-cta::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(110deg, transparent 30%, rgba(255, 255, 255, 0.32) 50%, transparent 70%);
+  background-size: 220% 100%;
+  animation: wl-instant-sheen 2.8s ease-in-out 0.6s infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wl-step-panel:not([hidden]),
+  .wl-instant-pop,
+  .wl-instant-success,
+  .wl-instant-cta::after { animation: none; }
+}

@@ -798,5 +798,40 @@
         "zermatt": "زيرمات"
       }
     }
+  },
+  "instant": {
+    "stepOf": "الخطوة {n} من {total}",
+    "stepContact": "عنك",
+    "stepDestination": "وجهتك",
+    "stepStyle": "أسلوبك",
+    "stepDream": "ذوقك وحلمك",
+    "next": "التالي",
+    "back": "رجوع",
+    "emailLabel": "البريد الإلكتروني (اختياري)",
+    "emailPlaceholder": "لنرسل لك نسخة من رابط بصمة سفرك",
+    "emailInvalid": "يرجى إدخال بريد إلكتروني صحيح أو ترك الحقل فارغاً.",
+    "nameRequired": "يرجى كتابة الاسم الكريم.",
+    "countryRequired": "اختر وجهة واحدة على الأقل.",
+    "cityRequired": "اختر مدينة واحدة على الأقل من وجهتك.",
+    "dreamRequired": "اكتب جملة واحدة عن الشعور الذي تريده من الرحلة.",
+    "popularTitle": "الأكثر طلباً — بلمسة واحدة",
+    "draftSaved": "حُفظت مسودتك تلقائياً على هذا الجهاز",
+    "draftRestored": "استعدنا مسودتك السابقة — أكمل من حيث توقفت.",
+    "draftClear": "ابدأ من جديد",
+    "successKicker": "استلمنا طلب رحلتك",
+    "successTitle": "أهلاً {name}، رحلتك بدأت الآن",
+    "successBody": "خطوة أخيرة تصنع الفرق: بصمة سفرك (Travel DNA) — نتعرّف فيها على إيقاعك وذوقك لنفصّل الرحلة عليك.",
+    "successCta": "ابدأ تخصيص تفضيلات رحلتك (Travel DNA) الآن",
+    "copyLink": "نسخ الرابط",
+    "copied": "تم النسخ ✓",
+    "sendWhatsApp": "إرساله عبر واتساب",
+    "redirectIn": "ننقلك تلقائياً خلال {s} ث…",
+    "redirectCancel": "أبقِني هنا",
+    "redirectPaused": "توقّف الانتقال التلقائي — الرابط محفوظ لك أعلاه.",
+    "linkLabel": "رابط بصمة سفرك الخاص",
+    "autoWelcome": "أرسلنا لك نسخة من الرابط أيضاً.",
+    "noLinkBody": "سيتواصل فريق Wanderloom معك قريباً على الواتساب برابط بصمة سفرك.",
+    "whatsAppSelfMessage": "رابط بصمة سفري (Travel DNA) من Wanderloom:",
+    "newRequest": "إرسال طلب آخر"
   }
 }

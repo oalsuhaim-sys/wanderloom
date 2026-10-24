@@ -24,6 +24,7 @@ export default async function WelcomeClientDnaPage({ params, searchParams }: Pag
   const clientId = String(rawClientId ?? '').trim();
   const resolvedSearch = searchParams ? await searchParams : undefined;
   const flow = firstParam(resolvedSearch?.flow).toLowerCase();
+  const arrivedFromRequest = firstParam(resolvedSearch?.arrived) === '1';
 
   if (!clientId || (!/^\d+$/.test(clientId) && !isSupabaseUuid(clientId))) {
     return <WelcomeDnaClient token="" view="not_found" errorMessage="معرّف العميل غير صالح." />;
@@ -61,6 +62,7 @@ export default async function WelcomeClientDnaPage({ params, searchParams }: Pag
         token={data.onboardingToken}
         view={view}
         profile={data.profile}
+        arrivedFromRequest={arrivedFromRequest}
       />
     );
   } catch (err) {
