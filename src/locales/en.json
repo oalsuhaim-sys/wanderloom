@@ -801,13 +801,21 @@
     "copyLink": "Copy link",
     "copied": "Copied ✓",
     "sendWhatsApp": "Send via WhatsApp",
-    "redirectIn": "Taking you there in {s}s…",
-    "redirectCancel": "Keep me here",
-    "redirectPaused": "Auto-redirect paused — your link is saved above.",
     "linkLabel": "Your private Travel DNA link",
     "autoWelcome": "We also sent you a copy of the link.",
     "noLinkBody": "The Wanderloom team will message you on WhatsApp with your Travel DNA link shortly.",
     "whatsAppSelfMessage": "My Wanderloom Travel DNA link:",
-    "newRequest": "Send another request"
+    "newRequest": "Send another request",
+    "why1": "We learn your pace: calm or full of experiences",
+    "why2": "Stays and dining picked for your taste, not just what's famous",
+    "why3": "We start tailoring and pricing your route as soon as it's done",
+    "laterCta": "I'll finish it later",
+    "laterTitle": "No problem, your link is saved",
+    "laterBody": "Save it to WhatsApp or copy it and come back whenever it suits you. The sooner your Travel DNA is done, the sooner we start tailoring your trip.",
+    "laterNowCta": "Changed my mind, finish it now",
+    "resumeTitle": "Welcome back {name}, your Travel DNA is waiting",
+    "resumeBody": "We received your trip request. Complete your Travel DNA so we can start tailoring your route.",
+    "resumeCta": "Continue now",
+    "resumeDismiss": "Hide"
   }
 }

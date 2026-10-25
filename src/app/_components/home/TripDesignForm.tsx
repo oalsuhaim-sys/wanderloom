@@ -7,6 +7,7 @@ import { ArrowLeft, ArrowRight, Check, Loader2, Send, Sparkles } from 'lucide-re
 
 import { submitCustomerLead, type CustomerLeadState } from '@/app/actions/submitCustomerLead';
 import { InstantDnaSuccess } from '@/app/_components/home/InstantDnaSuccess';
+import { clearPendingDna, readPendingDna, type PendingDna } from '@/lib/instant-dna-status';
 import { useLanguage } from '@/context/LanguageContext';
 import { ReferralCodeField } from '@/components/ReferralCodeField';
 import { WhatsAppInput } from '@/components/WhatsAppInput';
@@ -384,6 +385,7 @@ function TripDesignFormInner() {
   const [stepError, setStepError] = useState<string | null>(null);
   const [success, setSuccess] = useState<SuccessState | null>(null);
   const [draftRestored, setDraftRestored] = useState(false);
+  const [pendingDna, setPendingDna] = useState<PendingDna | null>(null);
   const [draftSaved, setDraftSaved] = useState(false);
   const [pendingDomFields, setPendingDomFields] = useState<Array<[string, string]> | null>(null);
   const hydratedRef = useRef(false);
@@ -419,12 +421,15 @@ function TripDesignFormInner() {
 
   // ── Draft restore (once, after mount — localStorage is browser-only) ──
   useEffect(() => {
+    // A previous request whose Travel DNA was postponed («أكملها لاحقاً»)
+    const pending = readPendingDna();
+    // localStorage only exists after hydration — syncing from it here is intentional.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (pending) setPendingDna(pending);
     const draft = readDraft();
     hydratedRef.current = true;
     if (!draft) return;
     const d = draft.state;
-    // localStorage only exists after hydration — syncing from it here is intentional.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSelectedCountries(d.selectedCountries ?? []);
     setSelectedCities(d.selectedCities ?? []);
     setIsOtherCountry(Boolean(d.isOtherCountry));
@@ -859,6 +864,39 @@ function TripDesignFormInner() {
       {selectedCities.map((k) => (
         <input key={k} type="hidden" name="cities" value={k} />
       ))}
+
+      {pendingDna ? (
+        <div className="wl-instant-success flex flex-col gap-3 rounded-2xl border border-[#9C7A3C]/30 bg-white px-4 py-4 shadow-sm sm:flex-row sm:items-center sm:px-6">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#F4EFE6] text-[#9C7A3C]" aria-hidden>
+            <Sparkles className="h-5 w-5" />
+          </span>
+          <div className="min-w-0 flex-1 text-start">
+            <p className="text-sm font-black text-[#1C2E3A]">
+              {m.resumeTitle.replace('{name}', pendingDna.name).replace(/\s+،/, '،')}
+            </p>
+            <p className="mt-0.5 text-xs font-bold leading-relaxed text-gray-500">{m.resumeBody}</p>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <a
+              href={`${pendingDna.path}${pendingDna.path.includes('?') ? '&' : '?'}arrived=1`}
+              className="wl-instant-cta inline-flex h-10 items-center justify-center gap-1.5 rounded-full px-5 text-xs font-black text-white"
+              style={{ background: 'linear-gradient(135deg, #B8913F 0%, #9C7A3C 48%, #7E6230 100%)' }}
+            >
+              {m.resumeCta}
+            </a>
+            <button
+              type="button"
+              onClick={() => {
+                clearPendingDna();
+                setPendingDna(null);
+              }}
+              className="h-10 rounded-full px-3 text-[11px] font-bold text-gray-400 hover:text-[#1C2E3A]"
+            >
+              {m.resumeDismiss}
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       {/* ── Progress ── */}
       <div ref={topRef} className="rounded-2xl border border-gray-100/90 bg-white px-4 py-3.5 shadow-sm sm:px-6">

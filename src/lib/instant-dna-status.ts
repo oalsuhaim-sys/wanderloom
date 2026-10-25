@@ -39,3 +39,42 @@ export function absoluteDnaUrl(dnaPath: string, origin?: string): string {
   const base = (origin ?? (typeof window !== 'undefined' ? window.location.origin : '')).replace(/\/$/, '');
   return base ? `${base}${dnaPath}` : dnaPath;
 }
+
+/* ── «أكملها لاحقاً» — a gentle reminder kept on the visitor's own device ── */
+
+const PENDING_DNA_KEY = 'wl:pending-dna:v1';
+const PENDING_DNA_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
+
+export type PendingDna = { path: string; name: string; savedAt: number };
+
+export function rememberPendingDna(path: string, name: string): void {
+  try {
+    window.localStorage.setItem(PENDING_DNA_KEY, JSON.stringify({ path, name, savedAt: Date.now() } satisfies PendingDna));
+  } catch {
+    /* private mode — nothing to remember */
+  }
+}
+
+export function readPendingDna(): PendingDna | null {
+  try {
+    const raw = window.localStorage.getItem(PENDING_DNA_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as PendingDna;
+    if (!parsed?.path || !String(parsed.path).startsWith('/welcome/')) return null;
+    if (Date.now() - Number(parsed.savedAt ?? 0) > PENDING_DNA_MAX_AGE_MS) {
+      window.localStorage.removeItem(PENDING_DNA_KEY);
+      return null;
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+export function clearPendingDna(): void {
+  try {
+    window.localStorage.removeItem(PENDING_DNA_KEY);
+  } catch {
+    /* ignore */
+  }
+}

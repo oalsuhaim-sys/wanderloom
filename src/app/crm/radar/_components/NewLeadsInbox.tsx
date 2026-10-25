@@ -841,6 +841,43 @@ export function NewLeadsInbox({
   const [movingId, setMovingId] = useState<string | null>(null);
   const [selectedLead, setSelectedLead] = useState<InboxCardLead | null>(null);
   const [demoMeeting, setDemoMeeting] = useState<InboxCardLead | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deletedIds, setDeletedIds] = useState<string[]>([]);
+
+  /** حذف الطلب نهائياً من جدول leads (لا يحذف ملف العميل في قاعدة العملاء). */
+  async function handleDeleteLead(lead: InboxCardLead) {
+    if (deletingId) return;
+    if (lead.isSample) {
+      setDemoMeeting(null);
+      setSelectedLead(null);
+      return;
+    }
+    const ok = window.confirm(
+      `حذف طلب «${lead.name}» نهائياً؟\nسيُزال من الرادار ولوحة المسار ولا يمكن التراجع.\n(ملف العميل في قاعدة العملاء يبقى كما هو.)`,
+    );
+    if (!ok) return;
+    if (!supabase) {
+      toast.error('Supabase غير مهيأ.');
+      return;
+    }
+    setDeletingId(lead.id);
+    try {
+      const { data, error } = await supabase.from('leads').delete().eq('id', lead.id).select('id');
+      if (error) throw error;
+      if (!data?.length) {
+        throw new Error('لم يتم حذف الطلب — تحقق من صلاحيات الكتابة.');
+      }
+      setDeletedIds((prev) => [...prev, lead.id]);
+      setSelectedLead(null);
+      onLeadApproved?.(lead.id);
+      toast.success('تم حذف الطلب نهائياً 🗑️');
+      await onRefresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'تعذر حذف الطلب.');
+    } finally {
+      setDeletingId(null);
+    }
+  }
 
   async function persistMeetingStatus(leadId: string) {
     const preferred = await supabase.from('leads').update({ status: 'meeting_scheduled' }).eq('id', leadId);
@@ -932,8 +969,9 @@ export function NewLeadsInbox({
               if (sampleLead && meetingCards.length === 0) meetingCards.push(sampleLead);
               const inboxCards = leads.map(toInboxCard);
               const interestCards = interestLeads.map(toInboxCard);
-              const visible =
-                panel === 'meetings' ? meetingCards : panel === 'interests' ? interestCards : inboxCards;
+              const visible = (
+                panel === 'meetings' ? meetingCards : panel === 'interests' ? interestCards : inboxCards
+              ).filter((card) => !deletedIds.includes(card.id));
               if (visible.length === 0) {
                 return (
                   <div className="col-span-full rounded-[28px] border border-slate-200 bg-white p-12 text-center text-xs font-bold text-slate-500">
@@ -1223,6 +1261,19 @@ export function NewLeadsInbox({
                   </span>
                 </button>
               ) : null}
+              <button
+                type="button"
+                disabled={deletingId === selectedLead.id}
+                onClick={() => void handleDeleteLead(selectedLead)}
+                className="flex w-full items-center justify-center gap-1.5 rounded-2xl border border-rose-200 bg-white px-5 py-3.5 text-xs font-bold text-rose-600 transition hover:bg-rose-50 disabled:opacity-60 sm:w-auto"
+              >
+                {deletingId === selectedLead.id ? (
+                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                ) : (
+                  <Trash2 className="h-4 w-4" aria-hidden />
+                )}
+                <span>{deletingId === selectedLead.id ? 'جاري الحذف...' : 'حذف الطلب'}</span>
+              </button>
               <button
                 type="button"
                 onClick={() => setSelectedLead(null)}
