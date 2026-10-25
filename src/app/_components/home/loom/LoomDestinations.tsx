@@ -16,7 +16,7 @@ const STOPS: Array<{ country: Exclude<LandmarkId, 'onsen'>; city: string }> = [
   { country: 'switzerland', city: 'zermatt' },
 ];
 
-/** «الخيط الذي يربط وجهاتك» — six landmarks strung on one gold thread. */
+/** «وجهاتنا» — six landmarks strung on one gold thread. */
 export function LoomDestinations() {
   const { t } = useLanguage();
   const l = t.loom;

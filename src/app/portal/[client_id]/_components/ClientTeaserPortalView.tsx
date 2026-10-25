@@ -123,8 +123,8 @@ export function ClientTeaserPortalView({ data }: ClientTeaserPortalViewProps) {
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-black text-white">نموذج التعارف VIP</p>
                 <p className="mt-1 text-xs font-semibold leading-relaxed text-white/55">
-                  شاركنا تفضيلاتك السياحية لننسج لك تجربةً تشبهك — دقيقة واحدة من وقتك تفتح
-                  عالماً من التفاصيل المدروسة.
+                  شاركنا تفضيلاتك في السفر لنصمّم رحلتك على ذوقك. لن يأخذ منك
+                  أكثر من دقيقة.
                 </p>
                 <a
                   href={data.dnaWelcomeUrl}

@@ -4,7 +4,7 @@ import { useLanguage } from '@/context/LanguageContext';
 
 const NUMERALS_AR = ['١', '٢', '٣', '٤'];
 
-/** «كيف ننسج رحلتك» — four stitches on a wavy gold thread. */
+/** «كيف نعمل» — four steps on a wavy gold thread. */
 export function LoomProcess() {
   const { t, locale } = useLanguage();
   const l = t.loom;
