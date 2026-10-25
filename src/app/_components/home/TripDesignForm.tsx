@@ -21,6 +21,7 @@ import {
 } from '@/lib/referral-url';
 import { requireValidPhone, WHATSAPP_INCOMPLETE_ERROR } from '@/lib/phoneUtils';
 import { getTripCountryById } from '@/lib/trip-destination-data';
+import { canonicalTripCountryId, cityMatches, findTripDestination } from '@/lib/destination-match';
 
 const INPUT_CLASS =
   'h-10 w-full rounded-lg border border-gray-200/90 bg-white/50 px-3 text-sm font-bold text-[#1C2E3A] outline-none transition placeholder:text-gray-400 focus:border-[#D9B238] focus:ring-2 focus:ring-[#D9B238]/60';
@@ -470,11 +471,16 @@ function TripDesignFormInner() {
   // ?dest=<country> (or an in-page «اختر وجهتك» shortcut) pre-selects country + signature city
   const applyDestination = useCallback(
     (destRaw: string) => {
-      const dest = String(destRaw ?? '').trim().toLowerCase();
-      if (!dest) return false;
-      const cities = tripDestinations.find((c) => c.id === dest)?.cities ?? getTripCountryById(dest)?.cities ?? [];
+      const raw = String(destRaw ?? '').trim();
+      if (!raw) return false;
+      // Bank ids can be free text («كوريا»): resolve canonical ids («korea») to the entry the form shows.
+      const match = findTripDestination(tripDestinations, raw) ?? findTripDestination(tripDestinations, raw.toLowerCase());
+      const dest = match?.id ?? raw.toLowerCase();
+      const cities = match?.cities ?? getTripCountryById(dest)?.cities ?? [];
       if (!cities.length) return false;
-      const cityId = cities.some((c) => c.id === SIGNATURE_CITY[dest]) ? SIGNATURE_CITY[dest] : cities[0]!.id;
+      const canon = canonicalTripCountryId(dest, match?.labelAr);
+      const signature = canon ? SIGNATURE_CITY[canon] : undefined;
+      const cityId = (canon && signature ? cities.find((c) => cityMatches(c, canon, signature))?.id : undefined) ?? cities[0]!.id;
       setSelectedCountries((prev) => (prev.includes(dest) ? prev : [...prev, dest]));
       setSelectedCities((prev) => (prev.some((k) => k.startsWith(`${dest}:`)) ? prev : [...prev, `${dest}:${cityId}`]));
       setStepError(null);

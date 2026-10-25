@@ -14,6 +14,7 @@ import {
   SEASON_LABELS,
   type SeasonKey,
 } from '@/lib/destination-advisor-data';
+import { canonicalTripCountryId } from '@/lib/destination-match';
 
 type Step = 1 | 2 | 3;
 
@@ -122,24 +123,36 @@ export default function DestinationAdvisor() {
   const [countryId, setCountryId] = useState<string | null>(null);
   const [seasonKey, setSeasonKey] = useState<SeasonKey | null>(null);
 
-  const countryData = useMemo(() => {
-    if (!countryId) return null;
-    const label = tripDestinations.find((c) => c.id === countryId)?.labelAr;
-    return getCountryAdvisorData(countryId, label);
-  }, [countryId, tripDestinations]);
+  // Places-bank ids can be free text («كوريا»); key everything by the canonical id when we know it,
+  // but keep the bank id for booking so the registration form recognises the country.
+  const entries = useMemo(() => {
+    const map = new Map<string, { id: string; label: string }>();
+    for (const c of tripDestinations) {
+      const key = canonicalTripCountryId(c.id, c.labelAr) ?? c.id;
+      if (!map.has(key)) map.set(key, { id: c.id, label: c.labelAr });
+    }
+    return map;
+  }, [tripDestinations]);
+  const entry = countryId ? entries.get(countryId) : undefined;
+  const bookingId = entry?.id ?? countryId;
+
+  const countryData = useMemo(
+    () => (countryId ? getCountryAdvisorData(countryId, entry?.label) : null),
+    [countryId, entry?.label],
+  );
 
   const seasonData = useMemo(() => {
     if (!countryData || !seasonKey) return null;
     return countryData.seasons[seasonKey];
   }, [countryData, seasonKey]);
 
-  const labelOf = (id: string) => tripDestinations.find((c) => c.id === id)?.labelAr ?? id;
-  const available = new Set(tripDestinations.map((c) => c.id));
-  const countryLabel = (countryId ? tripDestinations.find((c) => c.id === countryId)?.labelAr : '') || countryData?.name || '';
+  const labelOf = (key: string) => entries.get(key)?.label ?? key;
+  const available = new Set(entries.keys());
+  const countryLabel = entry?.label || countryData?.name || '';
   const featured = FEATURED.filter((id) => available.has(id));
   const grouped = REGIONS.map((r) => ({ ...r, ids: r.ids.filter((id) => available.has(id)) })).filter((r) => r.ids.length);
   const known = new Set(REGIONS.flatMap((r) => r.ids));
-  const others = tripDestinations.map((c) => c.id).filter((id) => !known.has(id));
+  const others = [...entries.keys()].filter((id) => !known.has(id));
   if (others.length) grouped.push({ label: 'وجهات أخرى', ids: others });
   const countryIcon = countryId && (FEATURED as string[]).includes(countryId) ? (countryId as LandmarkId) : null;
 
@@ -323,47 +336,47 @@ export default function DestinationAdvisor() {
                 <div className="mb-5 flex items-center gap-3 rounded-2xl bg-[#F7F2E8] px-4 py-3">
                   <Thermometer className="h-5 w-5 text-[#B8921E]" aria-hidden />
                   <div>
-                    <p className="text-[11px] font-bold text-[#6B7780]">متوسط الحرارة</p>
+                    <p className="text-[11px] font-bold text-[#6B7780]">
+                      الحرارة المعتادة{countryData.refCity ? ` في ${countryData.refCity}` : ''} (الصغرى – العظمى)
+                    </p>
                     <p dir="ltr" className="text-right text-base font-black text-[#1C2E3A]">{seasonData.avgTemp}</p>
                   </div>
                 </div>
 
                 <p className="text-[15px] font-semibold leading-[1.95] text-[#3E4F5A]">{seasonData.advice}</p>
 
-                {seasonData.status === 'recommended' ? (
-                  <>
-                    <div className="mt-5 rounded-[18px] border-[1.5px] border-dashed border-[#D9B238]/80 bg-[#FBF8F1] p-4">
-                      <p className="mb-1.5 flex items-center gap-2 text-xs font-black text-[#8A6A12]">
-                        <Sparkles className="h-3.5 w-3.5" aria-hidden />
-                        فعاليات حصرية
-                      </p>
-                      <p className="text-[15px] font-bold leading-relaxed text-[#1C2E3A]">{seasonData.hiddenEvents}</p>
-                    </div>
-                    <div className="mt-5">
-                      <p className="mb-2.5 text-sm font-black text-[#1C2E3A]">أنشطة مقترحة</p>
-                      <ul className="space-y-2.5">
-                        {seasonData.activities.map((act) => (
-                          <li key={act} className="flex items-start gap-2.5 text-[15px] font-bold text-[#3E4F5A]">
-                            <Calendar className="mt-0.5 h-4 w-4 shrink-0 text-[#B8921E]" aria-hidden />
-                            {act}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  </>
-                ) : (
-                  <div className="mt-5 rounded-[18px] border border-amber-200 bg-amber-50/80 p-4">
-                    <p className="text-xs font-bold text-amber-900/80">
-                      <span className="font-black">لمحة حصرية:</span> {seasonData.hiddenEvents}
-                    </p>
-                  </div>
-                )}
+                <div
+                  className={`mt-5 rounded-[18px] p-4 ${
+                    seasonData.status === 'recommended'
+                      ? 'border-[1.5px] border-dashed border-[#D9B238]/80 bg-[#FBF8F1]'
+                      : 'border border-amber-200 bg-amber-50/80'
+                  }`}
+                >
+                  <p className="mb-1.5 flex items-center gap-2 text-xs font-black text-[#8A6A12]">
+                    <Sparkles className="h-3.5 w-3.5" aria-hidden />
+                    فعالية الموسم
+                  </p>
+                  <p className="text-[15px] font-bold leading-relaxed text-[#1C2E3A]">{seasonData.hiddenEvents}</p>
+                </div>
+                <div className="mt-5">
+                  <p className="mb-2.5 text-sm font-black text-[#1C2E3A]">
+                    {seasonData.status === 'recommended' ? 'أنشطة مقترحة' : 'بدائل نرشحها في هذا الموسم'}
+                  </p>
+                  <ul className="space-y-2.5">
+                    {seasonData.activities.map((act) => (
+                      <li key={act} className="flex items-start gap-2.5 text-[15px] font-bold text-[#3E4F5A]">
+                        <Calendar className="mt-0.5 h-4 w-4 shrink-0 text-[#B8921E]" aria-hidden />
+                        {act}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               </div>
 
               <Link
-                href={countryId ? `/?dest=${encodeURIComponent(countryId)}#lead` : '/#lead'}
+                href={bookingId ? `/?dest=${encodeURIComponent(bookingId)}#lead` : '/#lead'}
                 onClick={(e) => {
-                  if (countryId && requestTripDestination(countryId)) e.preventDefault();
+                  if (bookingId && requestTripDestination(bookingId)) e.preventDefault();
                 }}
                 className="wl-gold-cta inline-flex min-h-[56px] items-center justify-center rounded-full px-6 text-base font-black"
               >
