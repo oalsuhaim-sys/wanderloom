@@ -182,7 +182,7 @@ export default function DestinationAdvisor() {
         <AdvisorStepper step={step} onBack={goBack} />
       </div>
 
-      <div className="w-full rounded-[30px] border border-[#D9B238]/30 bg-white p-5 shadow-[0_34px_70px_-46px_rgba(28,46,58,0.6)] sm:p-9">
+      <div className="w-full">
         {step === 1 ? (
           tripDestinations.length === 0 ? (
             <p className="text-center text-sm font-bold text-gray-500">لا وجهات في بنك الأماكن بعد — أضف أماكن من الخزنة لتظهر هنا.</p>
@@ -195,7 +195,7 @@ export default function DestinationAdvisor() {
                     {featured.map((id) => (
                       <li key={id}>
                         <button type="button" onClick={() => selectCountry(id)} className="group flex w-full flex-col items-center gap-2.5 text-center">
-                          <span className="flex h-[84px] w-[84px] items-center justify-center rounded-full border-2 border-[#9C7A3C] bg-[#F4EFE6] text-[#1C2E3A] shadow-[0_0_0_7px_#fff,0_12px_26px_-16px_rgba(28,46,58,0.6)] transition-all duration-300 group-hover:-translate-y-1 group-hover:border-[#D9B238] group-hover:bg-[#1C2E3A] group-hover:text-[#E9CB6A]">
+                          <span className="flex h-[84px] w-[84px] items-center justify-center rounded-full border-2 border-[#9C7A3C] bg-[#F4EFE6] text-[#1C2E3A] shadow-[0_0_0_8px_#F4EFE6,0_14px_30px_-18px_rgba(28,46,58,0.6)] transition-all duration-300 group-hover:-translate-y-1 group-hover:border-[#D9B238] group-hover:bg-[#1C2E3A] group-hover:text-[#E9CB6A]">
                             <LandmarkIcon id={id} size={42} />
                           </span>
                           <span className="text-[15px] font-black text-[#1C2E3A]">{labelOf(id)}</span>
@@ -214,7 +214,7 @@ export default function DestinationAdvisor() {
 
               <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
                 {grouped.map((region) => (
-                  <div key={region.label} className="rounded-[22px] border border-[#9C7A3C]/20 bg-[#FBF8F1] p-5">
+                  <div key={region.label} className="rounded-[22px] border border-[#9C7A3C]/25 bg-white/80 p-5 shadow-[0_18px_40px_-34px_rgba(28,46,58,0.6)]">
                     <p className="mb-4 flex items-center gap-2 text-sm font-black text-[#1C2E3A]">
                       <span aria-hidden className="h-2.5 w-2.5 rounded-full bg-[#D9B238]" />
                       {region.label}
@@ -296,7 +296,7 @@ export default function DestinationAdvisor() {
         {step === 3 && seasonData && countryData ? (
           <div className="grid w-full gap-8 lg:grid-cols-[1.1fr_0.9fr]">
             <div className="flex flex-col gap-5">
-              <div className="relative overflow-hidden rounded-[24px] border border-[#9C7A3C]/28 bg-[#F7F2E8] p-6 sm:p-7">
+              <div className="relative overflow-hidden rounded-[24px] border border-[#9C7A3C]/28 bg-white p-6 shadow-[0_24px_50px_-36px_rgba(28,46,58,0.6)] sm:p-7">
                 <span aria-hidden className="absolute inset-x-0 top-0 h-1 bg-[#D9B238]" />
                 <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
                   <h3 className="flex items-center gap-3 text-2xl font-black text-[#1C2E3A]">
@@ -320,7 +320,7 @@ export default function DestinationAdvisor() {
                   )}
                 </div>
 
-                <div className="mb-5 flex items-center gap-3 rounded-2xl bg-white px-4 py-3">
+                <div className="mb-5 flex items-center gap-3 rounded-2xl bg-[#F7F2E8] px-4 py-3">
                   <Thermometer className="h-5 w-5 text-[#B8921E]" aria-hidden />
                   <div>
                     <p className="text-[11px] font-bold text-[#6B7780]">متوسط الحرارة</p>
@@ -332,7 +332,7 @@ export default function DestinationAdvisor() {
 
                 {seasonData.status === 'recommended' ? (
                   <>
-                    <div className="mt-5 rounded-[18px] border-[1.5px] border-dashed border-[#D9B238]/80 bg-white p-4">
+                    <div className="mt-5 rounded-[18px] border-[1.5px] border-dashed border-[#D9B238]/80 bg-[#FBF8F1] p-4">
                       <p className="mb-1.5 flex items-center gap-2 text-xs font-black text-[#8A6A12]">
                         <Sparkles className="h-3.5 w-3.5" aria-hidden />
                         فعاليات حصرية
