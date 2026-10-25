@@ -836,12 +836,16 @@ function TripDesignFormInner() {
       <div ref={topRef}>
         <InstantDnaSuccess
           name={success.name}
-          phone={success.phone}
           dnaPath={success.dnaPath}
-          autoWelcomeQueued={success.autoWelcomeQueued}
           onReset={() => {
             setSuccess(null);
             setState(null);
+          }}
+          onLater={() => {
+            setSuccess(null);
+            setState(null);
+            setPendingDna(readPendingDna());
+            scrollToTop();
           }}
         />
       </div>
