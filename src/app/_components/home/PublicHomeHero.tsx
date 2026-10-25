@@ -38,10 +38,10 @@ export function PublicHomeHero() {
             <span className="inline-block h-0.5 w-8 bg-[#D9B238]" aria-hidden />
             {l.heroKicker}
           </p>
-          <h1 className="text-[40px] font-black leading-[1.15] tracking-tight text-[#1C2E3A] sm:text-6xl lg:text-[72px]">
+          <h1 className="text-[40px] font-black leading-[1.15] tracking-tight text-[#1C2E3A] sm:text-6xl lg:text-[56px] xl:text-[64px]">
             {l.heroTitle1}
             <br />
-            <span className="text-[#9C7A3C]">{l.heroTitle2}</span>
+            <span className="whitespace-nowrap text-[#9C7A3C]">{l.heroTitle2}</span>
           </h1>
           <p className="max-w-xl text-base font-medium leading-loose text-[#3E4F5A] sm:text-lg">{l.heroBody}</p>
           <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">

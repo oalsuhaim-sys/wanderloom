@@ -21,7 +21,7 @@ import {
 const GOLD = '#D4AF37';
 
 const PREMIUM_INTRO =
-  'دعنا نتعرف على تفاصيل حلمك، لننسج لك تجربة سفرٍ تشبهك وتلامس حواسك.';
+  'نتعرّف هنا على ذوقك في السفر، لنصمّم لك رحلة على مقاسك.';
 
 const inputClass =
   'w-full rounded-xl border border-[#D4AF37]/20 bg-[#0D0F0E] px-4 py-3 text-sm text-white placeholder:text-[#6B6760] outline-none focus:border-[#D4AF37]/60 focus:ring-2 focus:ring-[#D4AF37]/20';
