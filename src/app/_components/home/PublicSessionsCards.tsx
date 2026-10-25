@@ -39,21 +39,26 @@ function normalizeSessionTitle(title: string): string {
   return title.replace(/\s+/g, ' ').trim().replace(/[–—−]/g, '-');
 }
 
+/**
+ * The CRM is the source of truth for session copy. Arabic always shows the DB title/description;
+ * English uses a translation only when one exists for this exact title (never by list position —
+ * that showed another session's title when a title was edited).
+ */
 function resolveEventCopy(
   session: Session,
-  index: number,
-  eventsList: EventListEntry[],
+  locale: 'ar' | 'en',
+  eventsList: readonly EventListEntry[],
 ): { title: string; description: string } {
   const raw = String(session.title ?? '').trim();
+  const desc = String(session.description ?? '');
+  if (locale === 'ar') return { title: raw, description: desc };
   const normalized = normalizeSessionTitle(raw);
-  const entry =
-    eventsList.find(
-      (e) => e.matchTitle === raw || normalizeSessionTitle(e.matchTitle) === normalized,
-    ) ?? eventsList[index];
-
+  const entry = eventsList.find(
+    (e) => e.matchTitle === raw || normalizeSessionTitle(e.matchTitle) === normalized,
+  );
   return {
     title: entry?.title ?? raw,
-    description: entry?.desc ?? String(session.description ?? ''),
+    description: entry?.desc ?? desc,
   };
 }
 
@@ -111,11 +116,11 @@ export function PublicSessionsCards({
 
   const displaySessions = useMemo(
     () =>
-      sortedSessions.map((session, index) => {
-        const copy = resolveEventCopy(session, index, ev.eventsList ?? []);
+      sortedSessions.map((session) => {
+        const copy = resolveEventCopy(session, locale === 'en' ? 'en' : 'ar', ev.eventsList ?? []);
         return { ...session, title: copy.title, description: copy.description };
       }),
-    [sortedSessions, ev.eventsList],
+    [sortedSessions, ev.eventsList, locale],
   );
 
   function priceLabel(p: number) {

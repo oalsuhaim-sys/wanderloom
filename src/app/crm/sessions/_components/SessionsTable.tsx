@@ -5,6 +5,7 @@ import { ExternalLink, MapPin, Pencil, Trash2, Users, Video } from 'lucide-react
 
 import type { Session, SessionRegistration } from '@/types/session-tables';
 import { CRM_BTN_PRIMARY, partnerInitials } from '@/lib/crm-luxury-ui';
+import { riyadhToday } from '@/lib/riyadh-date';
 
 type SessionsTableProps = {
   sessions: Session[];
@@ -103,6 +104,8 @@ export function SessionsTable({ sessions, registrations, loading, onEdit, onDele
           const month = d
             ? d.toLocaleDateString('ar-SA', { month: 'short' })
             : String(s.date).slice(5, 7) || '—';
+          const year = String(s.date).slice(0, 4);
+          const isPast = String(s.date).slice(0, 10) < riyadhToday();
           const lead = regs[0];
           const joinHref = inPerson
             ? s.location_url || '/portal/sessions'
@@ -122,6 +125,12 @@ export function SessionsTable({ sessions, registrations, loading, onEdit, onDele
                     <span className="mt-1 text-[10px] font-semibold text-slate-500 dark:text-slate-400">
                       {month}
                     </span>
+                    <span className="text-[10px] font-semibold text-slate-400">{year}</span>
+                    {isPast ? (
+                      <span className="mt-1 rounded-full bg-rose-50 px-1.5 py-0.5 text-[9px] font-black text-rose-700">
+                        انتهت
+                      </span>
+                    ) : null}
                   </div>
 
                   <div className="min-w-0 flex-1">

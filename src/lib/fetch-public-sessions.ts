@@ -2,6 +2,7 @@ import { supabase } from '@/lib/supabase/universal';
 
 import type { Session } from '@/types/session-tables';
 import { ar } from '@/messages/ar';
+import { riyadhToday } from '@/lib/riyadh-date';
 
 export type FetchPublicSessionsResult = {
   sessions: Session[];
@@ -12,7 +13,12 @@ export type FetchPublicSessionsResult = {
 /** جلب جدول sessions للموقع العام (مفتاح anon) — بدون كاش على الصفحات force-dynamic */
 export async function fetchPublicSessions(): Promise<FetchPublicSessionsResult> {
   try {
-    const { data, error } = await supabase.from('sessions').select('*').order('date', { ascending: true });
+    // Only today and later (Riyadh calendar day) — past sessions must not stay open for registration.
+    const { data, error } = await supabase
+      .from('sessions')
+      .select('*')
+      .gte('date', riyadhToday())
+      .order('date', { ascending: true });
 
     if (error) {
       return {
