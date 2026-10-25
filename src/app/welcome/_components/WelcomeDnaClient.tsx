@@ -1,11 +1,12 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2, Sparkles } from 'lucide-react';
 
 import { submitOnboardingProfileAction } from '@/app/actions/onboardingActions';
 import { DnaAlreadySubmittedCard } from '@/app/welcome/_components/DnaAlreadySubmittedCard';
+import { clearPendingDna } from '@/lib/instant-dna-status';
 import {
   CLIENT_DNA_ACTIVITY_OPTIONS,
   emptyOnboardingForm,
@@ -56,6 +57,11 @@ export function WelcomeDnaClient({
   }, [profile, view]);
 
   const [submitting, setSubmitting] = useState(false);
+
+  // DNA already on file → drop the «أكملها لاحقاً» reminder on this device
+  useEffect(() => {
+    if (view === 'success') clearPendingDna();
+  }, [view]);
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState(() => ({
     passport_expiry: initialForm.passport_expiry,
@@ -93,6 +99,7 @@ export function WelcomeDnaClient({
         setError(result.error);
         return;
       }
+      clearPendingDna();
       const params = new URLSearchParams();
       const leadId = String(result.leadId ?? '').trim();
       const quoteId = String(result.quoteId ?? '').trim();
