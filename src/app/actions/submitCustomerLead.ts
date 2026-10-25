@@ -90,6 +90,7 @@ type LeadsInsertRow = {
   form_type: 'trip_log' | 'contact';
   status: 'radar_pending';
   referral_code?: string | null;
+  media_consent?: boolean;
 };
 
 function formatSupabaseInsertError(error: SupabaseInsertError): string {
@@ -268,12 +269,26 @@ function sanitizeDestinationsPayload(
   return { ok: true, destinations };
 }
 
+const TRAVEL_SEASON_LABEL_AR: Record<string, string> = {
+  winter: 'الشتاء',
+  spring: 'الربيع',
+  summer: 'الصيف',
+  autumn: 'الخريف',
+  flexible: 'مرن',
+};
+
 function buildFinalThoughts(
   dreamFeeling: string,
   visitedBefore: Record<string, 'yes' | 'no'>,
   customCountry: string,
+  travelSeason?: string | null,
 ): string {
   const lines = [dreamFeeling];
+
+  const seasonLabel = travelSeason ? TRAVEL_SEASON_LABEL_AR[travelSeason] : undefined;
+  if (seasonLabel) {
+    lines.push(`الموسم المفضّل: ${seasonLabel}`);
+  }
 
   const visitLines = Object.entries(visitedBefore).map(([countryId, answer]) => {
     const label = resolveCountryLabel(countryId, customCountry) || countryId;
@@ -438,7 +453,7 @@ export async function submitCustomerLead(formData: FormData): Promise<CustomerLe
       day_start_time,
       food_preferences,
       accommodation_type,
-      final_thoughts: buildFinalThoughts(dream_feeling, visitedBefore, customCountry),
+      final_thoughts: buildFinalThoughts(dream_feeling, visitedBefore, customCountry, s(formData.get('travel_season')) || null),
       form_type: 'trip_log',
       status: 'radar_pending',
     };
@@ -451,6 +466,12 @@ export async function submitCustomerLead(formData: FormData): Promise<CustomerLe
       row.referral_code = referral_code;
     }
 
+    // Photography consent (Travel DNA step) — explicit yes/no only
+    const mediaConsentRaw = s(formData.get('media_consent'));
+    if (mediaConsentRaw === 'yes' || mediaConsentRaw === 'no') {
+      row.media_consent = mediaConsentRaw === 'yes';
+    }
+
     const supabase = admin;
     let insertedLead: InsertedLeadRow | null = null;
     let { data: inserted, error } = await supabase
@@ -458,6 +479,16 @@ export async function submitCustomerLead(formData: FormData): Promise<CustomerLe
       .insert(row as never)
       .select('id, full_name, phone_wa, email, referral_code')
       .single();
+
+    if (error && 'media_consent' in row && /media_consent/i.test(error.message ?? '')) {
+      // Older schema without the column — drop it for this and any later retry
+      delete row.media_consent;
+      ({ data: inserted, error } = await supabase
+        .from('leads')
+        .insert(row as never)
+        .select('id, full_name, phone_wa, email, referral_code')
+        .single());
+    }
 
     if (error && /lead_source|column|schema cache|does not exist/i.test(error.message ?? '')) {
       const { lead_source: _dropSource, ...withoutSource } = row;

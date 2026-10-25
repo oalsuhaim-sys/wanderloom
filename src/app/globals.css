@@ -1943,3 +1943,21 @@ input[type='radio'].wanderloom-raw-radio::after {
   .wl-instant-success,
   .wl-instant-cta::after { animation: none; }
 }
+
+/* Wizard: direction-aware step transition */
+@keyframes wl-step-slide-fwd {
+  from { opacity: 0; transform: translateX(-18px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes wl-step-slide-back {
+  from { opacity: 0; transform: translateX(18px); }
+  to { opacity: 1; transform: none; }
+}
+.wl-step-panel.wl-step-fwd:not([hidden]) { animation: wl-step-slide-fwd 380ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+.wl-step-panel.wl-step-back:not([hidden]) { animation: wl-step-slide-back 380ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+[dir='ltr'] .wl-step-panel.wl-step-fwd:not([hidden]) { animation-name: wl-step-slide-back; }
+[dir='ltr'] .wl-step-panel.wl-step-back:not([hidden]) { animation-name: wl-step-slide-fwd; }
+@media (prefers-reduced-motion: reduce) {
+  .wl-step-panel.wl-step-fwd:not([hidden]),
+  .wl-step-panel.wl-step-back:not([hidden]) { animation: none; }
+}

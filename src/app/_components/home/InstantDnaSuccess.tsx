@@ -1,11 +1,11 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Check, Sparkles } from 'lucide-react';
+import { Check, Copy, Sparkles } from 'lucide-react';
 
 import { useLanguage } from '@/context/LanguageContext';
-import { rememberPendingDna } from '@/lib/instant-dna-status';
+import { absoluteDnaUrl, rememberPendingDna } from '@/lib/instant-dna-status';
 
 type InstantDnaSuccessProps = {
   name: string;
@@ -26,6 +26,25 @@ export function InstantDnaSuccess({ name, dnaPath, onReset, onLater }: InstantDn
   const { dir, t } = useLanguage();
   const m = t.instant;
   const headingRef = useRef<HTMLHeadingElement>(null);
+  const [copied, setCopied] = useState(false);
+
+  async function copyLink() {
+    if (!dnaPath) return;
+    // Rendered only after a client-side submit (never SSR) — window.location is safe here.
+    const url = absoluteDnaUrl(dnaPath);
+    try {
+      await navigator.clipboard.writeText(url);
+    } catch {
+      const area = document.createElement('textarea');
+      area.value = url;
+      document.body.appendChild(area);
+      area.select();
+      document.execCommand('copy');
+      document.body.removeChild(area);
+    }
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 2200);
+  }
 
   const targetPath = dnaPath ? `${dnaPath}${dnaPath.includes('?') ? '&' : '?'}arrived=1` : null;
   const firstName = name.trim().split(/\s+/)[0] || '';
@@ -93,7 +112,15 @@ export function InstantDnaSuccess({ name, dnaPath, onReset, onLater }: InstantDn
               <Sparkles className="h-5 w-5 shrink-0 transition-transform group-hover:rotate-12" aria-hidden />
               <span>{m.successCta}</span>
             </button>
-            <div className="mt-3">
+            <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+              <button
+                type="button"
+                onClick={() => void copyLink()}
+                className="inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-full border border-[#D9B238]/50 bg-white px-5 text-sm font-black text-[#1C2E3A] transition hover:bg-[#FBF8F1]"
+              >
+                {copied ? <Check className="h-4 w-4 text-emerald-600" aria-hidden /> : <Copy className="h-4 w-4 text-[#8A6A12]" aria-hidden />}
+                {copied ? m.copied : m.copyLink}
+              </button>
               <button
                 type="button"
                 onClick={onLater}
