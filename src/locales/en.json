@@ -832,7 +832,10 @@
     "consentRequired": "Please choose your photography preference.",
     "referralLocked": "Referral code {code} is applied to your request",
     "copyLink": "Copy Travel DNA link",
-    "copied": "Copied ✓"
+    "copied": "Copied ✓",
+    "successHello": "Welcome {name},",
+    "successStarted": "your journey starts now",
+    "lastStep": "One last step"
   },
   "loom": {
     "heroKicker": "WANDERLOOM · Weavers of private journeys",

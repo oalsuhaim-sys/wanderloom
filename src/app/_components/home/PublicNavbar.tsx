@@ -58,7 +58,7 @@ export function PublicNavbar() {
       >
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:gap-4 sm:px-8 sm:py-4">
           <Link href="/#top" aria-label={t.brand.name} className="shrink-0 transition-opacity duration-300 hover:opacity-85">
-            <BrandMark size={40} wordmarkClassName="hidden text-lg text-[#1C2E3A] min-[420px]:inline sm:text-[22px]" />
+            <BrandMark size={40} wordmarkClassName="hidden text-lg text-[#1C2E3A] min-[420px]:inline sm:text-[22px] lg:hidden 2xl:inline" />
           </Link>
 
           <div className="hidden items-center gap-4 lg:flex">

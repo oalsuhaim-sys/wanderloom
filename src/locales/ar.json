@@ -856,7 +856,10 @@
     "consentRequired": "اختر تفضيلك في تصريح التصوير.",
     "referralLocked": "كود الإحالة {code} مُفعّل على طلبك",
     "copyLink": "نسخ رابط بصمة السفر",
-    "copied": "تم النسخ ✓"
+    "copied": "تم النسخ ✓",
+    "successHello": "أهلاً {name}،",
+    "successStarted": "رحلتك بدأت الآن",
+    "lastStep": "الخطوة الأخيرة"
   },
   "loom": {
     "heroKicker": "WANDERLOOM · نسّاج الرحلات الخاصة",
