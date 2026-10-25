@@ -7,6 +7,8 @@ import { Check, Loader2, Sparkles } from 'lucide-react';
 
 import { submitCustomerLead, type CustomerLeadState } from '@/app/actions/submitCustomerLead';
 import { InstantDnaSuccess } from '@/app/_components/home/InstantDnaSuccess';
+import { LandmarkIcon } from '@/app/_components/home/loom/LandmarkIcon';
+import { SELECT_DESTINATION_EVENT, type SelectDestinationDetail } from '@/app/_components/home/loom/destination-intent';
 import { clearPendingDna, readPendingDna, type PendingDna } from '@/lib/instant-dna-status';
 import { useLanguage } from '@/context/LanguageContext';
 import { ReferralCodeField } from '@/components/ReferralCodeField';
@@ -235,10 +237,20 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 /** One tap → country + its signature city (satisfies the «at least one city» rule). */
 const POPULAR_PICKS = [
-  { country: 'japan', city: 'tokyo', flag: '🇯🇵' },
-  { country: 'korea', city: 'seoul', flag: '🇰🇷' },
-  { country: 'uk', city: 'london', flag: '🇬🇧' },
+  { country: 'japan', city: 'tokyo' },
+  { country: 'korea', city: 'seoul' },
+  { country: 'uk', city: 'london' },
 ] as const;
+
+/** ?dest=<country> (from the destinations thread / advisor) pre-selects country + signature city */
+const SIGNATURE_CITY: Record<string, string> = {
+  japan: 'tokyo',
+  korea: 'seoul',
+  uk: 'london',
+  france: 'paris',
+  italy: 'rome',
+  switzerland: 'zermatt',
+};
 
 /** Values held in React state — restored through state, never written back into the DOM. */
 const STATE_FIELDS = new Set([
@@ -454,6 +466,38 @@ function TripDesignFormInner() {
     setPendingDomFields(draft.fields);
     setDraftRestored(true);
   }, []);
+
+  // ?dest=<country> (or an in-page «اختر وجهتك» shortcut) pre-selects country + signature city
+  const applyDestination = useCallback(
+    (destRaw: string) => {
+      const dest = String(destRaw ?? '').trim().toLowerCase();
+      if (!dest) return false;
+      const cities = tripDestinations.find((c) => c.id === dest)?.cities ?? getTripCountryById(dest)?.cities ?? [];
+      if (!cities.length) return false;
+      const cityId = cities.some((c) => c.id === SIGNATURE_CITY[dest]) ? SIGNATURE_CITY[dest] : cities[0]!.id;
+      setSelectedCountries((prev) => (prev.includes(dest) ? prev : [...prev, dest]));
+      setSelectedCities((prev) => (prev.some((k) => k.startsWith(`${dest}:`)) ? prev : [...prev, `${dest}:${cityId}`]));
+      setStepError(null);
+      return true;
+    },
+    [tripDestinations],
+  );
+
+  const appliedDestRef = useRef<string | null>(null);
+  useEffect(() => {
+    const dest = String(searchParams.get('dest') ?? '').trim().toLowerCase();
+    if (!dest || appliedDestRef.current === dest || !hydratedRef.current) return;
+    if (applyDestination(dest)) appliedDestRef.current = dest;
+  }, [searchParams, applyDestination]);
+
+  useEffect(() => {
+    const onSelect = (e: Event) => {
+      const country = (e as CustomEvent<SelectDestinationDetail>).detail?.country;
+      if (country && applyDestination(country)) appliedDestRef.current = country;
+    };
+    window.addEventListener(SELECT_DESTINATION_EVENT, onSelect);
+    return () => window.removeEventListener(SELECT_DESTINATION_EVENT, onSelect);
+  }, [applyDestination]);
 
   // Second pass: dependent inputs (cities, «visited before» radios) now exist in the DOM.
   useEffect(() => {
@@ -1122,9 +1166,7 @@ function TripDesignFormInner() {
                               : 'border-gray-200 bg-white text-[#1C2E3A] hover:border-[#D9B238]'
                           }`}
                         >
-                          <span className="text-xl leading-none" aria-hidden>
-                            {pick.flag}
-                          </span>
+                          <LandmarkIcon id={pick.country} size={28} strokeWidth={2.4} className={on ? 'text-[#E9CB6A]' : 'text-[#1C2E3A]'} />
                           <span className="text-sm font-black">{countryLabel(pick.country)}</span>
                           <span className={`text-[10px] font-bold ${on ? 'text-[#E9CB6A]' : 'text-gray-400'}`}>
                             {on ? <Check className="inline h-3 w-3" aria-hidden /> : null} {cityLabel(pick.country, pick.city)}

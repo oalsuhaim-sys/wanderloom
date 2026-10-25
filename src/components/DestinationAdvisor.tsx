@@ -1,6 +1,8 @@
 ﻿'use client';
 
 import Link from 'next/link';
+
+import { requestTripDestination } from '@/app/_components/home/loom/destination-intent';
 import { useMemo, useState } from 'react';
 import {
   Calendar,
@@ -107,11 +109,11 @@ export default function DestinationAdvisor() {
     <div className="relative mx-auto flex w-full max-w-5xl flex-col items-center bg-transparent px-4">
       <div className="relative z-10 flex w-full flex-col items-center">
       <div className="mb-10 w-full text-center">
-        <p className="inline-flex items-center gap-2 rounded-full border border-[#9C7A3C]/30 bg-[#9C7A3C]/10 px-4 py-1.5 text-[11px] font-black tracking-wide text-[#9C7A3C]">
+        <p className="inline-flex items-center gap-2 rounded-full border border-[#D9B238]/55 bg-[#D9B238]/10 px-4 py-1.5 text-xs font-extrabold tracking-wide text-[#8A6A12]">
           <Sparkles className="h-3.5 w-3.5" aria-hidden />
           مستشار الوجهة · Wanderloom
         </p>
-        <h2 className="mt-5 text-3xl font-black text-[#1C2E3A] sm:text-4xl">
+        <h2 className="mt-5 text-[28px] font-black leading-tight text-[#1C2E3A] sm:text-4xl lg:text-[44px]">
           تعرف وجهتك؟ دعنا نرشدك للموسم المثالي
         </h2>
         <p className="mx-auto mt-4 max-w-2xl text-sm font-bold leading-relaxed text-gray-600 sm:text-base">
@@ -136,26 +138,26 @@ export default function DestinationAdvisor() {
 
         <div className="flex flex-1 items-center justify-center gap-2 text-xs font-black text-[#1C2E3A]">
           <span
-            className={`flex h-7 w-7 items-center justify-center rounded-full border-2 ${
-              step >= 1 ? 'border-[#9C7A3C] bg-[#1C2E3A] text-[#F4EFE6]' : 'border-gray-200 bg-white text-gray-400'
+            className={`flex h-8 w-8 items-center justify-center rounded-full border-2 ${
+              step >= 1 ? 'border-[#D9B238] bg-[#1C2E3A] text-[#F4EFE6]' : 'border-gray-200 bg-white text-gray-400'
             }`}
           >
             1
           </span>
           <span className="hidden sm:inline">الدولة</span>
-          <span className="text-gray-300">→</span>
+          <span className="mx-1 inline-block h-0.5 w-6 rounded-full bg-[#D9B238] sm:w-10" aria-hidden />
           <span
-            className={`flex h-7 w-7 items-center justify-center rounded-full border-2 ${
-              step >= 2 ? 'border-[#9C7A3C] bg-[#1C2E3A] text-[#F4EFE6]' : 'border-gray-200 bg-white text-gray-400'
+            className={`flex h-8 w-8 items-center justify-center rounded-full border-2 ${
+              step >= 2 ? 'border-[#D9B238] bg-[#1C2E3A] text-[#F4EFE6]' : 'border-gray-200 bg-white text-gray-400'
             }`}
           >
             2
           </span>
           <span className="hidden sm:inline">الموسم</span>
-          <span className="text-gray-300">→</span>
+          <span className="mx-1 inline-block h-0.5 w-6 rounded-full bg-[#D9B238] sm:w-10" aria-hidden />
           <span
-            className={`flex h-7 w-7 items-center justify-center rounded-full border-2 ${
-              step >= 3 ? 'border-[#9C7A3C] bg-[#9C7A3C] text-[#F4EFE6]' : 'border-gray-200 bg-white text-gray-400'
+            className={`flex h-8 w-8 items-center justify-center rounded-full border-2 ${
+              step >= 3 ? 'border-[#D9B238] bg-[#D9B238] text-[#1C2E3A] shadow-[0_0_0_4px_rgba(217,178,56,0.2)]' : 'border-gray-200 bg-white text-gray-400'
             }`}
           >
             3
@@ -166,7 +168,7 @@ export default function DestinationAdvisor() {
         <span className="w-[72px] shrink-0" aria-hidden />
       </div>
 
-      <div className="w-full rounded-3xl border border-[#1C2E3A]/10 bg-white/80 p-6 shadow-sm backdrop-blur-sm sm:p-8">
+      <div className="w-full rounded-[30px] border border-[#D9B238]/30 bg-white p-6 shadow-[0_34px_70px_-46px_rgba(28,46,58,0.6)] sm:p-9">
         {step === 1 ? (
           <div className="flex flex-wrap justify-center gap-3.5 leading-relaxed">
             {advisorCountries.length === 0 ? (
@@ -248,7 +250,7 @@ export default function DestinationAdvisor() {
         {step === 3 && seasonData && countryData ? (
           <div className="mx-auto grid w-full max-w-4xl gap-8 lg:grid-cols-2">
             <div className="order-2 flex flex-col gap-5 lg:order-1">
-              <div className="rounded-2xl border border-[#1C2E3A]/10 bg-[#F4EFE6] p-6 shadow-sm">
+              <div className="rounded-[22px] border border-[#9C7A3C]/28 bg-[#F7F2E8] p-6">
                 <div className="mb-4 flex flex-wrap items-center gap-3">
                   <h3 className="text-xl font-black text-[#1C2E3A]">
                     {countryLabel} · {seasonData.name}
@@ -280,7 +282,7 @@ export default function DestinationAdvisor() {
 
                 {seasonData.status === 'recommended' ? (
                   <>
-                    <div className="mt-6 rounded-xl border border-[#9C7A3C]/25 bg-[#F4EFE6] p-4">
+                    <div className="mt-6 rounded-[18px] border border-[#D9B238]/55 bg-[#FBF6EA] p-4">
                       <p className="mb-2 flex items-center gap-2 text-xs font-black text-[#9C7A3C]">
                         <Sparkles className="h-3.5 w-3.5" />
                         فعاليات حصرية
@@ -317,8 +319,11 @@ export default function DestinationAdvisor() {
               </div>
 
               <Link
-                href="/#lead"
-                className="inline-flex items-center justify-center rounded-full bg-[#1C2E3A] px-6 py-3.5 text-sm font-black text-[#F4EFE6] shadow-sm transition-all hover:bg-[#122029]"
+                href={countryId ? `/?dest=${encodeURIComponent(countryId)}#lead` : '/#lead'}
+                onClick={(e) => {
+                  if (countryId && requestTripDestination(countryId)) e.preventDefault();
+                }}
+                className="inline-flex min-h-[56px] items-center justify-center rounded-full bg-[#1C2E3A] px-6 text-[15px] font-black text-[#F4EFE6] shadow-[0_16px_30px_-18px_rgba(28,46,58,0.8)] transition-all hover:bg-[#122029]"
               >
                 صمّم رحلتي إلى {countryLabel}
               </Link>

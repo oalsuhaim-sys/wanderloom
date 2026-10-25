@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { Loader2, Sparkles } from 'lucide-react';
 
@@ -19,13 +20,13 @@ import {
   type WelcomeDnaView,
 } from '@/lib/client-onboarding';
 
-const GOLD = '#D4AF37';
+const GOLD = '#D9B238';
 
 const PREMIUM_INTRO =
   'دعنا نتعرف على تفاصيل حلمك، لننسج لك تجربة سفرٍ تشبهك وتلامس حواسك.';
 
 const inputClass =
-  'w-full rounded-xl border border-[#D4AF37]/20 bg-[#0D0F0E] px-4 py-3 text-sm text-white placeholder:text-[#6B6760] outline-none focus:border-[#D4AF37]/60 focus:ring-2 focus:ring-[#D4AF37]/20';
+  'w-full rounded-xl border border-[#D9B238]/20 bg-[#15232C] px-4 py-3 text-sm text-white placeholder:text-[#7D8A93] outline-none focus:border-[#D9B238]/60 focus:ring-2 focus:ring-[#D9B238]/20';
 
 function toggleInterest(list: string[], label: string): string[] {
   return list.includes(label) ? list.filter((x) => x !== label) : [...list, label];
@@ -117,50 +118,56 @@ export function WelcomeDnaClient({
   return (
     <main
       dir="rtl"
-      className="relative min-h-screen overflow-hidden bg-[#0D0F0E] text-[#F5F0E8]"
+      className="wl-weave-dark relative min-h-screen overflow-hidden text-[#F4EFE6]"
       style={{ fontFamily: 'var(--font-tajawal), system-ui, sans-serif' }}
     >
       <div
         className="pointer-events-none absolute inset-0 opacity-50"
         style={{
           background:
-            'radial-gradient(ellipse 80% 55% at 50% -5%, rgba(212,175,55,0.18), transparent), radial-gradient(ellipse 45% 35% at 100% 100%, rgba(30,39,32,0.9), transparent)',
+            'radial-gradient(ellipse 80% 55% at 50% -5%, rgba(217,178,56,0.18), transparent), radial-gradient(ellipse 45% 35% at 100% 100%, rgba(28,46,58,0.6), transparent)',
         }}
       />
-      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,transparent_0%,rgba(0,0,0,0.45)_100%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,transparent_0%,rgba(0,0,0,0.22)_100%)]" />
 
       <div className="relative z-10 mx-auto flex min-h-screen max-w-2xl flex-col px-4 py-10 sm:px-6 sm:py-14">
         {arrivedFromRequest && view === 'form' ? (
           <div
             role="status"
-            className="mb-8 flex items-center gap-3 rounded-2xl border border-[#D4AF37]/30 bg-[#D4AF37]/[0.07] px-4 py-3 text-right"
+            className="mb-8 flex items-center gap-3 rounded-2xl border border-[#D9B238]/30 bg-[#D9B238]/[0.07] px-4 py-3 text-right"
           >
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#D4AF37] text-sm font-black text-[#0D0F0E]" aria-hidden>
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#D9B238] text-sm font-black text-[#1C2E3A]" aria-hidden>
               ✓
             </span>
             <div className="min-w-0 flex-1">
               <p className="text-sm font-black text-white">استلمنا طلب رحلتك</p>
-              <p className="mt-0.5 text-xs font-bold text-[#C8C4BC]">الخطوة الأخيرة: بصمة سفرك (Travel DNA) — بعدها مباشرة نبدأ تفصيل مسارك وتسعير رحلتك.</p>
+              <p className="mt-0.5 text-xs font-bold text-[#C9D1D6]">الخطوة الأخيرة: بصمة سفرك (Travel DNA) — بعدها مباشرة نبدأ تفصيل مسارك وتسعير رحلتك.</p>
             </div>
             <div className="hidden shrink-0 gap-1 sm:flex" aria-hidden>
-              <span className="h-1.5 w-6 rounded-full bg-[#D4AF37]" />
-              <span className="h-1.5 w-6 rounded-full bg-[#D4AF37]/40" />
+              <span className="h-1.5 w-6 rounded-full bg-[#D9B238]" />
+              <span className="h-1.5 w-6 rounded-full bg-[#D9B238]/40" />
             </div>
           </div>
         ) : null}
 
         <header className="mb-10 text-center">
-          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-[#D4AF37]/30 bg-[#D4AF37]/10 px-4 py-1.5 text-xs font-bold tracking-widest text-[#D4AF37]">
+          <span className="mx-auto mb-5 flex h-[74px] w-[74px] items-center justify-center rounded-[22px] bg-[#F4EFE6] shadow-[0_0_0_6px_rgba(217,178,56,0.18)]">
+            <Image src="/brand/wanderloom-mark.png" alt="" width={52} height={52} priority className="h-[52px] w-[52px] object-contain" />
+          </span>
+          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-[#D9B238]/30 bg-[#D9B238]/10 px-4 py-1.5 text-xs font-bold tracking-widest text-[#D9B238]">
             <Sparkles className="h-3.5 w-3.5" aria-hidden />
             WANDERLOOM VIP
           </div>
           <h1 className="text-2xl font-black leading-relaxed text-white sm:text-3xl">
             مرحباً بك في عالم Wanderloom VIP الفاخر
           </h1>
-          <p className="mx-auto mt-4 max-w-lg text-sm leading-8 text-[#C8C4BC] sm:text-base">
+          <p className="mx-auto mt-4 max-w-lg text-sm leading-8 text-[#C9D1D6] sm:text-base">
             {displayName ? `${displayName}، ` : ''}
             {view === 'form' ? PREMIUM_INTRO : 'نحن سعداء بانضمامك إلى عائلة Wanderloom VIP.'}
           </p>
+          <svg aria-hidden width="240" height="18" viewBox="0 0 240 18" className="mx-auto mt-5 block">
+            <path d="M0 9 C 20 0 40 18 60 9 S 100 0 120 9 S 160 18 180 9 S 220 0 240 9" fill="none" stroke="#D9B238" strokeWidth="2" strokeLinecap="round" />
+          </svg>
         </header>
 
         {view === 'not_found' ? (
@@ -172,20 +179,20 @@ export function WelcomeDnaClient({
         ) : showForm ? (
           <form
             onSubmit={(e) => void handleSubmit(e)}
-            className="space-y-8 rounded-3xl border border-[#D4AF37]/25 bg-[#141816]/85 p-6 shadow-[0_24px_80px_rgba(0,0,0,0.45)] backdrop-blur-md sm:p-8"
+            className="space-y-8 rounded-3xl border border-[#D9B238]/25 bg-[#101C24]/75 p-6 shadow-[0_24px_80px_rgba(0,0,0,0.45)] backdrop-blur-md sm:p-8"
           >
-            <section className="rounded-2xl border border-[#D4AF37]/15 bg-[#0D0F0E]/60 p-5">
-              <h2 className="mb-1 flex items-center gap-2 text-base font-black text-[#D4AF37]">
+            <section className="rounded-2xl border border-[#D9B238]/15 bg-[#1C2E3A]/60 p-5">
+              <h2 className="mb-1 flex items-center gap-2 text-base font-black text-[#D9B238]">
                 <span aria-hidden>✨</span>
                 ملف الـ DNA السياحي
               </h2>
-              <p className="mb-5 text-xs leading-6 text-[#A8A49C]">
+              <p className="mb-5 text-xs leading-6 text-[#AEB8BF]">
                 كل تفصيلة تروينها لنا تُترجم إلى لحظة مدروسة — من مقعدك في السماء إلى كوبك الأول
                 عند الوصول.
               </p>
               <div className="space-y-4">
                 <label className="block">
-                  <span className="mb-1.5 block text-xs font-bold text-[#A8A49C]">
+                  <span className="mb-1.5 block text-xs font-bold text-[#AEB8BF]">
                     الحساسية أو تفضيل الطعام
                   </span>
                   <textarea
@@ -199,7 +206,7 @@ export function WelcomeDnaClient({
                   />
                 </label>
                 <label className="block">
-                  <span className="mb-1.5 block text-xs font-bold text-[#A8A49C]">
+                  <span className="mb-1.5 block text-xs font-bold text-[#AEB8BF]">
                     المشروب / القهوة المفضلة
                   </span>
                   <input
@@ -208,12 +215,12 @@ export function WelcomeDnaClient({
                     onChange={(e) =>
                       setTravelDna((d) => ({ ...d, favorite_drink: e.target.value }))
                     }
-                    placeholder="إسpresso، شاي أخضر، عصير طبيعي…"
+                    placeholder="إسبريسو، شاي أخضر، عصير طبيعي…"
                     className={inputClass}
                   />
                 </label>
                 <label className="block">
-                  <span className="mb-1.5 block text-xs font-bold text-[#A8A49C]">
+                  <span className="mb-1.5 block text-xs font-bold text-[#AEB8BF]">
                     المقعد المفضل في الطيران
                   </span>
                   <input
@@ -227,7 +234,7 @@ export function WelcomeDnaClient({
                   />
                 </label>
                 <label className="block">
-                  <span className="mb-1.5 block text-xs font-bold text-[#A8A49C]">
+                  <span className="mb-1.5 block text-xs font-bold text-[#AEB8BF]">
                     نوع الفنادق المفضلة
                   </span>
                   <select
@@ -246,7 +253,7 @@ export function WelcomeDnaClient({
                   </select>
                 </label>
                 <label className="block">
-                  <span className="mb-1.5 block text-xs font-bold text-[#A8A49C]">
+                  <span className="mb-1.5 block text-xs font-bold text-[#AEB8BF]">
                     تاريخ انتهاء الجواز
                   </span>
                   <input
@@ -258,7 +265,7 @@ export function WelcomeDnaClient({
                   />
                 </label>
                 <label className="block">
-                  <span className="mb-1.5 block text-xs font-bold text-[#A8A49C]">مستوى النشاط</span>
+                  <span className="mb-1.5 block text-xs font-bold text-[#AEB8BF]">مستوى النشاط</span>
                   <select
                     value={form.dna_activity_level}
                     onChange={(e) =>
@@ -275,7 +282,7 @@ export function WelcomeDnaClient({
                   </select>
                 </label>
                 <label className="block">
-                  <span className="mb-1.5 block text-xs font-bold text-[#A8A49C]">طلبات خاصة</span>
+                  <span className="mb-1.5 block text-xs font-bold text-[#AEB8BF]">طلبات خاصة</span>
                   <textarea
                     value={form.dna_special_requests}
                     onChange={(e) =>
@@ -290,7 +297,7 @@ export function WelcomeDnaClient({
             </section>
 
             <section>
-              <h2 className="mb-4 flex items-center gap-2 text-base font-black text-[#D4AF37]">
+              <h2 className="mb-4 flex items-center gap-2 text-base font-black text-[#D9B238]">
                 <span aria-hidden>🌟</span>
                 اهتمامات السفر
               </h2>
@@ -306,8 +313,8 @@ export function WelcomeDnaClient({
                       }
                       className={`rounded-full border px-4 py-2 text-xs font-bold transition sm:text-sm ${
                         selected
-                          ? 'border-[#D4AF37] bg-[#D4AF37]/15 text-[#D4AF37] shadow-[0_0_20px_rgba(212,175,55,0.15)]'
-                          : 'border-[#D4AF37]/20 bg-[#0D0F0E] text-[#C8C4BC] hover:border-[#D4AF37]/45'
+                          ? 'border-[#D9B238] bg-[#D9B238]/15 text-[#D9B238] shadow-[0_0_20px_rgba(217,178,56,0.15)]'
+                          : 'border-[#D9B238]/20 bg-[#15232C] text-[#C9D1D6] hover:border-[#D9B238]/45'
                       }`}
                     >
                       {label}
@@ -326,10 +333,10 @@ export function WelcomeDnaClient({
             <button
               type="submit"
               disabled={submitting}
-              className="w-full rounded-2xl py-4 text-base font-black text-[#0D0F0E] transition hover:brightness-110 disabled:opacity-60"
+              className="w-full rounded-2xl py-4 text-base font-black text-[#1C2E3A] transition hover:brightness-110 disabled:opacity-60"
               style={{
                 background: `linear-gradient(135deg, ${GOLD} 0%, #E8C96A 50%, ${GOLD} 100%)`,
-                boxShadow: '0 8px 32px rgba(212,175,55,0.35)',
+                boxShadow: '0 8px 32px rgba(217,178,56,0.35)',
               }}
             >
               {submitting ? (

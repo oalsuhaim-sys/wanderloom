@@ -10,6 +10,8 @@ import {
 } from '@/app/_components/home/InterestModal';
 import { useLanguage } from '@/context/LanguageContext';
 
+import { BrandMark } from './loom/BrandMark';
+
 const INTEREST_BTN_CLASS =
   'inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-full bg-[#1C2E3A] px-5 py-2 text-sm font-medium text-[#F4EFE6] transition hover:bg-[#122029]';
 
@@ -55,11 +57,8 @@ export function PublicNavbar() {
         className="wl-public-navbar sticky top-0 z-50 border-b bg-white/80 shadow-sm backdrop-blur-md"
       >
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:gap-4 sm:px-8 sm:py-4">
-          <Link
-            href="/#top"
-            className="wl-public-nav-logo shrink-0 text-xl font-black tracking-[0.14em] text-[#9C7A3C] transition-colors duration-300 hover:text-[#A88849] sm:text-2xl sm:tracking-[0.18em] lg:text-3xl"
-          >
-            {t.brand.name}
+          <Link href="/#top" aria-label={t.brand.name} className="shrink-0 transition-opacity duration-300 hover:opacity-85">
+            <BrandMark size={40} wordmarkClassName="hidden text-lg text-[#1C2E3A] min-[420px]:inline sm:text-[22px]" />
           </Link>
 
           <div className="hidden items-center gap-4 lg:flex">
