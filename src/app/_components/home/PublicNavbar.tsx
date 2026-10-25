@@ -58,16 +58,16 @@ export function PublicNavbar() {
       >
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:gap-4 sm:px-8 sm:py-4">
           <Link href="/#top" aria-label={t.brand.name} className="shrink-0 transition-opacity duration-300 hover:opacity-85">
-            <BrandMark size={40} wordmarkClassName="hidden text-lg text-[#1C2E3A] min-[420px]:inline sm:text-[22px] lg:hidden 2xl:inline" />
+            <BrandMark size={40} wordmarkClassName="hidden text-lg text-[#1C2E3A] min-[420px]:inline sm:text-[22px] lg:text-[16px] lg:max-[1119px]:hidden 2xl:text-[22px]" />
           </Link>
 
-          <div className="hidden items-center gap-4 lg:flex">
+          <div className="hidden items-center gap-2.5 lg:flex 2xl:gap-4">
             <nav className="flex items-center gap-0.5">
               {links.map((item) => (
                 <Link
                   key={item.href}
                   href={item.href}
-                  className="wl-public-nav-link group relative whitespace-nowrap rounded-full px-4 py-2 text-[13px] font-bold transition-colors duration-300"
+                  className="wl-public-nav-link group relative whitespace-nowrap rounded-full px-2.5 py-2 text-[13px] font-bold transition-colors duration-300 2xl:px-4"
                 >
                   {item.label}
                   <span
@@ -80,7 +80,7 @@ export function PublicNavbar() {
 
             <span className="h-6 w-px shrink-0 bg-gray-200" aria-hidden />
 
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 2xl:gap-4">
               <button type="button" onClick={openInterest} className={INTEREST_BTN_CLASS}>
                 <Heart className="h-3.5 w-3.5 shrink-0" aria-hidden />
                 تسجيل اهتمام
