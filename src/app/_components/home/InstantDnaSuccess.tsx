@@ -1,11 +1,11 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Check, Sparkles } from 'lucide-react';
+import { Check, Copy, Sparkles } from 'lucide-react';
 
 import { useLanguage } from '@/context/LanguageContext';
-import { rememberPendingDna } from '@/lib/instant-dna-status';
+import { absoluteDnaUrl, rememberPendingDna } from '@/lib/instant-dna-status';
 
 type InstantDnaSuccessProps = {
   name: string;
@@ -26,6 +26,25 @@ export function InstantDnaSuccess({ name, dnaPath, onReset, onLater }: InstantDn
   const { dir, t } = useLanguage();
   const m = t.instant;
   const headingRef = useRef<HTMLHeadingElement>(null);
+  const [copied, setCopied] = useState(false);
+
+  async function copyLink() {
+    if (!dnaPath) return;
+    // Rendered only after a client-side submit (never SSR) — window.location is safe here.
+    const url = absoluteDnaUrl(dnaPath);
+    try {
+      await navigator.clipboard.writeText(url);
+    } catch {
+      const area = document.createElement('textarea');
+      area.value = url;
+      document.body.appendChild(area);
+      area.select();
+      document.execCommand('copy');
+      document.body.removeChild(area);
+    }
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 2200);
+  }
 
   const targetPath = dnaPath ? `${dnaPath}${dnaPath.includes('?') ? '&' : '?'}arrived=1` : null;
   const firstName = name.trim().split(/\s+/)[0] || '';
@@ -45,59 +64,85 @@ export function InstantDnaSuccess({ name, dnaPath, onReset, onLater }: InstantDn
     if (targetPath) router.push(targetPath);
   }
 
-  const title = m.successTitle.replace('{name}', firstName).replace(/\s+،/, '،');
-  const goldCta =
-    'wl-instant-cta group inline-flex min-h-[56px] w-full max-w-xl items-center justify-center gap-2 rounded-full px-6 py-3.5 text-[15px] font-black text-white shadow-[0_14px_30px_-12px_rgba(156,122,60,0.75)] transition-transform duration-200 hover:-translate-y-0.5 active:translate-y-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#9C7A3C] sm:text-base';
-  const goldBg = { background: 'linear-gradient(135deg, #B8913F 0%, #9C7A3C 48%, #7E6230 100%)' };
+  const hello = m.successHello.replace('{name}', firstName).replace(/\s+([،,])/, '$1');
+  const numerals = dir === 'rtl' ? ['١', '٢', '٣'] : ['1', '2', '3'];
+  const reasons = [m.why1, m.why2, m.why3];
 
   return (
     <section
       dir={dir}
       aria-live="polite"
-      className="wl-instant-success relative mx-auto max-w-3xl overflow-hidden rounded-[28px] border border-[#9C7A3C]/25 bg-white px-5 py-9 text-center shadow-[0_20px_60px_-30px_rgba(28,46,58,0.45)] sm:px-10 sm:py-12"
+      className="wl-instant-success relative mx-auto max-w-3xl overflow-hidden rounded-[30px] bg-white shadow-[0_40px_80px_-44px_rgba(28,46,58,0.65)] ring-1 ring-[#D9B238]/30"
     >
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0"
-        style={{
-          background:
-            'radial-gradient(ellipse 70% 45% at 50% -10%, rgba(201,164,92,0.22), transparent 70%), radial-gradient(ellipse 40% 30% at 100% 100%, rgba(28,46,58,0.06), transparent)',
-        }}
-      />
-
-      <div className="relative">
-        <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-full border border-[#9C7A3C]/40 bg-[#F4EFE6] text-[#9C7A3C] wl-instant-pop">
-          <Check className="h-7 w-7" strokeWidth={2.5} aria-hidden />
-        </div>
-        <p className="text-[11px] font-black tracking-[0.2em] text-[#9C7A3C]">{m.successKicker}</p>
-        <h2 ref={headingRef} tabIndex={-1} className="mt-2 text-2xl font-black leading-snug text-[#1C2E3A] outline-none sm:text-3xl">
-          {title}
+      {/* ── navy woven header: the trip ticket ── */}
+      <div className="wl-weave-dark relative px-6 pb-12 pt-10 text-center text-[#F4EFE6] sm:px-10 sm:pt-12">
+        <span aria-hidden className="mx-auto mb-5 grid w-max grid-cols-4 gap-1 rounded-md bg-[#15232C] p-2 ring-1 ring-[#D9B238]/40 wl-instant-pop">
+          {Array.from({ length: 12 }, (_, i) => (
+            <span key={i} className={`h-2 w-4 rounded-[2px] ${(Math.floor(i / 4) + i) % 2 === 0 ? 'bg-[#D9B238]' : 'bg-[#D9B238]/25'}`} />
+          ))}
+        </span>
+        <p className="text-xs font-extrabold tracking-[0.12em] text-[#D9B238]">{m.successKicker}</p>
+        <h2 ref={headingRef} tabIndex={-1} className="mt-3 text-[30px] font-black leading-tight outline-none sm:text-[42px]">
+          {hello}
+          <span className="block text-[#E9CB6A]">{m.successStarted}</span>
         </h2>
+        <svg aria-hidden width="220" height="16" viewBox="0 0 240 18" className="mx-auto mt-5 block">
+          <path d="M0 9 C 20 0 40 18 60 9 S 100 0 120 9 S 160 18 180 9 S 220 0 240 9" fill="none" stroke="#D9B238" strokeWidth="2" strokeLinecap="round" />
+        </svg>
+      </div>
 
+      {/* ── perforation ── */}
+      <div aria-hidden className="relative h-0">
+        <span className="absolute -top-4 -start-4 h-8 w-8 rounded-full bg-[#F4EFE6]" />
+        <span className="absolute -top-4 -end-4 h-8 w-8 rounded-full bg-[#F4EFE6]" />
+        <span className="absolute inset-x-6 top-0 border-t-2 border-dashed border-[#D9B238]/60" />
+      </div>
+
+      <div className="relative px-6 pb-9 pt-9 text-center sm:px-10">
         {!dnaPath ? (
-          <p className="mx-auto mt-4 max-w-xl text-sm font-bold leading-loose text-gray-600">{m.noLinkBody}</p>
+          <p className="mx-auto max-w-xl text-base font-semibold leading-loose text-[#3E4F5A]">{m.noLinkBody}</p>
         ) : (
           <>
-            <p className="mx-auto mt-3 max-w-xl text-sm font-bold leading-loose text-gray-600">{m.successBody}</p>
+            <p className="text-xs font-extrabold tracking-wide text-[#9C7A3C]">{m.lastStep}</p>
+            <p className="mx-auto mt-2 max-w-xl text-base font-semibold leading-loose text-[#3E4F5A] sm:text-[17px]">{m.successBody}</p>
 
-            <ul className="mx-auto mt-5 max-w-md space-y-2 text-start">
-              {[m.why1, m.why2, m.why3].map((line) => (
-                <li key={line} className="flex items-start gap-2.5 rounded-xl bg-[#F4EFE6]/70 px-3.5 py-2.5 text-[13px] font-bold leading-relaxed text-[#1C2E3A]">
-                  <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-[#9C7A3C]" aria-hidden />
-                  <span>{line}</span>
+            <ol className="relative mx-auto mt-8 grid max-w-2xl grid-cols-1 gap-5 text-start sm:grid-cols-3 sm:gap-4 sm:text-center">
+              <span aria-hidden className="absolute inset-x-[16%] top-[19px] hidden border-t-2 border-dashed border-[#D9B238] sm:block" />
+              {reasons.map((line, i) => (
+                <li key={line} className="relative flex items-start gap-3.5 sm:flex-col sm:items-center sm:gap-3">
+                  <span
+                    className={`relative z-[1] flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-black shadow-[0_0_0_5px_#fff] ${
+                      i === 2 ? 'bg-[#D9B238] text-[#1C2E3A]' : 'bg-[#1C2E3A] text-[#D9B238]'
+                    }`}
+                  >
+                    {numerals[i]}
+                  </span>
+                  <span className="pt-2 text-[15px] font-extrabold leading-relaxed text-[#1C2E3A] sm:pt-0">{line}</span>
                 </li>
               ))}
-            </ul>
+            </ol>
 
-            <button type="button" onClick={goNow} className={`${goldCta} mt-7`} style={goldBg}>
+            <button
+              type="button"
+              onClick={goNow}
+              className="wl-gold-cta group mx-auto mt-9 inline-flex min-h-[58px] w-full max-w-xl items-center justify-center gap-2 rounded-full bg-[#D9B238] px-6 py-3.5 text-[15px] font-black text-[#1C2E3A] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#9C7A3C] sm:text-base"
+            >
               <Sparkles className="h-5 w-5 shrink-0 transition-transform group-hover:rotate-12" aria-hidden />
               <span>{m.successCta}</span>
             </button>
-            <div className="mt-3">
+            <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+              <button
+                type="button"
+                onClick={() => void copyLink()}
+                className="inline-flex min-h-[46px] items-center justify-center gap-1.5 rounded-full border border-[#D9B238]/60 bg-white px-5 text-sm font-black text-[#1C2E3A] transition hover:bg-[#FBF8F1]"
+              >
+                {copied ? <Check className="h-4 w-4 text-emerald-600" aria-hidden /> : <Copy className="h-4 w-4 text-[#8A6A12]" aria-hidden />}
+                {copied ? m.copied : m.copyLink}
+              </button>
               <button
                 type="button"
                 onClick={onLater}
-                className="inline-flex min-h-[44px] items-center justify-center rounded-full px-6 text-sm font-black text-[#1C2E3A]/70 underline-offset-4 transition hover:text-[#1C2E3A] hover:underline"
+                className="inline-flex min-h-[46px] items-center justify-center rounded-full px-6 text-sm font-black text-[#3E4F5A] underline-offset-4 transition hover:text-[#1C2E3A] hover:underline"
               >
                 {m.laterCta}
               </button>
@@ -105,7 +150,7 @@ export function InstantDnaSuccess({ name, dnaPath, onReset, onLater }: InstantDn
           </>
         )}
 
-        <button type="button" onClick={onReset} className="mt-8 text-[11px] font-bold text-gray-400 underline underline-offset-4 hover:text-[#1C2E3A]">
+        <button type="button" onClick={onReset} className="mt-7 text-xs font-bold text-gray-400 underline underline-offset-4 hover:text-[#1C2E3A]">
           {m.newRequest}
         </button>
       </div>

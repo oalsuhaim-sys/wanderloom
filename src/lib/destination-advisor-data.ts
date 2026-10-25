@@ -225,7 +225,32 @@ const FRANCE_EUROPE: CountryAdvisorData = {
   },
 };
 
-function buildStandardCountry(name: string, profile: 'temperate' | 'mediterranean' | 'tropical' | 'cold'): CountryAdvisorData {
+/** Two postcard photos per country (free Unsplash License) — shown in the advisor's recommendation step. */
+const COUNTRY_IMAGES: Partial<Record<TripCountryId, [string, string]>> = {
+  uk: ['photo-1696681077241-368932f3db6d', 'photo-1633357441498-7431babe0cc7'],
+  italy: ['photo-1662898290891-a6c7f022e851', 'photo-1725623903410-296fdc9e2ea8'],
+  switzerland: ['photo-1767697358965-658270af329a', 'photo-1546089572-95b941d9368d'],
+  spain: ['photo-1550834415-4b47996578ff', 'photo-1650964836750-d70bf63fe27e'],
+  portugal: ['photo-1785951470200-5f08a19ea863', 'photo-1527936660226-7c289edf148e'],
+  germany: ['photo-1717541597426-5b07b385bb24', 'photo-1635530573681-709b687c6a7d'],
+  netherlands: ['photo-1762829161330-fe3d7c0a77d5', 'photo-1671303286130-ff026be9407c'],
+  belgium: ['photo-1767705411898-30743f58ba06', 'photo-1767705411915-5c18c04896e7'],
+  czech: ['photo-1645536111601-af99b7e9cd70', 'photo-1539242959459-4669478d8912'],
+  poland: ['photo-1642370279517-4d67c5f25697', 'photo-1736248433976-6d59b61c6e9e'],
+  hungary: ['photo-1541343672885-9be56236302a', 'photo-1518471152222-d42e38ce6873'],
+  sweden: ['photo-1667060305997-332c0e190903', 'photo-1646911061670-2f660c47080c'],
+  russia: ['photo-1558509336-44482918b852', 'photo-1596484552834-6a58f850e0a1'],
+  usa: ['photo-1611324022422-cc8127689691', 'photo-1764344793554-12da6166d940'],
+  canada: ['photo-1671752862966-3e28f22453cd', 'photo-1562375121-ea1bc3e8fc10'],
+  south_africa: ['photo-1672631604216-3a7d96d454bf', 'photo-1712850244310-5765b9373353'],
+  austria: ['photo-1530256379202-4077bd8ab2c6', 'photo-1485081669829-bacb8c7bb1f3'],
+};
+
+function buildStandardCountry(
+  name: string,
+  profile: 'temperate' | 'mediterranean' | 'tropical' | 'cold',
+  id?: TripCountryId,
+): CountryAdvisorData {
   const rec = (s: string) => s;
   const profiles = {
     temperate: {
@@ -262,8 +287,9 @@ function buildStandardCountry(name: string, profile: 'temperate' | 'mediterranea
     },
   }[profile];
 
-  const img = 'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?q=80&w=800&auto=format&fit=crop';
-  const imgAlt = 'https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?q=80&w=800&auto=format&fit=crop';
+  const own = id ? COUNTRY_IMAGES[id] : undefined;
+  const img = own ? unsplash(own[0]) : 'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?q=80&w=800&auto=format&fit=crop';
+  const imgAlt = own ? unsplash(own[1]) : 'https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?q=80&w=800&auto=format&fit=crop';
   return {
     name,
     seasons: {
@@ -287,7 +313,7 @@ function buildStandardCountry(name: string, profile: 'temperate' | 'mediterranea
           : `صيف ${name} مثالي للساحل والتجارب الخارجية مع تنسيق VIP من فريقنا.`,
         `أسرار صيفية في ${name} لا تظهر في نتائج البحث السريعة.`,
         [`جولات خاصة في ${name}`, 'إقامات منتجعات منتقاة'],
-        [img, 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?q=80&w=700&auto=format&fit=crop'],
+        own ? [img, imgAlt] : [img, 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?q=80&w=700&auto=format&fit=crop'],
       ),
       autumn: season(
         'الخريف',
@@ -309,10 +335,12 @@ function buildStandardCountry(name: string, profile: 'temperate' | 'mediterranea
           : `شتاء ${name} — فرصة للتزلج، الأسواق، والإقامات الدافئة.`,
         `فعاليات شتوية حصرية في ${name}.`,
         ['تزلج أو أسواق', 'مطاعم حائزة على نجوم'],
-        [
-          'https://images.unsplash.com/photo-1511739001486-6b10f789a963?q=80&w=800&auto=format&fit=crop',
-          'https://images.unsplash.com/photo-1483728642387-6bc3bb38baf6?q=80&w=800&auto=format&fit=crop',
-        ],
+        own
+          ? [img, imgAlt]
+          : [
+              'https://images.unsplash.com/photo-1511739001486-6b10f789a963?q=80&w=800&auto=format&fit=crop',
+              'https://images.unsplash.com/photo-1483728642387-6bc3bb38baf6?q=80&w=800&auto=format&fit=crop',
+            ],
       ),
     },
   };
@@ -358,7 +386,7 @@ export function getCountryAdvisorData(
   if (deep) return deep;
   const meta = TRIP_DESTINATIONS.find((c) => c.id === countryId);
   const name = displayName?.trim() || meta?.labelAr || countryId;
-  return buildStandardCountry(name, PROFILE_BY_COUNTRY[id] ?? 'temperate');
+  return buildStandardCountry(name, PROFILE_BY_COUNTRY[id] ?? 'temperate', id);
 }
 
 export const ADVISOR_COUNTRY_IDS = TRIP_DESTINATIONS.map((c) => c.id) as TripCountryId[];

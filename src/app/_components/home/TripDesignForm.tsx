@@ -3,10 +3,12 @@
 import type { ReactNode } from 'react';
 import { Suspense, useCallback, useEffect, useRef, useState, useTransition } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { ArrowLeft, ArrowRight, Check, Loader2, Send, Sparkles } from 'lucide-react';
+import { Check, Loader2, Sparkles } from 'lucide-react';
 
 import { submitCustomerLead, type CustomerLeadState } from '@/app/actions/submitCustomerLead';
 import { InstantDnaSuccess } from '@/app/_components/home/InstantDnaSuccess';
+import { LandmarkIcon } from '@/app/_components/home/loom/LandmarkIcon';
+import { SELECT_DESTINATION_EVENT, type SelectDestinationDetail } from '@/app/_components/home/loom/destination-intent';
 import { clearPendingDna, readPendingDna, type PendingDna } from '@/lib/instant-dna-status';
 import { useLanguage } from '@/context/LanguageContext';
 import { ReferralCodeField } from '@/components/ReferralCodeField';
@@ -21,12 +23,12 @@ import { requireValidPhone, WHATSAPP_INCOMPLETE_ERROR } from '@/lib/phoneUtils';
 import { getTripCountryById } from '@/lib/trip-destination-data';
 
 const INPUT_CLASS =
-  'h-10 w-full rounded-lg border border-gray-200/90 bg-white/50 px-3 text-sm font-bold text-[#1C2E3A] outline-none transition placeholder:text-gray-400 focus:border-[#9C7A3C]/70 focus:ring-2 focus:ring-[#9C7A3C]/25';
+  'h-10 w-full rounded-lg border border-gray-200/90 bg-white/50 px-3 text-sm font-bold text-[#1C2E3A] outline-none transition placeholder:text-gray-400 focus:border-[#D9B238] focus:ring-2 focus:ring-[#D9B238]/60';
 
 const DATE_INPUT_CLASS = `${INPUT_CLASS} [color-scheme:light] cursor-pointer [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-50 hover:[&::-webkit-calendar-picker-indicator]:opacity-100`;
 
 const TEXTAREA_CLASS =
-  'w-full resize-y rounded-lg border border-gray-200/90 bg-white/50 px-3 py-2.5 text-sm font-bold leading-relaxed text-[#1C2E3A] outline-none transition placeholder:text-gray-400 focus:border-[#9C7A3C]/70 focus:ring-2 focus:ring-[#9C7A3C]/25';
+  'w-full resize-y rounded-lg border border-gray-200/90 bg-white/50 px-3 py-2.5 text-sm font-bold leading-relaxed text-[#1C2E3A] outline-none transition placeholder:text-gray-400 focus:border-[#D9B238] focus:ring-2 focus:ring-[#D9B238]/60';
 
 const FIELD_LABEL = 'mb-1.5 block text-right text-xs font-black tracking-wide text-[#9C7A3C]';
 
@@ -54,10 +56,10 @@ function SectionCard({
   children: ReactNode;
 }) {
   return (
-    <fieldset className="rounded-2xl border border-gray-100/90 bg-white p-4 shadow-sm sm:p-6">
+    <fieldset className="min-w-0">
       <legend className="sr-only">{title}</legend>
-      <div className="mb-5 flex items-start gap-3 border-b border-gray-100 pb-4">
-        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-[#1C2E3A]/30 bg-[#f4f0e6]/50 text-xs font-black text-[#1C2E3A]">
+      <div className="mb-6 flex items-start gap-3 border-b border-amber-100/70 pb-4">
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#D9B238]/15 text-xs font-black text-[#8A6A12]">
           {n}
         </span>
         <div className="min-w-0 flex-1 text-right">
@@ -235,10 +237,20 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 /** One tap → country + its signature city (satisfies the «at least one city» rule). */
 const POPULAR_PICKS = [
-  { country: 'japan', city: 'tokyo', flag: '🇯🇵' },
-  { country: 'korea', city: 'seoul', flag: '🇰🇷' },
-  { country: 'uk', city: 'london', flag: '🇬🇧' },
+  { country: 'japan', city: 'tokyo' },
+  { country: 'korea', city: 'seoul' },
+  { country: 'uk', city: 'london' },
 ] as const;
+
+/** ?dest=<country> (from the destinations thread / advisor) pre-selects country + signature city */
+const SIGNATURE_CITY: Record<string, string> = {
+  japan: 'tokyo',
+  korea: 'seoul',
+  uk: 'london',
+  france: 'paris',
+  italy: 'rome',
+  switzerland: 'zermatt',
+};
 
 /** Values held in React state — restored through state, never written back into the DOM. */
 const STATE_FIELDS = new Set([
@@ -381,6 +393,7 @@ function TripDesignFormInner() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const submitLockRef = useRef(false);
   const [step, setStep] = useState(0);
+  const [stepDirection, setStepDirection] = useState<'fwd' | 'back'>('fwd');
   const [maxStep, setMaxStep] = useState(0);
   const [stepError, setStepError] = useState<string | null>(null);
   const [success, setSuccess] = useState<SuccessState | null>(null);
@@ -453,6 +466,38 @@ function TripDesignFormInner() {
     setPendingDomFields(draft.fields);
     setDraftRestored(true);
   }, []);
+
+  // ?dest=<country> (or an in-page «اختر وجهتك» shortcut) pre-selects country + signature city
+  const applyDestination = useCallback(
+    (destRaw: string) => {
+      const dest = String(destRaw ?? '').trim().toLowerCase();
+      if (!dest) return false;
+      const cities = tripDestinations.find((c) => c.id === dest)?.cities ?? getTripCountryById(dest)?.cities ?? [];
+      if (!cities.length) return false;
+      const cityId = cities.some((c) => c.id === SIGNATURE_CITY[dest]) ? SIGNATURE_CITY[dest] : cities[0]!.id;
+      setSelectedCountries((prev) => (prev.includes(dest) ? prev : [...prev, dest]));
+      setSelectedCities((prev) => (prev.some((k) => k.startsWith(`${dest}:`)) ? prev : [...prev, `${dest}:${cityId}`]));
+      setStepError(null);
+      return true;
+    },
+    [tripDestinations],
+  );
+
+  const appliedDestRef = useRef<string | null>(null);
+  useEffect(() => {
+    const dest = String(searchParams.get('dest') ?? '').trim().toLowerCase();
+    if (!dest || appliedDestRef.current === dest || !hydratedRef.current) return;
+    if (applyDestination(dest)) appliedDestRef.current = dest;
+  }, [searchParams, applyDestination]);
+
+  useEffect(() => {
+    const onSelect = (e: Event) => {
+      const country = (e as CustomEvent<SelectDestinationDetail>).detail?.country;
+      if (country && applyDestination(country)) appliedDestRef.current = country;
+    };
+    window.addEventListener(SELECT_DESTINATION_EVENT, onSelect);
+    return () => window.removeEventListener(SELECT_DESTINATION_EVENT, onSelect);
+  }, [applyDestination]);
 
   // Second pass: dependent inputs (cities, «visited before» radios) now exist in the DOM.
   useEffect(() => {
@@ -527,6 +572,12 @@ function TripDesignFormInner() {
   ]);
 
   useEffect(() => () => window.clearTimeout(saveTimerRef.current), []);
+
+  /** Any edit: clear the inline hint (the visitor is fixing it) and queue a draft save. */
+  function onFormEdit() {
+    setStepError(null);
+    scheduleSave();
+  }
 
   function resetAllState() {
     setFormData({ birth_date: '' });
@@ -659,7 +710,16 @@ function TripDesignFormInner() {
       if (selectedCities.length === 0) return m.cityRequired;
       return null;
     }
+    if (n === 2) {
+      const days = Number(value('travel_days'));
+      if (!Number.isFinite(days) || days < 3 || days > 30) return m.travelDaysInvalid;
+      const travelers = Number(value('travelers_count'));
+      if (!Number.isFinite(travelers) || travelers < 1 || travelers > 20) return m.travelersInvalid;
+      return null;
+    }
     if (n === 3) {
+      const consent = form?.querySelector<HTMLInputElement>('input[name="media_consent"]:checked')?.value;
+      if (consent !== 'yes' && consent !== 'no') return m.consentRequired;
       if (!value('dream_feeling')) return m.dreamRequired;
     }
     return null;
@@ -678,6 +738,7 @@ function TripDesignFormInner() {
 
   function goToStep(n: number) {
     const target = Math.min(Math.max(n, 0), STEP_COUNT - 1);
+    setStepDirection(target >= step ? 'fwd' : 'back');
     setStepError(null);
     setState(null);
     setStep(target);
@@ -822,14 +883,15 @@ function TripDesignFormInner() {
     ...(isOtherCountry ? (['other'] as const) : []),
   ];
   const showCityPicker = effectiveCountries.length > 0;
-  const stepLabels = [m.stepContact, m.stepDestination, m.stepStyle, m.stepDream];
+  const stepLabels = [m.stepContact, m.stepDestination, m.stepPrefs, m.stepDna];
   const isLastStep = step === STEP_COUNT - 1;
   const busy = pending || isSubmitting;
-  const NextIcon = dir === 'rtl' ? ArrowLeft : ArrowRight;
-  const BackIcon = dir === 'rtl' ? ArrowRight : ArrowLeft;
+  const progressPct = Math.round(((step + 1) / STEP_COUNT) * 100);
+  const lockedReferral = normalizeAffiliateRef(referralCode);
   const popularPicks = POPULAR_PICKS.filter(
     (p) => tripDestinations.some((c) => c.id === p.country) || Boolean(getTripCountryById(p.country)),
   );
+  const panelClass = `wl-step-panel ${stepDirection === 'back' ? 'wl-step-back' : 'wl-step-fwd'}`;
 
   if (success) {
     return (
@@ -856,10 +918,10 @@ function TripDesignFormInner() {
     <form
       ref={formRef}
       onSubmit={onSubmit}
-      onInput={scheduleSave}
-      onChange={scheduleSave}
+      onInput={onFormEdit}
+      onChange={onFormEdit}
       noValidate
-      className="mx-auto max-w-3xl space-y-5 bg-[#F4EFE6]"
+      className="mx-auto max-w-3xl space-y-5"
       dir={dir}
     >
       {selectedCountries.map((id) => (
@@ -870,8 +932,8 @@ function TripDesignFormInner() {
       ))}
 
       {pendingDna ? (
-        <div className="wl-instant-success flex flex-col gap-3 rounded-2xl border border-[#9C7A3C]/30 bg-white px-4 py-4 shadow-sm sm:flex-row sm:items-center sm:px-6">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#F4EFE6] text-[#9C7A3C]" aria-hidden>
+        <div className="wl-instant-success flex flex-col gap-3 rounded-2xl border border-[#D9B238]/40 bg-white px-4 py-4 shadow-sm sm:flex-row sm:items-center sm:px-6">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#D9B238]/15 text-[#8A6A12]" aria-hidden>
             <Sparkles className="h-5 w-5" />
           </span>
           <div className="min-w-0 flex-1 text-start">
@@ -883,8 +945,7 @@ function TripDesignFormInner() {
           <div className="flex shrink-0 items-center gap-2">
             <a
               href={`${pendingDna.path}${pendingDna.path.includes('?') ? '&' : '?'}arrived=1`}
-              className="wl-instant-cta inline-flex h-10 items-center justify-center gap-1.5 rounded-full px-5 text-xs font-black text-white"
-              style={{ background: 'linear-gradient(135deg, #B8913F 0%, #9C7A3C 48%, #7E6230 100%)' }}
+              className="inline-flex h-10 items-center justify-center gap-1.5 rounded-full bg-[#D9B238] px-5 text-xs font-black text-[#1C2E3A] shadow-sm transition hover:brightness-95"
             >
               {m.resumeCta}
             </a>
@@ -902,486 +963,499 @@ function TripDesignFormInner() {
         </div>
       ) : null}
 
-      {/* ── Progress ── */}
-      <div ref={topRef} className="rounded-2xl border border-gray-100/90 bg-white px-4 py-3.5 shadow-sm sm:px-6">
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-[11px] font-black tracking-wide text-[#9C7A3C]">
-            {m.stepOf.replace('{n}', String(step + 1)).replace('{total}', String(STEP_COUNT))}
-          </p>
-          <p className={`flex items-center gap-1 text-[10px] font-bold text-gray-400 transition-opacity duration-300 ${draftSaved ? 'opacity-100' : 'opacity-0'}`} aria-live="polite">
-            <Check className="h-3 w-3 text-[#9C7A3C]" aria-hidden />
-            {m.draftSaved}
-          </p>
-        </div>
-        <ol className="mt-3 grid grid-cols-4 gap-2" aria-label={m.stepOf.replace('{n}', String(step + 1)).replace('{total}', String(STEP_COUNT))}>
-          {stepLabels.map((label, i) => {
-            const done = i < step;
-            const current = i === step;
-            const reachable = i <= maxStep;
-            return (
-              <li key={label}>
-                <button
-                  type="button"
-                  disabled={!reachable || busy}
-                  onClick={() => (i < step ? goToStep(i) : i > step ? goNext() : undefined)}
-                  aria-current={current ? 'step' : undefined}
-                  className="group block w-full text-start disabled:cursor-not-allowed"
-                >
-                  <span className="block h-1.5 overflow-hidden rounded-full bg-[#E9E1D2]">
-                    <span
-                      className="block h-full rounded-full bg-[#9C7A3C] transition-[width] duration-500 ease-out"
-                      style={{ width: done || current ? '100%' : '0%' }}
-                    />
-                  </span>
-                  <span
-                    className={`mt-1.5 block truncate text-[11px] font-black transition-colors ${
-                      current ? 'text-[#1C2E3A]' : done ? 'text-[#9C7A3C]' : 'text-gray-400'
-                    }`}
+      {/* ── The wizard card ── */}
+      <div ref={topRef} className="overflow-hidden rounded-3xl border border-amber-100/50 bg-white shadow-xl shadow-[#1C2E3A]/[0.06]">
+        {/* Luxury progress stepper */}
+        <div className="border-b border-amber-100/60 bg-gradient-to-b from-[#FBF8F1] to-white px-4 pb-5 pt-5 sm:px-8">
+          <ol className="flex items-start" aria-label={m.stepOf.replace('{n}', String(step + 1)).replace('{total}', String(STEP_COUNT))}>
+            {stepLabels.map((label, i) => {
+              const done = i < step;
+              const current = i === step;
+              const reachable = i <= maxStep;
+              return (
+                <li key={label} className="flex min-w-0 flex-1 items-start">
+                  <button
+                    type="button"
+                    disabled={!reachable || busy || current}
+                    onClick={() => (i < step ? goToStep(i) : goNext())}
+                    aria-current={current ? 'step' : undefined}
+                    className="group flex w-full min-w-0 flex-col items-center gap-1.5 disabled:cursor-default"
                   >
-                    {label}
-                  </span>
-                </button>
-              </li>
-            );
-          })}
-        </ol>
-        {draftRestored ? (
-          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl bg-[#F4EFE6] px-3 py-2 text-[11px] font-bold text-[#1C2E3A]">
-            <span>{m.draftRestored}</span>
-            <button type="button" onClick={startOver} className="font-black text-[#9C7A3C] underline underline-offset-4">
-              {m.draftClear}
-            </button>
-          </div>
-        ) : null}
-      </div>
-
-      {/* ── Step 1 · About you ── */}
-      <div hidden={step !== 0} className="wl-step-panel">
-        <SectionCard n={1} title={f.section1Title} subtitle={f.section1Subtitle}>
-          <div>
-            <label className={FIELD_LABEL} htmlFor="trip-full-name">{f.fullName}</label>
-            <input
-              id="trip-full-name"
-              name="full_name"
-              required
-              autoComplete="name"
-              enterKeyHint="next"
-              className={INPUT_CLASS}
-              placeholder={f.fullNamePlaceholder}
-            />
-          </div>
-          <WhatsAppInput
-            name="phone_wa"
-            value={fullPhone}
-            autoDetectCountry
-            onChange={(phone, isValid) => {
-              setFullPhone(phone);
-              setIsPhoneValid(isValid);
-            }}
-            required
-          />
-          <div>
-            <label className={FIELD_LABEL} htmlFor="trip-email">{m.emailLabel}</label>
-            <input
-              id="trip-email"
-              name="email"
-              type="email"
-              inputMode="email"
-              autoComplete="email"
-              enterKeyHint="next"
-              dir="ltr"
-              className={`${INPUT_CLASS} text-left`}
-              placeholder={m.emailPlaceholder}
-            />
-          </div>
-          <div>
-            <label className={FIELD_LABEL} htmlFor="trip-birth-date">{f.birthDateLabel}</label>
-            <input
-              id="trip-birth-date"
-              name="birth_date"
-              required
-              type="date"
-              className={`${INPUT_CLASS} cursor-pointer`}
-              value={formData.birth_date}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, birth_date: e.target.value }))
-              }
-              onClick={(e) => {
-                try {
-                  e.currentTarget.showPicker?.();
-                } catch {
-                  /* native date input still works */
-                }
-              }}
-            />
-          </div>
-          <div>
-            <label className={FIELD_LABEL} htmlFor="trip-source">{f.sourceLabel}</label>
-            <select id="trip-source" name="source" className={INPUT_CLASS} defaultValue="">
-              <option value="" disabled>
-                {f.sourcePlaceholder}
-              </option>
-              <option value="instagram">{f.sourceInstagram}</option>
-              <option value="tiktok">{f.sourceTiktok}</option>
-              <option value="snap">{f.sourceSnap}</option>
-              <option value="friend">{f.sourceFriend}</option>
-              <option value="google">{f.sourceGoogle}</option>
-              <option value="event">{f.sourceEvent}</option>
-              <option value="other">{f.sourceOther}</option>
-            </select>
-          </div>
-          <ReferralCodeField
-            value={referralCode}
-            onChange={setReferralCode}
-            autoPrefill={false}
-            inputClassName={INPUT_CLASS}
-          />
-        </SectionCard>
-      </div>
-
-      {/* ── Step 2 · Destination ── */}
-      <div hidden={step !== 1} className="wl-step-panel">
-        <SectionCard n={2} title={f.section2Title} subtitle={f.section2Subtitle}>
-          {popularPicks.length ? (
-            <div className="rounded-xl border border-[#9C7A3C]/20 bg-[#F4EFE6]/60 p-3">
-              <p className="flex items-center gap-1.5 text-right text-[11px] font-black text-[#9C7A3C]">
-                <Sparkles className="h-3.5 w-3.5" aria-hidden />
-                {m.popularTitle}
-              </p>
-              <div className="mt-2.5 grid grid-cols-3 gap-2">
-                {popularPicks.map((pick) => {
-                  const on = selectedCountries.includes(pick.country);
-                  return (
-                    <button
-                      key={pick.country}
-                      type="button"
-                      onClick={() => togglePopular(pick)}
-                      aria-pressed={on}
-                      className={`flex flex-col items-center justify-center gap-0.5 rounded-xl border px-2 py-2.5 transition-all duration-200 active:scale-[0.97] ${
-                        on
-                          ? 'border-[#9C7A3C] bg-[#1C2E3A] text-[#F4EFE6] shadow-sm'
-                          : 'border-gray-200 bg-white text-[#1C2E3A] hover:border-[#9C7A3C]/50'
+                    <span
+                      className={`flex h-9 w-9 items-center justify-center rounded-full text-sm font-black transition-all duration-300 ${
+                        current
+                          ? 'bg-[#D9B238] text-[#1C2E3A] shadow-[0_0_0_5px_rgba(217,178,56,0.18)]'
+                          : done
+                            ? 'border-2 border-[#D9B238] bg-white text-[#B8921E]'
+                            : 'border border-gray-200 bg-white text-gray-400'
                       }`}
                     >
-                      <span className="text-xl leading-none" aria-hidden>
-                        {pick.flag}
-                      </span>
-                      <span className="text-sm font-black">{countryLabel(pick.country)}</span>
-                      <span className={`text-[10px] font-bold ${on ? 'text-[#E6D3A8]' : 'text-gray-400'}`}>
-                        {on ? <Check className="inline h-3 w-3" aria-hidden /> : null} {cityLabel(pick.country, pick.city)}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          ) : null}
+                      {done ? <Check className="h-4 w-4" strokeWidth={3} aria-hidden /> : i + 1}
+                    </span>
+                    <span
+                      className={`max-w-full truncate px-0.5 text-[11px] font-black sm:text-xs ${
+                        current ? 'text-[#1C2E3A]' : done ? 'text-[#B8921E]' : 'text-gray-400'
+                      }`}
+                    >
+                      {label}
+                    </span>
+                  </button>
+                  {i < STEP_COUNT - 1 ? (
+                    <span aria-hidden className="mt-[18px] h-0.5 min-w-[12px] flex-1 overflow-hidden rounded-full bg-gray-200">
+                      <span
+                        className="block h-full rounded-full bg-[#D9B238] transition-[width] duration-500 ease-out"
+                        style={{ width: done ? '100%' : '0%' }}
+                      />
+                    </span>
+                  ) : null}
+                </li>
+              );
+            })}
+          </ol>
 
-          <div className={QUESTION_BLOCK}>
-            <p className="text-right text-xs font-black text-[#1C2E3A]">{f.countriesLabel}</p>
-            <div className={PILL_ROW}>
-              {tripDestinations.map((c) => {
-                const isSelected = selectedCountries.includes(c.id);
-                return (
-                  <DestinationTag
-                    key={c.id}
-                    label={countryLabel(c.id)}
-                    selected={isSelected}
-                    onToggle={() => {
-                      setStepError(null);
-                      setCountry(c.id, !isSelected);
-                    }}
-                  />
-                );
-              })}
-              <DestinationTag
-                label={f.otherCountry}
-                selected={isOtherCountry}
-                onToggle={() => toggleOtherCountry(!isOtherCountry)}
+          <div className="mt-4 flex items-center gap-3">
+            <div
+              className="h-1.5 flex-1 overflow-hidden rounded-full bg-[#F1EADB]"
+              role="progressbar"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={progressPct}
+            >
+              <div
+                className="h-full rounded-full bg-gradient-to-l from-[#D9B238] to-[#E9CB6A] transition-[width] duration-500 ease-out"
+                style={{ width: `${progressPct}%` }}
               />
             </div>
-            {isOtherCountry ? (
-              <div className="mt-4">
+            <span className="w-11 shrink-0 text-end text-[11px] font-black tabular-nums text-[#8A6A12]">{progressPct}%</span>
+          </div>
+
+          <div className="mt-2 flex min-h-[16px] items-center justify-between gap-3">
+            <p className="text-[11px] font-bold text-gray-400">
+              {m.stepOf.replace('{n}', String(step + 1)).replace('{total}', String(STEP_COUNT))}
+            </p>
+            <p className={`flex items-center gap-1 text-[10px] font-bold text-gray-400 transition-opacity duration-300 ${draftSaved ? 'opacity-100' : 'opacity-0'}`} aria-live="polite">
+              <Check className="h-3 w-3 text-[#D9B238]" aria-hidden />
+              {m.draftSaved}
+            </p>
+          </div>
+
+          {draftRestored ? (
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl bg-[#F4EFE6] px-3 py-2 text-[11px] font-bold text-[#1C2E3A]">
+              <span>{m.draftRestored}</span>
+              <button type="button" onClick={startOver} className="font-black text-[#8A6A12] underline underline-offset-4">
+                {m.draftClear}
+              </button>
+            </div>
+          ) : null}
+        </div>
+
+        <div className="px-4 py-6 sm:px-8 sm:py-8">
+          {/* ── 1 · التواصل ── */}
+          <div hidden={step !== 0} className={panelClass}>
+            <SectionCard n={1} title={m.step1Title} subtitle={f.section1Subtitle}>
+              <div>
+                <label className={FIELD_LABEL} htmlFor="trip-full-name">{f.fullName}</label>
                 <input
-                  type="text"
-                  value={customCountry}
-                  onChange={(e) => setCustomCountry(e.target.value)}
-                  placeholder={f.otherCountryPlaceholder}
-                  className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm font-bold text-[#1C2E3A] outline-none transition-all placeholder:text-gray-400 focus:border-[#1C2E3A] focus:ring-1 focus:ring-[#1C2E3A] md:w-1/2"
+                  id="trip-full-name"
+                  name="full_name"
+                  required
+                  autoComplete="name"
+                  enterKeyHint="next"
+                  className={INPUT_CLASS}
+                  placeholder={f.fullNamePlaceholder}
                 />
               </div>
-            ) : null}
-          </div>
-
-          {showCityPicker ? (
-            <div className="space-y-4 border-t border-gray-100 pt-4">
-              <p className="text-right text-xs font-black text-[#1C2E3A]">{f.citiesHeading}</p>
-              {effectiveCountries.map((cid) => {
-                const country = cid === 'other' ? null : tripDestinations.find((c) => c.id === cid) ?? getTripCountryById(cid);
-                if (cid !== 'other' && !country) return null;
-                const otherCityOn =
-                  selectedCities.includes(`${cid}:other`) || activeCustomCityFor === cid;
-                return (
-                  <div key={cid} className={QUESTION_BLOCK}>
-                    <p className="text-right text-[11px] font-black text-gray-500">
-                      {displayCountryLabel(cid)}
-                    </p>
-                    <div className={PILL_ROW}>
-                      {country?.cities.map((city) => {
-                        const composite = `${cid}:${city.id}`;
-                        const isSelected = selectedCities.includes(composite);
-                        return (
-                          <CheckboxPill
-                            key={composite}
-                            name="cities_ui"
-                            value={composite}
-                            label={cityLabel(cid, city.id)}
-                            checked={isSelected}
-                            onChange={(on) => {
-                              setStepError(null);
-                              setCity(composite, on);
-                            }}
-                          />
-                        );
-                      })}
-                      <DestinationTag
-                        label={f.otherCity}
-                        selected={otherCityOn}
-                        onToggle={() => toggleOtherCity(cid, !otherCityOn)}
-                      />
-                    </div>
-                    {otherCityOn ? (
-                      <input
-                        type="text"
-                        value={customCities[cid] || ''}
-                        onChange={(e) =>
-                          setCustomCities((prev) => ({ ...prev, [cid]: e.target.value }))
-                        }
-                        placeholder={f.otherCityPlaceholder.replace(
-                          '{country}',
-                          displayCountryLabel(cid),
-                        )}
-                        className="mt-2 inline-block w-full max-w-md rounded-full border border-gray-200 px-4 py-2 text-sm font-bold text-[#1C2E3A] outline-none transition placeholder:text-gray-400 focus:border-[#1C2E3A] focus:ring-1 focus:ring-[#1C2E3A]"
-                      />
-                    ) : null}
-                  </div>
-                );
-              })}
-            </div>
-          ) : null}
-
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div>
-              <label className={FIELD_LABEL} htmlFor="trip-start">{f.travelDate}</label>
-              <input id="trip-start" name="travel_start_date" type="date" className={DATE_INPUT_CLASS} />
-            </div>
-            <div>
-              <label className={FIELD_LABEL} htmlFor="trip-days">{f.travelDays}</label>
-              <input
-                id="trip-days"
-                name="travel_days"
-                type="number"
-                inputMode="numeric"
-                min={3}
-                max={30}
-                defaultValue={10}
+              <WhatsAppInput
+                name="phone_wa"
+                value={fullPhone}
+                autoDetectCountry
+                onChange={(phone, isValid) => {
+                  setFullPhone(phone);
+                  setIsPhoneValid(isValid);
+                }}
                 required
-                className={INPUT_CLASS}
               />
-            </div>
-            <div>
-              <label className={FIELD_LABEL} htmlFor="trip-travelers">{f.travelersCount}</label>
-              <input
-                id="trip-travelers"
-                name="travelers_count"
-                type="number"
-                inputMode="numeric"
-                min={1}
-                max={20}
-                defaultValue={2}
-                required
-                className={INPUT_CLASS}
-              />
-            </div>
-            <div>
-              <label className={FIELD_LABEL} htmlFor="trip-budget">{f.budget}</label>
-              <select id="trip-budget" name="budget_range" className={INPUT_CLASS} defaultValue="">
-                <option value="">{f.budgetUndecided}</option>
-                <option value="economical">{f.budgetEconomical}</option>
-                <option value="moderate">{f.budgetModerate}</option>
-                <option value="comfortable">{f.budgetComfortable}</option>
-                <option value="premium">{f.budgetPremium}</option>
-              </select>
-            </div>
-          </div>
-        </SectionCard>
-      </div>
-
-      {/* ── Step 3 · Style ── */}
-      <div hidden={step !== 2} className="wl-step-panel space-y-5">
-        <SectionCard n={3} title={f.section3Title} subtitle={f.section3Subtitle}>
-          <PreferenceWithOther
-            label={f.section3Title}
-            otherLabel={f.sourceOther}
-            otherFieldName="interests_other"
-            otherSelected={interestOther}
-            onOtherSelected={setInterestOther}
-            otherText={interestOtherText}
-            onOtherTextChange={setInterestOtherText}
-            otherPlaceholder="اكتب اهتمامك…"
-          >
-            <CheckboxPill name="interests" value="anime" label={f.interestAnime} />
-            <CheckboxPill name="interests" value="history" label={f.interestHistory} />
-            <CheckboxPill name="interests" value="nature" label={f.interestNature} />
-            <CheckboxPill name="interests" value="kpop" label={f.interestKpop} />
-            <CheckboxPill name="interests" value="shopping" label={f.interestShopping} />
-            <CheckboxPill name="interests" value="seasonal_festivals" label={f.interestSeasonal} />
-            <CheckboxPill name="interests" value="adventure_local" label={f.interestAdventure} />
-            <CheckboxPill name="interests" value="workshops_crafts" label={f.interestWorkshops} />
-            <CheckboxPill name="interests" value="spa_wellness" label={f.interestSpa} />
-            <CheckboxPill name="interests" value="photo_tours" label={f.interestPhoto} />
-          </PreferenceWithOther>
-
-          {effectiveCountries.length > 0 ? (
-            <div className="space-y-4 border-t border-gray-100 pt-4">
-              <p className="text-right text-xs font-black text-[#1C2E3A]">{f.visitSectionTitle}</p>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                {effectiveCountries.map((cid) => {
-                  if (
-                    cid !== 'other' &&
-                    !tripDestinations.some((country) => country.id === cid) &&
-                    !getTripCountryById(cid)
-                  ) {
-                    return null;
-                  }
-                  return (
-                    <div key={cid} className={QUESTION_BLOCK}>
-                      <p className="text-right text-[11px] font-bold text-gray-600">
-                        {f.visitBeforeCountry.replace("{country}", displayCountryLabel(cid))}
-                      </p>
-                      <div className={PILL_ROW}>
-                        <RadioPill name={`visited_before_${cid}`} value="yes" label={f.yes} />
-                        <RadioPill name={`visited_before_${cid}`} value="no" label={f.no} defaultChecked />
-                      </div>
-                    </div>
-                  );
-                })}
+                <div>
+                  <label className={FIELD_LABEL} htmlFor="trip-birth-date">{f.birthDateLabel}</label>
+                  <input
+                    id="trip-birth-date"
+                    name="birth_date"
+                    required
+                    type="date"
+                    className={`${DATE_INPUT_CLASS}`}
+                    value={formData.birth_date}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, birth_date: e.target.value }))}
+                    onClick={(e) => {
+                      try {
+                        e.currentTarget.showPicker?.();
+                      } catch {
+                        /* native date input still works */
+                      }
+                    }}
+                  />
+                </div>
+                <div>
+                  <label className={FIELD_LABEL} htmlFor="trip-source">{f.sourceLabel}</label>
+                  <select id="trip-source" name="source" className={INPUT_CLASS} defaultValue="">
+                    <option value="" disabled>
+                      {f.sourcePlaceholder}
+                    </option>
+                    <option value="instagram">{f.sourceInstagram}</option>
+                    <option value="tiktok">{f.sourceTiktok}</option>
+                    <option value="snap">{f.sourceSnap}</option>
+                    <option value="friend">{f.sourceFriend}</option>
+                    <option value="google">{f.sourceGoogle}</option>
+                    <option value="event">{f.sourceEvent}</option>
+                    <option value="other">{f.sourceOther}</option>
+                  </select>
+                </div>
               </div>
+              <div>
+                <label className={FIELD_LABEL} htmlFor="trip-email">{m.emailLabel}</label>
+                <input
+                  id="trip-email"
+                  name="email"
+                  type="email"
+                  inputMode="email"
+                  autoComplete="email"
+                  enterKeyHint="next"
+                  dir="ltr"
+                  className={`${INPUT_CLASS} text-left`}
+                  placeholder={m.emailPlaceholder}
+                />
+              </div>
+              <div>
+                <ReferralCodeField
+                  value={referralCode}
+                  onChange={setReferralCode}
+                  autoPrefill={false}
+                  inputClassName={INPUT_CLASS}
+                />
+                {lockedReferral ? (
+                  <p className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-[#D9B238]/12 px-3 py-1 text-[11px] font-black text-[#8A6A12]">
+                    <span aria-hidden>🎁</span>
+                    {m.referralLocked.replace('{code}', lockedReferral)}
+                  </p>
+                ) : null}
+              </div>
+            </SectionCard>
+          </div>
+
+          {/* ── 2 · الوجهة ── */}
+          <div hidden={step !== 1} className={panelClass}>
+            <SectionCard n={2} title={m.step2Title} subtitle={f.section2Subtitle}>
+              {popularPicks.length ? (
+                <div className="rounded-2xl border border-amber-100 bg-[#FBF8F1] p-3">
+                  <p className="flex items-center gap-1.5 text-right text-[11px] font-black text-[#8A6A12]">
+                    <Sparkles className="h-3.5 w-3.5" aria-hidden />
+                    {m.popularTitle}
+                  </p>
+                  <div className="mt-2.5 grid grid-cols-3 gap-2">
+                    {popularPicks.map((pick) => {
+                      const on = selectedCountries.includes(pick.country);
+                      return (
+                        <button
+                          key={pick.country}
+                          type="button"
+                          onClick={() => togglePopular(pick)}
+                          aria-pressed={on}
+                          className={`flex flex-col items-center justify-center gap-0.5 rounded-xl border px-2 py-2.5 transition-all duration-200 active:scale-[0.97] ${
+                            on
+                              ? 'border-[#D9B238] bg-[#1C2E3A] text-[#F4EFE6] shadow-sm'
+                              : 'border-gray-200 bg-white text-[#1C2E3A] hover:border-[#D9B238]'
+                          }`}
+                        >
+                          <LandmarkIcon id={pick.country} size={28} strokeWidth={2.4} className={on ? 'text-[#E9CB6A]' : 'text-[#1C2E3A]'} />
+                          <span className="text-sm font-black">{countryLabel(pick.country)}</span>
+                          <span className={`text-[10px] font-bold ${on ? 'text-[#E9CB6A]' : 'text-gray-400'}`}>
+                            {on ? <Check className="inline h-3 w-3" aria-hidden /> : null} {cityLabel(pick.country, pick.city)}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : null}
+
+              <div className={QUESTION_BLOCK}>
+                <p className="text-right text-xs font-black text-[#1C2E3A]">{f.countriesLabel}</p>
+                <div className={PILL_ROW}>
+                  {tripDestinations.map((c) => {
+                    const isSelected = selectedCountries.includes(c.id);
+                    return (
+                      <DestinationTag
+                        key={c.id}
+                        label={countryLabel(c.id)}
+                        selected={isSelected}
+                        onToggle={() => {
+                          setStepError(null);
+                          setCountry(c.id, !isSelected);
+                        }}
+                      />
+                    );
+                  })}
+                  <DestinationTag
+                    label={f.otherCountry}
+                    selected={isOtherCountry}
+                    onToggle={() => toggleOtherCountry(!isOtherCountry)}
+                  />
+                </div>
+                {isOtherCountry ? (
+                  <div className="mt-4">
+                    <input
+                      type="text"
+                      value={customCountry}
+                      onChange={(e) => setCustomCountry(e.target.value)}
+                      placeholder={f.otherCountryPlaceholder}
+                      className={`${INPUT_CLASS} md:w-1/2`}
+                    />
+                  </div>
+                ) : null}
+              </div>
+
+              {showCityPicker ? (
+                <div className="space-y-4 border-t border-amber-100/70 pt-4">
+                  <p className="text-right text-xs font-black text-[#1C2E3A]">{f.citiesHeading}</p>
+                  {effectiveCountries.map((cid) => {
+                    const country = cid === 'other' ? null : tripDestinations.find((c) => c.id === cid) ?? getTripCountryById(cid);
+                    if (cid !== 'other' && !country) return null;
+                    const otherCityOn = selectedCities.includes(`${cid}:other`) || activeCustomCityFor === cid;
+                    return (
+                      <div key={cid} className={QUESTION_BLOCK}>
+                        <p className="text-right text-[11px] font-black text-gray-500">{displayCountryLabel(cid)}</p>
+                        <div className={PILL_ROW}>
+                          {country?.cities.map((city) => {
+                            const composite = `${cid}:${city.id}`;
+                            const isSelected = selectedCities.includes(composite);
+                            return (
+                              <CheckboxPill
+                                key={composite}
+                                name="cities_ui"
+                                value={composite}
+                                label={cityLabel(cid, city.id)}
+                                checked={isSelected}
+                                onChange={(on) => {
+                                  setStepError(null);
+                                  setCity(composite, on);
+                                }}
+                              />
+                            );
+                          })}
+                          <DestinationTag
+                            label={f.otherCity}
+                            selected={otherCityOn}
+                            onToggle={() => toggleOtherCity(cid, !otherCityOn)}
+                          />
+                        </div>
+                        {otherCityOn ? (
+                          <input
+                            type="text"
+                            value={customCities[cid] || ''}
+                            onChange={(e) => setCustomCities((prev) => ({ ...prev, [cid]: e.target.value }))}
+                            placeholder={f.otherCityPlaceholder.replace('{country}', displayCountryLabel(cid))}
+                            className={`${INPUT_CLASS} mt-2 max-w-md`}
+                          />
+                        ) : null}
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : null}
+
+              {effectiveCountries.length > 0 ? (
+                <div className="space-y-4 border-t border-amber-100/70 pt-4">
+                  <p className="text-right text-xs font-black text-[#1C2E3A]">{f.visitSectionTitle}</p>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    {effectiveCountries.map((cid) => {
+                      if (cid !== 'other' && !tripDestinations.some((country) => country.id === cid) && !getTripCountryById(cid)) {
+                        return null;
+                      }
+                      return (
+                        <div key={cid} className={QUESTION_BLOCK}>
+                          <p className="text-right text-[11px] font-bold text-gray-600">
+                            {f.visitBeforeCountry.replace('{country}', displayCountryLabel(cid))}
+                          </p>
+                          <div className={PILL_ROW}>
+                            <RadioPill name={`visited_before_${cid}`} value="yes" label={f.yes} />
+                            <RadioPill name={`visited_before_${cid}`} value="no" label={f.no} defaultChecked />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : null}
+            </SectionCard>
+          </div>
+
+          {/* ── 3 · تفضيلات وتوقيت الرحلة ── */}
+          <div hidden={step !== 2} className={panelClass}>
+            <SectionCard n={3} title={m.step3Title} subtitle={m.step3Subtitle}>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <label className={FIELD_LABEL} htmlFor="trip-travelers">{f.travelersCount}</label>
+                  <input id="trip-travelers" name="travelers_count" type="number" inputMode="numeric" min={1} max={20} defaultValue={2} required className={INPUT_CLASS} />
+                </div>
+                <div>
+                  <label className={FIELD_LABEL} htmlFor="trip-budget">{f.budget}</label>
+                  <select id="trip-budget" name="budget_range" className={INPUT_CLASS} defaultValue="">
+                    <option value="">{f.budgetUndecided}</option>
+                    <option value="economical">{f.budgetEconomical}</option>
+                    <option value="moderate">{f.budgetModerate}</option>
+                    <option value="comfortable">{f.budgetComfortable}</option>
+                    <option value="premium">{f.budgetPremium}</option>
+                  </select>
+                </div>
+                <div>
+                  <label className={FIELD_LABEL} htmlFor="trip-start">{f.travelDate}</label>
+                  <input id="trip-start" name="travel_start_date" type="date" className={DATE_INPUT_CLASS} />
+                </div>
+                <div>
+                  <label className={FIELD_LABEL} htmlFor="trip-days">{f.travelDays}</label>
+                  <input id="trip-days" name="travel_days" type="number" inputMode="numeric" min={3} max={30} defaultValue={10} required className={INPUT_CLASS} />
+                </div>
+              </div>
+
+              <PillGroup label={m.seasonLabel}>
+                <RadioPill name="travel_season" value="winter" label={m.seasonWinter} />
+                <RadioPill name="travel_season" value="spring" label={m.seasonSpring} />
+                <RadioPill name="travel_season" value="summer" label={m.seasonSummer} />
+                <RadioPill name="travel_season" value="autumn" label={m.seasonAutumn} />
+                <RadioPill name="travel_season" value="flexible" label={m.seasonFlexible} />
+              </PillGroup>
+
+              <PreferenceWithOther
+                label={f.lodgingLabel}
+                otherLabel={f.sourceOther}
+                otherFieldName="lodging_prefs_other"
+                otherSelected={lodgingOther}
+                onOtherSelected={setLodgingOther}
+                otherText={lodgingOtherText}
+                onOtherTextChange={setLodgingOtherText}
+                otherPlaceholder="اكتب نوع الإقامة المفضل…"
+              >
+                <CheckboxPill name="lodging_prefs" value="boutique" label={f.lodgingBoutique} />
+                <CheckboxPill name="lodging_prefs" value="star4" label={f.lodging4} />
+                <CheckboxPill name="lodging_prefs" value="star5" label={f.lodging5} />
+                <CheckboxPill name="lodging_prefs" value="ryokan" label={f.lodgingRyokan} />
+              </PreferenceWithOther>
+
+              <PreferenceWithOther
+                label={f.foodLabel}
+                otherLabel={f.sourceOther}
+                otherFieldName="food_prefs_other"
+                otherSelected={foodOther}
+                onOtherSelected={setFoodOther}
+                otherText={foodOtherText}
+                onOtherTextChange={setFoodOtherText}
+                otherPlaceholder="اكتب تفضيلك الغذائي…"
+              >
+                <CheckboxPill name="food_prefs" value="halal" label={f.foodHalal} />
+                <CheckboxPill name="food_prefs" value="seafood" label={f.foodSeafood} />
+                <CheckboxPill name="food_prefs" value="vegetarian" label={f.foodVegetarian} />
+                <CheckboxPill name="food_prefs" value="flex" label={f.foodFlex} />
+              </PreferenceWithOther>
+            </SectionCard>
+          </div>
+
+          {/* ── 4 · بصمة السفر (Travel DNA) ── */}
+          <div hidden={step !== 3} className={panelClass}>
+            <SectionCard n={4} title={m.step4Title} subtitle={m.step4Subtitle}>
+              <PillGroup label={m.travelStyleLabel}>
+                <RadioPill name="day_start" value="early" label={f.startEarly} />
+                <RadioPill name="day_start" value="mid" label={f.startMid} defaultChecked />
+                <RadioPill name="day_start" value="late" label={f.startLate} />
+              </PillGroup>
+              <PillGroup label={f.paceLabel}>
+                <RadioPill name="pace" value="calm" label={f.paceCalm} />
+                <RadioPill name="pace" value="medium" label={f.paceMedium} defaultChecked />
+                <RadioPill name="pace" value="active" label={f.paceActive} />
+              </PillGroup>
+              <PillGroup label={f.walkingLabel}>
+                <RadioPill name="walking" value="low" label={f.walkLow} />
+                <RadioPill name="walking" value="medium" label={f.walkMed} defaultChecked />
+                <RadioPill name="walking" value="high" label={f.walkHigh} />
+              </PillGroup>
+
+              <PreferenceWithOther
+                label={f.section3Title}
+                otherLabel={f.sourceOther}
+                otherFieldName="interests_other"
+                otherSelected={interestOther}
+                onOtherSelected={setInterestOther}
+                otherText={interestOtherText}
+                onOtherTextChange={setInterestOtherText}
+                otherPlaceholder="اكتب اهتمامك…"
+              >
+                <CheckboxPill name="interests" value="anime" label={f.interestAnime} />
+                <CheckboxPill name="interests" value="history" label={f.interestHistory} />
+                <CheckboxPill name="interests" value="nature" label={f.interestNature} />
+                <CheckboxPill name="interests" value="kpop" label={f.interestKpop} />
+                <CheckboxPill name="interests" value="shopping" label={f.interestShopping} />
+                <CheckboxPill name="interests" value="seasonal_festivals" label={f.interestSeasonal} />
+                <CheckboxPill name="interests" value="adventure_local" label={f.interestAdventure} />
+                <CheckboxPill name="interests" value="workshops_crafts" label={f.interestWorkshops} />
+                <CheckboxPill name="interests" value="spa_wellness" label={f.interestSpa} />
+                <CheckboxPill name="interests" value="photo_tours" label={f.interestPhoto} />
+              </PreferenceWithOther>
+
+              <div className="rounded-2xl border border-amber-100 bg-[#FBF8F1] p-4">
+                <p className="text-right text-xs font-black text-[#1C2E3A]">📷 {m.consentLabel}</p>
+                <p className="mt-1 text-[11px] font-bold leading-relaxed text-gray-500">{m.consentHint}</p>
+                <div className={`${PILL_ROW} mt-3`}>
+                  <RadioPill name="media_consent" value="yes" label={m.consentYes} />
+                  <RadioPill name="media_consent" value="no" label={m.consentNo} />
+                </div>
+              </div>
+
+              <div>
+                <label className={FIELD_LABEL} htmlFor="trip-dream">{f.dreamLabel}</label>
+                <textarea id="trip-dream" name="dream_feeling" required rows={4} className={TEXTAREA_CLASS} placeholder={f.dreamPlaceholder} />
+              </div>
+            </SectionCard>
+          </div>
+
+          {stepError || state?.error ? (
+            <div role="alert" className="mt-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-[#7A5A0E]">
+              {stepError || state?.error}
             </div>
           ) : null}
-        </SectionCard>
 
-        <SectionCard n={4} title={f.section4Title} subtitle={f.section4Subtitle}>
-          <PillGroup label={f.paceLabel}>
-            <RadioPill name="pace" value="calm" label={f.paceCalm} />
-            <RadioPill name="pace" value="medium" label={f.paceMedium} defaultChecked />
-            <RadioPill name="pace" value="active" label={f.paceActive} />
-          </PillGroup>
-          <PillGroup label={f.walkingLabel}>
-            <RadioPill name="walking" value="low" label={f.walkLow} />
-            <RadioPill name="walking" value="medium" label={f.walkMed} defaultChecked />
-            <RadioPill name="walking" value="high" label={f.walkHigh} />
-          </PillGroup>
-          <PillGroup label={f.dayStartLabel}>
-            <RadioPill name="day_start" value="early" label={f.startEarly} />
-            <RadioPill name="day_start" value="mid" label={f.startMid} defaultChecked />
-            <RadioPill name="day_start" value="late" label={f.startLate} />
-          </PillGroup>
-        </SectionCard>
-      </div>
+          <div className="mt-8 flex flex-col-reverse gap-3 border-t border-amber-100/70 pt-6 sm:flex-row sm:items-center sm:justify-between">
+            {step > 0 ? (
+              <button
+                type="button"
+                onClick={() => goToStep(step - 1)}
+                disabled={busy}
+                className="inline-flex h-12 items-center justify-center rounded-full border border-transparent bg-transparent px-6 text-sm font-black text-[#1C2E3A]/70 transition hover:border-[#1C2E3A]/15 hover:text-[#1C2E3A] disabled:opacity-50"
+              >
+                {dir === 'rtl' ? '→' : '←'} {m.back}
+              </button>
+            ) : (
+              <span className="hidden sm:block" />
+            )}
 
-      {/* ── Step 4 · Taste & dream ── */}
-      <div hidden={step !== 3} className="wl-step-panel space-y-5">
-        <SectionCard n={5} title={f.section5Title} subtitle={f.section5Subtitle}>
-          <PreferenceWithOther
-            label={f.foodLabel}
-            otherLabel={f.sourceOther}
-            otherFieldName="food_prefs_other"
-            otherSelected={foodOther}
-            onOtherSelected={setFoodOther}
-            otherText={foodOtherText}
-            onOtherTextChange={setFoodOtherText}
-            otherPlaceholder="اكتب تفضيلك الغذائي…"
-          >
-            <CheckboxPill name="food_prefs" value="halal" label={f.foodHalal} />
-            <CheckboxPill name="food_prefs" value="seafood" label={f.foodSeafood} />
-            <CheckboxPill name="food_prefs" value="vegetarian" label={f.foodVegetarian} />
-            <CheckboxPill name="food_prefs" value="flex" label={f.foodFlex} />
-          </PreferenceWithOther>
-          <PreferenceWithOther
-            label={f.lodgingLabel}
-            otherLabel={f.sourceOther}
-            otherFieldName="lodging_prefs_other"
-            otherSelected={lodgingOther}
-            onOtherSelected={setLodgingOther}
-            otherText={lodgingOtherText}
-            onOtherTextChange={setLodgingOtherText}
-            otherPlaceholder="اكتب نوع الإقامة المفضل…"
-          >
-            <CheckboxPill name="lodging_prefs" value="boutique" label={f.lodgingBoutique} />
-            <CheckboxPill name="lodging_prefs" value="star4" label={f.lodging4} />
-            <CheckboxPill name="lodging_prefs" value="star5" label={f.lodging5} />
-            <CheckboxPill name="lodging_prefs" value="ryokan" label={f.lodgingRyokan} />
-          </PreferenceWithOther>
-        </SectionCard>
-
-        <SectionCard n={6} title={f.section6Title} subtitle={f.section6Subtitle}>
-          <div>
-            <label className={FIELD_LABEL} htmlFor="trip-dream">{f.dreamLabel}</label>
-            <textarea
-              id="trip-dream"
-              name="dream_feeling"
-              required
-              rows={5}
-              className={TEXTAREA_CLASS}
-              placeholder={f.dreamPlaceholder}
-            />
+            {isLastStep ? (
+              <button
+                type="submit"
+                disabled={busy}
+                className="inline-flex h-12 min-w-[240px] items-center justify-center gap-2 rounded-full bg-[#D9B238] px-8 text-sm font-black text-[#1C2E3A] shadow-[0_12px_28px_-12px_rgba(217,178,56,0.9)] transition-all hover:-translate-y-0.5 hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {busy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : null}
+                {m.submitSmart}
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={goNext}
+                className="inline-flex h-12 min-w-[220px] items-center justify-center gap-2 rounded-full bg-[#D9B238] px-7 text-sm font-black text-[#1C2E3A] shadow-[0_12px_28px_-12px_rgba(217,178,56,0.9)] transition-all hover:-translate-y-0.5 hover:brightness-95"
+              >
+                {m.continueTo.replace('{step}', stepLabels[step + 1] ?? '')} {dir === 'rtl' ? '←' : '→'}
+              </button>
+            )}
           </div>
-        </SectionCard>
-      </div>
-
-      {stepError || state?.error ? (
-        <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-800">
-          {stepError || state?.error}
         </div>
-      ) : null}
-
-      <div className="flex items-center justify-between gap-3 pb-2 pt-1">
-        {step > 0 ? (
-          <button
-            type="button"
-            onClick={() => goToStep(step - 1)}
-            disabled={busy}
-            className="inline-flex h-11 items-center justify-center gap-1.5 rounded-full border border-[#1C2E3A]/20 bg-white px-5 text-sm font-black text-[#1C2E3A] transition hover:border-[#9C7A3C]/50 disabled:opacity-50"
-          >
-            <BackIcon className="h-4 w-4" aria-hidden />
-            {m.back}
-          </button>
-        ) : (
-          <span />
-        )}
-
-        {isLastStep ? (
-          <button
-            type="submit"
-            disabled={busy}
-            className={`inline-flex h-12 min-w-[220px] items-center justify-center gap-2 rounded-full bg-[#1C2E3A] px-8 text-sm font-black text-[#F4EFE6] shadow-sm transition-all hover:bg-[#122029] disabled:cursor-not-allowed disabled:opacity-50 ${
-              busy ? 'opacity-50 cursor-not-allowed' : ''
-            }`}
-          >
-            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-            {f.submit}
-          </button>
-        ) : (
-          <button
-            type="button"
-            onClick={goNext}
-            className="inline-flex h-12 min-w-[160px] items-center justify-center gap-2 rounded-full bg-[#1C2E3A] px-7 text-sm font-black text-[#F4EFE6] shadow-sm transition-all hover:bg-[#122029]"
-          >
-            {m.next}
-            <NextIcon className="h-4 w-4" aria-hidden />
-          </button>
-        )}
       </div>
     </form>
   );

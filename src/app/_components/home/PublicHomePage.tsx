@@ -5,7 +5,6 @@ import type { ReactNode } from 'react';
 import type { Session } from '@/types/session-tables';
 import { useLanguage } from '@/context/LanguageContext';
 
-import { WANDERLOOM_CONTACT_EMAIL } from '@/lib/contact-email';
 import WanderloomQuiz from '@/components/WanderloomQuiz';
 import DestinationAdvisor from '@/components/DestinationAdvisor';
 import { AiConciergeWidget } from '@/components/AiConciergeWidget';
@@ -13,7 +12,6 @@ import { AiConciergeWidget } from '@/components/AiConciergeWidget';
 import { AffiliateReferralCapture } from './AffiliateReferralCapture';
 import { GeneralContactSection } from './GeneralContactSection';
 import { GroupTripsSection } from './GroupTripsSection';
-import { InterestFooterCta } from './InterestFooterCta';
 import { LogoWatermarkLayer } from './LogoWatermarkLayer';
 import { PublicAboutSection } from './PublicAboutSection';
 import { PublicHomeHero } from './PublicHomeHero';
@@ -21,6 +19,10 @@ import { PublicNavbar } from './PublicNavbar';
 import { PublicSessionsCards } from './PublicSessionsCards';
 import { ScrollToLeadOnMount } from './ScrollToLeadOnMount';
 import { TripDesignForm } from './TripDesignForm';
+import { LoomDestinations } from './loom/LoomDestinations';
+import { LoomFooter } from './loom/LoomFooter';
+import { LoomProcess } from './loom/LoomProcess';
+import { MobileStickyCta } from './loom/MobileStickyCta';
 
 type PublicHomePageProps = {
   sessions: Session[];
@@ -53,22 +55,22 @@ export function PublicHomePage({ sessions, sessionsLoadError, sessionsDemo }: Pu
   const { t } = useLanguage();
 
   return (
-    <main className="relative min-h-screen bg-[#F4EFE6] font-[family-name:var(--font-tajawal),system-ui,sans-serif] text-[#1C2E3A] antialiased">
+    <main className="wl-weave relative min-h-screen font-[family-name:var(--font-tajawal),system-ui,sans-serif] text-[#1C2E3A] antialiased">
       <LogoWatermarkLayer />
       <AffiliateReferralCapture />
       <ScrollToLeadOnMount />
       <div className="relative z-10">
         <PublicNavbar />
 
-        <SectionFrame id="top" className="border-b border-[#1C2E3A]/10">
+        <SectionFrame id="top" className="wl-weave">
           <PublicHomeHero />
         </SectionFrame>
 
-        <SectionFrame id="about" className="border-b border-[#1C2E3A]/10 text-[#1C2E3A]">
-          <PublicAboutSection />
+        <SectionFrame id="destinations" className="border-t border-[#9C7A3C]/20 bg-white/45 py-16 sm:py-20 md:py-24">
+          <LoomDestinations />
         </SectionFrame>
 
-        <SectionFrame id="advisor" className="border-b border-[#1C2E3A]/10 py-12 sm:py-20 md:py-28">
+        <SectionFrame id="advisor" className="border-t border-[#9C7A3C]/20 py-16 sm:py-20 md:py-24">
           <div className="mx-auto max-w-6xl px-4 sm:px-8">
             <DestinationAdvisor />
           </div>
@@ -77,23 +79,43 @@ export function PublicHomePage({ sessions, sessionsLoadError, sessionsDemo }: Pu
         <SectionFrame
           id="quiz"
           clipOverflow={false}
-          className="my-10 border-b border-[#1C2E3A]/10 py-12 sm:my-16 sm:py-20 md:py-28"
+          className="border-t border-[#9C7A3C]/20 bg-white/45 py-16 sm:py-20 md:py-24"
         >
           <div className="mx-auto max-w-6xl space-y-8 px-4 sm:space-y-12 sm:px-8">
             <WanderloomQuiz />
           </div>
         </SectionFrame>
 
-        <SectionFrame
-          id="sessions"
-          className="my-10 border-b border-[#1C2E3A]/10 py-16 sm:my-16 sm:py-24 md:py-32"
-        >
+        <SectionFrame id="weave" className="border-t border-[#9C7A3C]/20 py-16 sm:py-20 md:py-24">
+          <LoomProcess />
+        </SectionFrame>
+
+        <SectionFrame id="about">
+          <PublicAboutSection />
+        </SectionFrame>
+
+        <SectionFrame id="groups" className="py-16 sm:py-20 md:py-24">
+          <div className="mx-auto max-w-6xl space-y-8 px-4 sm:space-y-12 sm:px-8">
+            <div className="mx-auto max-w-3xl text-center">
+              <p className="text-xs font-extrabold tracking-wide text-[#9C7A3C] sm:text-[13px]">{t.loom.groupsKicker}</p>
+              <h2 className="mt-3 text-[28px] font-black leading-tight text-[#1C2E3A] sm:text-4xl lg:text-[44px]">
+                {t.groups.title}
+              </h2>
+              <p className="mt-4 text-base font-medium leading-loose text-[#3E4F5A] sm:text-[17px]">
+                {t.groups.body}
+              </p>
+            </div>
+            <GroupTripsSection />
+          </div>
+        </SectionFrame>
+
+        <SectionFrame id="sessions" className="border-t border-[#9C7A3C]/20 bg-white/45 py-16 sm:py-20 md:py-24">
           <div className="mx-auto max-w-6xl space-y-8 px-4 sm:space-y-12 sm:px-8">
             <div className="mx-auto max-w-2xl text-center">
-              <h2 className="text-2xl font-black text-[#1C2E3A] sm:text-3xl md:text-4xl">
+              <h2 className="text-[28px] font-black leading-tight text-[#1C2E3A] sm:text-4xl">
                 {t.sessions.title}
               </h2>
-              <p className="mt-3 text-sm font-bold leading-relaxed text-gray-600 sm:mt-4 sm:text-base">
+              <p className="mt-4 text-base font-medium leading-loose text-[#3E4F5A] sm:text-[17px]">
                 {t.sessions.lead}
               </p>
             </div>
@@ -106,57 +128,30 @@ export function PublicHomePage({ sessions, sessionsLoadError, sessionsDemo }: Pu
           </div>
         </SectionFrame>
 
-        <SectionFrame
-          id="groups"
-          className="my-10 border-b border-[#1C2E3A]/10 py-16 sm:my-16 sm:py-24 md:py-32"
-        >
-          <div className="mx-auto max-w-6xl space-y-8 px-4 sm:space-y-12 sm:px-8">
-            <div className="mx-auto max-w-3xl text-center">
-              <h2 className="text-2xl font-black text-[#1C2E3A] sm:text-3xl md:text-4xl">
-                {t.groups.title}
-              </h2>
-              <p className="mt-4 text-sm font-bold leading-relaxed text-gray-600 sm:mt-6 sm:text-base">
-                {t.groups.body}
-              </p>
-            </div>
-            <GroupTripsSection />
-          </div>
-        </SectionFrame>
-
-        <SectionFrame id="contact" className="border-b border-[#1C2E3A]/10 py-16 sm:py-24 md:py-32">
-          <GeneralContactSection />
-        </SectionFrame>
-
-        <SectionFrame id="lead" className="py-16 sm:py-24 md:py-32">
+        <SectionFrame id="lead" className="border-t border-[#9C7A3C]/20 py-16 sm:py-20 md:py-28">
           <div className="mx-auto max-w-4xl px-4 sm:px-8">
             <div className="mx-auto max-w-2xl text-center">
-              <h2 className="text-2xl font-black text-[#1C2E3A] sm:text-3xl md:text-4xl">
-                {t.lead.title}
+              <p className="text-xs font-extrabold tracking-wide text-[#9C7A3C] sm:text-[13px]">{t.lead.title}</p>
+              <h2 className="mt-3 text-[30px] font-black leading-tight text-[#1C2E3A] sm:text-4xl md:text-5xl">
+                {t.loom.leadTitle}
               </h2>
-              <p className="mt-3 text-sm font-bold leading-relaxed text-gray-600 sm:mt-4 sm:text-base">
-                {t.lead.body}
+              <p className="mt-4 text-base font-medium leading-loose text-[#3E4F5A] sm:text-[17px]">
+                {t.loom.leadBody}
               </p>
             </div>
-            <div className="mt-10 sm:mt-14">
+            <div className="mt-10 sm:mt-12">
               <TripDesignForm />
             </div>
           </div>
         </SectionFrame>
 
-        <footer className="border-t border-[#1C2E3A]/10 bg-transparent px-4 py-10 text-center sm:py-12">
-          <InterestFooterCta />
-          <p className="text-xs font-black tracking-[0.4em] text-[#9C7A3C]/80">{t.footer.brand}</p>
-          <p className="mt-2 text-[11px] font-bold text-gray-500">{t.footer.tagline}</p>
-          <p className="mt-5">
-            <a
-              href={`mailto:${WANDERLOOM_CONTACT_EMAIL}?subject=${encodeURIComponent(t.footer.emailSubject)}`}
-              className="text-[11px] font-bold text-[#9C7A3C] underline decoration-[#9C7A3C]/40 underline-offset-4 transition hover:text-[#9C7A3C]"
-            >
-              {WANDERLOOM_CONTACT_EMAIL}
-            </a>
-          </p>
-        </footer>
+        <SectionFrame id="contact" className="border-t border-[#9C7A3C]/20 bg-white/40 py-20 sm:py-24 md:py-28">
+          <GeneralContactSection />
+        </SectionFrame>
+
+        <LoomFooter />
       </div>
+      <MobileStickyCta />
       <AiConciergeWidget />
     </main>
   );

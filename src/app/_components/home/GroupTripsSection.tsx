@@ -271,10 +271,10 @@ export function GroupTripsSection() {
           {displayTrips.map((trip) => (
             <article
               key={trip.id}
-              className={`wl-lift-card group flex flex-col overflow-hidden rounded-3xl border border-[#1C2E3A]/10 bg-white/80 p-6 shadow-sm backdrop-blur-sm ring-1 transition-all duration-300 hover:border-[#9C7A3C]/40 hover:shadow-xl ${trip.ring}`}
+              className={`wl-lift-card group relative flex flex-col overflow-hidden rounded-[6px_26px_26px_26px] border border-[#9C7A3C]/25 bg-white p-7 shadow-[0_26px_50px_-34px_rgba(28,46,58,0.55)] outline-dashed outline-[1.5px] -outline-offset-[10px] outline-[#9C7A3C]/45 transition-all duration-300 hover:border-[#D9B238]/60 hover:shadow-xl ${trip.ring}`}
             >
               <div className="wl-card-media overflow-hidden rounded-2xl bg-gradient-to-br from-[#F4EFE6] via-white to-[#F4EFE6]/60 px-5 py-5">
-                <div className="wl-card-media-icon flex h-12 w-12 items-center justify-center rounded-2xl bg-[#1C2E3A] text-[#9C7A3C] transition-transform duration-500 group-hover:scale-105">
+                <div className="wl-card-media-icon flex h-12 w-12 items-center justify-center rounded-2xl bg-[#1C2E3A] text-[#D9B238] transition-transform duration-500 group-hover:scale-105">
                   <Users className="h-5 w-5" aria-hidden />
                 </div>
               </div>
@@ -282,7 +282,7 @@ export function GroupTripsSection() {
                 <span className={`w-fit text-[11px] font-medium tracking-wide ${trip.chip}`}>
                   {trip.badge}
                 </span>
-                <h3 className="mt-3 text-lg font-semibold leading-snug text-[#1C2E3A]">
+                <h3 className="mt-3 text-xl font-black leading-snug text-[#1C2E3A]">
                   {trip.title}
                 </h3>
                 {trip.leader_name?.trim() ? (
@@ -300,7 +300,7 @@ export function GroupTripsSection() {
                     resetRegForm();
                     setMsg(null);
                   }}
-                  className="mt-6 w-full rounded-full bg-[#1C2E3A] py-3.5 text-sm font-medium tracking-wide text-[#F4EFE6] transition-all hover:bg-[#122029] hover:shadow-lg"
+                  className="mt-6 min-h-[48px] w-full rounded-full bg-[#1C2E3A] py-3.5 text-sm font-extrabold tracking-wide text-[#F4EFE6] transition-all hover:bg-[#122029] hover:shadow-lg"
                 >
                   {g.registerCta}
                 </button>

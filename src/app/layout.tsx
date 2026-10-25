@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono, Tajawal } from "next/font/google";
+import { Cormorant_Garamond, Geist, Geist_Mono, Tajawal } from "next/font/google";
 
 import { LocaleHtmlSync } from "./_components/i18n/LocaleHtmlSync";
 import { PwaServiceWorkerRegister } from "@/components/PwaServiceWorkerRegister";
@@ -31,11 +31,20 @@ const geistMono = Geist_Mono({
 
 const tajawal = Tajawal({
   subsets: ["arabic"],
-  weight: ["400", "500", "700"],
+  weight: ["400", "500", "700", "800", "900"],
   display: "swap",
   variable: "--font-tajawal",
   fallback: ["Tahoma", "Arial", "system-ui", "sans-serif"],
   adjustFontFallback: true,
+});
+
+/** Latin display face for the WANDERLOOM wordmark only (loom redesign) */
+const cormorant = Cormorant_Garamond({
+  subsets: ["latin"],
+  weight: ["500", "600"],
+  display: "swap",
+  variable: "--font-cormorant",
+  fallback: ["Georgia", "Times New Roman", "serif"],
 });
 
 export const metadata: Metadata = {
@@ -82,7 +91,7 @@ export default function RootLayout({
       lang="ar"
       dir="rtl"
       suppressHydrationWarning
-      className={`${geistSans.variable} ${geistMono.variable} ${tajawal.variable} no-scrollbar h-full scroll-smooth antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${tajawal.variable} ${cormorant.variable} no-scrollbar h-full scroll-smooth antialiased`}
     >
       <head>
         <script dangerouslySetInnerHTML={{ __html: localeBootstrapScript }} />

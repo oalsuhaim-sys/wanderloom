@@ -18,8 +18,8 @@ export function GeneralContactSection() {
 
   return (
     <div className="mx-auto max-w-3xl px-4 text-center sm:px-8">
-      <h2 className="text-2xl font-black text-[#1C2E3A] sm:text-3xl md:text-4xl">{c.title}</h2>
-      <p className="mx-auto mt-4 max-w-2xl text-sm font-bold leading-[1.9] text-gray-600 sm:mt-6 sm:text-base">
+      <h2 className="text-[34px] font-black text-[#1C2E3A] sm:text-5xl">{c.title}</h2>
+      <p className="mx-auto mt-4 max-w-2xl text-base font-semibold leading-[1.9] text-[#3E4F5A] sm:mt-6 sm:text-lg">
         {c.lead}
       </p>
 
@@ -28,14 +28,14 @@ export function GeneralContactSection() {
           href={waHref}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex w-full min-w-[220px] items-center justify-center gap-2 rounded-2xl bg-[#9C7A3C] px-8 py-4 text-sm font-black text-[#F4EFE6] shadow-lg shadow-[#9C7A3C]/20 transition hover:bg-[#9C7A3C] sm:w-auto"
+          className="wl-gold-cta inline-flex min-h-[58px] w-full min-w-[260px] items-center justify-center gap-2.5 rounded-full px-8 text-base font-black sm:w-auto"
         >
           <MessageCircle className="h-5 w-5" aria-hidden />
           {c.whatsappCta}
         </a>
         <a
           href={mailHref}
-          className="inline-flex w-full min-w-[220px] items-center justify-center gap-2 rounded-2xl border border-[#1C2E3A] px-8 py-4 text-sm font-black text-[#1C2E3A] transition hover:bg-[#f4efe6] sm:w-auto"
+          className="inline-flex min-h-[58px] w-full min-w-[260px] items-center justify-center gap-2.5 rounded-full border-[1.5px] border-[#1C2E3A] bg-white px-8 text-base font-extrabold text-[#1C2E3A] transition hover:bg-[#FBF8F1] sm:w-auto"
         >
           <Mail className="h-5 w-5" aria-hidden />
           {c.emailCta}
