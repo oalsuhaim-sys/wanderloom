@@ -1,0 +1,39 @@
+---
+description: Wanderloom design lock — never change the approved «loom» design while doing other work
+alwaysApply: true
+---
+
+# قفل التصميم (Design lock)
+
+التصميم الحالي للموقع العام معتمد من المالك. أي مهمة لا تطلب تغيير التصميم صراحةً
+**يجب ألا تغيّر شكل الموقع**. إذا كانت المهمة تحتاج تغييراً بصرياً، توقّف واسأل أولاً.
+
+## ممنوع بدون طلب صريح من المالك
+- تغيير الألوان: كحلي `#1C2E3A`، ذهبي `#D9B238` / `#9C7A3C`، كريمي `#F4EFE6` / `#FBF8F1`، نص `#3E4F5A`.
+- تغيير الخطوط (Tajawal + Cormorant Garamond في `src/app/layout.tsx`) أو أحجام العناوين.
+- إعادة كتابة أو استبدال هذه الملفات، أو تغيير بنيتها وتنسيقها (className):
+  - `src/app/_components/home/PublicHomePage.tsx` (ترتيب الأقسام)
+  - `src/app/_components/home/PublicHomeHero.tsx` (الواجهة والرسم الذهبي)
+  - `src/app/_components/home/PublicNavbar.tsx`
+  - `src/app/_components/home/PublicAboutSection.tsx`
+  - `src/app/_components/home/loom/*` (الوجهات، كيف نعمل، الفوتر، الزر العائم، الشعار)
+  - `src/components/DestinationAdvisor.tsx` (مستشار الوجهة)
+  - `src/app/_components/home/InstantDnaSuccess.tsx` (تذكرة النجاح)
+  - `src/app/_components/home/TripDesignForm.tsx` (الشكل البصري للنموذج ذي الخطوات الأربع)
+  - `src/app/welcome/**` و `DnaAlreadySubmittedCard.tsx`
+  - كلاسات `wl-*` في `src/app/globals.css` (wl-weave, wl-weave-dark, wl-wordmark, wl-gold-cta …)
+- حذف أو تبديل صور `public/brand/*`.
+
+## مسموح
+- إصلاح منطق أو بيانات أو أخطاء داخل هذه الملفات **مع إبقاء JSX والـ className كما هي**.
+- إضافة مكوّن جديد يستخدم نفس الألوان والخطوط وكلاسات `wl-*` الموجودة.
+
+## النصوص
+- الشعار المعتمد حرفياً: «واندرلوم: تفصيل لا تنظيم».
+- لغة بشرية طبيعية؛ لا تشبيهات «خيط / غرز / نسيج / ننسج».
+- تجنّب في نصوص العملاء: باقة، عرض، خصم، تنظيم رحلات.
+
+## النشر
+- لا تنشر بـ `vercel --prod` من الجهاز. اعمل على فرع جديد، وارفعه، وافتح Pull Request؛
+  Vercel يبني معاينة، والدمج في `main` فقط بعد موافقة المالك.
+- قبل أي دمج: `npm run build` يجب أن ينجح، وراجع الصفحة الرئيسية على الجوال والكمبيوتر.
