@@ -8,10 +8,12 @@ import { Wordmark } from './Wordmark';
 export function BrandMark({
   size = 40,
   wordmarkClassName = 'text-xl sm:text-2xl text-[#1C2E3A]',
+  wordmarkArClassName,
   showWordmark = true,
 }: {
   size?: number;
   wordmarkClassName?: string;
+  wordmarkArClassName?: string;
   showWordmark?: boolean;
 }) {
   return (
@@ -25,7 +27,7 @@ export function BrandMark({
         className="shrink-0 object-contain"
         style={{ width: size, height: size }}
       />
-      {showWordmark ? <Wordmark className={wordmarkClassName} /> : null}
+      {showWordmark ? <Wordmark className={wordmarkClassName} arClassName={wordmarkArClassName} /> : null}
     </span>
   );
 }

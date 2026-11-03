@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Cormorant_Garamond, Geist, Geist_Mono, Tajawal } from "next/font/google";
+import { Cormorant_Garamond, El_Messiri, Geist, Geist_Mono, Tajawal } from "next/font/google";
 
 import { LocaleHtmlSync } from "./_components/i18n/LocaleHtmlSync";
 import { PwaServiceWorkerRegister } from "@/components/PwaServiceWorkerRegister";
@@ -41,10 +41,19 @@ const tajawal = Tajawal({
 /** Latin display face for the WANDERLOOM wordmark only (loom redesign) */
 const cormorant = Cormorant_Garamond({
   subsets: ["latin"],
-  weight: ["500", "600"],
+  weight: ["500", "600", "700"],
   display: "swap",
   variable: "--font-cormorant",
   fallback: ["Georgia", "Times New Roman", "serif"],
+});
+
+/** Arabic display face for the «واندرلوم» wordmark only (classic option «د») */
+const messiri = El_Messiri({
+  subsets: ["arabic"],
+  weight: ["700"],
+  display: "swap",
+  variable: "--font-messiri",
+  fallback: ["Tajawal", "Tahoma", "sans-serif"],
 });
 
 export const metadata: Metadata = {
@@ -91,7 +100,7 @@ export default function RootLayout({
       lang="ar"
       dir="rtl"
       suppressHydrationWarning
-      className={`${geistSans.variable} ${geistMono.variable} ${tajawal.variable} ${cormorant.variable} no-scrollbar h-full scroll-smooth antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${tajawal.variable} ${cormorant.variable} ${messiri.variable} no-scrollbar h-full scroll-smooth antialiased`}
     >
       <head>
         <script dangerouslySetInnerHTML={{ __html: localeBootstrapScript }} />

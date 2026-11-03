@@ -1977,12 +1977,13 @@ input[type='radio'].wanderloom-raw-radio::after {
 }
 .wl-wordmark {
   font-family: var(--font-cormorant), Georgia, 'Times New Roman', serif;
-  font-weight: 600;
-  letter-spacing: 0.3em;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  white-space: nowrap;
 }
 .wl-wordmark.wl-wordmark-ar {
-  font-family: var(--font-tajawal), Tahoma, sans-serif;
-  font-weight: 800;
+  font-family: var(--font-messiri), var(--font-tajawal), Tahoma, sans-serif;
+  font-weight: 700;
   letter-spacing: 0;
 }
 .wl-thread-draw {

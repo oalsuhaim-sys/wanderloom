@@ -24,7 +24,7 @@ export function LoomFooter() {
               <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#F4EFE6]">
                 <BrandMark size={42} showWordmark={false} />
               </span>
-              <Wordmark className="text-2xl sm:text-[28px]" />
+              <Wordmark className="text-[28px] sm:text-[32px]" arClassName="text-[34px] sm:text-[40px]" />
             </span>
             <p className="text-xl font-black text-[#D9B238]">{l.footerSlogan}</p>
             <p className="text-sm text-[#C9D1D6]">{l.footerTagline}</p>
