@@ -1,6 +1,10 @@
+'use client';
+
 import Image from 'next/image';
 
-/** Official woven logo mark + WANDERLOOM wordmark (loom redesign). */
+import { Wordmark } from './Wordmark';
+
+/** Official woven logo mark + wordmark (WANDERLOOM in English, «واندرلوم» in Arabic). */
 export function BrandMark({
   size = 40,
   wordmarkClassName = 'text-xl sm:text-2xl text-[#1C2E3A]',
@@ -21,7 +25,7 @@ export function BrandMark({
         className="shrink-0 object-contain"
         style={{ width: size, height: size }}
       />
-      {showWordmark ? <span className={`wl-wordmark leading-none ${wordmarkClassName}`}>WANDERLOOM</span> : null}
+      {showWordmark ? <Wordmark className={wordmarkClassName} /> : null}
     </span>
   );
 }

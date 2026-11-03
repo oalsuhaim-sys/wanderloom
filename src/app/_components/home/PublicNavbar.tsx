@@ -83,7 +83,7 @@ export function PublicNavbar() {
             <div className="flex items-center gap-2 2xl:gap-4">
               <button type="button" onClick={openInterest} className={INTEREST_BTN_CLASS}>
                 <Heart className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                تسجيل اهتمام
+                {t.ui.registerInterest}
               </button>
               <Link
                 href="/portal"
@@ -95,7 +95,7 @@ export function PublicNavbar() {
                 href="/join-partner"
                 className="wl-public-nav-partner whitespace-nowrap rounded-full border px-4 py-2 text-sm font-medium transition-colors duration-300"
               >
-                انضم كشريك
+                {t.ui.joinPartner}
               </Link>
               <button
                 type="button"
@@ -114,7 +114,7 @@ export function PublicNavbar() {
               className="inline-flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-full bg-[#1C2E3A] px-3 py-1.5 text-xs font-medium text-[#F4EFE6] transition-all hover:bg-[#122029]"
             >
               <Heart className="h-3.5 w-3.5 shrink-0" aria-hidden />
-              اهتمام
+              {t.ui.interestShort}
             </button>
             <button
               type="button"
@@ -155,7 +155,7 @@ export function PublicNavbar() {
                 className="mt-2 inline-flex w-full items-center justify-center gap-2 whitespace-nowrap rounded-full bg-[#1C2E3A] px-5 py-2.5 text-sm font-medium text-[#F4EFE6] transition-all hover:bg-[#122029]"
               >
                 <Heart className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                تسجيل اهتمام
+                {t.ui.registerInterest}
               </button>
 
               <Link
@@ -171,7 +171,7 @@ export function PublicNavbar() {
                 className="wl-public-nav-partner mt-1 rounded-full border px-4 py-2 text-center text-sm font-medium transition-colors duration-300"
                 onClick={() => setOpen(false)}
               >
-                انضم كشريك
+                {t.ui.joinPartner}
               </Link>
             </div>
           </div>

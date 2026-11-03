@@ -6,6 +6,9 @@ import { Loader2 } from 'lucide-react';
 import { createSession, updateSession } from '@/app/crm/services/sessions';
 import type { Session, SessionInsert } from '@/types/session-tables';
 import { CRM_BTN_PRIMARY, CRM_INPUT, CRM_TEXTAREA } from '@/lib/crm-luxury-ui';
+import { toSessionTimeInput } from '@/lib/session-time';
+
+const DEFAULT_SESSION_TIME = '19:00';
 
 type SessionFormProps = {
   mode?: 'create' | 'edit';
@@ -17,6 +20,9 @@ type SessionFormProps = {
 export function SessionForm({ mode = 'create', initialSession = null, onSaved, onCancelEdit }: SessionFormProps) {
   const [title, setTitle] = useState(initialSession?.title ?? '');
   const [date, setDate] = useState(initialSession?.date ?? '');
+  const [sessionTime, setSessionTime] = useState(
+    () => toSessionTimeInput(initialSession?.time) || (mode === 'create' ? DEFAULT_SESSION_TIME : ''),
+  );
   const [sessionType, setSessionType] = useState<'online' | 'inperson'>(
     String(initialSession?.session_type ?? 'online').toLowerCase().includes('person') ? 'inperson' : 'online'
   );
@@ -24,6 +30,8 @@ export function SessionForm({ mode = 'create', initialSession = null, onSaved, o
   const [price, setPrice] = useState(initialSession?.price ?? 0);
   const [spots, setSpots] = useState(initialSession?.spots ?? 20);
   const [description, setDescription] = useState(initialSession?.description ?? '');
+  const [titleEn, setTitleEn] = useState(initialSession?.title_en ?? '');
+  const [descriptionEn, setDescriptionEn] = useState(initialSession?.description_en ?? '');
   const [locationUrl, setLocationUrl] = useState(initialSession?.location_url ?? '');
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
@@ -31,22 +39,27 @@ export function SessionForm({ mode = 'create', initialSession = null, onSaved, o
   useEffect(() => {
     setTitle(initialSession?.title ?? '');
     setDate(initialSession?.date ?? '');
+    setSessionTime(
+      toSessionTimeInput(initialSession?.time) || (mode === 'create' && !initialSession ? DEFAULT_SESSION_TIME : ''),
+    );
     setSessionType(String(initialSession?.session_type ?? 'online').toLowerCase().includes('person') ? 'inperson' : 'online');
     const p = Number(initialSession?.price ?? 0);
     setPrice(p);
     setPriceFree(p <= 0);
     setSpots(initialSession?.spots ?? 20);
     setDescription(initialSession?.description ?? '');
+    setTitleEn(initialSession?.title_en ?? '');
+    setDescriptionEn(initialSession?.description_en ?? '');
     setLocationUrl(initialSession?.location_url ?? '');
     setMessage(null);
-  }, [initialSession]);
+  }, [initialSession, mode]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setMessage(null);
 
-    if (!title.trim() || !date) {
-      setMessage({ type: 'err', text: 'عنوان الجلسة والتاريخ مطلوبان.' });
+    if (!title.trim() || !date || !sessionTime) {
+      setMessage({ type: 'err', text: 'عنوان الجلسة والتاريخ والوقت مطلوبة.' });
       return;
     }
     if (spots < 1) {
@@ -58,10 +71,13 @@ export function SessionForm({ mode = 'create', initialSession = null, onSaved, o
     const payload: SessionInsert = {
       title: title.trim(),
       date: date.slice(0, 10),
+      time: sessionTime,
       session_type: sessionType,
       price: priceFree ? 0 : Math.max(0, Number(price) || 0),
       spots: Math.floor(spots),
       description: description.trim(),
+      title_en: titleEn.trim() || null,
+      description_en: descriptionEn.trim() || null,
       ...(sessionType === 'inperson' && locationUrl.trim() ? { location_url: locationUrl.trim() } : {}),
     };
 
@@ -81,11 +97,14 @@ export function SessionForm({ mode = 'create', initialSession = null, onSaved, o
     if (mode === 'edit') return;
     setTitle('');
     setDate('');
+    setSessionTime(DEFAULT_SESSION_TIME);
     setSessionType('online');
     setPriceFree(true);
     setPrice(0);
     setSpots(20);
     setDescription('');
+    setTitleEn('');
+    setDescriptionEn('');
     setLocationUrl('');
   }
 
@@ -123,6 +142,17 @@ export function SessionForm({ mode = 'create', initialSession = null, onSaved, o
           />
         </div>
 
+        <div className="lg:col-span-1">
+          <label className="mb-1 block text-xs font-semibold text-slate-500">وقت الجلسة *</label>
+          <input
+            type="time"
+            step="300"
+            className={CRM_INPUT}
+            value={sessionTime}
+            onChange={(e) => setSessionTime(e.target.value)}
+          />
+        </div>
+
         <div className="lg:col-span-2">
           <label className="mb-1 block text-xs font-semibold text-slate-500">نوع الجلسة *</label>
           <select
@@ -135,7 +165,7 @@ export function SessionForm({ mode = 'create', initialSession = null, onSaved, o
           </select>
         </div>
 
-        <div className="sm:col-span-2 lg:col-span-2">
+        <div className="sm:col-span-2 lg:col-span-1">
           <label className="mb-1 block text-xs font-semibold text-slate-500">عدد المقاعد *</label>
           <input
             type="number"
@@ -194,6 +224,33 @@ export function SessionForm({ mode = 'create', initialSession = null, onSaved, o
             onChange={(e) => setDescription(e.target.value)}
             placeholder="وصف مختصر للجلسة…"
           />
+        </div>
+
+        <div className="sm:col-span-2 lg:col-span-6 grid gap-4 rounded-2xl border border-dashed border-slate-200 p-4 dark:border-[#2D3F3A] lg:grid-cols-2">
+          <p className="text-xs font-bold text-slate-600 dark:text-slate-300 lg:col-span-2">
+            النسخة الإنجليزية (تظهر في الموقع الإنجليزي — اختياري)
+          </p>
+          <div>
+            <label className="mb-1 block text-xs font-semibold text-slate-500">العنوان بالإنجليزي</label>
+            <input
+              dir="ltr"
+              className={CRM_INPUT}
+              value={titleEn}
+              onChange={(e) => setTitleEn(e.target.value)}
+              placeholder="e.g. Seoul from the Inside"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-semibold text-slate-500">الوصف بالإنجليزي</label>
+            <textarea
+              dir="ltr"
+              rows={2}
+              className={CRM_TEXTAREA}
+              value={descriptionEn}
+              onChange={(e) => setDescriptionEn(e.target.value)}
+              placeholder="A short description of the session…"
+            />
+          </div>
         </div>
       </div>
 

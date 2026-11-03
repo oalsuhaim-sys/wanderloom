@@ -12,11 +12,14 @@ import {
 } from 'lucide-react';
 
 import { openInterestModal } from '@/app/_components/home/InterestModal';
+import { useLanguage } from '@/context/LanguageContext';
 import {
   CONCIERGE_CLOSING_CTA_AR,
   CONCIERGE_WELCOME_AR,
   type ConciergeChatMessage,
   type ConciergePreferences,
+  CONCIERGE_CLOSING_CTA_EN,
+  CONCIERGE_WELCOME_EN,
 } from '@/lib/ai-concierge';
 
 const STORAGE_ID = 'wanderloom_ai_concierge_id';
@@ -65,7 +68,92 @@ function saveProfile(profile: StoredProfile) {
 const fieldClass =
   'h-10 w-full rounded-xl border border-[#9C7A3C]/35 bg-white/80 px-3 text-xs font-bold text-[#1C2E3A] outline-none transition focus:border-[#9C7A3C] focus:ring-2 focus:ring-[#9C7A3C]/20';
 
+const COPY = {
+  ar: {
+    needNamePhone: 'أدخل الاسم ورقم الواتساب لإرسال رمز التحقق.',
+    otpSendFailed: 'تعذّر إرسال رمز التحقق',
+    devCode: 'رمز تجريبي:',
+    otpSent: 'تم إرسال الرمز إلى واتسابك.',
+    otpSendFailedShort: 'تعذّر إرسال الرمز',
+    needCode: 'أدخل رمز التحقق المكوّن من 4 أرقام.',
+    verifyFailed: 'فشل التحقق من الرمز',
+    verifyFailedShort: 'فشل التحقق',
+    verified: (name?: string | null) =>
+      `تشرفنا بك${name ? ` يا ${name}` : ''}. تم تأكيد رقمك — يمكننا الآن البدء في التفكير برحلتك.`,
+    reverify: 'يلزم إعادة التحقق من رقم الجوال',
+    replyFailed: 'تعذّر إكمال الرد الآن',
+    unexpected: 'حدث خطأ غير متوقع',
+    unreachable: 'عذراً، تعذّر الوصول للمستشار الآن. حاول مجدداً بعد لحظات، أو أكمل التحقق من رقمك.',
+    dialog: 'مستشار السفر الذكي',
+    title: 'مستشار واندرلوم',
+    verifiedBadge: (id: number | null) => `موثّق${id ? ` · #${id}` : ''}`,
+    needVerify: 'يلزم تأكيد الاسم ورقم الواتساب',
+    close: 'إغلاق',
+    gate: 'بوابة الدخول',
+    gateIdentity: 'أدخل اسمك وواتسابك لإرسال رمز تحقق رباعي.',
+    gateOtp: 'أدخل الرمز المكوّن من 4 أرقام لبدء المحادثة.',
+    namePh: 'الاسم',
+    sendCode: 'إرسال رمز التحقق',
+    confirmCode: 'تأكيد الرمز',
+    editNumber: 'تعديل الرقم / إعادة الإرسال',
+    typing: 'يكتب المستشار…',
+    bookSession: 'حجز جلسة تصميم خاصة',
+    confirmContact: 'تأكيد طلب التواصل',
+    inputLocked: 'يرجى تأكيد رقم الجوال لتفعيل المستشار...',
+    inputPh: 'صف ذوقك أو وجهتك…',
+    send: 'إرسال',
+    openAria: 'فتح مستشار السفر',
+    closeAria: 'إغلاق مستشار السفر',
+    fab: 'مستشار السفر',
+  },
+  en: {
+    needNamePhone: 'Enter your name and WhatsApp number to receive a verification code.',
+    otpSendFailed: 'Could not send the verification code',
+    devCode: 'Test code:',
+    otpSent: 'We sent the code to your WhatsApp.',
+    otpSendFailedShort: 'Could not send the code',
+    needCode: 'Enter the 4-digit verification code.',
+    verifyFailed: 'Code verification failed',
+    verifyFailedShort: 'Verification failed',
+    verified: (name?: string | null) =>
+      `Lovely to meet you${name ? `, ${name}` : ''}. Your number is confirmed — let’s start thinking about your trip.`,
+    reverify: 'Please verify your mobile number again',
+    replyFailed: 'Could not complete the reply right now',
+    unexpected: 'Something went wrong',
+    unreachable: 'Sorry, the advisor is unavailable right now. Please try again in a moment, or finish verifying your number.',
+    dialog: 'Smart travel advisor',
+    title: 'Wanderloom advisor',
+    verifiedBadge: (id: number | null) => `Verified${id ? ` · #${id}` : ''}`,
+    needVerify: 'Please confirm your name and WhatsApp number',
+    close: 'Close',
+    gate: 'Sign in',
+    gateIdentity: 'Enter your name and WhatsApp to receive a 4-digit code.',
+    gateOtp: 'Enter the 4-digit code to start the conversation.',
+    namePh: 'Your name',
+    sendCode: 'Send verification code',
+    confirmCode: 'Confirm code',
+    editNumber: 'Change number / resend',
+    typing: 'The advisor is typing…',
+    bookSession: 'Book a private design session',
+    confirmContact: 'Confirm contact request',
+    inputLocked: 'Please confirm your mobile number to start the advisor…',
+    inputPh: 'Describe your taste or destination…',
+    send: 'Send',
+    openAria: 'Open travel advisor',
+    closeAria: 'Close travel advisor',
+    fab: 'Travel advisor',
+  },
+};
+
+/** Server messages are Arabic; on English pages use our English copy instead. */
+const ARABIC_TEXT = /[؀-ۿ]/;
+
 export function AiConciergeWidget() {
+  const { locale, dir } = useLanguage();
+  const lang = locale === 'en' ? 'en' : 'ar';
+  const c = COPY[lang];
+  const pick = (server: string | undefined | null, fallback: string) =>
+    server && !(lang === 'en' && ARABIC_TEXT.test(server)) ? server : fallback;
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState('');
   const [pending, setPending] = useState(false);
@@ -83,15 +171,25 @@ export function AiConciergeWidget() {
   const [verificationToken, setVerificationToken] = useState<string | null>(null);
   const [preferences, setPreferences] = useState<ConciergePreferences>({});
   const [showClosingCta, setShowClosingCta] = useState(false);
-  const [closingCopy, setClosingCopy] = useState(CONCIERGE_CLOSING_CTA_AR);
+  const [closingCopy, setClosingCopy] = useState(lang === 'en' ? CONCIERGE_CLOSING_CTA_EN : CONCIERGE_CLOSING_CTA_AR);
   const [messages, setMessages] = useState<UiMessage[]>([
     {
       id: 'welcome',
       role: 'assistant',
-      content: CONCIERGE_WELCOME_AR,
+      content: lang === 'en' ? CONCIERGE_WELCOME_EN : CONCIERGE_WELCOME_AR,
       at: new Date().toISOString(),
     },
   ]);
+
+  // The page language loads after hydration, so localize the fixed texts at render time.
+  const shownClosing =
+    closingCopy === CONCIERGE_CLOSING_CTA_AR || closingCopy === CONCIERGE_CLOSING_CTA_EN
+      ? lang === 'en'
+        ? CONCIERGE_CLOSING_CTA_EN
+        : CONCIERGE_CLOSING_CTA_AR
+      : closingCopy;
+  const shownContent = (msg: UiMessage) =>
+    msg.id === 'welcome' ? (lang === 'en' ? CONCIERGE_WELCOME_EN : CONCIERGE_WELCOME_AR) : msg.content;
 
   const listRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -160,7 +258,7 @@ export function AiConciergeWidget() {
     const name = clientName.trim();
     const phone = userPhone.trim();
     if (!name || !phone) {
-      setError('أدخل الاسم الكريم ورقم الواتساب لإرسال رمز التحقق.');
+      setError(c.needNamePhone);
       return;
     }
     setError(null);
@@ -171,6 +269,7 @@ export function AiConciergeWidget() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          locale: lang,
           action: 'send',
           clientName: name,
           userPhone: phone,
@@ -185,19 +284,19 @@ export function AiConciergeWidget() {
         devCode?: string;
       };
       if (!res.ok || !data.ok) {
-        throw new Error(data.error || 'تعذّر إرسال رمز التحقق');
+        throw new Error(pick(data.error, c.otpSendFailed));
       }
       if (data.phone) setUserPhone(data.phone);
       setOtpStep('otp');
       setOtpCode('');
       if (data.devCode) {
-        setOtpHint(`رمز تجريبي: ${data.devCode}`);
+        setOtpHint(`${c.devCode} ${data.devCode}`);
         setOtpCode(data.devCode);
       } else {
-        setOtpHint(data.message || 'تم إرسال الرمز إلى واتسابك.');
+        setOtpHint(pick(data.message, c.otpSent));
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'تعذّر إرسال الرمز');
+      setError(err instanceof Error ? err.message : c.otpSendFailedShort);
     } finally {
       setOtpPending(false);
     }
@@ -206,7 +305,7 @@ export function AiConciergeWidget() {
   async function verifyOtp() {
     const code = otpCode.replace(/\D/g, '').slice(0, 4);
     if (code.length !== 4) {
-      setError('أدخل رمز التحقق المكوّن من 4 أرقام.');
+      setError(c.needCode);
       return;
     }
     setError(null);
@@ -216,6 +315,7 @@ export function AiConciergeWidget() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          locale: lang,
           action: 'verify',
           clientName: clientName.trim(),
           userPhone: userPhone.trim(),
@@ -231,7 +331,7 @@ export function AiConciergeWidget() {
         userPhone?: string;
       };
       if (!res.ok || !data.ok || !data.verificationToken) {
-        throw new Error(data.error || 'فشل التحقق من الرمز');
+        throw new Error(pick(data.error, c.verifyFailed));
       }
       setVerificationToken(data.verificationToken);
       setIsVerified(true);
@@ -244,12 +344,12 @@ export function AiConciergeWidget() {
         {
           id: makeId(),
           role: 'assistant',
-          content: `تشرفنا بك${data.clientName ? ` يا ${data.clientName}` : ''}. تم تأكيد رقمك — يمكننا الآن هندسة لمحاتك الحسية بهدوء.`,
+          content: c.verified(data.clientName),
           at: new Date().toISOString(),
         },
       ]);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'فشل التحقق');
+      setError(err instanceof Error ? err.message : c.verifyFailedShort);
     } finally {
       setOtpPending(false);
     }
@@ -275,6 +375,7 @@ export function AiConciergeWidget() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          locale: lang,
           consultationId: consultationId || undefined,
           message: text,
           clientName: clientName.trim() || undefined,
@@ -305,11 +406,11 @@ export function AiConciergeWidget() {
         setIsVerified(false);
         setVerificationToken(null);
         setOtpStep('identity');
-        throw new Error(data.error || 'يلزم إعادة التحقق من رقم الجوال');
+        throw new Error(pick(data.error, c.reverify));
       }
 
       if (!res.ok || !data.ok || !data.reply) {
-        throw new Error(data.error || 'تعذّر إكمال الرد الآن');
+        throw new Error(pick(data.error, c.replyFailed));
       }
 
       if (data.consultationId) {
@@ -346,14 +447,13 @@ export function AiConciergeWidget() {
         ]);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'حدث خطأ غير متوقع');
+      setError(err instanceof Error ? err.message : c.unexpected);
       setMessages((prev) => [
         ...prev,
         {
           id: makeId(),
           role: 'assistant',
-          content:
-            'عذراً، تعذّر الوصول للمستشار الآن. حاول مجدداً بعد لحظات، أو أكمل التحقق من رقمك.',
+          content: c.unreachable,
           at: new Date().toISOString(),
         },
       ]);
@@ -385,26 +485,26 @@ export function AiConciergeWidget() {
           <div
             className="flex h-[min(74dvh,600px)] w-[min(100vw-2rem,390px)] flex-col overflow-hidden rounded-3xl border border-[#1C2E3A]/12 bg-[#F4EFE6] shadow-[0_24px_60px_rgba(28,46,58,0.18)]"
             role="dialog"
-            aria-label="مستشار السفر الذكي"
-            dir="rtl"
+            aria-label={c.dialog}
+            dir={dir}
           >
             <header className="flex items-start justify-between gap-3 border-b border-[#1C2E3A]/10 bg-[#1C2E3A] px-4 py-3.5 text-[#F4EFE6]">
               <div className="min-w-0">
                 <p className="flex items-center gap-2 text-sm font-black tracking-wide">
                   <Sparkles className="h-4 w-4 text-[#9C7A3C]" aria-hidden />
-                  مستشار واندرلوم الفاخر
+                  {c.title}
                 </p>
                 <p className="mt-1 text-[11px] font-medium text-[#F4EFE6]/70">
                   {isVerified
-                    ? `موثّق · عميل Ai${clientId ? ` · #${clientId}` : ''}`
-                    : 'يلزم تأكيد الاسم ورقم الواتساب'}
+                    ? c.verifiedBadge(clientId)
+                    : c.needVerify}
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setOpen(false)}
                 className="rounded-full bg-[#F4EFE6]/10 p-2 text-[#F4EFE6] transition hover:bg-[#F4EFE6]/20"
-                aria-label="إغلاق"
+                aria-label={c.close}
               >
                 <X className="h-4 w-4" />
               </button>
@@ -413,12 +513,12 @@ export function AiConciergeWidget() {
             {!isVerified ? (
               <div className="border-b border-[#9C7A3C]/25 bg-[#F4EFE6] px-4 py-3">
                 <p className="text-[11px] font-bold tracking-wide text-[#9C7A3C]">
-                  بوابة الدخول
+                  {c.gate}
                 </p>
                 <p className="mt-1 text-[11px] font-medium leading-relaxed text-[#1C2E3A]/65">
                   {otpStep === 'identity'
-                    ? 'أدخل اسمك وواتسابك لإرسال رمز تحقق رباعي.'
-                    : 'أدخل الرمز المكوّن من 4 أرقام لإطلاق المستشار.'}
+                    ? c.gateIdentity
+                    : c.gateOtp}
                 </p>
 
                 {otpStep === 'identity' ? (
@@ -427,7 +527,7 @@ export function AiConciergeWidget() {
                       type="text"
                       value={clientName}
                       onChange={(e) => setClientName(e.target.value)}
-                      placeholder="الاسم الكريم"
+                      placeholder={c.namePh}
                       className={fieldClass}
                       disabled={otpPending}
                     />
@@ -447,7 +547,7 @@ export function AiConciergeWidget() {
                       className="mt-1 inline-flex h-10 items-center justify-center gap-2 rounded-full bg-[#1C2E3A] px-4 text-xs font-black text-[#F4EFE6] transition hover:bg-[#122029] disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {otpPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
-                      إرسال رمز التحقق
+                      {c.sendCode}
                     </button>
                   </div>
                 ) : (
@@ -481,7 +581,7 @@ export function AiConciergeWidget() {
                       className="inline-flex h-10 items-center justify-center gap-2 rounded-full bg-[#1C2E3A] px-4 text-xs font-black text-[#F4EFE6] transition hover:bg-[#122029] disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {otpPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
-                      تأكيد الرمز
+                      {c.confirmCode}
                     </button>
                     <button
                       type="button"
@@ -492,7 +592,7 @@ export function AiConciergeWidget() {
                       }}
                       className="text-[10px] font-bold text-[#9C7A3C] transition hover:text-[#826533]"
                     >
-                      تعديل الرقم / إعادة الإرسال
+                      {c.editNumber}
                     </button>
                   </div>
                 )}
@@ -530,7 +630,7 @@ export function AiConciergeWidget() {
                         : 'border border-[#1C2E3A]/10 bg-white/90 text-[#1C2E3A] shadow-sm'
                     }`}
                   >
-                    {m.content}
+                    {shownContent(m)}
                   </div>
                 </div>
               ))}
@@ -543,7 +643,7 @@ export function AiConciergeWidget() {
                       <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#9C7A3C] [animation-delay:150ms]" />
                       <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#9C7A3C] [animation-delay:300ms]" />
                     </span>
-                    يكتب المستشار…
+                    {c.typing}
                   </div>
                 </div>
               ) : null}
@@ -551,7 +651,7 @@ export function AiConciergeWidget() {
               {showClosingCta && !pending && isVerified ? (
                 <div className="rounded-2xl border border-[#9C7A3C]/35 bg-white/90 p-3.5 shadow-sm">
                   <p className="text-[12px] font-bold leading-relaxed text-[#1C2E3A]">
-                    {closingCopy}
+                    {shownClosing}
                   </p>
                   <div className="mt-3 flex flex-col gap-2">
                     <a
@@ -560,7 +660,7 @@ export function AiConciergeWidget() {
                       className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#9C7A3C] px-4 py-3 text-sm font-black text-[#F4EFE6] transition-all hover:bg-[#826533]"
                     >
                       <CalendarHeart className="h-4 w-4" aria-hidden />
-                      حجز جلسة تصميم خاصة
+                      {c.bookSession}
                     </a>
                     <button
                       type="button"
@@ -570,7 +670,7 @@ export function AiConciergeWidget() {
                       }}
                       className="inline-flex w-full items-center justify-center rounded-full border border-[#9C7A3C] bg-transparent px-4 py-2.5 text-xs font-black text-[#9C7A3C] transition hover:bg-[#9C7A3C]/10"
                     >
-                      تأكيد طلب التواصل
+                      {c.confirmContact}
                     </button>
                   </div>
                 </div>
@@ -607,8 +707,8 @@ export function AiConciergeWidget() {
                     disabled={chatLocked || pending}
                     placeholder={
                       chatLocked
-                        ? 'يرجى تأكيد رقم الجوال لتفعيل المستشار الذكي...'
-                        : 'صف ذوقك أو وجهتك بهدوء…'
+                        ? c.inputLocked
+                        : c.inputPh
                     }
                     className={`max-h-28 min-h-[44px] w-full resize-none rounded-2xl border bg-[#F4EFE6] px-3 py-2.5 text-sm font-medium text-[#1C2E3A] outline-none transition placeholder:text-[#1C2E3A]/40 focus:ring-2 disabled:cursor-not-allowed ${
                       chatLocked
@@ -621,7 +721,7 @@ export function AiConciergeWidget() {
                   type="submit"
                   disabled={chatLocked || pending || !input.trim()}
                   className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#1C2E3A] text-[#F4EFE6] transition-all hover:bg-[#122029] disabled:cursor-not-allowed disabled:opacity-40"
-                  aria-label="إرسال"
+                  aria-label={c.send}
                 >
                   {pending ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -641,10 +741,10 @@ export function AiConciergeWidget() {
           onClick={() => setOpen((v) => !v)}
           className="inline-flex items-center gap-2 rounded-full bg-[#1C2E3A] px-5 py-3 text-sm font-medium text-[#F4EFE6] shadow-[0_12px_28px_rgba(28,46,58,0.28)] transition-all hover:bg-[#122029]"
           aria-expanded={open}
-          aria-label={open ? 'إغلاق مستشار السفر' : 'فتح مستشار السفر'}
+          aria-label={open ? c.closeAria : c.openAria}
         >
           {open ? <X className="h-4 w-4" /> : <MessageCircle className="h-4 w-4 text-[#9C7A3C]" />}
-          <span>{open ? 'إغلاق' : 'مستشار السفر'}</span>
+          <span>{open ? c.close : c.fab}</span>
         </button>
       </div>
     </div>

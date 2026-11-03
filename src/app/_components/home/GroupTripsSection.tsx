@@ -259,7 +259,7 @@ export function GroupTripsSection() {
           <Loader2 className="mx-auto mb-3 h-8 w-8 animate-spin text-[#1C2E3A]/40" aria-hidden />
           <p className="text-sm font-bold text-[#3d4a42]">
             {locale === 'ar'
-              ? 'لا توجد رحلات مجموعات متاحة حالياً.'
+              ? t.ui.noGroupTrips
               : 'No group trips are available right now.'}
           </p>
           {fetchError ? (

@@ -7,25 +7,79 @@ import { AlertCircle, Calendar, Check, CheckCircle2, Compass, Sparkles, Thermome
 import { requestTripDestination } from '@/app/_components/home/loom/destination-intent';
 import { LandmarkIcon, type LandmarkId } from '@/app/_components/home/loom/LandmarkIcon';
 
+import { useLanguage } from '@/context/LanguageContext';
 import { useTripDestinations } from '@/hooks/useCountries';
 import {
   getCountryAdvisorData,
   SEASON_KEYS,
-  SEASON_LABELS,
   type SeasonKey,
 } from '@/lib/destination-advisor-data';
 import { canonicalTripCountryId } from '@/lib/destination-match';
 
 type Step = 1 | 2 | 3;
 
+/** All advisor UI copy, per page language (the page must never mix Arabic and English). */
+const COPY = {
+  ar: {
+    fallbackImage: 'وجهة واندرلوم',
+    regions: { asia: 'آسيا', europe: 'أوروبا', americasAfrica: 'الأمريكتان وأفريقيا', other: 'وجهات أخرى' },
+    steps: ['الدولة', 'الموسم', 'التوصية'],
+    stepAria: (n: number) => `الخطوة ${n} من 3`,
+    back: '→ رجوع',
+    kicker: 'مستشار الوجهة',
+    title: 'تعرف وجهتك؟ دعنا نرشدك للموسم المثالي',
+    body: 'اختر الدولة، ثم الموسم، لنكشف لك درجات الحرارة، الأنشطة الحصرية، والفعاليات التي لا تجدها على جوجل.',
+    empty: 'لا وجهات في بنك الأماكن بعد — أضف أماكن من الخزنة لتظهر هنا.',
+    orAll: 'أو اختر من كل الوجهات',
+    pickSeason: 'اختر موسم السفر',
+    seasonShort: { winter: 'شتاء', spring: 'ربيع', summer: 'صيف', autumn: 'خريف' } as Record<SeasonKey, string>,
+    rec: 'موصى به',
+    caution: 'بحذر',
+    recLong: 'موسم موصى به',
+    cautionLong: 'ننصح بالتخطيط بعناية',
+    temp: (city?: string) => `الحرارة المعتادة${city ? ` في ${city}` : ''} (الصغرى – العظمى)`,
+    event: 'فعالية الموسم',
+    activities: 'أنشطة مقترحة',
+    alternatives: 'بدائل نرشحها في هذا الموسم',
+    cta: (country: string) => `صمّم رحلتي إلى ${country}`,
+  },
+  en: {
+    fallbackImage: 'Wanderloom destination',
+    regions: { asia: 'Asia', europe: 'Europe', americasAfrica: 'Americas & Africa', other: 'Other destinations' },
+    steps: ['Country', 'Season', 'Advice'],
+    stepAria: (n: number) => `Step ${n} of 3`,
+    back: '← Back',
+    kicker: 'Destination advisor',
+    title: 'Know where you’re going? Let us find your perfect season',
+    body: 'Pick a country, then a season, and we’ll show you the temperatures, the best experiences and the events you won’t find on Google.',
+    empty: 'No destinations in the places bank yet — add places from the vault to show them here.',
+    orAll: 'Or choose from all destinations',
+    pickSeason: 'Choose your travel season',
+    seasonShort: { winter: 'Winter', spring: 'Spring', summer: 'Summer', autumn: 'Autumn' } as Record<SeasonKey, string>,
+    rec: 'Recommended',
+    caution: 'Plan carefully',
+    recLong: 'Recommended season',
+    cautionLong: 'Plan this season carefully',
+    temp: (city?: string) => `Typical temperature${city ? ` in ${city}` : ''} (low – high)`,
+    event: 'Event of the season',
+    activities: 'Suggested experiences',
+    alternatives: 'What we suggest instead this season',
+    cta: (country: string) => `Design my trip to ${country}`,
+  },
+};
+
+type AdvisorCopy = (typeof COPY)['ar'];
+
 function AdvisorImage({
   src,
   alt,
   className,
+  fallbackLabel,
 }: {
   src: string;
   alt: string;
   className?: string;
+  fallbackLabel: string;
 }) {
   const [failed, setFailed] = useState(!src?.trim());
 
@@ -35,8 +89,7 @@ function AdvisorImage({
         className={`flex h-full w-full flex-col items-center justify-center gap-3 bg-gradient-to-br from-[#f4f0e6] via-[#F2F7F4] to-[#f9f6f0] p-6 text-center ${className ?? ''}`}
       >
         <Compass className="h-10 w-10 text-[#9C7A3C]/70" strokeWidth={1.5} aria-hidden />
-        <p className="text-sm font-black text-[#1C2E3A]">وجهة واندرلوم</p>
-        <p className="text-[11px] font-bold text-gray-500">Wanderloom Destination</p>
+        <p className="text-sm font-black text-[#1C2E3A]">{fallbackLabel}</p>
       </div>
     );
   }
@@ -57,13 +110,13 @@ function AdvisorImage({
 /** Countries that have a landmark knot in the loom identity */
 const FEATURED: Array<Exclude<LandmarkId, 'onsen'>> = ['japan', 'korea', 'uk', 'france', 'italy', 'switzerland'];
 
-const REGIONS: Array<{ label: string; ids: string[] }> = [
-  { label: 'آسيا', ids: ['japan', 'korea', 'china', 'indonesia'] },
+const REGIONS: Array<{ region: 'asia' | 'europe' | 'americasAfrica'; ids: string[] }> = [
+  { region: 'asia', ids: ['japan', 'korea', 'china', 'indonesia'] },
   {
-    label: 'أوروبا',
+    region: 'europe',
     ids: ['uk', 'france', 'italy', 'switzerland', 'spain', 'portugal', 'germany', 'austria', 'netherlands', 'belgium', 'czech', 'hungary', 'poland', 'sweden', 'russia'],
   },
-  { label: 'الأمريكتان وأفريقيا', ids: ['usa', 'canada', 'south_africa'] },
+  { region: 'americasAfrica', ids: ['usa', 'canada', 'south_africa'] },
 ];
 
 const SEASON_ICON: Record<SeasonKey, string> = {
@@ -73,13 +126,11 @@ const SEASON_ICON: Record<SeasonKey, string> = {
   autumn: 'M5 19C5 10 11 4 20 4c0 9-6 15-15 15ZM5 19l9-9',
 };
 
-const STEP_NAMES = ['الدولة', 'الموسم', 'التوصية'] as const;
-
-function AdvisorStepper({ step, onBack }: { step: Step; onBack: () => void }) {
+function AdvisorStepper({ step, onBack, c }: { step: Step; onBack: () => void; c: AdvisorCopy }) {
   return (
     <div className="flex flex-col items-start gap-3 lg:items-end">
-      <ol className="flex items-start" aria-label={`الخطوة ${step} من 3`}>
-        {STEP_NAMES.map((name, i) => {
+      <ol className="flex items-start" aria-label={c.stepAria(step)}>
+        {c.steps.map((name, i) => {
           const n = (i + 1) as Step;
           const done = n < step;
           const current = n === step;
@@ -99,7 +150,7 @@ function AdvisorStepper({ step, onBack }: { step: Step; onBack: () => void }) {
                 </span>
                 <span className={`text-xs font-black ${current ? 'text-[#1C2E3A]' : done ? 'text-[#B8921E]' : 'text-gray-400'}`}>{name}</span>
               </span>
-              {i < STEP_NAMES.length - 1 ? (
+              {i < c.steps.length - 1 ? (
                 <span aria-hidden className="mt-[19px] h-0.5 w-8 overflow-hidden rounded-full bg-[#ECE5D6] sm:w-12">
                   <span className="block h-full bg-[#D9B238] transition-[width] duration-500" style={{ width: done ? '100%' : '0%' }} />
                 </span>
@@ -110,7 +161,7 @@ function AdvisorStepper({ step, onBack }: { step: Step; onBack: () => void }) {
       </ol>
       {step > 1 ? (
         <button type="button" onClick={onBack} className="text-sm font-extrabold text-[#3E4F5A] underline-offset-4 transition hover:text-[#1C2E3A] hover:underline">
-          → رجوع
+          {c.back}
         </button>
       ) : null}
     </div>
@@ -119,6 +170,10 @@ function AdvisorStepper({ step, onBack }: { step: Step; onBack: () => void }) {
 
 export default function DestinationAdvisor() {
   const { tripDestinations } = useTripDestinations();
+  const { locale, t } = useLanguage();
+  const lang = locale === 'en' ? 'en' : 'ar';
+  const c = COPY[lang];
+  const enCountries = t.tripLabels.countries as Record<string, string>;
   const [step, setStep] = useState<Step>(1);
   const [countryId, setCountryId] = useState<string | null>(null);
   const [seasonKey, setSeasonKey] = useState<SeasonKey | null>(null);
@@ -137,8 +192,8 @@ export default function DestinationAdvisor() {
   const bookingId = entry?.id ?? countryId;
 
   const countryData = useMemo(
-    () => (countryId ? getCountryAdvisorData(countryId, entry?.label) : null),
-    [countryId, entry?.label],
+    () => (countryId ? getCountryAdvisorData(countryId, entry?.label, lang) : null),
+    [countryId, entry?.label, lang],
   );
 
   const seasonData = useMemo(() => {
@@ -146,14 +201,18 @@ export default function DestinationAdvisor() {
     return countryData.seasons[seasonKey];
   }, [countryData, seasonKey]);
 
-  const labelOf = (key: string) => entries.get(key)?.label ?? key;
+  // English pages show English country names (bank labels are Arabic).
+  const labelOf = (key: string) =>
+    lang === 'en' ? enCountries[key] ?? getCountryAdvisorData(key, undefined, 'en').name : entries.get(key)?.label ?? key;
   const available = new Set(entries.keys());
-  const countryLabel = entry?.label || countryData?.name || '';
+  const countryLabel = (countryId ? labelOf(countryId) : '') || countryData?.name || '';
   const featured = FEATURED.filter((id) => available.has(id));
-  const grouped = REGIONS.map((r) => ({ ...r, ids: r.ids.filter((id) => available.has(id)) })).filter((r) => r.ids.length);
+  const grouped = REGIONS.map((r) => ({ label: c.regions[r.region], ids: r.ids.filter((id) => available.has(id)) })).filter(
+    (r) => r.ids.length,
+  );
   const known = new Set(REGIONS.flatMap((r) => r.ids));
   const others = [...entries.keys()].filter((id) => !known.has(id));
-  if (others.length) grouped.push({ label: 'وجهات أخرى', ids: others });
+  if (others.length) grouped.push({ label: c.regions.other, ids: others });
   const countryIcon = countryId && (FEATURED as string[]).includes(countryId) ? (countryId as LandmarkId) : null;
 
   const selectCountry = (id: string) => {
@@ -185,20 +244,20 @@ export default function DestinationAdvisor() {
         <div className="flex max-w-2xl flex-col gap-3.5">
           <p className="inline-flex items-center gap-2 text-xs font-extrabold tracking-wide text-[#9C7A3C] sm:text-[13px]">
             <Compass className="h-4 w-4" aria-hidden />
-            مستشار الوجهة
+            {c.kicker}
           </p>
-          <h2 className="text-[28px] font-black leading-tight text-[#1C2E3A] sm:text-4xl lg:text-[44px]">تعرف وجهتك؟ دعنا نرشدك للموسم المثالي</h2>
+          <h2 className="text-[28px] font-black leading-tight text-[#1C2E3A] sm:text-4xl lg:text-[44px]">{c.title}</h2>
           <p className="text-base font-medium leading-loose text-[#3E4F5A] sm:text-[17px]">
-            اختر الدولة، ثم الموسم، لنكشف لك درجات الحرارة، الأنشطة الحصرية، والفعاليات التي لا تجدها على جوجل.
+            {c.body}
           </p>
         </div>
-        <AdvisorStepper step={step} onBack={goBack} />
+        <AdvisorStepper step={step} onBack={goBack} c={c} />
       </div>
 
       <div className="w-full">
         {step === 1 ? (
           tripDestinations.length === 0 ? (
-            <p className="text-center text-sm font-bold text-gray-500">لا وجهات في بنك الأماكن بعد — أضف أماكن من الخزنة لتظهر هنا.</p>
+            <p className="text-center text-sm font-bold text-gray-500">{c.empty}</p>
           ) : (
             <div className="flex flex-col gap-9">
               {featured.length ? (
@@ -221,7 +280,7 @@ export default function DestinationAdvisor() {
 
               <div className="flex items-center gap-4" aria-hidden>
                 <span className="h-px flex-1 border-t border-dashed border-[#9C7A3C]/45" />
-                <span className="text-xs font-extrabold text-[#9C7A3C]">أو اختر من كل الوجهات</span>
+                <span className="text-xs font-extrabold text-[#9C7A3C]">{c.orAll}</span>
                 <span className="h-px flex-1 border-t border-dashed border-[#9C7A3C]/45" />
               </div>
 
@@ -259,7 +318,7 @@ export default function DestinationAdvisor() {
                 {countryIcon ? <LandmarkIcon id={countryIcon} size={30} /> : <Compass className="h-7 w-7" aria-hidden />}
               </span>
               <div>
-                <p className="text-xs font-extrabold text-[#9C7A3C]">اختر موسم السفر</p>
+                <p className="text-xs font-extrabold text-[#9C7A3C]">{c.pickSeason}</p>
                 <p className="text-2xl font-black text-[#1C2E3A]">{countryLabel}</p>
               </div>
             </div>
@@ -284,10 +343,10 @@ export default function DestinationAdvisor() {
                         </svg>
                       </span>
                       <span className={`rounded-full px-2.5 py-1 text-[11px] font-black ${isRec ? 'bg-[#D9B238]/15 text-[#8A6A12]' : 'bg-amber-50 text-amber-800'}`}>
-                        {isRec ? 'موصى به' : 'بحذر'}
+                        {isRec ? c.rec : c.caution}
                       </span>
                     </span>
-                    <span className="text-xl font-black text-[#1C2E3A]">{SEASON_LABELS[key]}</span>
+                    <span className="text-xl font-black text-[#1C2E3A]">{c.seasonShort[key]}</span>
                     <span className="flex flex-wrap gap-1.5">
                       {s.months.map((m) => (
                         <span key={m} className="rounded-md bg-[#F4EFE6] px-2 py-0.5 text-[11px] font-bold text-[#3E4F5A]">
@@ -323,12 +382,12 @@ export default function DestinationAdvisor() {
                   {seasonData.status === 'recommended' ? (
                     <span className="inline-flex items-center gap-1.5 rounded-full border border-[#D9B238]/60 bg-[#F1E6C8] px-3 py-1 text-xs font-black text-[#6E5410]">
                       <CheckCircle2 className="h-3.5 w-3.5" aria-hidden />
-                      موسم موصى به
+                      {c.recLong}
                     </span>
                   ) : (
                     <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-300 bg-amber-50 px-3 py-1 text-xs font-black text-amber-900">
                       <AlertCircle className="h-3.5 w-3.5" aria-hidden />
-                      ننصح بالتخطيط بعناية
+                      {c.cautionLong}
                     </span>
                   )}
                 </div>
@@ -337,7 +396,7 @@ export default function DestinationAdvisor() {
                   <Thermometer className="h-5 w-5 text-[#B8921E]" aria-hidden />
                   <div>
                     <p className="text-[11px] font-bold text-[#6B7780]">
-                      الحرارة المعتادة{countryData.refCity ? ` في ${countryData.refCity}` : ''} (الصغرى – العظمى)
+                      {c.temp(countryData.refCity)}
                     </p>
                     <p dir="ltr" className="text-right text-base font-black text-[#1C2E3A]">{seasonData.avgTemp}</p>
                   </div>
@@ -354,13 +413,13 @@ export default function DestinationAdvisor() {
                 >
                   <p className="mb-1.5 flex items-center gap-2 text-xs font-black text-[#8A6A12]">
                     <Sparkles className="h-3.5 w-3.5" aria-hidden />
-                    فعالية الموسم
+                    {c.event}
                   </p>
                   <p className="text-[15px] font-bold leading-relaxed text-[#1C2E3A]">{seasonData.hiddenEvents}</p>
                 </div>
                 <div className="mt-5">
                   <p className="mb-2.5 text-sm font-black text-[#1C2E3A]">
-                    {seasonData.status === 'recommended' ? 'أنشطة مقترحة' : 'بدائل نرشحها في هذا الموسم'}
+                    {seasonData.status === 'recommended' ? c.activities : c.alternatives}
                   </p>
                   <ul className="space-y-2.5">
                     {seasonData.activities.map((act) => (
@@ -380,7 +439,7 @@ export default function DestinationAdvisor() {
                 }}
                 className="wl-gold-cta inline-flex min-h-[56px] items-center justify-center rounded-full px-6 text-base font-black"
               >
-                صمّم رحلتي إلى {countryLabel}
+                {c.cta(countryLabel)}
               </Link>
             </div>
 
@@ -398,7 +457,7 @@ export default function DestinationAdvisor() {
                   }`}
                 >
                   <div className="aspect-[3/4] overflow-hidden rounded-sm">
-                    <AdvisorImage src={src} alt={`${countryLabel} — ${seasonData.name}`} />
+                    <AdvisorImage src={src} alt={`${countryLabel} — ${seasonData.name}`} fallbackLabel={c.fallbackImage} />
                   </div>
                   <figcaption className="mt-2 text-center text-xs font-black text-[#1C2E3A]">
                     {countryLabel} · {seasonData.name}

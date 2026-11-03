@@ -10,6 +10,7 @@ import {
   whatsAppLocalError,
   type WhatsAppCountry,
 } from '@/lib/phoneUtils';
+import { useLanguage } from '@/context/LanguageContext';
 
 type WhatsAppInputProps = {
   /** الرقم الكامل بدون علامة +، مثل 9665xxxxxxxx */
@@ -93,6 +94,7 @@ export function WhatsAppInput({
   hideLabel = false,
   autoDetectCountry = false,
 }: WhatsAppInputProps) {
+  const ui = useLanguage().t.ui;
   const initial = splitWhatsAppNumber(value);
   const [selectedCountry, setSelectedCountry] = useState<WhatsAppCountry>(initial.country);
   const [phoneNumber, setPhoneNumber] = useState(initial.local);
@@ -159,10 +161,10 @@ export function WhatsAppInput({
   const fullNumber = phoneNumber ? composeWhatsAppNumber(selectedCountry, phoneNumber) : '';
 
   return (
-    <div className="w-full space-y-1.5 text-right">
+    <div className="w-full space-y-1.5 text-start">
       {hideLabel ? null : (
         <label className="block text-xs font-bold text-[#111827]">
-          رقم الواتساب {required ? <span className="text-red-500">*</span> : null}
+          {ui.whatsapp} {required ? <span className="text-red-500">*</span> : null}
         </label>
       )}
 
@@ -171,7 +173,7 @@ export function WhatsAppInput({
           value={selectedCountry.code}
           onChange={(e) => handleCountryChange(e.target.value)}
           className="h-12 shrink-0 cursor-pointer rounded-2xl border border-slate-300 bg-white/90 px-3 text-xs font-bold text-slate-800 outline-none transition-all focus:border-[#C59B4B]"
-          aria-label="مفتاح الدولة"
+          aria-label={ui.countryCode}
         >
           {WHATSAPP_COUNTRIES.map((c) => (
             <option key={c.code} value={c.code}>
@@ -184,7 +186,7 @@ export function WhatsAppInput({
           type="tel"
           inputMode="numeric"
           autoComplete="tel-national"
-          placeholder={selectedCountry.localPrefix ? 'مثال: 5xxxxxxxx' : 'مثال: رقم محلي'}
+          placeholder={selectedCountry.localPrefix ? ui.phonePh : ui.phonePhLocal}
           value={phoneNumber}
           required={required}
           onChange={(e) => handlePhoneChange(e.target.value)}
@@ -200,7 +202,7 @@ export function WhatsAppInput({
 
       {autoDetectCountry && autoDetected && !error ? (
         <p className="mt-1 text-[11px] font-bold text-[#9C7A3C]">
-          {selectedCountry.flag} تم ضبط مفتاح {selectedCountry.country} تلقائياً — يمكنك تغييره
+          {selectedCountry.flag} {ui.codeAutoSet.replace('{country}', selectedCountry.country)}
         </p>
       ) : null}
 

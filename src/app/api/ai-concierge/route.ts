@@ -12,6 +12,10 @@ import {
   CONCIERGE_CLOSING_CTA_AR,
   CONCIERGE_IDENTIFICATION_AR,
   CONCIERGE_WELCOME_AR,
+  CONCIERGE_CLOSING_CTA_EN,
+  CONCIERGE_IDENTIFICATION_EN,
+  CONCIERGE_WELCOME_EN,
+  conciergeLanguageInstruction,
   buildExpertBrief,
   formatExpertBriefArabic,
   mergePreferences,
@@ -235,6 +239,8 @@ export async function POST(req: NextRequest) {
   const clientName = trimText(body.clientName, 120) || undefined;
   const consultationId = trimText(body.consultationId, 64) || undefined;
   const verificationToken = trimText(body.verificationToken, 2000) || undefined;
+  const locale: 'ar' | 'en' = (body as { locale?: unknown }).locale === 'en' ? 'en' : 'ar';
+  const identificationReply = locale === 'en' ? CONCIERGE_IDENTIFICATION_EN : CONCIERGE_IDENTIFICATION_AR;
 
   const tokenCheck = verifyConciergeVerificationToken(verificationToken);
   if (!tokenCheck.ok) {
@@ -243,7 +249,7 @@ export async function POST(req: NextRequest) {
         ok: false,
         needsVerification: true,
         error: tokenCheck.error,
-        reply: CONCIERGE_IDENTIFICATION_AR,
+        reply: identificationReply,
       },
       { status: 401 },
     );
@@ -277,18 +283,18 @@ export async function POST(req: NextRequest) {
       ok: true,
       needsIdentity: true,
       consultationId: consultationId || null,
-      reply: CONCIERGE_IDENTIFICATION_AR,
+      reply: identificationReply,
       conversation: [
         {
           role: 'assistant' as const,
-          content: CONCIERGE_IDENTIFICATION_AR,
+          content: identificationReply,
           at: new Date().toISOString(),
         },
       ],
       messages: [
         {
           role: 'assistant' as const,
-          content: CONCIERGE_IDENTIFICATION_AR,
+          content: identificationReply,
           at: new Date().toISOString(),
         },
       ],
@@ -351,6 +357,8 @@ export async function POST(req: NextRequest) {
   const knownName = resolvedName || row.client_name || '';
   const knownPrefs = parsePreferencesJson(row.extracted_preferences);
   const systemPrompt = `${AI_CONCIERGE_SYSTEM_PROMPT}
+
+${conciergeLanguageInstruction(locale)}
 
 CLIENT SESSION CONTEXT (identified — apply Prompt 2):
 - Client name: ${knownName}
@@ -565,7 +573,7 @@ CLIENT SESSION CONTEXT (identified — apply Prompt 2):
     preferences: mergedPreferences,
     expertBrief,
     showClosingCta: hasRichBrief,
-    closingCta: hasRichBrief ? CONCIERGE_CLOSING_CTA_AR : null,
+    closingCta: hasRichBrief ? (locale === 'en' ? CONCIERGE_CLOSING_CTA_EN : CONCIERGE_CLOSING_CTA_AR) : null,
     destinationInterest,
     summary,
     leadSource: AI_CONCIERGE_SOURCE,
@@ -575,9 +583,10 @@ CLIENT SESSION CONTEXT (identified — apply Prompt 2):
   });
 }
 
-export async function GET() {
+export async function GET(req: Request) {
+  const locale = new URL(req.url).searchParams.get('locale') === 'en' ? 'en' : 'ar';
   return NextResponse.json({
     ok: true,
-    welcome: CONCIERGE_WELCOME_AR,
+    welcome: locale === 'en' ? CONCIERGE_WELCOME_EN : CONCIERGE_WELCOME_AR,
   });
 }

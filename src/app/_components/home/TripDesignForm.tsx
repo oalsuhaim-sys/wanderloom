@@ -21,7 +21,13 @@ import {
 } from '@/lib/referral-url';
 import { requireValidPhone, WHATSAPP_INCOMPLETE_ERROR } from '@/lib/phoneUtils';
 import { getTripCountryById } from '@/lib/trip-destination-data';
-import { canonicalTripCountryId, cityMatches, findTripDestination } from '@/lib/destination-match';
+import {
+  canonicalCityId,
+  canonicalTripCountryId,
+  cityMatches,
+  englishPlaceName,
+  findTripDestination,
+} from '@/lib/destination-match';
 
 const INPUT_CLASS =
   'h-10 w-full rounded-lg border border-gray-200/90 bg-white/50 px-3 text-sm font-bold text-[#1C2E3A] outline-none transition placeholder:text-gray-400 focus:border-[#D9B238] focus:ring-2 focus:ring-[#D9B238]/60';
@@ -366,26 +372,34 @@ export function TripDesignForm() {
 
 function TripDesignFormInner() {
   const searchParams = useSearchParams();
-  const { dir, t } = useLanguage();
+  const { dir, t, locale } = useLanguage();
   const f = t.form;
   const m = t.instant;
   const labels = t.tripLabels;
   const { tripDestinations } = useTripDestinations();
+  const countryNames = labels.countries as Record<string, string>;
+  const cityNames = labels.cities as Record<string, Record<string, string>>;
 
-  const countryLabel = (id: string) =>
-    labels.countries[id as keyof typeof labels.countries] ??
-    tripDestinations.find((country) => country.id === id)?.labelAr ??
-    getTripCountryById(id)?.labelAr ??
-    id;
+  // Bank ids/labels are Arabic free text («كوريا», «سيول»): resolve to canonical ids so each
+  // language shows its own names, and English pages never show Arabic place names.
+  const countryLabel = (id: string) => {
+    const bankLabel = tripDestinations.find((country) => country.id === id)?.labelAr;
+    const canon = canonicalTripCountryId(id, bankLabel);
+    const fromLocale = countryNames[id] ?? (canon ? countryNames[canon] : undefined);
+    if (locale === 'en') return fromLocale ?? englishPlaceName(bankLabel ?? id, countryNames) ?? id;
+    return bankLabel ?? fromLocale ?? getTripCountryById(id)?.labelAr ?? id;
+  };
 
-  const cityLabel = (countryId: string, cityId: string) =>
-    labels.cities[countryId as keyof typeof labels.cities]?.[
-      cityId as keyof (typeof labels.cities)[keyof typeof labels.cities]
-    ] ??
-    tripDestinations.find((country) => country.id === countryId)?.cities.find((c) => c.id === cityId)
-      ?.labelAr ??
-    getTripCountryById(countryId)?.cities.find((c) => c.id === cityId)?.labelAr ??
-    cityId;
+  const cityLabel = (countryId: string, cityId: string) => {
+    const bankCountry = tripDestinations.find((country) => country.id === countryId);
+    const bankCity = bankCountry?.cities.find((c) => c.id === cityId);
+    const canonCountry = canonicalTripCountryId(countryId, bankCountry?.labelAr);
+    const canonCity = canonCountry && bankCity ? canonicalCityId(canonCountry, bankCity) : undefined;
+    const fromLocale =
+      cityNames[countryId]?.[cityId] ?? (canonCountry && canonCity ? cityNames[canonCountry]?.[canonCity] : undefined);
+    if (locale === 'en') return fromLocale ?? englishPlaceName(bankCity?.labelAr ?? cityId, countryNames) ?? cityId;
+    return bankCity?.labelAr ?? fromLocale ?? getTripCountryById(countryId)?.cities.find((c) => c.id === cityId)?.labelAr ?? cityId;
+  };
 
   const formRef = useRef<HTMLFormElement>(null);
   const topRef = useRef<HTMLDivElement>(null);
@@ -875,7 +889,7 @@ function TripDesignFormInner() {
               : typeof err === 'string'
                 ? err
                 : 'Unknown client error';
-          setState({ ok: false, error: `عذراً، تعذر الحفظ: ${detail}` });
+          setState({ ok: false, error: `${t.ui.saveFailed} ${detail}` });
         } finally {
           submitLockRef.current = false;
           setIsSubmitting(false);
@@ -1339,7 +1353,7 @@ function TripDesignFormInner() {
                 onOtherSelected={setLodgingOther}
                 otherText={lodgingOtherText}
                 onOtherTextChange={setLodgingOtherText}
-                otherPlaceholder="اكتب نوع الإقامة المفضل…"
+                otherPlaceholder={t.ui.lodgingOtherPh}
               >
                 <CheckboxPill name="lodging_prefs" value="boutique" label={f.lodgingBoutique} />
                 <CheckboxPill name="lodging_prefs" value="star4" label={f.lodging4} />
@@ -1355,7 +1369,7 @@ function TripDesignFormInner() {
                 onOtherSelected={setFoodOther}
                 otherText={foodOtherText}
                 onOtherTextChange={setFoodOtherText}
-                otherPlaceholder="اكتب تفضيلك الغذائي…"
+                otherPlaceholder={t.ui.foodOtherPh}
               >
                 <CheckboxPill name="food_prefs" value="halal" label={f.foodHalal} />
                 <CheckboxPill name="food_prefs" value="seafood" label={f.foodSeafood} />
@@ -1392,7 +1406,7 @@ function TripDesignFormInner() {
                 onOtherSelected={setInterestOther}
                 otherText={interestOtherText}
                 onOtherTextChange={setInterestOtherText}
-                otherPlaceholder="اكتب اهتمامك…"
+                otherPlaceholder={t.ui.interestOtherPh}
               >
                 <CheckboxPill name="interests" value="anime" label={f.interestAnime} />
                 <CheckboxPill name="interests" value="history" label={f.interestHistory} />
@@ -1407,7 +1421,7 @@ function TripDesignFormInner() {
               </PreferenceWithOther>
 
               <div className="rounded-2xl border border-amber-100 bg-[#FBF8F1] p-4">
-                <p className="text-right text-xs font-black text-[#1C2E3A]">📷 {m.consentLabel}</p>
+                <p className="text-start text-xs font-black text-[#1C2E3A]">📷 {m.consentLabel}</p>
                 <p className="mt-1 text-[11px] font-bold leading-relaxed text-gray-500">{m.consentHint}</p>
                 <div className={`${PILL_ROW} mt-3`}>
                   <RadioPill name="media_consent" value="yes" label={m.consentYes} />

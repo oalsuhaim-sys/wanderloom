@@ -556,6 +556,11 @@
         "matchTitle": "لقاء حضوري — الرياض",
         "title": "In-Person Meetup — Riyadh",
         "desc": "Meetup in Riyadh to review real itinerary samples."
+      },
+      {
+        "matchTitle": "سيول من الداخل — دليل الكيبوب والثقافة و أكثر",
+        "title": "Seoul from the Inside — K-pop, Culture & More",
+        "desc": "A specialised workshop on Korea — the hanok villages, Seoul’s best neighbourhoods, Korean culture and nature."
       }
     ]
   },
@@ -647,6 +652,7 @@
   },
   "tripLabels": {
     "countries": {
+      "indonesia": "Indonesia",
       "japan": "Japan",
       "korea": "South Korea",
       "china": "China",
@@ -870,11 +876,45 @@
     "step4Body": "Your itinerary and map on your phone, then «Traveller's Memoirs» to keep your moments after you return.",
     "leadTitle": "Register your trip in four steps.",
     "leadBody": "Tell us about yourself, your destination and what you enjoy, and we will get in touch to finish the details. Your answers save automatically.",
-    "footerSlogan": "واندرلوم: تفصيل لا تنظيم",
+    "footerSlogan": "Wanderloom: Tailored, not packaged.",
     "footerTagline": "Private trips · Group trips · Sessions in Riyadh",
     "footerCity": "Riyadh",
     "stickyPrompt": "Ready to begin?",
     "stickyCta": "Plan your trip",
     "groupsKicker": "Group trips"
+  },
+  "ui": {
+    "registerInterest": "Register interest",
+    "interestShort": "Interest",
+    "joinPartner": "Become a partner",
+    "close": "Close",
+    "anotherInterest": "Register another interest",
+    "name": "Name",
+    "fullNamePh": "Full name",
+    "preferredDest": "Preferred destination",
+    "optional": "(optional)",
+    "preferredDestPh": "e.g. Japan, Switzerland, Bali…",
+    "interestCta": "Register your interest",
+    "interestNote": "No dates or budgets — we’ll simply keep you posted on the best destinations and upcoming trips.",
+    "interestModalTitle": "Register interest",
+    "interestModalSubtitle": "Stay up to date with the best destinations and upcoming trips",
+    "interestModalNote": "Just your name and number — no dates or budgets.",
+    "footerCtaTitle": "Planning a trip in the future?",
+    "footerCtaBody": "Register your interest and we’ll keep you posted on the best destinations and upcoming trips.",
+    "whatsapp": "WhatsApp number",
+    "countryCode": "Country code",
+    "phonePh": "e.g. 5xxxxxxxx",
+    "phonePhLocal": "e.g. local number",
+    "codeAutoSet": "{country} code set automatically — you can change it",
+    "referralCode": "Referral code",
+    "referralPh": "e.g. LEADER-12345 or EXPERT-98765",
+    "backHome": "← Home",
+    "tripFormLink": "Plan your trip form →",
+    "noGroupTrips": "No group trips available right now.",
+    "back": "Back",
+    "lodgingOtherPh": "Describe your preferred stay…",
+    "foodOtherPh": "Describe your food preference…",
+    "interestOtherPh": "Describe your interest…",
+    "saveFailed": "Sorry, we couldn’t save:"
   }
 }

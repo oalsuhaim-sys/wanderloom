@@ -9,6 +9,7 @@ import { ReferralCodeField } from '@/components/ReferralCodeField';
 import { WhatsAppInput } from '@/components/WhatsAppInput';
 import { requireValidPhone, WHATSAPP_INCOMPLETE_ERROR } from '@/lib/phoneUtils';
 import { normalizeAffiliateRef, persistAffiliateRef } from '@/lib/referral-url';
+import { useLanguage } from '@/context/LanguageContext';
 
 const INPUT_CLASS =
   'h-11 w-full rounded-xl border border-gray-200/90 bg-white/80 px-4 text-sm font-bold text-[#1C2E3A] outline-none transition placeholder:text-gray-400 focus:border-[#9C7A3C]/70 focus:ring-2 focus:ring-[#9C7A3C]/25';
@@ -21,6 +22,7 @@ type InterestFormProps = {
 };
 
 export function InterestForm({ variant = 'default', onSuccess }: InterestFormProps) {
+  const ui = useLanguage().t.ui;
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
   const [isPhoneValid, setIsPhoneValid] = useState(false);
@@ -90,7 +92,7 @@ export function InterestForm({ variant = 'default', onSuccess }: InterestFormPro
           onClick={() => setSuccessMessage('')}
           className="mt-6 text-sm font-bold text-[#9C7A3C] underline decoration-[#9C7A3C]/40 underline-offset-4 transition hover:text-[#9C7A3C]"
         >
-          {variant === 'modal' ? 'إغلاق' : 'تسجيل اهتمام آخر'}
+          {variant === 'modal' ? ui.close : ui.anotherInterest}
         </button>
       </div>
     );
@@ -109,7 +111,7 @@ export function InterestForm({ variant = 'default', onSuccess }: InterestFormPro
     >
       <div className="space-y-5">
         <label className="block">
-          <span className={FIELD_LABEL}>الاسم</span>
+          <span className={FIELD_LABEL}>{ui.name}</span>
           <div className="relative">
             <User
               className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400"
@@ -122,7 +124,7 @@ export function InterestForm({ variant = 'default', onSuccess }: InterestFormPro
               onChange={(e) => setFullName(e.target.value)}
               required
               autoComplete="name"
-              placeholder="الاسم الكامل"
+              placeholder={ui.fullNamePh}
               className={`${INPUT_CLASS} pr-10`}
             />
           </div>
@@ -139,7 +141,7 @@ export function InterestForm({ variant = 'default', onSuccess }: InterestFormPro
 
         <label className="block">
           <span className={FIELD_LABEL}>
-            الوجهة المفضلة <span className="font-semibold text-gray-400">(اختياري)</span>
+            {ui.preferredDest} <span className="font-semibold text-gray-400">{ui.optional}</span>
           </span>
           <div className="relative">
             <MapPin
@@ -151,7 +153,7 @@ export function InterestForm({ variant = 'default', onSuccess }: InterestFormPro
               name="destination"
               value={destination}
               onChange={(e) => setDestination(e.target.value)}
-              placeholder="مثال: اليابان، سويسرا، بالي..."
+              placeholder={ui.preferredDestPh}
               className={`${INPUT_CLASS} pr-10`}
             />
           </div>
@@ -176,11 +178,11 @@ export function InterestForm({ variant = 'default', onSuccess }: InterestFormPro
         className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-[#1C2E3A] py-3.5 text-sm font-black text-[#F4EFE6] transition hover:bg-[#122029] disabled:opacity-60"
       >
         {pending ? <Loader2 className="h-5 w-5 animate-spin" aria-hidden /> : null}
-        سجل اهتمامك
+        {ui.interestCta}
       </button>
 
       <p className="mt-4 text-center text-[11px] font-semibold leading-relaxed text-gray-500">
-        بدون تواريخ أو ميزانيات — فقط نبقيك على اطلاع بأفضل العروض والوجهات.
+        {ui.interestNote}
       </p>
     </form>
   );

@@ -7,6 +7,7 @@ import { WANDERLOOM_CONTACT_EMAIL } from '@/lib/contact-email';
 
 import { InterestFooterCta } from '../InterestFooterCta';
 import { BrandMark } from './BrandMark';
+import { Wordmark } from './Wordmark';
 
 /** Navy woven footer — mark, slogan, links, contact. */
 export function LoomFooter() {
@@ -23,7 +24,7 @@ export function LoomFooter() {
               <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#F4EFE6]">
                 <BrandMark size={42} showWordmark={false} />
               </span>
-              <span className="wl-wordmark text-2xl sm:text-[28px]">WANDERLOOM</span>
+              <Wordmark className="text-2xl sm:text-[28px]" />
             </span>
             <p className="text-xl font-black text-[#D9B238]">{l.footerSlogan}</p>
             <p className="text-sm text-[#C9D1D6]">{l.footerTagline}</p>
@@ -52,7 +53,7 @@ export function LoomFooter() {
             {WANDERLOOM_CONTACT_EMAIL}
           </a>
           <span>
-            © Wanderloom · {l.footerCity}
+            © {t.brand.name} · {l.footerCity}
           </span>
         </div>
       </div>

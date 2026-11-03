@@ -5,6 +5,8 @@ import { motion } from 'framer-motion';
 
 import { useLanguage } from '@/context/LanguageContext';
 
+import { Wordmark } from './loom/Wordmark';
+
 /**
  * «من نحن» — navy woven band (loom redesign) with the brand manifesto.
  */
@@ -30,7 +32,7 @@ export function PublicAboutSection() {
         <blockquote className="text-xl font-bold leading-[2] sm:text-2xl md:text-[30px] md:leading-[1.9]">{t.about.quote}</blockquote>
         <p className="inline-flex items-center gap-3.5 text-[#D9B238]" aria-hidden>
           <span className="inline-block h-px w-12 bg-[#D9B238]" />
-          <span className="wl-wordmark text-lg sm:text-xl">WANDERLOOM</span>
+          <Wordmark className="text-lg sm:text-xl" />
           <span className="inline-block h-px w-12 bg-[#D9B238]" />
         </p>
         <Link
