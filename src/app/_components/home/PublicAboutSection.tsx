@@ -17,7 +17,7 @@ export function PublicAboutSection() {
       className="relative mx-auto max-w-3xl px-4 py-16 sm:px-8 sm:py-24 md:py-32"
     >
       <div className="relative z-10">
-        <p className="text-center text-[10px] font-black tracking-[0.35em] text-[#9C7A3C] sm:text-xs">
+        <p className="text-center text-[10px] font-black tracking-[0.35em] text-public-gold sm:text-xs">
           {t.about.kicker}
         </p>
         <h2 className="mt-5 text-center text-2xl font-black text-[#1C2E3A] sm:mt-6 sm:text-3xl md:text-4xl">
@@ -30,7 +30,7 @@ export function PublicAboutSection() {
           viewport={{ once: true, amount: 0.3 }}
           transition={{ duration: 1.8, ease: 'easeOut' }}
         >
-          <blockquote className="wl-about-manifesto mt-8 border-r-4 border-[#9C7A3C] pr-5 text-base font-bold leading-[2.5] text-[#1C2E3A]/90 sm:mt-12 sm:pr-7 sm:text-lg md:text-xl md:leading-[2.55]">
+          <blockquote className="wl-about-manifesto mt-8 border-r-4 border-public-gold pr-5 text-base font-bold leading-[2.5] text-[#1C2E3A]/90 sm:mt-12 sm:pr-7 sm:text-lg md:text-xl md:leading-[2.55]">
             {t.about.quote}
           </blockquote>
 

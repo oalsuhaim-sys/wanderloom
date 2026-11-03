@@ -67,14 +67,22 @@ function parseWalletTransactionRow(row: Record<string, unknown>): WalletTransact
   };
 }
 
+function resolveWalletClientId(clientId: string | number | null | undefined): number | null {
+  if (clientId == null) return null;
+  const raw = String(clientId).trim();
+  if (!raw || raw === 'undefined' || raw === 'null') return null;
+  const idNum = Number(raw);
+  return Number.isFinite(idNum) ? idNum : null;
+}
+
 export async function fetchClientWalletLedger(
   supabase: SupabaseClient,
   clientId: string,
   options?: { limit?: number },
 ): Promise<ClientWalletLedger> {
   const limit = options?.limit ?? 50;
-  const idNum = Number(clientId);
-  if (!Number.isFinite(idNum)) {
+  const idNum = resolveWalletClientId(clientId);
+  if (idNum == null) {
     return { balance: 0, totalSpent: 0, vipTier: 'gold', transactions: [] };
   }
 
@@ -121,9 +129,9 @@ export async function addClientWalletTransaction(
   amount: number,
   description: string,
 ): Promise<{ balance: number; transactionId: string | null; totalSpent: number; vipTier: string }> {
-  const idNum = Number(clientId);
-  if (!Number.isFinite(idNum)) {
-    throw new Error('معرّف العميل غير صالح.');
+  const idNum = resolveWalletClientId(clientId);
+  if (idNum == null) {
+    throw new Error('يرجى تحديد العميل أولاً — معرّف العميل غير صالح.');
   }
   if (!Number.isFinite(amount) || amount === 0) {
     throw new Error('أدخل مبلغاً غير صفري (موجب للإيداع، سالب للخصم).');
@@ -141,6 +149,9 @@ export async function addClientWalletTransaction(
 
   if (error) {
     const msg = String(error.message ?? '').toLowerCase();
+    if (msg.includes('client_not_found') || msg.includes('client_id_required')) {
+      throw new Error('العميل غير موجود أو لم يتم تحديده.');
+    }
     if (
       msg.includes('add_client_wallet_transaction') ||
       msg.includes('wallet_transactions') ||

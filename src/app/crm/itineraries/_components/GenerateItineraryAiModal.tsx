@@ -159,7 +159,7 @@ export default function GenerateItineraryAiModal({
         </div>
 
         <div className="space-y-4 px-5 py-4">
-          <div className="rounded-2xl border border-[#C5A059]/25 bg-white p-4">
+          <div className="rounded-2xl border border-brand-gold/25 bg-white p-4">
             <p className="text-xs font-black text-[#1A3B2A]">العميل</p>
             <p className="mt-1 text-sm font-bold text-slate-800">
               {context.clientName?.trim() || 'عميل VIP'}
@@ -193,7 +193,7 @@ export default function GenerateItineraryAiModal({
               value={destination}
               onChange={(e) => setDestination(e.target.value)}
               placeholder="مثال: طوكيو · سيول · بالي"
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-bold text-[#1A3B2A] outline-none focus:border-[#C5A059] focus:ring-2 focus:ring-[#C5A059]/30"
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-bold text-[#1A3B2A] outline-none focus:border-brand-gold focus:ring-2 focus:ring-brand-gold/30"
               disabled={busy}
             />
           </label>
@@ -208,7 +208,7 @@ export default function GenerateItineraryAiModal({
               onChange={(e) =>
                 setDaysCount(Math.min(14, Math.max(1, Number(e.target.value) || 1)))
               }
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-bold text-[#1A3B2A] outline-none focus:border-[#C5A059] focus:ring-2 focus:ring-[#C5A059]/30"
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-bold text-[#1A3B2A] outline-none focus:border-brand-gold focus:ring-2 focus:ring-brand-gold/30"
               dir="ltr"
               disabled={busy}
             />
@@ -223,7 +223,7 @@ export default function GenerateItineraryAiModal({
               onChange={(e) => setChatContext(e.target.value)}
               rows={3}
               placeholder="مثال: يحب الهدوء، يتجنب الحشود، يفضّل قهوة مقطّرة…"
-              className="w-full resize-y rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-[#1A3B2A] outline-none focus:border-[#C5A059] focus:ring-2 focus:ring-[#C5A059]/30"
+              className="w-full resize-y rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-[#1A3B2A] outline-none focus:border-brand-gold focus:ring-2 focus:ring-brand-gold/30"
               disabled={busy}
             />
           </label>
@@ -241,7 +241,7 @@ export default function GenerateItineraryAiModal({
             type="button"
             disabled={busy}
             onClick={() => void handleGenerate()}
-            className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-[#D4AF37] px-4 py-3 text-sm font-black text-[#1A3B2A] shadow-sm transition hover:bg-[#c4a030] disabled:opacity-60"
+            className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-brand-gold px-4 py-3 text-sm font-black text-[#1A3B2A] shadow-sm transition hover:bg-[#c4a030] disabled:opacity-60"
           >
             {busy ? (
               <>

@@ -96,7 +96,7 @@ export default function AdminQuotationReviewPage() {
   if (loading) {
     return (
       <div dir="rtl" className="flex min-h-[60vh] items-center justify-center gap-2 text-slate-600">
-        <Loader2 className="h-6 w-6 animate-spin text-[#C5A059]" aria-hidden />
+        <Loader2 className="h-6 w-6 animate-spin text-brand-gold" aria-hidden />
         جارٍ تحميل مراجعة عرض السعر...
       </div>
     );
@@ -125,7 +125,7 @@ export default function AdminQuotationReviewPage() {
         </div>
       ) : null}
 
-      <header className="mb-6 rounded-3xl border border-[#C5A059]/40 bg-gradient-to-l from-[#FFFBF0] to-white p-6">
+      <header className="mb-6 rounded-3xl border border-brand-gold/40 bg-gradient-to-l from-[#FFFBF0] to-white p-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-[11px] font-black uppercase tracking-[0.2em] text-[#8A6B2A]">
@@ -136,7 +136,7 @@ export default function AdminQuotationReviewPage() {
               {quotationClientName(row)} · {formatDestinationsLabel(row.destinations)}
             </p>
           </div>
-          <span className="rounded-full bg-[#1A3B2A] px-3 py-1 text-xs font-black text-[#D4AF37]">
+          <span className="rounded-full bg-[#1A3B2A] px-3 py-1 text-xs font-black text-brand-gold">
             {QUOTATION_STATUS_LABEL[row.status]}
           </span>
         </div>
@@ -292,7 +292,7 @@ export default function AdminQuotationReviewPage() {
               setRow(result.row);
               setToast('تم إرسال النسخة المحدثة للعميل — الحالة عادت لانتظار العميل.');
             }}
-            className="inline-flex items-center gap-2 rounded-xl bg-[#1A3B2A] px-4 py-2.5 text-sm font-black text-[#D4AF37] disabled:opacity-60"
+            className="inline-flex items-center gap-2 rounded-xl bg-[#1A3B2A] px-4 py-2.5 text-sm font-black text-brand-gold disabled:opacity-60"
           >
             {busyAction === 'send' ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Send className="h-4 w-4" aria-hidden />}
             Send Updated Quotation

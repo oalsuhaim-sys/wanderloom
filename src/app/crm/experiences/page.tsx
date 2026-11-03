@@ -17,15 +17,15 @@ import {
 const DEFAULT_CATEGORY = VIP_EXPERIENCE_CATEGORIES[0];
 
 const CARD =
-  'bg-white border border-slate-200/90 rounded-2xl p-5 shadow-sm transition-all hover:border-[#D4AF37]/40';
+  'bg-white border border-slate-200/90 rounded-2xl p-5 shadow-sm transition-all hover:border-brand-gold/40';
 const INNER =
   'bg-white border border-slate-200/90 rounded-2xl p-5 shadow-sm';
 const INPUT =
-  'w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-bold text-slate-800 placeholder:text-slate-400 outline-none transition focus:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37]/25';
+  'w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-bold text-slate-800 placeholder:text-slate-400 outline-none transition focus:border-brand-gold focus:ring-2 focus:ring-brand-gold/25';
 const TAG =
   'bg-slate-100 text-slate-700 border border-slate-200 px-3 py-1 rounded-lg text-xs font-bold';
 const BTN_PRIMARY =
-  'bg-[#D4AF37] hover:bg-[#b8952d] text-black font-extrabold py-2.5 px-4 rounded-xl text-sm transition-all shadow-sm w-full inline-flex items-center justify-center gap-2';
+  'bg-brand-gold hover:bg-brand-gold text-black font-extrabold py-2.5 px-4 rounded-xl text-sm transition-all shadow-sm w-full inline-flex items-center justify-center gap-2';
 const BTN_WA =
   'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 font-bold py-2.5 px-4 rounded-xl text-sm transition-all w-full inline-flex items-center justify-center gap-2';
 
@@ -294,14 +294,14 @@ export default function ExperiencesCRMPage() {
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <Link
           href="/crm"
-          className="inline-flex items-center gap-2 text-xs font-bold text-slate-500 transition hover:text-[#b8952d]"
+          className="inline-flex items-center gap-2 text-xs font-bold text-slate-500 transition hover:text-brand-gold"
         >
           <ArrowRight size={14} /> لوحة التحكم
         </Link>
         <button
           type="button"
           onClick={openCreateModal}
-          className="inline-flex items-center gap-2 rounded-xl bg-[#D4AF37] px-5 py-2.5 text-sm font-extrabold text-black shadow-sm transition hover:bg-[#b8952d]"
+          className="inline-flex items-center gap-2 rounded-xl bg-brand-gold px-5 py-2.5 text-sm font-extrabold text-black shadow-sm transition hover:bg-brand-gold"
         >
           <Plus size={16} strokeWidth={2.5} />
           إضافة تجربة
@@ -309,7 +309,7 @@ export default function ExperiencesCRMPage() {
       </div>
 
       <div className="mb-6 flex items-center gap-3">
-        <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-[#D4AF37]/35 bg-[#D4AF37]/10 text-[#b8952d]">
+        <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-brand-gold/35 bg-brand-gold/10 text-brand-gold">
           <Sparkles size={24} />
         </div>
         <div>
@@ -353,7 +353,7 @@ export default function ExperiencesCRMPage() {
 
       {loading ? (
         <div className="flex justify-center py-16">
-          <Loader2 className="h-10 w-10 animate-spin text-[#b8952d]" />
+          <Loader2 className="h-10 w-10 animate-spin text-brand-gold" />
         </div>
       ) : rows.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 p-10 text-center text-sm font-semibold text-slate-500">
@@ -373,7 +373,7 @@ export default function ExperiencesCRMPage() {
               ) : null}
 
               <div className="flex items-center gap-1 text-xs font-bold text-slate-500">
-                <MapPin size={14} className="text-[#b8952d]" />
+                <MapPin size={14} className="text-brand-gold" />
                 {e.city ? `${e.country} · ${e.city}` : e.country}
               </div>
 
@@ -381,7 +381,7 @@ export default function ExperiencesCRMPage() {
                 <button
                   type="button"
                   onClick={() => openEditModal(e)}
-                  className="cursor-pointer text-xs font-bold text-slate-500 transition hover:text-[#b8952d]"
+                  className="cursor-pointer text-xs font-bold text-slate-500 transition hover:text-brand-gold"
                 >
                   تعديل
                 </button>

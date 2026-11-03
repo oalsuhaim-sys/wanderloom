@@ -14,7 +14,7 @@ export function PublicSessionsIntro() {
         {t.sessions.lead}
       </p>
       <p className="mt-3 text-xs font-bold text-gray-500">
-        <Link href="/" className="font-black text-[#9C7A3C] underline underline-offset-4">
+        <Link href="/" className="font-black text-public-gold underline underline-offset-4">
           ← الصفحة الرئيسية
         </Link>
       </p>

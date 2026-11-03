@@ -343,6 +343,8 @@ export type PublicItinerary = {
   title: string
   destination: string
   customerName: string
+  /** رقم الجوال الظاهر في العلامة المائية فقط، إن وُجد في بيانات هذه الرحلة أو سجل العميل. */
+  customerPhone?: string | null
   startDate: string | null
   endDate: string | null
   coverImage: string | null
@@ -1383,6 +1385,34 @@ function parseHighlights(raw: unknown): string[] {
   return out
 }
 
+function pickCustomerPhone(row: Record<string, unknown>): string | null {
+  const direct = pickStr(row, ['customer_phone', 'client_phone', 'phone_wa', 'phone', 'mobile'])
+  if (direct) return direct
+  let flight: Record<string, unknown> | null = null
+  const raw = row.flight_details
+  if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+    flight = raw as Record<string, unknown>
+  } else if (typeof raw === 'string' && raw.trim()) {
+    try {
+      const parsed = JSON.parse(raw) as unknown
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        flight = parsed as Record<string, unknown>
+      }
+    } catch {
+      flight = null
+    }
+  }
+  if (!flight) return null
+  const fromFlight = pickStr(flight, [
+    'leader_phone',
+    'passenger_phone',
+    'phone_wa',
+    'phone',
+    'mobile',
+  ])
+  return fromFlight || null
+}
+
 function parseFlightDetails(raw: unknown): Record<string, unknown> | null {
   if (raw == null) return null
   let fd: Record<string, unknown> | null = null
@@ -1659,6 +1689,7 @@ export function normalizePublicItinerary(trip: PublicItinerary): PublicItinerary
     bypass_24h_lock: parseBypass24hLock(trip.bypass_24h_lock),
     title: trip.title?.trim() || 'رحلتك الاستثنائية',
     customerName: trip.customerName?.trim() || 'عميلنا المميز',
+    customerPhone: trip.customerPhone?.trim() || null,
     budget: {
       total: Math.max(0, trip.budget?.total ?? 0),
       spent: Math.max(0, trip.budget?.spent ?? 0),
@@ -1726,6 +1757,7 @@ export function toPublicItinerary(row: Record<string, unknown>): PublicItinerary
     title: pickStr(row, ['title']) || 'رحلتك الاستثنائية',
     destination,
     customerName: pickStr(row, ['customer_name']) || 'عميلنا المميز',
+    customerPhone: pickCustomerPhone(row),
     startDate,
     endDate,
     coverImage:

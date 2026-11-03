@@ -32,7 +32,7 @@ export default function ActivityTicketsEditor({ tickets, onChange }: Props) {
         tickets.map((ticket, index) => (
           <div key={ticket.id} className={WL_CARD}>
             <div className="mb-3 flex items-center justify-between gap-2">
-              <span className="text-xs font-black uppercase tracking-wide text-[#D4AF37]">
+              <span className="text-xs font-black uppercase tracking-wide text-brand-gold">
                 تذكرة #{index + 1}
               </span>
               <button

@@ -76,14 +76,14 @@ export default function WhatsAppTemplatePicker({
   return (
     <div className={`relative min-w-[9.5rem] ${className}`}>
       <MessageCircle
-        className="pointer-events-none absolute start-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-emerald-600 dark:text-[#D4AF37]"
+        className="pointer-events-none absolute start-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-emerald-600 dark:text-brand-gold"
         aria-hidden
       />
       <select
         value={value}
         disabled={disabled || !quoteId}
         onChange={(e) => handleChange(e.target.value)}
-        className="w-full appearance-none rounded-lg border border-slate-200 bg-white py-2 pe-8 ps-8 text-xs font-medium text-slate-700 shadow-sm outline-none transition hover:bg-slate-50 focus:border-slate-300 focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:opacity-50 dark:border-[#2D3F3A] dark:bg-[#2A3834] dark:text-gray-200 dark:hover:border-[#D4AF37]/30 dark:focus:border-[#D4AF37]/40 dark:focus:ring-[#D4AF37]/15"
+        className="w-full appearance-none rounded-lg border border-slate-200 bg-white py-2 pe-8 ps-8 text-xs font-medium text-slate-700 shadow-sm outline-none transition hover:bg-slate-50 focus:border-slate-300 focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:opacity-50 dark:border-[#2D3F3A] dark:bg-[#2A3834] dark:text-gray-200 dark:hover:border-brand-gold/30 dark:focus:border-brand-gold/40 dark:focus:ring-brand-gold/15"
         aria-label="قوالب واتساب"
         title={phone ? 'إرسال قالب واتساب للعميل' : 'فتح واتساب بدون رقم — ألصق الرقم يدوياً'}
       >
@@ -95,7 +95,7 @@ export default function WhatsAppTemplatePicker({
         ))}
       </select>
       <span
-        className="pointer-events-none absolute end-2.5 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 dark:text-[#D4AF37]/70"
+        className="pointer-events-none absolute end-2.5 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 dark:text-brand-gold/70"
         aria-hidden
       >
         ▾

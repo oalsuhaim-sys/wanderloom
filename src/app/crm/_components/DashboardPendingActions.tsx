@@ -144,7 +144,7 @@ export default function DashboardPendingActions() {
           </div>
         </div>
         {!loading ? (
-          <span className="rounded-lg border border-slate-300 bg-slate-100 px-2.5 py-1 text-xs font-bold text-[#b8952d]">
+          <span className="rounded-lg border border-slate-300 bg-slate-100 px-2.5 py-1 text-xs font-bold text-brand-gold">
             {pendingTotal} إجراء معلّق
           </span>
         ) : null}
@@ -152,7 +152,7 @@ export default function DashboardPendingActions() {
 
       {loading ? (
         <div className="flex min-h-52 items-center justify-center gap-3 text-sm font-semibold text-slate-500">
-          <Loader2 className="h-6 w-6 animate-spin text-[#b8952d]" />
+          <Loader2 className="h-6 w-6 animate-spin text-brand-gold" />
           جاري تحميل مركز الإجراءات…
         </div>
       ) : error ? (
@@ -164,10 +164,10 @@ export default function DashboardPendingActions() {
           <div>
             <div className="mb-4 flex items-center justify-between gap-3">
               <h3 className="inline-flex items-center gap-2 text-base font-bold text-slate-800">
-                <UsersRound className="h-4 w-4 text-[#b8952d]" />
+                <UsersRound className="h-4 w-4 text-brand-gold" />
                 طلبات الشركاء الجدد
               </h3>
-              <span className="rounded-lg border border-slate-300 bg-slate-100 px-2.5 py-1 text-xs font-bold text-[#b8952d]">
+              <span className="rounded-lg border border-slate-300 bg-slate-100 px-2.5 py-1 text-xs font-bold text-brand-gold">
                 {data.counts.partners}
               </span>
             </div>
@@ -179,7 +179,7 @@ export default function DashboardPendingActions() {
                     key={`${request.type}-${request.id}`}
                     className="flex items-center gap-3 rounded-xl border border-slate-200/80 bg-slate-50/80 p-3"
                   >
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-[#b8952d]">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-brand-gold">
                       <UserPlus className="h-4 w-4" />
                     </span>
                     <div className="min-w-0 flex-1">
@@ -194,7 +194,7 @@ export default function DashboardPendingActions() {
                     </div>
                     <Link
                       href={`/crm/partners-directory/profile?id=${encodeURIComponent(request.id)}&type=${request.type === 'expert' ? 'experts' : 'leaders'}`}
-                      className="inline-flex items-center gap-1 rounded-lg border border-slate-800 bg-[#1A2421] px-3 py-2 text-[11px] font-bold text-[#D4AF37] transition hover:opacity-90"
+                      className="inline-flex items-center gap-1 rounded-lg border border-slate-800 bg-[#1A2421] px-3 py-2 text-[11px] font-bold text-brand-gold transition hover:opacity-90"
                     >
                       مراجعة
                       <ArrowLeft className="h-3.5 w-3.5" />
@@ -212,10 +212,10 @@ export default function DashboardPendingActions() {
           <div>
             <div className="mb-4 flex items-center justify-between gap-3">
               <h3 className="inline-flex items-center gap-2 text-base font-bold text-slate-800">
-                <Inbox className="h-4 w-4 text-[#b8952d]" />
+                <Inbox className="h-4 w-4 text-brand-gold" />
                 طلبات العملاء الجديدة
               </h3>
-              <span className="rounded-lg border border-slate-300 bg-slate-100 px-2.5 py-1 text-xs font-bold text-[#b8952d]">
+              <span className="rounded-lg border border-slate-300 bg-slate-100 px-2.5 py-1 text-xs font-bold text-brand-gold">
                 {data.counts.clients}
               </span>
             </div>
@@ -227,7 +227,7 @@ export default function DashboardPendingActions() {
                     key={request.id}
                     className="flex items-center gap-3 rounded-xl border border-slate-200/80 bg-slate-50/80 p-3"
                   >
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-[#b8952d]">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-brand-gold">
                       <MapPin className="h-4 w-4" />
                     </span>
                     <div className="min-w-0 flex-1">

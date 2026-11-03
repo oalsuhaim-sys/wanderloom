@@ -60,7 +60,7 @@ export default function VipClientWalletLedger({ clientId }: Props) {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-[#D4AF37]/20 bg-[#0D0F0E] py-16 text-[#D4AF37]">
+      <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-brand-gold/20 bg-[#0D0F0E] py-16 text-brand-gold">
         <Loader2 className="h-8 w-8 animate-spin" aria-hidden />
         <p className="text-sm font-semibold text-white/60">جاري تحميل محفظة العهدة…</p>
       </div>
@@ -78,20 +78,20 @@ export default function VipClientWalletLedger({ clientId }: Props) {
 
   return (
     <section className="space-y-5" aria-labelledby="vip-wallet-ledger-title">
-      <article className="relative overflow-hidden rounded-[1.35rem] border border-[#D4AF37]/40 bg-[#0D0F0E] p-6 shadow-[0_20px_60px_rgba(0,0,0,0.45)] sm:p-7">
+      <article className="relative overflow-hidden rounded-[1.35rem] border border-brand-gold/40 bg-[#0D0F0E] p-6 shadow-[0_20px_60px_rgba(0,0,0,0.45)] sm:p-7">
         <div
-          className="pointer-events-none absolute -end-16 -top-16 h-48 w-48 rounded-full bg-[#D4AF37]/10 blur-3xl"
+          className="pointer-events-none absolute -end-16 -top-16 h-48 w-48 rounded-full bg-brand-gold/10 blur-3xl"
           aria-hidden
         />
         <div
-          className="pointer-events-none absolute -bottom-20 -start-10 h-56 w-56 rounded-full bg-[#D4AF37]/5 blur-3xl"
+          className="pointer-events-none absolute -bottom-20 -start-10 h-56 w-56 rounded-full bg-brand-gold/5 blur-3xl"
           aria-hidden
         />
 
         <div className="relative">
           <div className="mb-6 flex items-start justify-between gap-4">
             <div>
-              <p className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.32em] text-[#D4AF37]/80">
+              <p className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.32em] text-brand-gold/80">
                 <Sparkles className="h-3.5 w-3.5" aria-hidden />
                 Wanderloom VIP Ledger
               </p>
@@ -102,12 +102,12 @@ export default function VipClientWalletLedger({ clientId }: Props) {
                 محفظة العهدة المالية
               </h2>
             </div>
-            <CreditCard className="h-8 w-8 shrink-0 text-[#D4AF37]/70" aria-hidden />
+            <CreditCard className="h-8 w-8 shrink-0 text-brand-gold/70" aria-hidden />
           </div>
 
           <div className="mb-2 flex items-center gap-3">
             <div
-              className="h-9 w-11 rounded-md bg-gradient-to-br from-[#D4AF37] via-[#E8C860] to-[#B8941F] shadow-inner"
+              className="h-9 w-11 rounded-md bg-gradient-to-br from-brand-gold via-[#E8C860] to-[#B8941F] shadow-inner"
               aria-hidden
             />
             <div className="font-mono text-[10px] font-bold tracking-[0.35em] text-white/25">
@@ -118,7 +118,7 @@ export default function VipClientWalletLedger({ clientId }: Props) {
           <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-white/40">
             الرصيد المتبقي في العهدة
           </p>
-          <p className="mt-2 font-mono text-4xl font-black tracking-tight text-[#D4AF37] sm:text-5xl" dir="ltr">
+          <p className="mt-2 font-mono text-4xl font-black tracking-tight text-brand-gold sm:text-5xl" dir="ltr">
             {formatWalletAmount(balance)}
           </p>
           <p className="mt-3 max-w-sm text-xs leading-relaxed text-white/45">

@@ -22,6 +22,10 @@ export type CustomerLeadState = {
   ok: boolean;
   error?: string;
   message?: string;
+  /** رابط DNA الجاهز بعد إنشاء/ربط صف clients — دون إعادة تحميل الصفحة */
+  dnaUrl?: string;
+  clientId?: number;
+  referralCode?: string | null;
 };
 
 type SupabaseInsertError = {
@@ -533,6 +537,10 @@ export async function submitCustomerLead(formData: FormData): Promise<CustomerLe
       `,
     );
 
+    const appliedReferral = referral_code || insertedLead.referral_code || null;
+    let dnaUrl = '';
+    let clientId: number | null = null;
+
     try {
       const siteOrigin =
         String(process.env.NEXT_PUBLIC_SITE_URL ?? '').trim() ||
@@ -542,10 +550,12 @@ export async function submitCustomerLead(formData: FormData): Promise<CustomerLe
         fullName: insertedLead.full_name,
         phoneWa: insertedLead.phone_wa || phone_wa,
         email: insertedLead.email,
-        referralCode: insertedLead.referral_code ?? null,
+        referralCode: appliedReferral,
         source: 'website_trip_request',
         origin: siteOrigin,
       });
+      dnaUrl = automation.intake?.dnaUrl ?? '';
+      clientId = automation.intake?.clientId ?? null;
       if (!automation.intake) {
         console.warn(
           '[submitCustomerLead] intake not ready:',
@@ -554,7 +564,7 @@ export async function submitCustomerLead(formData: FormData): Promise<CustomerLe
       }
       await syncClientsBirthDateColumn(admin, {
         phoneWa: insertedLead.phone_wa || phone_wa,
-        clientId: automation.intake?.clientId ?? null,
+        clientId,
         birthDate,
         age: ageNum,
       });
@@ -563,24 +573,41 @@ export async function submitCustomerLead(formData: FormData): Promise<CustomerLe
       // Lead is already saved — do not fail the user for WhatsApp/notification issues.
       // Still attempt legacy intake so DNA token exists (no second WhatsApp attempt here).
       try {
-        await runWebsiteLeadIntakeAutomation(admin, {
+        const intake = await runWebsiteLeadIntakeAutomation(admin, {
           id: insertedLead.id,
           full_name: insertedLead.full_name,
           phone_wa: insertedLead.phone_wa || phone_wa,
           email: insertedLead.email,
-          referral_code: insertedLead.referral_code ?? null,
+          referral_code: appliedReferral,
         });
+        dnaUrl = intake.dnaUrl;
+        clientId = intake.clientId;
       } catch (fallbackErr) {
         console.error('[submitCustomerLead] client intake fallback:', fallbackErr);
       }
       try {
         await syncClientsBirthDateColumn(admin, {
           phoneWa: insertedLead.phone_wa || phone_wa,
+          clientId,
           birthDate,
           age: ageNum,
         });
       } catch (ageErr) {
         console.warn('[submitCustomerLead] clients.birth_date sync after intake error:', ageErr);
+      }
+    }
+
+    if (clientId != null && appliedReferral) {
+      const { error: usedCodeError } = await admin
+        .from('clients')
+        .update({ used_code: appliedReferral })
+        .eq('id', clientId)
+        .is('used_code', null);
+      if (
+        usedCodeError &&
+        !/column|schema cache|does not exist|used_code/i.test(usedCodeError.message ?? '')
+      ) {
+        console.warn('[submitCustomerLead] clients.used_code:', usedCodeError.message);
       }
     }
 
@@ -591,6 +618,9 @@ export async function submitCustomerLead(formData: FormData): Promise<CustomerLe
     return {
       ok: true,
       message: ar.success.tripLeadSent,
+      dnaUrl: dnaUrl || undefined,
+      clientId: clientId ?? undefined,
+      referralCode: appliedReferral,
     };
   } catch (error) {
     console.error('Supabase Error:', error);

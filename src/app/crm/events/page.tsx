@@ -25,10 +25,10 @@ type MetaRow = { country: string | null; city: string | null; season: string | n
 const CARD =
   'bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all space-y-3'
 const FILTER_CARD =
-  'bg-white border border-slate-200/90 rounded-2xl p-5 shadow-sm mb-4 hover:border-[#D4AF37]/40 transition-all'
+  'bg-white border border-slate-200/90 rounded-2xl p-5 shadow-sm mb-4 hover:border-brand-gold/40 transition-all'
 const INNER = 'bg-slate-50 border border-slate-200 rounded-xl p-4'
 const INPUT =
-  'w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-bold text-slate-800 placeholder:text-slate-400 outline-none focus:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37]/25'
+  'w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-bold text-slate-800 placeholder:text-slate-400 outline-none focus:border-brand-gold focus:ring-2 focus:ring-brand-gold/25'
 const META_TAG =
   'inline-flex items-center gap-1.5 bg-slate-50 border border-slate-200 text-slate-700 text-xs px-2.5 py-1 rounded-lg font-semibold'
 const TAG_GO =
@@ -38,9 +38,9 @@ const TAG_AVOID =
 const TAG_NEUTRAL =
   'bg-slate-50 text-slate-600 border border-slate-200 px-3 py-1 rounded-full text-xs font-bold'
 const BTN_PRIMARY =
-  'bg-[#D4AF37] hover:bg-[#b8952d] text-black font-extrabold py-2.5 px-4 rounded-xl text-sm inline-flex items-center justify-center gap-2 transition-all shadow-sm disabled:cursor-not-allowed disabled:opacity-60'
+  'bg-brand-gold hover:bg-brand-gold text-black font-extrabold py-2.5 px-4 rounded-xl text-sm inline-flex items-center justify-center gap-2 transition-all shadow-sm disabled:cursor-not-allowed disabled:opacity-60'
 const EDIT_LINK =
-  'text-slate-400 hover:text-[#b8952d] text-xs font-bold cursor-pointer inline-flex items-center gap-1.5 transition-colors shrink-0'
+  'text-slate-400 hover:text-brand-gold text-xs font-bold cursor-pointer inline-flex items-center gap-1.5 transition-colors shrink-0'
 const BTN_SECONDARY =
   'rounded-xl border border-slate-200 bg-slate-100 px-4 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-50'
 const NOTE_BOX =
@@ -312,7 +312,7 @@ export default function CRMEventsPage() {
         className="mx-auto flex min-h-screen max-w-[1100px] items-center justify-center bg-slate-50 p-6 font-sans text-slate-800"
       >
         <div className="text-center text-slate-500">
-          <Loader2 className="mx-auto mb-3 h-8 w-8 animate-spin text-[#b8952d]" />
+          <Loader2 className="mx-auto mb-3 h-8 w-8 animate-spin text-brand-gold" />
           <p className="text-sm">جارٍ تحميل الفعاليات...</p>
         </div>
       </div>
@@ -340,7 +340,7 @@ export default function CRMEventsPage() {
       {/* Filters */}
       <div className={`${FILTER_CARD} mb-4 !p-4 sm:!p-6`}>
         <div className="mb-4 flex items-center gap-2">
-          <Filter size={16} className="text-[#b8952d]" />
+          <Filter size={16} className="text-brand-gold" />
           <span className="text-lg font-extrabold text-slate-900">فلترة</span>
           {listLoading ? <span className="text-xs text-slate-500">جارٍ التحديث...</span> : null}
         </div>
@@ -348,7 +348,7 @@ export default function CRMEventsPage() {
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <div className={INNER}>
             <label className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-slate-600">
-              <Globe size={14} className="text-[#b8952d]" /> الدولة
+              <Globe size={14} className="text-brand-gold" /> الدولة
             </label>
             <select
               value={filterCountry}
@@ -370,7 +370,7 @@ export default function CRMEventsPage() {
 
           <div className={INNER}>
             <label className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-slate-600">
-              <MapPin size={14} className="text-[#b8952d]" /> المدينة
+              <MapPin size={14} className="text-brand-gold" /> المدينة
             </label>
             <select
               value={filterCity}
@@ -392,7 +392,7 @@ export default function CRMEventsPage() {
 
           <div className={INNER}>
             <label className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-slate-600">
-              <CalendarDays size={14} className="text-[#b8952d]" /> الموسم
+              <CalendarDays size={14} className="text-brand-gold" /> الموسم
             </label>
             <select value={filterSeason} onChange={(e) => setFilterSeason(e.target.value)} className={INPUT}>
               <option value="all">كل المواسم (حسب الدولة/المدينة)</option>
@@ -406,7 +406,7 @@ export default function CRMEventsPage() {
 
           <div className={INNER}>
             <label className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-slate-600">
-              <Zap size={14} className="text-[#b8952d]" /> التأثير
+              <Zap size={14} className="text-brand-gold" /> التأثير
             </label>
             <select value={filterImpact} onChange={(e) => setFilterImpact(e.target.value)} className={INPUT}>
               <option value="all">الكل</option>
@@ -506,7 +506,7 @@ export default function CRMEventsPage() {
                       className="inline-flex shrink-0 items-center gap-1.5 text-xs font-bold tracking-wide text-slate-600"
                       dir="ltr"
                     >
-                      <CalendarDays size={14} className="text-[#b8952d]" />
+                      <CalendarDays size={14} className="text-brand-gold" />
                       {dateLabel}
                     </p>
                   ) : (
@@ -666,7 +666,7 @@ export default function CRMEventsPage() {
                   type="checkbox"
                   checked={form.is_recurring}
                   onChange={(ev) => setForm({ ...form, is_recurring: ev.target.checked })}
-                  className="h-4 w-4 rounded border-slate-300 bg-white accent-[#D4AF37]"
+                  className="h-4 w-4 rounded border-slate-300 bg-white accent-brand-gold"
                 />
                 <span className="text-sm font-semibold text-slate-800">فعالية متكررة</span>
               </label>

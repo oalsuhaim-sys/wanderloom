@@ -183,7 +183,7 @@ export function InterestListInbox({
               onClick={() => void copyText(copyPhones(visibleLeads), 'all')}
               className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-100 px-4 py-2 text-xs font-semibold text-slate-700 transition-all hover:bg-slate-200"
             >
-              <Copy className="h-3.5 w-3.5 text-[#b8952d]" aria-hidden />
+              <Copy className="h-3.5 w-3.5 text-brand-gold" aria-hidden />
               {copied === 'all' ? 'تم النسخ' : `نسخ ${phoneCount} رقم`}
             </button>
           ) : null}
@@ -197,7 +197,7 @@ export function InterestListInbox({
 
         {loading ? (
           <div className="flex min-h-[160px] flex-row items-center justify-center gap-3 rounded-xl border border-dashed border-slate-200 bg-slate-50/80 shadow-sm">
-            <Loader2 className="h-6 w-6 animate-spin text-[#b8952d]" aria-hidden />
+            <Loader2 className="h-6 w-6 animate-spin text-brand-gold" aria-hidden />
             <span className="text-sm font-medium text-slate-500">جاري تحميل قائمة الاهتمامات…</span>
           </div>
         ) : visibleLeads.length === 0 ? (
@@ -254,7 +254,7 @@ export function InterestListInbox({
                                 e.stopPropagation();
                                 void handleAddToClientsClick(lead);
                               }}
-                              className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-100 px-3 py-2 text-xs font-semibold text-[#b8952d] transition-all hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-50"
+                              className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-100 px-3 py-2 text-xs font-semibold text-brand-gold transition-all hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-50"
                               title="إضافة لقاعدة العملاء"
                             >
                               {busyConvert ? (

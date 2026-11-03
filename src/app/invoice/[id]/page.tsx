@@ -33,9 +33,9 @@ import {
 } from '@/lib/crm-invoices';
 
 const PANEL =
-  'rounded-[1.75rem] border border-[#d4af37]/20 bg-gradient-to-b from-[#121816] to-[#0a0d0b] p-6 shadow-[0_24px_80px_rgba(0,0,0,0.45)] sm:p-8';
+  'rounded-[1.75rem] border border-brand-gold/20 bg-gradient-to-b from-[#121816] to-[#0a0d0b] p-6 shadow-[0_24px_80px_rgba(0,0,0,0.45)] sm:p-8';
 
-const GOLD = 'text-[#d4af37]';
+const GOLD = 'text-brand-gold';
 
 function PageShell({ children }: { children: ReactNode }) {
   return (
@@ -67,17 +67,17 @@ function LedgerRow({
   return (
     <div
       className={`flex items-center justify-between gap-3 border-b border-white/5 py-3 last:border-0 ${
-        emphasize ? 'rounded-xl border border-[#d4af37]/25 bg-[#d4af37]/10 px-3' : ''
+        emphasize ? 'rounded-xl border border-brand-gold/25 bg-brand-gold/10 px-3' : ''
       }`}
     >
       <span
-        className={`text-xs font-bold ${emphasize ? 'text-[#d4af37]' : 'text-white/55'}`}
+        className={`text-xs font-bold ${emphasize ? 'text-brand-gold' : 'text-white/55'}`}
       >
         {label}
       </span>
       <span
         className={`text-sm font-black ${
-          gold || emphasize ? 'text-[#d4af37]' : 'text-white'
+          gold || emphasize ? 'text-brand-gold' : 'text-white'
         }`}
         dir="ltr"
       >
@@ -103,7 +103,7 @@ function IbanCopyToast({ visible }: { visible: boolean }) {
         aria-live="polite"
       >
         <span
-          className="rounded-full border border-[#d4af37]/40 bg-[#0a0d0b]/95 px-4 py-2 text-xs font-black text-[#d4af37] shadow-lg"
+          className="rounded-full border border-brand-gold/40 bg-[#0a0d0b]/95 px-4 py-2 text-xs font-black text-brand-gold shadow-lg"
           style={{ animation: 'invoiceCopyToastIn 0.25s ease-out forwards' }}
         >
           تم النسخ
@@ -141,7 +141,7 @@ function SuccessToast({ message, visible }: { message: string; visible: boolean 
 
 function PaymentQrSection() {
   return (
-    <div className="mt-5 rounded-2xl border border-[#d4af37]/20 bg-black/30 p-4">
+    <div className="mt-5 rounded-2xl border border-brand-gold/20 bg-black/30 p-4">
       <div className="mb-3 flex items-center gap-2">
         <QrCode className={`h-4 w-4 ${GOLD}`} aria-hidden />
         <h4 className="text-sm font-black text-white">رمز الاستجابة السريعة (QR)</h4>
@@ -151,7 +151,7 @@ function PaymentQrSection() {
       </p>
 
       <div className="mx-auto flex max-w-[220px] flex-col items-center">
-        <div className="flex w-full items-center justify-center rounded-2xl border border-[#d4af37]/30 bg-white p-4 shadow-[inset_0_0_40px_rgba(212,175,55,0.06)]">
+        <div className="flex w-full items-center justify-center rounded-2xl border border-brand-gold/30 bg-white p-4 shadow-[inset_0_0_40px_rgba(212,175,55,0.06)]">
           {/* Native img avoids next/image optimizer quirks for local public assets */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
@@ -304,7 +304,7 @@ export default function PublicInvoicePage() {
   if (loading) {
     return (
       <PageShell>
-        <div className="flex flex-1 flex-col items-center justify-center gap-3 text-[#d4af37]">
+        <div className="flex flex-1 flex-col items-center justify-center gap-3 text-brand-gold">
           <Loader2 className="h-8 w-8 animate-spin" aria-hidden />
           <p className="text-sm font-bold text-white/60">جارٍ تحميل الفاتورة…</p>
         </div>
@@ -316,7 +316,7 @@ export default function PublicInvoicePage() {
     return (
       <PageShell>
         <div className={`${PANEL} text-center`}>
-          <Receipt className="mx-auto h-10 w-10 text-[#d4af37]/60" aria-hidden />
+          <Receipt className="mx-auto h-10 w-10 text-brand-gold/60" aria-hidden />
           <p className="mt-4 text-sm font-bold text-rose-300">{error}</p>
         </div>
       </PageShell>
@@ -355,7 +355,7 @@ export default function PublicInvoicePage() {
       <SuccessToast message={successMessage} visible={Boolean(successMessage)} />
 
       <header className="mb-8 text-center">
-        <p className="text-[10px] font-black uppercase tracking-[0.4em] text-[#d4af37]/80">
+        <p className="text-[10px] font-black uppercase tracking-[0.4em] text-brand-gold/80">
           Wanderloom
         </p>
         <h1 className="mt-2 text-2xl font-black text-white">فاتورة تأكيد الحجز</h1>
@@ -366,7 +366,7 @@ export default function PublicInvoicePage() {
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-[11px] font-bold text-white/45">الرحلة</p>
-            <h2 className="mt-1 text-lg font-black text-[#d4af37]">
+            <h2 className="mt-1 text-lg font-black text-brand-gold">
               {invoice.trip_title || ledger?.tripTitle || 'رحلة Wanderloom'}
             </h2>
             <p className="mt-2 text-sm font-bold text-white/80">{clientName}</p>
@@ -391,9 +391,9 @@ export default function PublicInvoicePage() {
             <p className="text-[10px] font-bold text-white/45">نوع الدفعة</p>
             <p className="mt-1 text-sm font-black text-white">{INVOICE_TYPE_LABEL[invoice.type]}</p>
           </div>
-          <div className="rounded-2xl border border-[#d4af37]/25 bg-[#d4af37]/10 px-4 py-3">
-            <p className="text-[10px] font-bold text-[#d4af37]/80">المبلغ المستحق</p>
-            <p className="mt-1 text-lg font-black text-[#d4af37]" dir="ltr">
+          <div className="rounded-2xl border border-brand-gold/25 bg-brand-gold/10 px-4 py-3">
+            <p className="text-[10px] font-bold text-brand-gold/80">المبلغ المستحق</p>
+            <p className="mt-1 text-lg font-black text-brand-gold" dir="ltr">
               {formatInvoiceAmount(invoice.amount)}
             </p>
           </div>
@@ -417,14 +417,14 @@ export default function PublicInvoicePage() {
       ) : (
         <section className={`${PANEL} mt-5`}>
           <div className="flex items-center gap-2">
-            <Wallet className="h-5 w-5 text-[#d4af37]" aria-hidden />
+            <Wallet className="h-5 w-5 text-brand-gold" aria-hidden />
             <h3 className="text-base font-black text-white">التحويل البنكي</h3>
           </div>
           <p className="mt-2 text-xs font-semibold leading-relaxed text-white/50">
             حوّل المبلغ المستحق إلى الحساب أدناه، ثم أرفق صورة الحوالة واضغط «تأكيد الدفع».
           </p>
 
-          <div className="mt-5 rounded-2xl border border-[#d4af37]/25 bg-gradient-to-b from-[#0f1412] to-[#070908] p-4">
+          <div className="mt-5 rounded-2xl border border-brand-gold/25 bg-gradient-to-b from-[#0f1412] to-[#070908] p-4">
             <h4 className={`mb-4 text-sm font-black ${GOLD}`}>تفاصيل الحساب البنكي</h4>
             <dl className="space-y-3">
               <div className="rounded-xl border border-white/8 bg-black/35 px-4 py-3">
@@ -439,8 +439,8 @@ export default function PublicInvoicePage() {
                   {WANDERLOOM_BANK_DETAILS.accountName}
                 </dd>
               </div>
-              <div className="rounded-xl border border-[#d4af37]/30 bg-[#d4af37]/8 px-4 py-3">
-                <dt className="text-[10px] font-bold text-[#d4af37]/75">رقم الآيبان (IBAN)</dt>
+              <div className="rounded-xl border border-brand-gold/30 bg-brand-gold/8 px-4 py-3">
+                <dt className="text-[10px] font-bold text-brand-gold/75">رقم الآيبان (IBAN)</dt>
                 <dd className="mt-2 flex items-center justify-between gap-3">
                   <span
                     className="font-mono text-sm font-black tracking-wide text-[#f5f0e6]"
@@ -451,7 +451,7 @@ export default function PublicInvoicePage() {
                   <button
                     type="button"
                     onClick={() => void copyIban()}
-                    className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-[#d4af37]/40 bg-[#d4af37]/12 px-3 py-1.5 text-[10px] font-black text-[#d4af37] transition hover:bg-[#d4af37]/22"
+                    className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-brand-gold/40 bg-brand-gold/12 px-3 py-1.5 text-[10px] font-black text-brand-gold transition hover:bg-brand-gold/22"
                     aria-label="نسخ رقم الآيبان"
                   >
                     {ibanCopied ? (
@@ -510,13 +510,13 @@ export default function PublicInvoicePage() {
                 onClick={() => fileInputRef.current?.click()}
                 className={`flex cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed px-6 py-10 text-center transition ${
                   dragOver
-                    ? 'border-[#d4af37]/60 bg-[#d4af37]/10'
-                    : 'border-white/15 bg-black/20 hover:border-[#d4af37]/35 hover:bg-[#d4af37]/5'
+                    ? 'border-brand-gold/60 bg-brand-gold/10'
+                    : 'border-white/15 bg-black/20 hover:border-brand-gold/35 hover:bg-brand-gold/5'
                 }`}
               >
                 {previewUrl ? (
                   <>
-                    <div className="relative h-28 w-28 overflow-hidden rounded-xl border border-[#d4af37]/30">
+                    <div className="relative h-28 w-28 overflow-hidden rounded-xl border border-brand-gold/30">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={previewUrl}
@@ -524,7 +524,7 @@ export default function PublicInvoicePage() {
                         className="h-full w-full object-cover"
                       />
                     </div>
-                    <p className="max-w-full truncate px-2 text-xs font-bold text-[#d4af37]/90">
+                    <p className="max-w-full truncate px-2 text-xs font-bold text-brand-gold/90">
                       {receiptFile?.name}
                     </p>
                     <button
@@ -541,7 +541,7 @@ export default function PublicInvoicePage() {
                   </>
                 ) : (
                   <>
-                    <ImagePlus className="h-10 w-10 text-[#d4af37]/55" aria-hidden />
+                    <ImagePlus className="h-10 w-10 text-brand-gold/55" aria-hidden />
                     <p className="text-sm font-black text-white/80">اضغط أو اسحب صورة الحوالة هنا</p>
                     <p className="text-[11px] font-semibold text-white/35">JPG · PNG · WebP</p>
                   </>
@@ -564,7 +564,7 @@ export default function PublicInvoicePage() {
               type="button"
               disabled={!receiptFile || isUploading}
               onClick={() => void handleUpload()}
-              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#d4af37] px-5 py-3.5 text-sm font-black text-[#0a0d0b] shadow-[0_12px_40px_rgba(212,175,55,0.25)] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-45"
+              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-brand-gold px-5 py-3.5 text-sm font-black text-[#0a0d0b] shadow-[0_12px_40px_rgba(212,175,55,0.25)] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-45"
             >
               {isUploading ? (
                 <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
@@ -585,7 +585,7 @@ export default function PublicInvoicePage() {
       {ledger ? (
         <section className={`${PANEL} mt-5`} aria-label="ملخص الحساب">
           <div className="mb-3 flex items-center gap-2">
-            <Receipt className="h-5 w-5 text-[#d4af37]" aria-hidden />
+            <Receipt className="h-5 w-5 text-brand-gold" aria-hidden />
             <h3 className="text-base font-black text-white">ملخص الحساب</h3>
           </div>
           <p className="mb-3 text-[10px] font-bold uppercase tracking-[0.2em] text-white/35">

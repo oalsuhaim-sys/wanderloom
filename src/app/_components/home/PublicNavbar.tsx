@@ -57,7 +57,7 @@ export function PublicNavbar() {
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:gap-4 sm:px-8 sm:py-4">
           <Link
             href="/#top"
-            className="wl-public-nav-logo shrink-0 text-xl font-black tracking-[0.14em] text-[#9C7A3C] transition-colors duration-300 hover:text-[#A88849] sm:text-2xl sm:tracking-[0.18em] lg:text-3xl"
+            className="wl-public-nav-logo shrink-0 text-xl font-black tracking-[0.14em] text-public-gold transition-colors duration-300 hover:text-[#B8860B] sm:text-2xl sm:tracking-[0.18em] lg:text-3xl"
           >
             {t.brand.name}
           </Link>
@@ -101,7 +101,7 @@ export function PublicNavbar() {
               <button
                 type="button"
                 onClick={toggleLanguage}
-                className="whitespace-nowrap rounded-full border border-stone-300 px-3 py-2 text-sm font-medium text-stone-800 transition-colors duration-300 hover:border-amber-400 hover:text-amber-700"
+                className="whitespace-nowrap rounded-full border border-stone-300 px-3 py-2 text-sm font-medium text-stone-800 transition-colors duration-300 hover:border-public-gold hover:text-[#B8860B]"
               >
                 {locale === 'ar' ? 'EN' : 'AR'}
               </button>
@@ -120,13 +120,13 @@ export function PublicNavbar() {
             <button
               type="button"
               onClick={toggleLanguage}
-              className="rounded-full border border-stone-300 px-3 py-1 text-sm font-medium text-stone-800 transition-colors duration-300 hover:border-amber-400 hover:text-amber-700"
+              className="rounded-full border border-stone-300 px-3 py-1 text-sm font-medium text-stone-800 transition-colors duration-300 hover:border-public-gold hover:text-[#B8860B]"
             >
               {locale === 'ar' ? 'EN' : 'AR'}
             </button>
             <button
               type="button"
-              className="rounded-xl border border-stone-200 bg-white/70 p-2.5 text-stone-800 transition-colors duration-300 hover:border-amber-400 hover:text-amber-700"
+              className="rounded-xl border border-stone-200 bg-white/70 p-2.5 text-stone-800 transition-colors duration-300 hover:border-public-gold hover:text-[#B8860B]"
               aria-expanded={open}
               aria-label={n.menuAria}
               onClick={() => setOpen((v) => !v)}
@@ -143,7 +143,7 @@ export function PublicNavbar() {
                 <Link
                   key={item.href}
                   href={item.href}
-                  className="wl-public-nav-link rounded-xl px-4 py-3.5 text-sm font-bold transition-colors duration-300 hover:bg-amber-50"
+                  className="wl-public-nav-link rounded-xl px-4 py-3.5 text-sm font-bold transition-colors duration-300 hover:bg-public-gold/10"
                   onClick={() => setOpen(false)}
                 >
                   {item.label}

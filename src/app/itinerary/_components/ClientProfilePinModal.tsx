@@ -116,8 +116,8 @@ export default function ClientProfilePinModal({
       >
         <div className="flex items-start justify-between gap-3 border-b border-gray-100 px-5 py-4">
           <div className="flex items-start gap-3">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#D4AF37]/15 ring-1 ring-[#D4AF37]/30">
-              <KeyRound className="h-5 w-5 text-[#D4AF37]" aria-hidden />
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-gold/15 ring-1 ring-brand-gold/30">
+              <KeyRound className="h-5 w-5 text-brand-gold" aria-hidden />
             </span>
             <div>
               <h2 id="profile-pin-title" className="text-base font-black text-[#1E2720]">
@@ -154,7 +154,7 @@ export default function ClientProfilePinModal({
               autoComplete="off"
               autoFocus
               dir="ltr"
-              className="w-full rounded-xl border border-gray-300 px-4 py-3 text-center font-mono text-lg font-black tracking-[0.2em] text-[#1E2720] outline-none focus:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37]/25"
+              className="w-full rounded-xl border border-gray-300 px-4 py-3 text-center font-mono text-lg font-black tracking-[0.2em] text-[#1E2720] outline-none focus:border-brand-gold focus:ring-2 focus:ring-brand-gold/25"
               placeholder="••••••"
             />
           </label>
@@ -168,7 +168,7 @@ export default function ClientProfilePinModal({
           <button
             type="submit"
             disabled={submitting || !normalizeId(clientId)}
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#1E2720] px-4 py-3 text-sm font-black text-[#D4AF37] transition hover:bg-black disabled:opacity-60"
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#1E2720] px-4 py-3 text-sm font-black text-brand-gold transition hover:bg-black disabled:opacity-60"
           >
             {submitting ? (
               <>

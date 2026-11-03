@@ -19,7 +19,7 @@ import {
 import { useCountries } from '@/hooks/useCountries';
 
 const FIELD =
-  'w-full rounded-xl border border-[#D4AF37]/30 bg-[#0D0F0E] px-4 py-3 text-sm font-semibold text-white placeholder:text-white/35 outline-none focus:border-[#D4AF37]/70 focus:ring-2 focus:ring-[#D4AF37]/20';
+  'w-full rounded-xl border border-brand-gold/30 bg-[#0D0F0E] px-4 py-3 text-sm font-semibold text-white placeholder:text-white/35 outline-none focus:border-brand-gold/70 focus:ring-2 focus:ring-brand-gold/20';
 
 export default function PartnerDnaPublicPage() {
   const params = useParams();
@@ -142,7 +142,7 @@ export default function PartnerDnaPublicPage() {
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#0B0D0C]" dir="rtl">
-        <Loader2 className="h-8 w-8 animate-spin text-[#D4AF37]" />
+        <Loader2 className="h-8 w-8 animate-spin text-brand-gold" />
       </div>
     );
   }
@@ -153,7 +153,7 @@ export default function PartnerDnaPublicPage() {
         className="flex min-h-screen flex-col items-center justify-center gap-4 bg-[#0B0D0C] px-6 text-center"
         dir="rtl"
       >
-        <CheckCircle2 className="h-14 w-14 text-[#D4AF37]" />
+        <CheckCircle2 className="h-14 w-14 text-brand-gold" />
         <h1 className="text-2xl font-black text-white">شكراً لك، {name}</h1>
         <p className="max-w-md text-sm font-semibold text-white/70">
           تم حفظ بصمتك بنجاح. فريق Wanderloom سيراجعها ويوائم التعاون مع أسلوبك.
@@ -225,7 +225,7 @@ export default function PartnerDnaPublicPage() {
     >
       <div className="mx-auto max-w-lg">
         <div className="mb-8 text-center">
-          <p className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.35em] text-[#D4AF37]/80">
+          <p className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.35em] text-brand-gold/80">
             <Sparkles className="h-3.5 w-3.5" />
             Partner DNA
           </p>
@@ -239,12 +239,12 @@ export default function PartnerDnaPublicPage() {
 
         <form
           onSubmit={(e) => void handleSubmit(e)}
-          className="space-y-5 rounded-3xl border border-[#D4AF37]/20 bg-black/40 p-6 shadow-2xl backdrop-blur-sm sm:p-8"
+          className="space-y-5 rounded-3xl border border-brand-gold/20 bg-black/40 p-6 shadow-2xl backdrop-blur-sm sm:p-8"
         >
           {type === 'leaders' ? (
             <>
               <fieldset className="space-y-3">
-                <legend className="text-xs font-bold text-[#D4AF37]">
+                <legend className="text-xs font-bold text-brand-gold">
                   المهارات والرخص التخصصية
                 </legend>
                 <div className="grid grid-cols-2 gap-2">
@@ -271,7 +271,7 @@ export default function PartnerDnaPublicPage() {
               </fieldset>
 
               <fieldset className="space-y-3">
-                <legend className="text-xs font-bold text-[#D4AF37]">
+                <legend className="text-xs font-bold text-brand-gold">
                   نمط الرحلات المفضل
                 </legend>
                 <div className="grid gap-2">
@@ -285,8 +285,8 @@ export default function PartnerDnaPublicPage() {
                         onClick={() => togglePreferredStyle(option)}
                         className={`rounded-xl border px-4 py-3 text-right text-xs font-bold transition ${
                           selected
-                            ? 'border-[#D4AF37] bg-[#D4AF37]/20 text-[#F5D978]'
-                            : 'border-white/15 bg-white/5 text-white/75 hover:border-[#D4AF37]/60'
+                            ? 'border-brand-gold bg-brand-gold/20 text-[#F5D978]'
+                            : 'border-white/15 bg-white/5 text-white/75 hover:border-brand-gold/60'
                         }`}
                       >
                         {selected ? '✓ ' : ''}
@@ -300,7 +300,7 @@ export default function PartnerDnaPublicPage() {
           ) : type === 'experts' ? (
             <>
               <fieldset className="space-y-3">
-                <legend className="text-xs font-bold text-[#D4AF37]">
+                <legend className="text-xs font-bold text-brand-gold">
                   الوجهات المختص بها
                 </legend>
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -314,8 +314,8 @@ export default function PartnerDnaPublicPage() {
                         onClick={() => toggleDestination(country.name)}
                         className={`rounded-xl border px-3 py-2.5 text-xs font-bold transition ${
                           selected
-                            ? 'border-[#D4AF37] bg-[#D4AF37]/20 text-[#F5D978]'
-                            : 'border-white/15 bg-white/5 text-white/70 hover:border-[#D4AF37]/50'
+                            ? 'border-brand-gold bg-brand-gold/20 text-[#F5D978]'
+                            : 'border-white/15 bg-white/5 text-white/70 hover:border-brand-gold/50'
                         }`}
                       >
                         {selected ? '✓ ' : ''}
@@ -328,7 +328,7 @@ export default function PartnerDnaPublicPage() {
               </fieldset>
 
               <fieldset className="space-y-3">
-                <legend className="text-xs font-bold text-[#D4AF37]">
+                <legend className="text-xs font-bold text-brand-gold">
                   أسلوب تصميم المسارات
                 </legend>
                 <div className="grid gap-2">
@@ -355,7 +355,7 @@ export default function PartnerDnaPublicPage() {
               </fieldset>
 
               <fieldset className="space-y-3">
-                <legend className="text-xs font-bold text-[#D4AF37]">
+                <legend className="text-xs font-bold text-brand-gold">
                   مميزات ترتيب الفعاليات
                 </legend>
                 <div className="grid gap-2">
@@ -383,7 +383,7 @@ export default function PartnerDnaPublicPage() {
             </>
           ) : (
             <fieldset className="space-y-3">
-              <legend className="text-xs font-bold text-[#D4AF37]">
+              <legend className="text-xs font-bold text-brand-gold">
                 أسلوب تصميم المسار
               </legend>
               <div className="flex flex-wrap gap-2">
@@ -397,8 +397,8 @@ export default function PartnerDnaPublicPage() {
                       onClick={() => toggleRoutingStyle(option.label)}
                       className={`rounded-full border px-3 py-2 text-xs font-bold transition ${
                         selected
-                          ? 'border-[#D4AF37] bg-[#D4AF37] text-[#0B0D0C]'
-                          : 'border-white/15 bg-white/5 text-white/75 hover:border-[#D4AF37]/60'
+                          ? 'border-brand-gold bg-brand-gold text-[#0B0D0C]'
+                          : 'border-white/15 bg-white/5 text-white/75 hover:border-brand-gold/60'
                       }`}
                     >
                       {option.label}
@@ -410,7 +410,7 @@ export default function PartnerDnaPublicPage() {
           )}
 
           <label className="block space-y-2">
-            <span className="text-xs font-bold text-[#D4AF37]">نقاط القوة</span>
+            <span className="text-xs font-bold text-brand-gold">نقاط القوة</span>
             <textarea
               className={`${FIELD} min-h-[88px] resize-y`}
               value={dna.strengths}
@@ -421,7 +421,7 @@ export default function PartnerDnaPublicPage() {
           </label>
 
           <label className="block space-y-2">
-            <span className="text-xs font-bold text-[#D4AF37]">ما الذي يميزك عن غيرك؟</span>
+            <span className="text-xs font-bold text-brand-gold">ما الذي يميزك عن غيرك؟</span>
             <textarea
               className={`${FIELD} min-h-[88px] resize-y`}
               value={dna.competitiveAdvantage}
@@ -434,7 +434,7 @@ export default function PartnerDnaPublicPage() {
           </label>
 
           <label className="block space-y-2">
-            <span className="text-xs font-bold text-[#D4AF37]">
+            <span className="text-xs font-bold text-brand-gold">
               متطلباتك الخاصة من الشركة
             </span>
             <textarea
@@ -452,7 +452,7 @@ export default function PartnerDnaPublicPage() {
           <button
             type="submit"
             disabled={submitting}
-            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-l from-[#B5914F] to-[#D4AF37] px-5 py-3.5 text-sm font-black text-[#0B0D0C] transition hover:brightness-110 disabled:opacity-60"
+            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-l from-[#B5914F] to-brand-gold px-5 py-3.5 text-sm font-black text-[#0B0D0C] transition hover:brightness-110 disabled:opacity-60"
           >
             {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
             حفظ بصمة الشريك

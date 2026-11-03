@@ -12,7 +12,7 @@ type Props = {
   onCurrencyChange: (currency: string) => void;
 };
 
-const labelClass = 'mb-1 block text-[9px] font-black uppercase tracking-wider text-[#D4AF37]';
+const labelClass = 'mb-1 block text-[9px] font-black uppercase tracking-wider text-brand-gold';
 
 export default function FinancialDetailsBar({
   budgetTracking,
@@ -22,12 +22,12 @@ export default function FinancialDetailsBar({
 }: Props) {
   return (
     <section
-      className="rounded-xl border border-[#D4AF37]/35 bg-white p-4 shadow-sm ring-1 ring-[#1E2720]/5 sm:p-5"
+      className="rounded-xl border border-brand-gold/35 bg-white p-4 shadow-sm ring-1 ring-[#1E2720]/5 sm:p-5"
       aria-labelledby="financial-bar-title"
     >
       <div className="mb-4 flex flex-wrap items-center gap-3 border-b border-[#1E2720]/8 pb-3">
         <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100">
-          <Wallet className="h-4 w-4 text-[#D4AF37]" aria-hidden />
+          <Wallet className="h-4 w-4 text-brand-gold" aria-hidden />
         </div>
         <div>
           <h2 id="financial-bar-title" className="text-sm font-black text-[#1E2720]">

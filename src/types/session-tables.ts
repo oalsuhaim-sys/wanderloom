@@ -8,6 +8,8 @@ export interface Session {
   title: string;
   /** تاريخ الجلسة (عمود `date` في Supabase — غالباً YYYY-MM-DD أو ما يعيده الـ API). */
   date: string;
+  /** وقت الجلسة HH:mm (عمود `time`). */
+  time?: string | null;
   session_type: string;
   price: number;
   spots: number;

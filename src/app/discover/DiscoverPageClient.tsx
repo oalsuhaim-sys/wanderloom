@@ -37,7 +37,7 @@ export function DiscoverPageClient() {
               />
               {p.backToHome}
             </Link>
-            <p className="inline-flex items-center gap-2 rounded-full border border-[#cda04c]/30 bg-[#cda04c]/10 px-4 py-1.5 text-[11px] font-black tracking-wide text-[#9a7b45] sm:text-xs">
+            <p className="inline-flex items-center gap-2 rounded-full border border-public-gold/30 bg-public-gold/10 px-4 py-1.5 text-[11px] font-black tracking-wide text-[#9a7b45] sm:text-xs">
               <Sparkles className="h-3.5 w-3.5" aria-hidden />
               {p.discoverBadge}
             </p>
@@ -46,8 +46,8 @@ export function DiscoverPageClient() {
               <span
                 className={`mt-4 block bg-clip-text text-transparent ${
                   dir === 'rtl'
-                    ? 'bg-gradient-to-l from-[#1e3f20] via-[#cda04c] to-[#d4b87a]'
-                    : 'bg-gradient-to-r from-[#1e3f20] via-[#cda04c] to-[#d4b87a]'
+                    ? 'bg-gradient-to-l from-[#1e3f20] via-public-gold to-[#C59B27]'
+                    : 'bg-gradient-to-r from-[#1e3f20] via-public-gold to-[#C59B27]'
                 }`}
               >
                 {p.titleLine2}
@@ -65,7 +65,7 @@ export function DiscoverPageClient() {
               </Link>
               <Link
                 href="/sessions"
-                className="inline-flex items-center justify-center rounded-2xl bg-[#cda04c] px-8 py-3.5 text-sm font-black text-white shadow-lg shadow-[#cda04c]/20 transition hover:bg-[#b3893d]"
+                className="inline-flex items-center justify-center rounded-2xl bg-public-gold px-8 py-3.5 text-sm font-black text-[#1A3B2A] shadow-lg shadow-public-gold/20 transition hover:bg-[#B8860B]"
               >
                 {p.browseSessionsBtn}
               </Link>
@@ -81,7 +81,7 @@ export function DiscoverPageClient() {
                 {p.sectionModelBody}
               </p>
             </article>
-            <article className="rounded-[2rem] border border-[#cda04c]/20 bg-white p-8 shadow-lg shadow-[#cda04c]/5 sm:p-10">
+            <article className="rounded-[2rem] border border-public-gold/20 bg-white p-8 shadow-lg shadow-public-gold/5 sm:p-10">
               <h2 className="text-xl font-black text-[#9a7b45] sm:text-2xl">{p.sectionPhilosophyTitle}</h2>
               <p className="mt-5 text-sm font-bold leading-[1.95] text-gray-600 sm:text-base">
                 {p.sectionPhilosophyBody}
@@ -111,7 +111,7 @@ export function DiscoverPageClient() {
       </main>
 
       <footer className="border-t border-[#1e3f20]/10 bg-[#f4efe6] py-10 text-center">
-        <p className="text-xs font-black tracking-[0.4em] text-[#cda04c]/80">{t.footer.brand}</p>
+        <p className="text-xs font-black tracking-[0.4em] text-public-gold/80">{t.footer.brand}</p>
         <p className="mt-4">
           <a
             href={`mailto:${WANDERLOOM_CONTACT_EMAIL}?subject=${encodeURIComponent(t.footer.emailSubject)}`}

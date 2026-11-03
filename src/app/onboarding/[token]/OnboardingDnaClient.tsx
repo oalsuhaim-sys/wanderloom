@@ -24,7 +24,7 @@ const PREMIUM_INTRO =
   'دعنا نتعرف على تفاصيل حلمك، لننسج لك تجربة سفرٍ تشبهك وتلامس حواسك.';
 
 const inputClass =
-  'w-full rounded-xl border border-[#D4AF37]/20 bg-[#0D0F0E] px-4 py-3 text-sm text-white placeholder:text-[#6B6760] outline-none focus:border-[#D4AF37]/60 focus:ring-2 focus:ring-[#D4AF37]/20';
+  'w-full rounded-xl border border-brand-gold/20 bg-[#0D0F0E] px-4 py-3 text-sm text-white placeholder:text-[#6B6760] outline-none focus:border-brand-gold/60 focus:ring-2 focus:ring-brand-gold/20';
 
 function toggleInterest(list: string[], label: string): string[] {
   return list.includes(label) ? list.filter((x) => x !== label) : [...list, label];
@@ -123,7 +123,7 @@ export function OnboardingDnaClient({
 
       <div className="relative z-10 mx-auto flex min-h-screen max-w-2xl flex-col px-4 py-10 sm:px-6 sm:py-14">
         <header className="mb-10 text-center">
-          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-[#D4AF37]/30 bg-[#D4AF37]/10 px-4 py-1.5 text-xs font-bold tracking-widest text-[#D4AF37]">
+          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-brand-gold/30 bg-brand-gold/10 px-4 py-1.5 text-xs font-bold tracking-widest text-brand-gold">
             <Sparkles className="h-3.5 w-3.5" aria-hidden />
             WANDERLOOM VIP
           </div>
@@ -145,10 +145,10 @@ export function OnboardingDnaClient({
         ) : showForm ? (
           <form
             onSubmit={(e) => void handleSubmit(e)}
-            className="space-y-8 rounded-3xl border border-[#D4AF37]/25 bg-[#141816]/85 p-6 shadow-[0_24px_80px_rgba(0,0,0,0.45)] backdrop-blur-md sm:p-8"
+            className="space-y-8 rounded-3xl border border-brand-gold/25 bg-[#141816]/85 p-6 shadow-[0_24px_80px_rgba(0,0,0,0.45)] backdrop-blur-md sm:p-8"
           >
             <section>
-              <h2 className="mb-4 flex items-center gap-2 text-base font-black text-[#D4AF37]">
+              <h2 className="mb-4 flex items-center gap-2 text-base font-black text-brand-gold">
                 <span aria-hidden>🎂</span>
                 التواريخ السعيدة
               </h2>
@@ -186,8 +186,8 @@ export function OnboardingDnaClient({
               </div>
             </section>
 
-            <section className="rounded-2xl border border-[#D4AF37]/15 bg-[#0D0F0E]/60 p-5">
-              <h2 className="mb-1 flex items-center gap-2 text-base font-black text-[#D4AF37]">
+            <section className="rounded-2xl border border-brand-gold/15 bg-[#0D0F0E]/60 p-5">
+              <h2 className="mb-1 flex items-center gap-2 text-base font-black text-brand-gold">
                 <span aria-hidden>✨</span>
                 تفضيلاتك الشخصية (Travel DNA)
               </h2>
@@ -289,7 +289,7 @@ export function OnboardingDnaClient({
             </section>
 
             <section>
-              <h2 className="mb-4 flex items-center gap-2 text-base font-black text-[#D4AF37]">
+              <h2 className="mb-4 flex items-center gap-2 text-base font-black text-brand-gold">
                 <span aria-hidden>🌟</span>
                 الاهتمامات والشغف
               </h2>
@@ -305,8 +305,8 @@ export function OnboardingDnaClient({
                       }
                       className={`rounded-full border px-4 py-2 text-xs font-bold transition sm:text-sm ${
                         selected
-                          ? 'border-[#D4AF37] bg-[#D4AF37]/15 text-[#D4AF37] shadow-[0_0_20px_rgba(212,175,55,0.15)]'
-                          : 'border-[#D4AF37]/20 bg-[#0D0F0E] text-[#C8C4BC] hover:border-[#D4AF37]/45'
+                          ? 'border-brand-gold bg-brand-gold/15 text-brand-gold shadow-[0_0_20px_rgba(212,175,55,0.15)]'
+                          : 'border-brand-gold/20 bg-[#0D0F0E] text-[#C8C4BC] hover:border-brand-gold/45'
                       }`}
                     >
                       {label}

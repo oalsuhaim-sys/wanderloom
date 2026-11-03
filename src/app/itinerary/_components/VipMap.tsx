@@ -144,19 +144,19 @@ export default function VipMap({ day, destination, hideUber = false }: VipMapPro
   }
 
   return (
-    <div className="vip-map-root relative flex h-[60vh] min-h-[500px] w-full items-center justify-center overflow-hidden rounded-2xl border border-[#d4af37]/30 bg-[#001f3f]/50 shadow-[0_0_24px_rgba(212,175,55,0.12)]">
+    <div className="vip-map-root relative flex h-[60vh] min-h-[500px] w-full items-center justify-center overflow-hidden rounded-2xl border border-brand-gold/30 bg-[#001f3f]/50 shadow-[0_0_24px_rgba(212,175,55,0.12)]">
       <link href={MAPBOX_CSS_CDN} rel="stylesheet" />
 
       {refining && !mapError ? (
         <div className="pointer-events-none absolute inset-x-0 top-3 z-20 flex justify-center">
-          <span className="rounded-full border border-[#d4af37]/30 bg-[#00152e]/90 px-4 py-1.5 text-[10px] font-bold text-[#d4af37]/90 backdrop-blur-sm">
+          <span className="rounded-full border border-brand-gold/30 bg-[#00152e]/90 px-4 py-1.5 text-[10px] font-bold text-brand-gold/90 backdrop-blur-sm">
             {TXT_LOADING}
           </span>
         </div>
       ) : null}
 
       {mapError ? (
-        <div className="z-10 rounded-xl border border-red-500/50 bg-[#001f3f] p-6 text-center text-[#d4af37]">
+        <div className="z-10 rounded-xl border border-red-500/50 bg-[#001f3f] p-6 text-center text-brand-gold">
           <p className="mb-2 text-xl font-bold">{'\u26a0\ufe0f \u062a\u0646\u0628\u064a\u0647 \u0645\u0646 \u0627\u0644\u062e\u0631\u064a\u0637\u0629'}</p>
           <p className="text-sm text-white/70">{mapError}</p>
         </div>
@@ -196,7 +196,7 @@ export default function VipMap({ day, destination, hideUber = false }: VipMapPro
                 id="vip-day-route-line"
                 type="line"
                 paint={{
-                  'line-color': '#d4af37',
+                  'line-color': '#D4AF37',
                   'line-width': 3,
                   'line-opacity': 0.7,
                   'line-dasharray': [2, 2],

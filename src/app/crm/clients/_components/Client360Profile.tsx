@@ -125,11 +125,11 @@ function nodeToneClass(tone: TimelineTone): string {
     case 'emerald':
       return 'border-emerald-300 text-emerald-600 dark:border-emerald-700/40 dark:text-emerald-400';
     case 'navy':
-      return 'border-slate-300 text-slate-700 dark:border-[#D4AF37]/40 dark:text-[#D4AF37]';
+      return 'border-slate-300 text-slate-700 dark:border-brand-gold/40 dark:text-brand-gold';
     case 'gold':
-      return 'border-[#D4AF37]/50 text-[#B8941F] dark:border-[#D4AF37]/40 dark:text-[#D4AF37]';
+      return 'border-brand-gold/50 text-[#B8941F] dark:border-brand-gold/40 dark:text-brand-gold';
     default:
-      return 'border-slate-200 text-slate-500 dark:border-[#2D3F3A] dark:text-[#D4AF37]';
+      return 'border-slate-200 text-slate-500 dark:border-[#2D3F3A] dark:text-brand-gold';
   }
 }
 
@@ -225,11 +225,11 @@ export default function Client360Profile({
     >
       <section
         data-wl-banner="theme-aware"
-        className="flex w-full flex-col flex-wrap items-start justify-between gap-4 rounded-2xl bg-slate-900 p-6 text-white md:flex-row md:items-center dark:!bg-[#22302C] dark:text-[#D4AF37]"
+        className="flex w-full flex-col flex-wrap items-start justify-between gap-4 rounded-2xl bg-slate-900 p-6 text-white md:flex-row md:items-center dark:!bg-[#22302C] dark:text-brand-gold"
       >
         <div className="flex min-w-0 flex-1 flex-col gap-4 sm:flex-row sm:items-center">
           <div
-            className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-white/20 bg-white/10 text-lg font-semibold tracking-wide text-white backdrop-blur-sm dark:border-[#D4AF37]/35 dark:!bg-[#1A2421] dark:text-[#D4AF37]"
+            className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-white/20 bg-white/10 text-lg font-semibold tracking-wide text-white backdrop-blur-sm dark:border-brand-gold/35 dark:!bg-[#1A2421] dark:text-brand-gold"
             aria-hidden
           >
             {initials}
@@ -281,7 +281,7 @@ export default function Client360Profile({
       <section aria-label="ملخص المحفظة">
         {loadingFinance ? (
           <div className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-slate-50 py-8 text-sm font-medium text-slate-500 dark:border-[#2D3F3A] dark:!bg-[#22302C] dark:text-slate-400">
-            <Loader2 className="h-5 w-5 animate-spin dark:text-[#D4AF37]" aria-hidden />
+            <Loader2 className="h-5 w-5 animate-spin dark:text-brand-gold" aria-hidden />
             جارٍ تحميل الملخص المالي…
           </div>
         ) : (
@@ -331,14 +331,14 @@ export default function Client360Profile({
             value={noteText}
             onChange={(e) => setNoteText(e.target.value)}
             placeholder="أضف ملاحظة أو تفاعلاً يدوياً…"
-            className="min-w-0 flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:ring-2 focus:ring-slate-900/10 dark:border-[#2D3F3A] dark:bg-[#1A2421] dark:text-gray-100 dark:placeholder:text-slate-500 dark:focus:border-[#D4AF37]/50 dark:focus:ring-[#D4AF37]/20"
+            className="min-w-0 flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:ring-2 focus:ring-slate-900/10 dark:border-[#2D3F3A] dark:bg-[#1A2421] dark:text-gray-100 dark:placeholder:text-slate-500 dark:focus:border-brand-gold/50 dark:focus:ring-brand-gold/20"
             disabled={savingNote}
             maxLength={500}
           />
           <button
             type="submit"
             disabled={savingNote || !noteText.trim()}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-50 dark:border dark:border-[#D4AF37]/50 dark:bg-[#D4AF37]/20 dark:text-[#D4AF37] dark:hover:bg-[#D4AF37]/30"
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-50 dark:border dark:border-brand-gold/50 dark:bg-brand-gold/20 dark:text-brand-gold dark:hover:bg-brand-gold/30"
           >
             {savingNote ? (
               <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
@@ -351,7 +351,7 @@ export default function Client360Profile({
 
         {loadingActivities ? (
           <div className="flex items-center justify-center gap-2 py-10 text-sm text-slate-500 dark:text-slate-400">
-            <Loader2 className="h-5 w-5 animate-spin dark:text-[#D4AF37]" aria-hidden />
+            <Loader2 className="h-5 w-5 animate-spin dark:text-brand-gold" aria-hidden />
             جارٍ تحميل السجل…
           </div>
         ) : activityError ? (
@@ -376,7 +376,7 @@ export default function Client360Profile({
                   </span>
                   <div className="rounded-xl border border-slate-100 bg-slate-50/80 px-3 py-2.5 transition hover:bg-white dark:border-[#2D3F3A] dark:!bg-[#1A2421]/80">
                     <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
-                      <span className="text-[10px] font-medium uppercase tracking-wider text-slate-400 dark:text-[#D4AF37]/70">
+                      <span className="text-[10px] font-medium uppercase tracking-wider text-slate-400 dark:text-brand-gold/70">
                         {visual.kindLabel}
                       </span>
                       <time
@@ -420,7 +420,7 @@ function FinanceStatCard({
     <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 shadow-sm dark:border-[#2D3F3A] dark:!bg-[#22302C]">
       <div className="mb-2 flex items-center justify-between">
         <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{label}</p>
-        <span className="text-slate-400 dark:text-[#D4AF37]">{icon}</span>
+        <span className="text-slate-400 dark:text-brand-gold">{icon}</span>
       </div>
       <p
         className="text-xl font-semibold tabular-nums text-slate-900 dark:text-gray-100"

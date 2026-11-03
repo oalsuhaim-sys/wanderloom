@@ -69,7 +69,7 @@ export default function ExperiencesExplorer({
     <div className="flex flex-1 flex-col overflow-hidden bg-white">
       <div className="border-b border-slate-200 bg-slate-50 p-4">
         <div className="mb-3 flex items-center gap-2 text-sm text-slate-500">
-          <Ticket className="h-4 w-4 text-[#D4AF37]" aria-hidden />
+          <Ticket className="h-4 w-4 text-brand-gold" aria-hidden />
           <span>بحث Viator / GetYourGuide — بيانات تجريبية حتى تفعيل المفتاح</span>
         </div>
         <div className="flex gap-2">
@@ -102,7 +102,7 @@ export default function ExperiencesExplorer({
       <div className="no-scrollbar flex-1 overflow-y-auto p-4">
         {isSearchingAPI ? (
           <div className="flex flex-col items-center justify-center gap-3 py-16 text-slate-500">
-            <Loader2 className="h-8 w-8 animate-spin text-[#D4AF37]" aria-hidden />
+            <Loader2 className="h-8 w-8 animate-spin text-brand-gold" aria-hidden />
             <p className="text-sm font-bold">جاري البحث في مزوّد التجارب…</p>
           </div>
         ) : results.length > 0 ? (
@@ -110,7 +110,7 @@ export default function ExperiencesExplorer({
             {results.map((experience) => (
               <article
                 key={experience.id}
-                className="flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-slate-50 shadow-xl transition-shadow hover:border-[#D4AF37]/40"
+                className="flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-slate-50 shadow-xl transition-shadow hover:border-brand-gold/40"
               >
                 <div className="relative aspect-[16/10] w-full bg-slate-50">
                   <Image
@@ -130,14 +130,14 @@ export default function ExperiencesExplorer({
                     {experience.title}
                   </h4>
                   <div className="mt-3 flex items-center justify-between gap-2">
-                    <span className="text-sm font-black text-[#D4AF37]">
+                    <span className="text-sm font-black text-brand-gold">
                       {formatExperiencePrice(experience.price, experience.currency)}
                     </span>
                     <span
                       className="inline-flex items-center gap-1 text-xs font-semibold text-slate-600"
                       title={`${experience.rating} / 5`}
                     >
-                      <Star className="h-3.5 w-3.5 fill-[#D4AF37] text-[#D4AF37]" aria-hidden />
+                      <Star className="h-3.5 w-3.5 fill-brand-gold text-brand-gold" aria-hidden />
                       {experience.rating.toFixed(1)}
                       <span className="text-[10px] tracking-tight" aria-hidden>
                         {renderExperienceStars(experience.rating)}

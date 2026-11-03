@@ -119,7 +119,7 @@ export default function MarketingPage() {
   return (
     <div dir="rtl" className="mx-auto w-full max-w-7xl space-y-6 px-4 py-6 sm:px-6 lg:px-8">
       <header className="space-y-2">
-        <p className="text-xs font-semibold tracking-wide text-slate-500 dark:text-[#D4AF37]/80">
+        <p className="text-xs font-semibold tracking-wide text-slate-500 dark:text-brand-gold/80">
           مركز التسويق الشامل
         </p>
         <h1 className="text-2xl font-bold text-slate-900 dark:text-white sm:text-3xl">
@@ -157,9 +157,9 @@ export default function MarketingPage() {
               onClick={() => setActiveTab(tab.id)}
               className={[
                 'inline-flex min-h-[44px] shrink-0 items-center justify-center gap-2 rounded-xl px-3.5 py-2.5 text-sm font-semibold transition',
-                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/20 dark:focus-visible:ring-[#D4AF37]/40',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/20 dark:focus-visible:ring-brand-gold/40',
                 isActive
-                  ? 'bg-white text-slate-900 shadow-sm dark:bg-[#22302C] dark:text-[#D4AF37] dark:shadow-none dark:ring-1 dark:ring-[#D4AF37]/30'
+                  ? 'bg-white text-slate-900 shadow-sm dark:bg-[#22302C] dark:text-brand-gold dark:shadow-none dark:ring-1 dark:ring-brand-gold/30'
                   : 'text-slate-500 hover:bg-white/70 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-[#22302C]/70 dark:hover:text-slate-200',
               ].join(' ')}
             >

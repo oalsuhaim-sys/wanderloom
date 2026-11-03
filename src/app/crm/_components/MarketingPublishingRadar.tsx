@@ -33,7 +33,7 @@ function RadarTimelineItem({ item }: { item: MarketingPublishRadarItem }) {
             {meta.emoji} {meta.badge}
           </span>
           {item.media_type ? (
-            <span className="rounded-full border border-[#D4AF37]/40 bg-[#D4AF37]/10 px-2 py-0.5 text-[9px] font-bold text-[#b8952d]">
+            <span className="rounded-full border border-brand-gold/40 bg-brand-gold/10 px-2 py-0.5 text-[9px] font-bold text-brand-gold">
               {item.media_type}
             </span>
           ) : null}
@@ -45,7 +45,7 @@ function RadarTimelineItem({ item }: { item: MarketingPublishRadarItem }) {
         <p className="mt-2 text-[11px] font-medium text-slate-600" dir="ltr">
           {formatPublishScheduleTime(item.scheduledAt)}
         </p>
-        <p className="mt-1 text-[10px] font-extrabold text-[#b8952d]">{meta.label}</p>
+        <p className="mt-1 text-[10px] font-extrabold text-brand-gold">{meta.label}</p>
       </div>
     </li>
   );
@@ -70,11 +70,11 @@ export default function MarketingPublishingRadar({
     >
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-4">
         <div className="flex items-center gap-3">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-[#b8952d] shadow-sm">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-brand-gold shadow-sm">
             <Radio className="h-5 w-5" aria-hidden strokeWidth={2.2} />
           </span>
           <div className="text-right">
-            <h2 className="flex items-center gap-2 text-lg font-extrabold text-[#b8952d]">
+            <h2 className="flex items-center gap-2 text-lg font-extrabold text-brand-gold">
               📡 رادار النشر التسويقي
             </h2>
             <p className="text-xs font-medium text-slate-600">
@@ -90,7 +90,7 @@ export default function MarketingPublishingRadar({
             </span>
           ) : null}
           {tomorrowCount > 0 ? (
-            <span className="rounded-xl border border-[#D4AF37]/40 bg-[#D4AF37]/10 px-3 py-1.5 text-[10px] font-bold text-[#b8952d]">
+            <span className="rounded-xl border border-brand-gold/40 bg-brand-gold/10 px-3 py-1.5 text-[10px] font-bold text-brand-gold">
               {tomorrowCount} غداً
             </span>
           ) : null}
@@ -98,7 +98,7 @@ export default function MarketingPublishingRadar({
             href="/crm/marketing"
             className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-100 px-4 py-2 text-[11px] font-semibold text-slate-700 transition-all hover:bg-slate-200"
           >
-            <Megaphone className="h-3.5 w-3.5 text-[#b8952d]" aria-hidden />
+            <Megaphone className="h-3.5 w-3.5 text-brand-gold" aria-hidden />
             مركز التسويق
           </Link>
         </div>
@@ -113,7 +113,7 @@ export default function MarketingPublishingRadar({
 
         {loading ? (
           <div className="flex min-h-[180px] items-center justify-center gap-2 text-slate-600">
-            <Loader2 className="h-6 w-6 animate-spin text-[#b8952d]" aria-hidden />
+            <Loader2 className="h-6 w-6 animate-spin text-brand-gold" aria-hidden />
             <span className="text-sm font-medium">جاري مسح جدول النشر…</span>
           </div>
         ) : items.length === 0 ? (
@@ -124,7 +124,7 @@ export default function MarketingPublishingRadar({
           <ol className="relative space-y-3">
             <div
               aria-hidden
-              className="pointer-events-none absolute bottom-2 start-5 top-2 w-px bg-gradient-to-b from-[#D4AF37]/50 via-slate-200 to-transparent"
+              className="pointer-events-none absolute bottom-2 start-5 top-2 w-px bg-gradient-to-b from-brand-gold/50 via-slate-200 to-transparent"
             />
             {items.map((item) => (
               <RadarTimelineItem key={item.id} item={item} />

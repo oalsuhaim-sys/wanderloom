@@ -157,7 +157,7 @@ export default function ItineraryBuilderSplitEditor({ itineraryId }: Props) {
   if (loading) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center bg-[#F9F9F6]">
-        <Loader2 className="h-10 w-10 animate-spin text-[#D4AF37]" aria-hidden />
+        <Loader2 className="h-10 w-10 animate-spin text-brand-gold" aria-hidden />
         <span className="sr-only">جاري التحميل…</span>
       </div>
     );
@@ -191,7 +191,7 @@ export default function ItineraryBuilderSplitEditor({ itineraryId }: Props) {
               المسارات
             </Link>
             <div>
-              <p className="text-[10px] font-black uppercase tracking-wider text-[#D4AF37]">
+              <p className="text-[10px] font-black uppercase tracking-wider text-brand-gold">
                 منشئ المسار · بنك الأماكن
               </p>
               <h1 className="text-lg font-black text-[#1E2720]">
@@ -206,7 +206,7 @@ export default function ItineraryBuilderSplitEditor({ itineraryId }: Props) {
             <button
               type="button"
               onClick={addDay}
-              className="inline-flex items-center gap-1 rounded-xl border border-[#D4AF37]/50 bg-white px-3 py-2 text-xs font-black text-[#1E2720]"
+              className="inline-flex items-center gap-1 rounded-xl border border-brand-gold/50 bg-white px-3 py-2 text-xs font-black text-[#1E2720]"
             >
               <Plus className="h-3.5 w-3.5" />
               يوم جديد
@@ -248,10 +248,10 @@ export default function ItineraryBuilderSplitEditor({ itineraryId }: Props) {
           />
           <div>
             <div className="mb-4 flex items-center gap-2">
-              <CalendarDays className="h-5 w-5 text-[#D4AF37]" />
+              <CalendarDays className="h-5 w-5 text-brand-gold" />
               <h2 className="text-base font-black text-[#1E2720]">خريطة + جدول يومي</h2>
             </div>
-            <div className="rounded-[1.25rem] border border-[#D4AF37]/30 bg-white p-4 shadow-[0_12px_40px_rgba(30,39,32,0.08)] ring-1 ring-[#1E2720]/5 sm:p-5">
+            <div className="rounded-[1.25rem] border border-brand-gold/30 bg-white p-4 shadow-[0_12px_40px_rgba(30,39,32,0.08)] ring-1 ring-[#1E2720]/5 sm:p-5">
               <ItineraryBuilderDaysPanel
                 theme="light"
                 days={draft.days}

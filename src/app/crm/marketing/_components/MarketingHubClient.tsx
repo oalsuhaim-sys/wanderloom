@@ -84,13 +84,13 @@ const TABS: { id: MarketingTab; label: string; icon: typeof Sparkles }[] = [
 ];
 
 const FIELD =
-  'w-full rounded-lg border border-gray-300 bg-[#FDFBF7] p-3 text-sm font-bold text-[#111111] outline-none transition focus:border-[#cda04c] focus:ring-1 focus:ring-[#cda04c]';
+  'w-full rounded-lg border border-gray-300 bg-[#FDFBF7] p-3 text-sm font-bold text-[#111111] outline-none transition focus:border-brand-gold focus:ring-1 focus:ring-brand-gold';
 
 const PROMPT_TEXTAREA =
-  'crm-marketing-textarea w-full min-h-[200px] shrink-0 resize-y overflow-y-auto rounded-lg border border-gray-300 bg-[#FDFBF7] p-3 text-sm font-bold text-[#111111] outline-none transition focus:border-[#cda04c] focus:ring-1 focus:ring-[#cda04c] font-mono text-xs';
+  'crm-marketing-textarea w-full min-h-[200px] shrink-0 resize-y overflow-y-auto rounded-lg border border-gray-300 bg-[#FDFBF7] p-3 text-sm font-bold text-[#111111] outline-none transition focus:border-brand-gold focus:ring-1 focus:ring-brand-gold font-mono text-xs';
 
 const CAPTION_TEXTAREA =
-  'crm-marketing-textarea w-full min-h-[180px] shrink-0 resize-y overflow-y-auto rounded-lg border border-[#cda04c]/25 bg-[#FFFBF0] p-3 text-sm font-bold leading-relaxed text-[#2d3a33] outline-none transition focus:border-[#cda04c] focus:ring-1 focus:ring-[#cda04c]';
+  'crm-marketing-textarea w-full min-h-[180px] shrink-0 resize-y overflow-y-auto rounded-lg border border-brand-gold/25 bg-[#FFFBF0] p-3 text-sm font-bold leading-relaxed text-[#2d3a33] outline-none transition focus:border-brand-gold focus:ring-1 focus:ring-brand-gold';
 
 const INJECT_CHECKBOX_CLASS =
   "h-5 w-5 shrink-0 cursor-pointer appearance-none rounded-sm border-2 border-[#111111] bg-white checked:border-[#1e3f20] checked:bg-[#1e3f20] relative outline-none after:content-[''] after:hidden checked:after:block after:absolute after:inset-0 after:m-auto after:h-[8px] after:w-[4px] after:rotate-45 after:border-b-2 after:border-r-2 after:border-white";
@@ -98,12 +98,12 @@ const INJECT_CHECKBOX_CLASS =
 function aiStatusClass(status: string | null | undefined): string {
   const s = status ?? '';
   if (s.includes('تم الرفع')) return 'border-[#1e3f20]/30 bg-[#1e3f20]/10 text-[#1e3f20]';
-  return 'border-[#cda04c]/45 bg-[#cda04c]/12 text-[#7a5f28]';
+  return 'border-brand-gold/45 bg-brand-gold/12 text-[#7a5f28]';
 }
 
 function guideStatusClass(status: string | null | undefined): string {
   const s = status ?? '';
-  if (s.includes('مونتاج')) return 'border-[#cda04c]/50 bg-[#cda04c]/10 text-[#7a5f28]';
+  if (s.includes('مونتاج')) return 'border-brand-gold/50 bg-brand-gold/10 text-[#7a5f28]';
   if (s.includes('بانتظار')) return 'border-amber-300/60 bg-amber-50 text-amber-900';
   return 'border-[#1e3f20]/25 bg-[#1e3f20]/8 text-[#1e3f20]';
 }
@@ -385,11 +385,11 @@ export default function MarketingHubClient() {
         <header className="mb-6 rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm sm:mb-8 sm:p-6 md:p-8">
           <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between sm:gap-6">
             <div className="min-w-0">
-              <p className="inline-flex items-center gap-2 rounded-full border border-[#D4AF37]/35 bg-[#D4AF37]/10 px-3 py-1.5 text-[10px] font-bold text-[#b8952d] sm:px-4 sm:text-[11px]">
+              <p className="inline-flex items-center gap-2 rounded-full border border-brand-gold/35 bg-brand-gold/10 px-3 py-1.5 text-[10px] font-bold text-brand-gold sm:px-4 sm:text-[11px]">
                 <Megaphone className="h-3.5 w-3.5" aria-hidden />
                 Marketing Hub · إدارة ديناميكية
               </p>
-              <h1 className="mt-3 text-2xl font-extrabold text-[#b8952d] sm:mt-4 sm:text-3xl md:text-4xl">مركز التسويق</h1>
+              <h1 className="mt-3 text-2xl font-extrabold text-brand-gold sm:mt-4 sm:text-3xl md:text-4xl">مركز التسويق</h1>
               <p className="mt-2 text-sm font-medium leading-relaxed text-slate-600 sm:mt-3">
                 بيانات حية من Supabase · حقن الهوية البصرية · CRUD كامل
               </p>
@@ -406,12 +406,12 @@ export default function MarketingHubClient() {
                 تحديث
               </button>
               <div className="rounded-2xl border border-slate-200/80 bg-white px-5 py-4 text-center shadow-sm">
-                <p className="text-2xl font-extrabold text-[#b8952d]">{stats.total}</p>
+                <p className="text-2xl font-extrabold text-brand-gold">{stats.total}</p>
                 <p className="text-[11px] font-medium text-slate-600">عنصر</p>
               </div>
-              <div className="rounded-2xl border border-[#D4AF37]/35 bg-[#D4AF37]/10 px-5 py-4 text-center shadow-sm">
+              <div className="rounded-2xl border border-brand-gold/35 bg-brand-gold/10 px-5 py-4 text-center shadow-sm">
                 <p className="text-2xl font-extrabold text-slate-900">{stats.ready}</p>
-                <p className="text-[11px] font-medium text-[#b8952d]">جاهز للتنفيذ</p>
+                <p className="text-[11px] font-medium text-brand-gold">جاهز للتنفيذ</p>
               </div>
             </div>
           </div>
@@ -428,7 +428,7 @@ export default function MarketingHubClient() {
 
         {loading ? (
           <div className="flex min-h-[320px] flex-col items-center justify-center gap-4 rounded-2xl border border-slate-200/80 bg-white p-12 shadow-sm">
-            <Loader2 className="h-10 w-10 animate-spin text-[#b8952d]" aria-hidden />
+            <Loader2 className="h-10 w-10 animate-spin text-brand-gold" aria-hidden />
             <p className="text-sm font-extrabold text-slate-900">جاري تحميل البيانات...</p>
             <p className="text-xs font-medium text-slate-600">Supabase · marketing_ai_prompts · human_scripts · calendar · brand_identity</p>
           </div>
@@ -446,17 +446,17 @@ export default function MarketingHubClient() {
                 onClick={() => setActiveTab(tab.id)}
                 className={`inline-flex w-full min-h-10 items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm transition-all sm:w-auto sm:flex-none sm:px-5 ${
                   active
-                    ? 'border border-slate-800 bg-[#1A2421] font-bold text-[#D4AF37]'
+                    ? 'border border-slate-800 bg-[#1A2421] font-bold text-brand-gold'
                     : 'bg-slate-100 font-semibold text-slate-700 hover:bg-slate-200'
                 }`}
               >
-                <Icon className={`h-4 w-4 ${active ? 'text-[#D4AF37]' : 'text-[#b8952d]'}`} />
+                <Icon className={`h-4 w-4 ${active ? 'text-brand-gold' : 'text-brand-gold'}`} />
                 {tab.label}
                 {tab.id !== 'brand' ? (
                   <span
                     className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
                       active
-                        ? 'bg-white/10 text-[#D4AF37]'
+                        ? 'bg-white/10 text-brand-gold'
                         : 'bg-white text-slate-600 ring-1 ring-slate-200'
                     }`}
                   >
@@ -494,7 +494,7 @@ export default function MarketingHubClient() {
                     <span className="rounded-full border border-[#1e3f20]/20 bg-[#f4f0e6]/80 px-3 py-1 text-[10px] font-black text-[#1e3f20]">
                       {item.media_type}
                     </span>
-                    <span className="rounded-full border border-[#cda04c]/40 bg-[#cda04c]/10 px-3 py-1 text-[10px] font-black text-[#7a5f28]">
+                    <span className="rounded-full border border-brand-gold/40 bg-brand-gold/10 px-3 py-1 text-[10px] font-black text-[#7a5f28]">
                       {item.content_category}
                     </span>
                     <span className={`rounded-full border px-3 py-1 text-[10px] font-black ${aiStatusClass(item.status)}`}>
@@ -527,7 +527,7 @@ export default function MarketingHubClient() {
                       <button
                         type="button"
                         onClick={() => copyPromptWithInject(item)}
-                        className="rounded bg-[#cda04c] px-3 py-1 text-xs font-bold text-white hover:bg-[#b3893d]"
+                        className="rounded bg-brand-gold px-3 py-1 text-xs font-bold text-[#1A3B2A] hover:bg-[#C4A030]"
                       >
                         نسخ البرومبت
                       </button>
@@ -559,7 +559,7 @@ export default function MarketingHubClient() {
                       نسخ الكابشن والهاشتاج
                     </button>
                   </div>
-                  <div className="rounded-xl border border-[#cda04c]/25 bg-[#FFFBF0] p-4">
+                  <div className="rounded-xl border border-brand-gold/25 bg-[#FFFBF0] p-4">
                     <textarea
                       value={item.caption ?? ''}
                       readOnly
@@ -568,8 +568,8 @@ export default function MarketingHubClient() {
                       className="crm-marketing-textarea min-h-[180px] w-full resize-y overflow-y-auto border-0 bg-transparent text-sm font-bold leading-[1.9] text-[#2d3a33] outline-none"
                       aria-label="Caption"
                     />
-                    <p className="mt-3 flex items-center gap-2 border-t border-[#cda04c]/20 pt-3 text-xs font-bold text-[#1e3f20]">
-                      <Hash className="h-3.5 w-3.5 shrink-0 text-[#cda04c]" aria-hidden />
+                    <p className="mt-3 flex items-center gap-2 border-t border-brand-gold/20 pt-3 text-xs font-bold text-[#1e3f20]">
+                      <Hash className="h-3.5 w-3.5 shrink-0 text-brand-gold" aria-hidden />
                       <span className="min-w-0 flex-1 whitespace-pre-wrap break-words">{item.hashtags ?? ''}</span>
                     </p>
                   </div>
@@ -590,7 +590,7 @@ export default function MarketingHubClient() {
               <article key={item.id} className="flex flex-col gap-5 rounded-[1.75rem] border border-[#1e3f20]/10 bg-white p-6 shadow-sm">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
-                    <span className="rounded-full border border-[#cda04c]/35 bg-[#cda04c]/10 px-3 py-1 text-[10px] font-black text-[#9a7b45]">
+                    <span className="rounded-full border border-brand-gold/35 bg-brand-gold/10 px-3 py-1 text-[10px] font-black text-[#9a7b45]">
                       {item.platform ?? ''}
                     </span>
                     <h3 className="mt-3 text-lg font-black text-[#1e3f20]">{item.title ?? ''}</h3>
@@ -607,8 +607,8 @@ export default function MarketingHubClient() {
                     </button>
                   </div>
                 </div>
-                <div className="rounded-xl border border-[#cda04c]/30 bg-[#FFFBF0] p-4">
-                  <p className="mb-2 flex items-center gap-2 text-xs font-black text-[#cda04c]">
+                <div className="rounded-xl border border-brand-gold/30 bg-[#FFFBF0] p-4">
+                  <p className="mb-2 flex items-center gap-2 text-xs font-black text-brand-gold">
                     <Video className="h-3.5 w-3.5" /> الخطاف
                   </p>
                   <p className="text-sm font-bold text-[#2d3a33]">{item.hook ?? ''}</p>
@@ -636,7 +636,7 @@ export default function MarketingHubClient() {
 
             <section className="space-y-4">
               <div>
-                <p className="text-xs font-black text-[#cda04c]">مكتبة الإنتاج</p>
+                <p className="text-xs font-black text-brand-gold">مكتبة الإنتاج</p>
                 <h3 className="mt-1 text-lg font-black text-[#1e3f20]">رفع الملفات والمواد الجاهزة</h3>
                 <p className="mt-1 text-xs font-bold text-gray-500">
                   صور · فيديو · PDF · جداول — تُخزَّن في Supabase Storage
@@ -649,24 +649,24 @@ export default function MarketingHubClient() {
 
         {activeTab === 'calendar' ? (
           <div className="space-y-6">
-            <div className="rounded-2xl border border-[#cda04c]/30 bg-gradient-to-l from-[#1e3f20]/5 to-[#cda04c]/10 px-6 py-4">
-              <p className="text-xs font-black text-[#cda04c]">تقويم Instagram & TikTok</p>
+            <div className="rounded-2xl border border-brand-gold/30 bg-gradient-to-l from-[#1e3f20]/5 to-brand-gold/10 px-6 py-4">
+              <p className="text-xs font-black text-brand-gold">تقويم Instagram & TikTok</p>
               <h3 className="mt-1 text-lg font-black text-[#1e3f20]">خطة المحتوى</h3>
             </div>
-            <ol className="relative space-y-0 border-r-2 border-[#cda04c]/35 pr-6">
+            <ol className="relative space-y-0 border-r-2 border-brand-gold/35 pr-6">
               {calendarItems.map((slot, index) => (
                 <li key={slot.id} className="relative pb-8 last:pb-0">
-                  <span className="absolute -right-[calc(0.75rem+1px)] top-1 flex h-6 w-6 items-center justify-center rounded-full border-2 border-[#cda04c] bg-[#FDFBF7] text-[10px] font-black">
+                  <span className="absolute -right-[calc(0.75rem+1px)] top-1 flex h-6 w-6 items-center justify-center rounded-full border-2 border-brand-gold bg-[#FDFBF7] text-[10px] font-black">
                     {index + 1}
                   </span>
                   <div className="rounded-2xl border border-[#1e3f20]/10 bg-white p-5 shadow-sm">
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
-                        <p className="text-xs font-black text-[#cda04c]">{slot.date ?? ''}</p>
+                        <p className="text-xs font-black text-brand-gold">{slot.date ?? ''}</p>
                         <h4 className="mt-2 text-base font-black text-[#1e3f20]">{slot.topic ?? ''}</h4>
                         <div className="mt-2 flex flex-wrap gap-2">
                           <span className="rounded-full border border-[#1e3f20]/20 px-3 py-1 text-[10px] font-black">{slot.format ?? ''}</span>
-                          <span className="rounded-full border border-[#cda04c]/40 bg-[#cda04c]/10 px-3 py-1 text-[10px] font-black">{slot.platform ?? ''}</span>
+                          <span className="rounded-full border border-brand-gold/40 bg-brand-gold/10 px-3 py-1 text-[10px] font-black">{slot.platform ?? ''}</span>
                         </div>
                       </div>
                       <div className="flex gap-2">
@@ -712,10 +712,10 @@ export default function MarketingHubClient() {
                 className={FIELD}
               />
               <div className="mt-4 flex flex-wrap justify-center gap-3">
-                <span className="rounded-full border border-[#cda04c]/20 bg-[#fffaf1] px-4 py-1.5 text-sm font-bold text-[#1e3f20]">#FDFBF7</span>
-                <span className="rounded-full border border-[#cda04c]/20 bg-[#fffaf1] px-4 py-1.5 text-sm font-bold text-[#1e3f20]">#1e3f20</span>
-                <span className="rounded-full border border-[#cda04c]/20 bg-[#fffaf1] px-4 py-1.5 text-sm font-bold text-[#1e3f20]">#cda04c</span>
-                <span className="rounded-full border border-[#cda04c]/20 bg-[#fffaf1] px-4 py-1.5 text-sm font-bold text-[#1e3f20]">#111111</span>
+                <span className="rounded-full border border-brand-gold/20 bg-[#fffaf1] px-4 py-1.5 text-sm font-bold text-[#1e3f20]">#FDFBF7</span>
+                <span className="rounded-full border border-brand-gold/20 bg-[#fffaf1] px-4 py-1.5 text-sm font-bold text-[#1e3f20]">#1e3f20</span>
+                <span className="rounded-full border border-brand-gold/20 bg-[#fffaf1] px-4 py-1.5 text-sm font-bold text-[#1e3f20]">#D4AF37</span>
+                <span className="rounded-full border border-brand-gold/20 bg-[#fffaf1] px-4 py-1.5 text-sm font-bold text-[#1e3f20]">#111111</span>
               </div>
               <button
                 type="button"
@@ -734,7 +734,7 @@ export default function MarketingHubClient() {
             type="button"
             onClick={openAdd}
             disabled={busy}
-            className="fixed bottom-4 end-4 z-50 inline-flex min-h-11 items-center gap-2 rounded-full bg-[#cda04c] px-5 py-3 text-sm font-black text-white shadow-lg hover:bg-[#b3893d] disabled:opacity-60 sm:bottom-8 sm:end-8 sm:px-6 sm:py-3.5"
+            className="fixed bottom-4 end-4 z-50 inline-flex min-h-11 items-center gap-2 rounded-full bg-brand-gold px-5 py-3 text-sm font-black text-[#1A3B2A] shadow-lg hover:bg-[#C4A030] disabled:opacity-60 sm:bottom-8 sm:end-8 sm:px-6 sm:py-3.5"
           >
             <Plus className="h-5 w-5" />
             إضافة محتوى جديد
@@ -781,7 +781,7 @@ function UploadZone({ cardId }: { cardId: string }) {
   return (
     <label
       htmlFor={`upload-${cardId}`}
-      className="flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed border-[#1e3f20]/25 bg-[#FDFBF7] px-4 py-8 text-center hover:border-[#cda04c]/50"
+      className="flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed border-[#1e3f20]/25 bg-[#FDFBF7] px-4 py-8 text-center hover:border-brand-gold/50"
     >
       <Upload className="h-6 w-6 text-[#1e3f20]/50" aria-hidden />
       <span className="text-sm font-bold text-[#1e3f20]">ارفع الصورة/الفيديو المُولَّد هنا</span>
@@ -866,7 +866,7 @@ function ModalShell({
       onClick={onClose}
     >
       <div
-        className="max-h-[92dvh] w-[95%] max-w-lg overflow-y-auto rounded-t-2xl border border-[#cda04c]/30 bg-[#FDFBF7] p-4 shadow-2xl sm:max-h-[90vh] sm:w-full sm:rounded-2xl sm:p-6 md:w-3/4 md:max-w-2xl lg:w-1/2 lg:max-w-3xl"
+        className="max-h-[92dvh] w-[95%] max-w-lg overflow-y-auto rounded-t-2xl border border-brand-gold/30 bg-[#FDFBF7] p-4 shadow-2xl sm:max-h-[90vh] sm:w-full sm:rounded-2xl sm:p-6 md:w-3/4 md:max-w-2xl lg:w-1/2 lg:max-w-3xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-4 flex items-center justify-between">

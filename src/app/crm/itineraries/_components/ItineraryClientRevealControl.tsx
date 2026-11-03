@@ -82,14 +82,14 @@ export default function ItineraryClientRevealControl({
 
   return (
     <section
-      className="relative overflow-hidden rounded-2xl border border-[#D4AF37]/35 bg-white p-4 shadow-sm ring-1 ring-[#1E2720]/5 sm:p-5"
+      className="relative overflow-hidden rounded-2xl border border-brand-gold/35 bg-white p-4 shadow-sm ring-1 ring-[#1E2720]/5 sm:p-5"
       aria-labelledby="client-reveal-control-title"
     >
-      <div className="pointer-events-none absolute -left-6 -top-6 h-24 w-24 rounded-full bg-[#D4AF37]/10 blur-2xl" aria-hidden />
+      <div className="pointer-events-none absolute -left-6 -top-6 h-24 w-24 rounded-full bg-brand-gold/10 blur-2xl" aria-hidden />
 
       <div className="relative mb-4 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#D4AF37]">
+          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-brand-gold">
             VIP Client Portal
           </p>
           <h3
@@ -132,14 +132,14 @@ export default function ItineraryClientRevealControl({
           onClick={() => void updateBypass(true)}
           className={`inline-flex items-center justify-center gap-2 rounded-xl border-2 px-4 py-3 text-sm font-black transition ${
             bypass
-              ? 'cursor-default border-[#D4AF37] bg-[#D4AF37]/15 text-[#1E2720]'
-              : 'border-[#D4AF37]/40 bg-white text-[#1E2720] hover:border-[#D4AF37] hover:bg-[#D4AF37]/8'
+              ? 'cursor-default border-brand-gold bg-brand-gold/15 text-[#1E2720]'
+              : 'border-brand-gold/40 bg-white text-[#1E2720] hover:border-brand-gold hover:bg-brand-gold/8'
           } disabled:opacity-70`}
         >
           {saving && !bypass ? (
             <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
           ) : (
-            <Unlock className="h-4 w-4 shrink-0 text-[#D4AF37]" aria-hidden />
+            <Unlock className="h-4 w-4 shrink-0 text-brand-gold" aria-hidden />
           )}
           فتح المسار فوراً
         </button>

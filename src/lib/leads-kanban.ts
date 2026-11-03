@@ -94,15 +94,15 @@ export function leadKanbanColumnToneClass(tone: string): {
   const baseHeader =
     'border-slate-200 bg-white/80 dark:border-[#2D3F3A] dark:bg-[#22302C]';
   const baseBadge =
-    'bg-slate-200 text-slate-700 dark:bg-[#1A2421] dark:text-[#D4AF37] border border-slate-300 dark:border-[#2D3F3A]';
+    'bg-slate-200 text-slate-700 dark:bg-[#1A2421] dark:text-brand-gold border border-slate-300 dark:border-[#2D3F3A]';
 
   switch (tone) {
     case 'amber':
       return {
-        header: `${baseHeader} border-s-4 border-s-amber-400 dark:border-s-[#D4AF37]`,
+        header: `${baseHeader} border-s-4 border-s-amber-400 dark:border-s-brand-gold`,
         badge: baseBadge,
-        drop: 'ring-amber-300/60 dark:ring-[#D4AF37]/35',
-        accentDot: 'bg-amber-400 dark:bg-[#D4AF37]',
+        drop: 'ring-amber-300/60 dark:ring-brand-gold/35',
+        accentDot: 'bg-amber-400 dark:bg-brand-gold',
       };
     case 'teal':
       return {
@@ -143,8 +143,8 @@ export function leadKanbanColumnToneClass(tone: string): {
       return {
         header: baseHeader,
         badge: baseBadge,
-        drop: 'ring-slate-300/60 dark:ring-[#D4AF37]/30',
-        accentDot: 'bg-slate-400 dark:bg-[#D4AF37]',
+        drop: 'ring-slate-300/60 dark:ring-brand-gold/30',
+        accentDot: 'bg-slate-400 dark:bg-brand-gold',
       };
   }
 }

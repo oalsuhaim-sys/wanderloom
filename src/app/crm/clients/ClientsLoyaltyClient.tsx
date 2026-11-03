@@ -142,11 +142,11 @@ const ar = {
 } as const
 
 const CRM_FIELD =
-  'w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-300 focus:ring-2 focus:ring-slate-200 dark:border-[#2D3F3A] dark:bg-[#1A2421] dark:text-gray-100 dark:focus:border-[#D4AF37]/40 dark:focus:ring-[#D4AF37]/15'
+  'w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-300 focus:ring-2 focus:ring-slate-200 dark:border-[#2D3F3A] dark:bg-[#1A2421] dark:text-gray-100 dark:focus:border-brand-gold/40 dark:focus:ring-brand-gold/15'
 
 /** Premium modal controls — Add/Edit client */
 const MODAL_FIELD =
-  'w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-slate-900 dark:border-[#2D3F3A] dark:bg-[#1A2421] dark:text-gray-100 dark:focus:ring-[#D4AF37]'
+  'w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-slate-900 dark:border-[#2D3F3A] dark:bg-[#1A2421] dark:text-gray-100 dark:focus:ring-brand-gold'
 
 const CLIENT_SEGMENT_OPTIONS: { value: ClientTier; label: string }[] = [
   { value: 'regular', label: 'عادي' },
@@ -554,9 +554,9 @@ export function ClientsLoyaltyClient({
   return (
     <div dir="rtl" className="min-h-0 bg-[#F9FAFB] pb-8 font-sans dark:bg-[#1A2421] sm:pb-12">
       <div className="mx-auto max-w-7xl space-y-4">
-        <header className="flex flex-col gap-4 rounded-2xl bg-slate-900 p-4 text-white shadow-sm sm:flex-row sm:justify-between sm:p-6 dark:border dark:border-[#D4AF37]/30 dark:!bg-[#22302C] dark:text-[#D4AF37]">
+        <header className="flex flex-col gap-4 rounded-2xl bg-slate-900 p-4 text-white shadow-sm sm:flex-row sm:justify-between sm:p-6 dark:border dark:border-brand-gold/30 dark:!bg-[#22302C] dark:text-brand-gold">
           <div className="space-y-1.5">
-            <p className="inline-flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-white/50 dark:text-[#D4AF37]/80">
+            <p className="inline-flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-white/50 dark:text-brand-gold/80">
               <Crown className="h-3.5 w-3.5" aria-hidden />
               {ar.loyalty}
             </p>
@@ -581,7 +581,7 @@ export function ClientsLoyaltyClient({
                 window.setTimeout(() => setCopyToast(''), 3000)
               }}
               disabled={showSkeleton || clients.length === 0}
-              className={`${BTN_SECONDARY} w-full border-white/20 !bg-white/10 !text-white hover:!bg-white/20 sm:w-auto dark:!border-[#D4AF37]/30 dark:!bg-[#1A2421] dark:!text-[#D4AF37]`}
+              className={`${BTN_SECONDARY} w-full border-white/20 !bg-white/10 !text-white hover:!bg-white/20 sm:w-auto dark:!border-brand-gold/30 dark:!bg-[#1A2421] dark:!text-brand-gold`}
             >
               <Download className="h-4 w-4 opacity-70" aria-hidden />
               {ar.exportCsv}
@@ -628,7 +628,7 @@ export function ClientsLoyaltyClient({
                   title="عرض البطاقات"
                   className={
                     viewMode === 'cards'
-                      ? 'inline-flex min-h-[40px] min-w-[44px] items-center justify-center rounded-md bg-white px-3 py-1.5 text-slate-900 shadow-sm transition-all dark:bg-[#22302C] dark:text-[#D4AF37]'
+                      ? 'inline-flex min-h-[40px] min-w-[44px] items-center justify-center rounded-md bg-white px-3 py-1.5 text-slate-900 shadow-sm transition-all dark:bg-[#22302C] dark:text-brand-gold'
                       : 'inline-flex min-h-[40px] min-w-[44px] items-center justify-center px-3 py-1.5 text-slate-500 transition-all hover:text-slate-700 dark:text-slate-400 dark:hover:text-gray-300'
                   }
                 >
@@ -642,7 +642,7 @@ export function ClientsLoyaltyClient({
                   title="عرض الجدول"
                   className={
                     viewMode === 'table'
-                      ? 'inline-flex min-h-[40px] min-w-[44px] items-center justify-center rounded-md bg-white px-3 py-1.5 text-slate-900 shadow-sm transition-all dark:bg-[#22302C] dark:text-[#D4AF37]'
+                      ? 'inline-flex min-h-[40px] min-w-[44px] items-center justify-center rounded-md bg-white px-3 py-1.5 text-slate-900 shadow-sm transition-all dark:bg-[#22302C] dark:text-brand-gold'
                       : 'inline-flex min-h-[40px] min-w-[44px] items-center justify-center px-3 py-1.5 text-slate-500 transition-all hover:text-slate-700 dark:text-slate-400 dark:hover:text-gray-300'
                   }
                 >
@@ -657,7 +657,7 @@ export function ClientsLoyaltyClient({
                 aria-controls="clients-filter-tabs"
                 className={`inline-flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-medium shadow-sm transition-colors sm:flex-none ${
                   filtersOpen || activeTab !== 'all'
-                    ? 'border-slate-900 bg-slate-900 text-white dark:border-[#D4AF37]/50 dark:bg-[#D4AF37]/20 dark:text-[#D4AF37]'
+                    ? 'border-slate-900 bg-slate-900 text-white dark:border-brand-gold/50 dark:bg-brand-gold/20 dark:text-brand-gold'
                     : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-[#2D3F3A] dark:bg-[#22302C] dark:text-gray-300 dark:hover:bg-[#1A2421]'
                 }`}
               >
@@ -703,7 +703,8 @@ export function ClientsLoyaltyClient({
           </div>
         ) : viewMode === 'cards' ? (
           <div className={`crm-stagger ${CRM_CARD_GRID}`}>
-            {filtered.map((c) => (
+            {filtered.map((c) =>
+              c?.id ? (
               <ClientCard
                 key={String(c.id)}
                 client={c}
@@ -725,7 +726,8 @@ export function ClientsLoyaltyClient({
                   }))
                 }}
               />
-            ))}
+              ) : null,
+            )}
           </div>
         ) : (
           <div className={CRM_TABLE_SCROLL}>
@@ -744,6 +746,7 @@ export function ClientsLoyaltyClient({
               </thead>
               <tbody>
                 {filtered.map((c) => {
+                  if (!c?.id) return null
                   const tier = clientDisplayTierBadge(c)
                   const clv = resolveClientLifetimeValue(c)
                   const trips = tripCounts[c?.id ?? ''] ?? c?.total_trips ?? 0
@@ -764,7 +767,7 @@ export function ClientsLoyaltyClient({
                             />
                           ) : null}
                           <div>
-                            <p className="font-bold">{c.name ?? '—'}</p>
+                            <p className="font-bold">{c?.name ?? '—'}</p>
                             <div className="mt-1 flex flex-wrap gap-1">
                               {parseTravelDnaChips({
                                 travel_dna: c.travel_dna,
@@ -794,9 +797,9 @@ export function ClientsLoyaltyClient({
                         <div className="flex flex-col gap-1">
                           {c?.phone_wa ? (
                             <a
-                              href={`tel:${c.phone_wa.replace(/\s+/g, '')}`}
+                              href={`tel:${String(c?.phone_wa ?? '').replace(/\s+/g, '')}`}
                               dir="ltr"
-                              className="inline-flex items-center gap-1.5 text-xs text-slate-500 transition hover:text-slate-800 dark:text-slate-400 dark:hover:text-[#D4AF37]"
+                              className="inline-flex items-center gap-1.5 text-xs text-slate-500 transition hover:text-slate-800 dark:text-slate-400 dark:hover:text-brand-gold"
                             >
                               <Phone className="h-3 w-3 shrink-0 text-slate-400" aria-hidden />
                               {c.phone_wa}
@@ -880,7 +883,7 @@ export function ClientsLoyaltyClient({
                           <button
                             type="button"
                             onClick={() => openClientProfile(c)}
-                            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-900 transition-all hover:bg-slate-900 hover:text-white dark:border-[#D4AF37]/50 dark:bg-transparent dark:text-[#D4AF37] hover:dark:bg-[#D4AF37]/10"
+                            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-900 transition-all hover:bg-slate-900 hover:text-white dark:border-brand-gold/50 dark:bg-transparent dark:text-brand-gold hover:dark:bg-brand-gold/10"
                           >
                             <Eye className="h-3.5 w-3.5" aria-hidden />
                             {ar.viewProfile}
@@ -891,7 +894,7 @@ export function ClientsLoyaltyClient({
                             disabled={deletingId === c?.id}
                             title={ar.edit}
                             aria-label={`${ar.edit} ${c?.name ?? ''}`}
-                            className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 disabled:opacity-50 dark:hover:bg-[#1A2421] dark:hover:text-[#D4AF37]"
+                            className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 disabled:opacity-50 dark:hover:bg-[#1A2421] dark:hover:text-brand-gold"
                           >
                             <Pencil className="h-4 w-4" aria-hidden />
                           </button>
@@ -1049,7 +1052,7 @@ export function ClientsLoyaltyClient({
               </label>
 
               <div className="space-y-4 rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-[#2D3F3A] dark:bg-[#1A2421]/60">
-                <p className="text-xs font-semibold text-slate-700 dark:text-[#D4AF37]">{ar.loyaltySection}</p>
+                <p className="text-xs font-semibold text-slate-700 dark:text-brand-gold">{ar.loyaltySection}</p>
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <label className="block">
                     <span className="mb-1.5 block text-xs font-medium text-slate-600 dark:text-slate-400">{ar.trips}</span>

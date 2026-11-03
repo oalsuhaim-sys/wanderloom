@@ -61,7 +61,7 @@ function tierPresentation(rawTier: string) {
       label: 'VIP',
       icon: Crown,
       className:
-        'border-[#D4AF37]/40 bg-gradient-to-l from-slate-900 to-slate-800 text-[#E4C989]',
+        'border-brand-gold/40 bg-gradient-to-l from-slate-900 to-slate-800 text-[#E4C989]',
     };
   }
   if (tier === 'gold') {
@@ -167,7 +167,7 @@ export function SmartWallet({
     >
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 bg-gradient-to-r from-slate-900 to-slate-800 px-5 py-4 text-white dark:border-[#2D3F3A] dark:from-[#1A2421] dark:to-[#22302C]">
         <div className="flex items-center gap-3">
-          <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/15 bg-white/10 text-white dark:border-[#D4AF37]/30 dark:bg-[#D4AF37]/10 dark:text-[#D4AF37]">
+          <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/15 bg-white/10 text-white dark:border-brand-gold/30 dark:bg-brand-gold/10 dark:text-brand-gold">
             <WalletCards className="h-5 w-5" />
           </span>
           <div>
@@ -189,7 +189,7 @@ export function SmartWallet({
 
       {loading ? (
         <div className="flex min-h-64 items-center justify-center gap-2 p-6 text-sm font-medium text-slate-500">
-          <Loader2 className="h-5 w-5 animate-spin text-slate-400 dark:text-[#D4AF37]" />
+          <Loader2 className="h-5 w-5 animate-spin text-slate-400 dark:text-brand-gold" />
           جاري تحميل المحفظة…
         </div>
       ) : error || !wallet ? (
@@ -200,7 +200,7 @@ export function SmartWallet({
           <button
             type="button"
             onClick={() => void load()}
-            className="mt-3 rounded-lg border border-slate-200 bg-white px-4 py-2 text-xs font-medium text-slate-800 transition hover:bg-slate-50 dark:border-[#D4AF37]/40 dark:bg-[#D4AF37]/10 dark:text-[#D4AF37]"
+            className="mt-3 rounded-lg border border-slate-200 bg-white px-4 py-2 text-xs font-medium text-slate-800 transition hover:bg-slate-50 dark:border-brand-gold/40 dark:bg-brand-gold/10 dark:text-brand-gold"
           >
             إعادة المحاولة
           </button>
@@ -209,13 +209,13 @@ export function SmartWallet({
         <div className="p-5">
           <div className="grid gap-4 sm:grid-cols-2">
             <article className="relative overflow-hidden rounded-2xl bg-gradient-to-bl from-slate-900 to-slate-800 p-5 text-white shadow-lg dark:from-[#1A2421] dark:to-[#22302C]">
-              <div className="absolute -left-8 -top-8 h-28 w-28 rounded-full bg-white/5 dark:bg-[#D4AF37]/10" />
+              <div className="absolute -left-8 -top-8 h-28 w-28 rounded-full bg-white/5 dark:bg-brand-gold/10" />
               <p className="relative inline-flex items-center gap-2 text-xs font-medium text-white/60">
-                <WalletCards className="h-4 w-4 text-white/70 dark:text-[#D4AF37]" />
+                <WalletCards className="h-4 w-4 text-white/70 dark:text-brand-gold" />
                 الرصيد المتاح
               </p>
               <p
-                className="relative mt-4 text-2xl font-bold text-white dark:text-[#D4AF37]"
+                className="relative mt-4 text-2xl font-bold text-white dark:text-brand-gold"
                 dir="ltr"
               >
                 {formatMoney(wallet.walletBalance)}

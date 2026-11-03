@@ -37,7 +37,7 @@ import {
 import { supabase } from '@/lib/supabase';
 
 const fieldClass =
-  'w-full rounded-xl border border-slate-300 bg-slate-50 px-4 py-2.5 text-base font-extrabold text-slate-900 outline-none transition-all placeholder:text-slate-400 focus:border-transparent focus:bg-white focus:ring-2 focus:ring-[#D4AF37]';
+  'w-full rounded-xl border border-slate-300 bg-slate-50 px-4 py-2.5 text-base font-extrabold text-slate-900 outline-none transition-all placeholder:text-slate-400 focus:border-transparent focus:bg-white focus:ring-2 focus:ring-brand-gold';
 
 /**
  * Labels sit on light cards above light inputs.
@@ -449,7 +449,7 @@ export default function GroupPricingEngine() {
     <div className="print-container group-pricing-print-root w-full min-h-screen space-y-8 bg-[#f8fafc] p-6 font-sans text-slate-800 sm:p-8">
       <div className="print-report-header flex flex-col justify-between gap-4 border-b border-slate-200 pb-6 md:flex-row md:items-center">
         <div className="flex items-center gap-3">
-          <div className="no-print rounded-2xl border border-[#D4AF37]/40 bg-[#D4AF37]/10 p-3 text-[#b8952d]">
+          <div className="no-print rounded-2xl border border-brand-gold/40 bg-brand-gold/10 p-3 text-brand-gold">
             <Calculator className="h-7 w-7" />
           </div>
           <div>
@@ -474,7 +474,7 @@ export default function GroupPricingEngine() {
         <div className="flex items-center gap-3 no-print print:hidden">
           {loadingPricing ? (
             <span className="inline-flex items-center gap-2 text-xs text-slate-500">
-              <Loader2 className="h-4 w-4 animate-spin text-[#D4AF37]" />
+              <Loader2 className="h-4 w-4 animate-spin text-brand-gold" />
               جاري تحميل التسعير…
             </span>
           ) : null}
@@ -492,7 +492,7 @@ export default function GroupPricingEngine() {
             }}
             className="flex items-center gap-2 rounded-xl border border-slate-300 bg-slate-100 px-3 py-1.5 text-sm font-bold text-slate-700 transition-all hover:bg-slate-200"
           >
-            <FileText className="h-4 w-4 text-[#b8952d]" />
+            <FileText className="h-4 w-4 text-brand-gold" />
             مسودة تسعير
           </button>
         </div>
@@ -501,7 +501,7 @@ export default function GroupPricingEngine() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <div className="print-card mb-6 space-y-5 rounded-2xl border border-slate-200/90 bg-white p-6 shadow-sm">
           <div className="flex items-center gap-2 border-b border-slate-100 pb-3 text-lg font-extrabold text-slate-900">
-            <Users className="h-5 w-5 text-[#b8952d]" />
+            <Users className="h-5 w-5 text-brand-gold" />
             <h2>1. بيانات الرحلة والركاب</h2>
           </div>
 
@@ -517,7 +517,7 @@ export default function GroupPricingEngine() {
                 onChange={(e) =>
                   setPassengersCount(Math.max(1, parseInt(e.target.value, 10) || 1))
                 }
-                className="w-full rounded-xl border border-slate-300 bg-slate-50 px-4 py-3 text-lg font-extrabold text-slate-900 outline-none transition-all placeholder:text-slate-400 focus:border-transparent focus:bg-white focus:ring-2 focus:ring-[#D4AF37]"
+                className="w-full rounded-xl border border-slate-300 bg-slate-50 px-4 py-3 text-lg font-extrabold text-slate-900 outline-none transition-all placeholder:text-slate-400 focus:border-transparent focus:bg-white focus:ring-2 focus:ring-brand-gold"
               />
             </div>
 
@@ -531,9 +531,9 @@ export default function GroupPricingEngine() {
                   onChange={(e) =>
                     setNightsCount(Math.max(1, parseInt(e.target.value, 10) || 1))
                   }
-                  className="w-full rounded-xl border border-slate-300 bg-slate-50 px-4 py-3 text-lg font-extrabold text-slate-900 outline-none transition-all placeholder:text-slate-400 focus:border-transparent focus:bg-white focus:ring-2 focus:ring-[#D4AF37]"
+                  className="w-full rounded-xl border border-slate-300 bg-slate-50 px-4 py-3 text-lg font-extrabold text-slate-900 outline-none transition-all placeholder:text-slate-400 focus:border-transparent focus:bg-white focus:ring-2 focus:ring-brand-gold"
                 />
-                <Moon className="absolute left-4 top-3.5 h-5 w-5 text-[#b8952d]" />
+                <Moon className="absolute left-4 top-3.5 h-5 w-5 text-brand-gold" />
               </div>
             </div>
 
@@ -556,13 +556,13 @@ export default function GroupPricingEngine() {
         <div className="print-card mb-6 space-y-5 rounded-2xl border border-slate-200/90 bg-white p-6 shadow-sm lg:col-span-2">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3">
             <div className="flex items-center gap-2 text-lg font-extrabold text-slate-900">
-              <Hotel className="h-5 w-5 text-[#b8952d]" />
+              <Hotel className="h-5 w-5 text-brand-gold" />
               <h2>2. محرك التسعير الفندقي VIP (سعر موحّد + خدمات مخصصة)</h2>
             </div>
             <button
               type="button"
               onClick={() => setHotels((prev) => [...prev, createEmptyHotelItem(nightsCount)])}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-100 px-3 py-2 text-xs font-bold text-[#b8952d] transition hover:bg-slate-200 print:hidden"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-100 px-3 py-2 text-xs font-bold text-brand-gold transition hover:bg-slate-200 print:hidden"
             >
               <Plus className="h-3.5 w-3.5" />
               إضافة فندق
@@ -656,7 +656,7 @@ export default function GroupPricingEngine() {
                       onChange={(e) =>
                         updateHotel(hotel.id, { hasSharedAllocations: e.target.checked })
                       }
-                      className="h-4 w-4 accent-[#D4AF37]"
+                      className="h-4 w-4 accent-brand-gold"
                     />
                     <span className="text-xs font-bold text-slate-800 print:text-slate-900 print:font-bold">
                       تفعيل تخصيص الغرف المشتركة (لحساب الإشغال فقط — Double/Twin)
@@ -745,13 +745,13 @@ export default function GroupPricingEngine() {
                           </div>
                           <div className="flex justify-between print:text-slate-900 print:font-bold">
                             <span>خدمات VIP المخصصة:</span>
-                            <span className="font-semibold text-[#D4AF37]">
+                            <span className="font-semibold text-brand-gold">
                               {breakdown.vipServicesCost.toLocaleString()} ر.س
                             </span>
                           </div>
                         </>
                       ) : null}
-                      <div className="flex justify-between border-t border-slate-200 pt-1 font-bold text-[#b8952d]">
+                      <div className="flex justify-between border-t border-slate-200 pt-1 font-bold text-brand-gold">
                         <span>إجمالي هذا الفندق:</span>
                         <span>{breakdown.hotelTotal.toLocaleString()} ر.س</span>
                       </div>
@@ -770,14 +770,14 @@ export default function GroupPricingEngine() {
             </div>
           ) : null}
 
-          <div className="flex flex-wrap justify-between gap-3 rounded-xl border border-[#D4AF37]/35 bg-[#D4AF37]/10 px-4 py-3 text-xs">
+          <div className="flex flex-wrap justify-between gap-3 rounded-xl border border-brand-gold/35 bg-brand-gold/10 px-4 py-3 text-xs">
             <div className="flex justify-between gap-6 text-slate-600 print:text-slate-900 print:font-bold">
               <span>إجمالي الفنادق للقروب:</span>
               <span className="font-bold text-slate-900 print:text-slate-950">
                 {calculations.hotelGroupTotal.toLocaleString()} ر.س
               </span>
             </div>
-            <div className="flex justify-between gap-6 text-[#b8952d] print:font-bold">
+            <div className="flex justify-between gap-6 text-brand-gold print:font-bold">
               <span>متوسط الفندق للفرد (بعد التوزيع الحقيقي):</span>
               <span className="font-bold">
                 {calculations.hotelAvgPerPassenger.toFixed(2)} ر.س
@@ -790,7 +790,7 @@ export default function GroupPricingEngine() {
         <div className="print-card mb-6 space-y-5 rounded-2xl border border-slate-200/90 bg-white p-6 shadow-sm">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <div className="flex items-center gap-2 text-lg font-extrabold text-slate-900">
-              <DollarSign className="h-5 w-5 text-[#b8952d]" />
+              <DollarSign className="h-5 w-5 text-brand-gold" />
               <h2>2ب. باقي التكاليف المباشرة لكل فرد</h2>
             </div>
           </div>
@@ -835,7 +835,7 @@ export default function GroupPricingEngine() {
 
         <div className="print-card mb-6 space-y-5 rounded-2xl border border-slate-200/90 bg-white p-6 shadow-sm">
           <div className="flex items-center gap-2 border-b border-slate-100 pb-3 text-lg font-extrabold text-slate-900">
-            <TrendingUp className="h-5 w-5 text-[#b8952d]" />
+            <TrendingUp className="h-5 w-5 text-brand-gold" />
             <h2>3. التكاليف الثابتة للقروب</h2>
           </div>
 
@@ -868,7 +868,7 @@ export default function GroupPricingEngine() {
                   {calculations.totalGroupFixedCosts.toLocaleString()} ر.س
                 </span>
               </div>
-              <div className="flex justify-between text-xs text-[#b8952d] print:font-bold">
+              <div className="flex justify-between text-xs text-brand-gold print:font-bold">
                 <span>حصة الفرد الواحدة من الثوابت:</span>
                 <span className="font-bold">
                   {calculations.fixedCostSharePerPassenger.toFixed(2)} ر.س
@@ -883,7 +883,7 @@ export default function GroupPricingEngine() {
         <div className="print-card mb-6 space-y-6 rounded-2xl border border-slate-200/90 bg-white p-6 shadow-sm">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <div className="flex items-center gap-2 text-lg font-extrabold text-slate-900">
-              <Calculator className="h-5 w-5 text-[#b8952d]" />
+              <Calculator className="h-5 w-5 text-brand-gold" />
               <h2>4. هندسة المكسب وسعر البيع (Two-Way Engine)</h2>
             </div>
             <span className="rounded-full border border-slate-300 bg-slate-100 px-2.5 py-1 font-mono text-[11px] font-bold text-slate-700 print:text-slate-900">
@@ -913,12 +913,12 @@ export default function GroupPricingEngine() {
                   type="number"
                   value={profitMargin}
                   onChange={handleMarginChange}
-                  className="w-full rounded-xl border border-slate-300 bg-slate-50 px-4 py-2.5 text-base font-extrabold text-slate-900 outline-none transition-all placeholder:text-slate-400 focus:border-transparent focus:bg-white focus:ring-2 focus:ring-[#D4AF37]"
+                  className="w-full rounded-xl border border-slate-300 bg-slate-50 px-4 py-2.5 text-base font-extrabold text-slate-900 outline-none transition-all placeholder:text-slate-400 focus:border-transparent focus:bg-white focus:ring-2 focus:ring-brand-gold"
                 />
                 <select
                   value={profitMargin}
                   onChange={handleMarginChange}
-                  className="cursor-pointer rounded-xl border border-slate-300 bg-slate-50 px-3 py-2.5 text-xs font-bold text-slate-800 outline-none focus:ring-2 focus:ring-[#D4AF37]"
+                  className="cursor-pointer rounded-xl border border-slate-300 bg-slate-50 px-3 py-2.5 text-xs font-bold text-slate-800 outline-none focus:ring-2 focus:ring-brand-gold"
                 >
                   <option value={15}>15%</option>
                   <option value={20}>20%</option>
@@ -939,7 +939,7 @@ export default function GroupPricingEngine() {
                 placeholder={calculations.finalSellingPricePerPassenger.toFixed(0)}
                 value={manualSellingPrice ?? ''}
                 onChange={handleSellingPriceChange}
-                className="w-full rounded-xl border border-slate-300 bg-slate-50 px-4 py-2.5 text-base font-extrabold text-slate-900 outline-none transition-all focus:border-transparent focus:bg-white focus:ring-2 focus:ring-[#D4AF37]"
+                className="w-full rounded-xl border border-slate-300 bg-slate-50 px-4 py-2.5 text-base font-extrabold text-slate-900 outline-none transition-all focus:border-transparent focus:bg-white focus:ring-2 focus:ring-brand-gold"
               />
               <span className={hintClass} style={hintInkStyle}>
                 تعديل هذا الرقم يحسب نسبة الربح تلقائياً.
@@ -960,7 +960,7 @@ export default function GroupPricingEngine() {
               <span className="block text-xs font-bold text-slate-600 print:text-slate-950 print:font-extrabold">
                 صافي مكسب الفرد الواحدة:
               </span>
-              <span className="text-lg font-bold text-[#D4AF37]">
+              <span className="text-lg font-bold text-brand-gold">
                 +{calculations.netProfitPerPassenger.toFixed(2)} ر.س
               </span>
             </div>
@@ -970,7 +970,7 @@ export default function GroupPricingEngine() {
         <div className="summary-card flex flex-col justify-between print-card mb-6 space-y-6 rounded-2xl border border-slate-200/90 bg-white p-6 shadow-sm">
           <div className="space-y-4">
             <div className="flex items-center gap-2 border-b border-slate-100 pb-3 text-lg font-extrabold text-slate-900">
-              <TrendingUp className="h-5 w-5 text-[#b8952d]" />
+              <TrendingUp className="h-5 w-5 text-brand-gold" />
               <h2>5. الملخص التنفيذي للقروب (Executive Summary)</h2>
             </div>
 
@@ -989,11 +989,11 @@ export default function GroupPricingEngine() {
                 </p>
               </div>
 
-              <div className="summary-box rounded-xl border border-[#D4AF37]/40 bg-[#D4AF37]/10 p-4">
+              <div className="summary-box rounded-xl border border-brand-gold/40 bg-brand-gold/10 p-4">
               <span className="mb-1 block text-xs font-bold tracking-wide text-slate-500 print:text-slate-950 print:font-extrabold">
                 إجمالي صافي ربح واندرلوم:
               </span>
-                <p className="text-2xl font-black text-[#D4AF37]">
+                <p className="text-2xl font-black text-brand-gold">
                   +
                   {calculations.totalGroupNetProfit.toLocaleString('ar-SA', {
                     maximumFractionDigits: 0,
@@ -1008,7 +1008,7 @@ export default function GroupPricingEngine() {
             <div className="space-y-2 border-t border-slate-200 pt-2">
               <div className="flex justify-between text-xs text-slate-600 print:text-slate-900 print:font-bold">
                 <span>سعر البيع النهائي لكل مسافر:</span>
-                <span className="font-bold text-[#D4AF37]">
+                <span className="font-bold text-brand-gold">
                   {calculations.finalSellingPricePerPassenger.toFixed(2)} ر.س
                 </span>
               </div>
@@ -1049,7 +1049,7 @@ export default function GroupPricingEngine() {
         <div className="mb-6 space-y-4 rounded-2xl border border-slate-200/90 bg-white p-6 shadow-sm print:hidden">
           <div className="flex items-center justify-between gap-3 border-b border-slate-100 pb-3">
             <div className="flex items-center gap-2 text-lg font-extrabold text-slate-900">
-              <LinkIcon className="h-5 w-5 text-[#b8952d]" />
+              <LinkIcon className="h-5 w-5 text-brand-gold" />
               <h2>ربط التسعير بمسار أو ليدر / عميل</h2>
             </div>
             <button
@@ -1072,7 +1072,7 @@ export default function GroupPricingEngine() {
                 placeholder="مثال: مسار اليابان الساحرة (طوكيو وكيوتو)"
                 value={itineraryName}
                 onChange={(e) => setItineraryName(e.target.value)}
-                className="w-full rounded-xl border border-slate-300 bg-slate-50 p-3 font-extrabold text-slate-900 placeholder:text-slate-400 outline-none transition-all focus:border-transparent focus:bg-white focus:ring-2 focus:ring-[#D4AF37]"
+                className="w-full rounded-xl border border-slate-300 bg-slate-50 p-3 font-extrabold text-slate-900 placeholder:text-slate-400 outline-none transition-all focus:border-transparent focus:bg-white focus:ring-2 focus:ring-brand-gold"
               />
             </div>
 
@@ -1085,7 +1085,7 @@ export default function GroupPricingEngine() {
                 placeholder="مثال: عبدالرحمن الشهري (قائد الرحلة)"
                 value={leaderName}
                 onChange={(e) => setLeaderName(e.target.value)}
-                className="w-full rounded-xl border border-slate-300 bg-slate-50 p-3 font-extrabold text-slate-900 placeholder:text-slate-400 outline-none transition-all focus:border-transparent focus:bg-white focus:ring-2 focus:ring-[#D4AF37]"
+                className="w-full rounded-xl border border-slate-300 bg-slate-50 p-3 font-extrabold text-slate-900 placeholder:text-slate-400 outline-none transition-all focus:border-transparent focus:bg-white focus:ring-2 focus:ring-brand-gold"
               />
             </div>
           </div>
@@ -1102,7 +1102,7 @@ export default function GroupPricingEngine() {
               type="button"
               onClick={() => void handleLinkToItinerary()}
               disabled={linking}
-              className="inline-flex items-center gap-2 rounded-xl bg-[#D4AF37] px-6 py-2.5 text-sm font-extrabold text-slate-950 transition hover:bg-[#B8952B] disabled:opacity-60"
+              className="inline-flex items-center gap-2 rounded-xl bg-brand-gold px-6 py-2.5 text-sm font-extrabold text-slate-950 transition hover:bg-brand-gold disabled:opacity-60"
             >
               {linking ? <Loader2 className="h-4 w-4 animate-spin" /> : <LinkIcon className="h-4 w-4" />}
               تأكيد الربط والحفظ
@@ -1117,14 +1117,14 @@ export default function GroupPricingEngine() {
           onClick={() => setLinkPanelOpen(true)}
           className="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200/80 bg-slate-100 px-6 py-3 text-sm font-bold text-slate-700 shadow-sm transition-all hover:bg-slate-200 sm:w-auto"
         >
-          <LinkIcon className="h-4 w-4 text-[#b8952d]" />
+          <LinkIcon className="h-4 w-4 text-brand-gold" />
           ربط بمسار الرحلة (Itinerary)
         </button>
 
         <button
           type="button"
           onClick={handleExportPDF}
-          className="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-6 py-3 text-sm font-bold text-[#b8952d] shadow-sm transition-all hover:bg-slate-50 sm:w-auto"
+          className="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-6 py-3 text-sm font-bold text-brand-gold shadow-sm transition-all hover:bg-slate-50 sm:w-auto"
         >
           <Download className="h-4 w-4" />
           تصدير التقرير المالي PDF
@@ -1134,7 +1134,7 @@ export default function GroupPricingEngine() {
           type="button"
           onClick={() => void handleSavePricing()}
           disabled={saving || loadingPricing}
-          className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#D4AF37] px-8 py-3 font-extrabold text-slate-950 shadow-lg transition-all hover:bg-[#B8952B] active:scale-95 disabled:opacity-60 sm:w-auto"
+          className="flex w-full items-center justify-center gap-2 rounded-xl bg-brand-gold px-8 py-3 font-extrabold text-slate-950 shadow-lg transition-all hover:bg-brand-gold active:scale-95 disabled:opacity-60 sm:w-auto"
         >
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
           {saving ? 'جاري الحفظ…' : 'حفظ التسعير الرسمي'}

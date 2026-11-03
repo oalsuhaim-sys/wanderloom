@@ -48,40 +48,47 @@ type ApiErr = { ok: false; error?: string };
 
 /** Cached HTTP fetcher — browser/CDN honor Cache-Control from the API. */
 export async function fetchClientDirectoryPayload(): Promise<ClientDirectoryPayload> {
-  // One-time repairs — non-blocking for perceived speed
-  void runGroupMembersClientSyncOnce().catch((err) => {
-    console.warn('[client-directory] group_members sync:', err);
-  });
+  const empty: ClientDirectoryPayload = { rows: [], tripCounts: {}, profitTotals: {} }
+  try {
+    // One-time repairs — non-blocking for perceived speed
+    void runGroupMembersClientSyncOnce().catch((err) => {
+      console.warn('[client-directory] group_members sync:', err);
+    });
 
-  const token = await getClientAccessToken();
-  void syncLegacyGroupMemberDnaAction(token).catch((err) => {
-    console.warn('[client-directory] legacy DNA backfill:', err);
-  });
+    const token = await getClientAccessToken();
+    void syncLegacyGroupMemberDnaAction(token).catch((err) => {
+      console.warn('[client-directory] legacy DNA backfill:', err);
+    });
 
-  const res = await fetch(CLIENT_DIRECTORY_SWR_KEY, {
-    method: 'GET',
-    headers: {
-      Accept: 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    // Prefer fresh-enough cached responses when available
-    cache: 'default',
-  });
+    const res = await fetch(CLIENT_DIRECTORY_SWR_KEY, {
+      method: 'GET',
+      headers: {
+        Accept: 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      cache: 'default',
+    });
 
-  const body = (await res.json()) as ApiOk | ApiErr;
-  if (!res.ok || !body || body.ok === false) {
-    throw new Error(
-      (body && 'error' in body && body.error) || 'تعذر تحميل قاعدة العملاء.',
-    );
+    const body = (await res.json()) as ApiOk | ApiErr;
+    if (!res.ok || !body || body.ok === false) {
+      console.warn(
+        '[client-directory]',
+        (body && 'error' in body && body.error) || 'تعذر تحميل قاعدة العملاء.',
+      );
+      return empty;
+    }
+
+    const rows = uniqueClientsById(body.rows ?? []);
+    const stats =
+      body.tripCounts && body.profitTotals
+        ? { tripCounts: body.tripCounts, profitTotals: body.profitTotals }
+        : buildStatsFromRows(rows);
+
+    return { rows, ...stats };
+  } catch (err) {
+    console.warn('[client-directory] fetch failed:', err);
+    return empty;
   }
-
-  const rows = uniqueClientsById(body.rows ?? []);
-  const stats =
-    body.tripCounts && body.profitTotals
-      ? { tripCounts: body.tripCounts, profitTotals: body.profitTotals }
-      : buildStatsFromRows(rows);
-
-  return { rows, ...stats };
 }
 
 type UseClientDirectoryOptions = {

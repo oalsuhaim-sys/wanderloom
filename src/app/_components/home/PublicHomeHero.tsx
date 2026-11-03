@@ -18,7 +18,7 @@ export function PublicHomeHero() {
       className="relative mx-auto max-w-6xl bg-transparent px-4 py-16 sm:px-8 sm:py-24 md:py-32 lg:py-40"
     >
       <div className="relative z-10 w-full text-center">
-        <p className="mb-6 inline-flex items-center gap-2 rounded-full border border-[#9C7A3C]/40 bg-[#F4EFE6] px-4 py-1.5 text-[11px] font-black tracking-wide text-[#9C7A3C] sm:text-xs">
+        <p className="mb-6 inline-flex items-center gap-2 rounded-full border border-public-gold/40 bg-[#F4EFE6] px-4 py-1.5 text-[11px] font-black tracking-wide text-public-gold sm:text-xs">
           <Sparkles className="h-3.5 w-3.5" aria-hidden />
           {hero.badge}
         </p>
@@ -31,7 +31,7 @@ export function PublicHomeHero() {
         <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-center sm:gap-4">
           <Link
             href="/sessions"
-            className="wl-hero-cta wl-hero-cta--gold inline-flex items-center justify-center rounded-full px-6 py-3.5 text-sm font-black text-[#F4EFE6] shadow-lg transition-transform duration-300 hover:-translate-y-1 hover:shadow-lg sm:px-8"
+            className="wl-hero-cta wl-hero-cta--gold inline-flex items-center justify-center rounded-full px-6 py-3.5 text-sm font-black text-[#1A3B2A] shadow-lg transition-transform duration-300 hover:-translate-y-1 hover:shadow-lg sm:px-8"
           >
             {hero.ctaSessions}
           </Link>

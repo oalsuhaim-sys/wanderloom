@@ -63,7 +63,7 @@ export default function PortalSessionsClient() {
 
         <header className="relative z-10 border-b border-white/10 bg-[#07100D]/80 backdrop-blur-md">
           <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-4 py-5 sm:px-6">
-            <Link href="/portal/sessions" className="text-lg font-black tracking-[0.2em] text-[#C9A84C]">
+            <Link href="/portal/sessions" className="text-lg font-black tracking-[0.2em] text-brand-gold">
               Wanderloom
             </Link>
             <nav className="flex flex-wrap items-center gap-3 text-xs font-black">
@@ -75,7 +75,7 @@ export default function PortalSessionsClient() {
               </Link>
               <Link
                 href="/portal/sessions"
-                className="rounded-full border border-[#C9A84C]/40 bg-[#C9A84C]/15 px-4 py-2 text-[#E8C96A]"
+                className="rounded-full border border-brand-gold/40 bg-brand-gold/15 px-4 py-2 text-[#E8C96A]"
               >
                 الجلسات
               </Link>
@@ -88,13 +88,13 @@ export default function PortalSessionsClient() {
 
         <main className="relative z-10 mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-16">
           <div className="mx-auto max-w-3xl text-center">
-            <p className="inline-flex items-center gap-2 rounded-full border border-[#C9A84C]/30 bg-[#C9A84C]/10 px-4 py-1.5 text-[11px] font-black text-[#E8C96A]">
+            <p className="inline-flex items-center gap-2 rounded-full border border-brand-gold/30 bg-brand-gold/10 px-4 py-1.5 text-[11px] font-black text-[#E8C96A]">
               <Sparkles className="h-3.5 w-3.5" aria-hidden />
               بوابة العملاء · جلسات حية من قاعدة البيانات
             </p>
             <h1 className="mt-6 text-3xl font-black leading-tight text-white sm:text-4xl md:text-5xl">
               الجلسات القادمة مع
-              <span className="block bg-gradient-to-l from-[#E8C96A] to-[#C9A84C] bg-clip-text text-transparent">
+              <span className="block bg-gradient-to-l from-[#E8C96A] to-brand-gold bg-clip-text text-transparent">
                 Wanderloom
               </span>
             </h1>
@@ -131,7 +131,7 @@ export default function PortalSessionsClient() {
         </main>
 
         <footer className="relative z-10 border-t border-white/10 bg-[#050c09]/90 py-10 text-center">
-          <p className="text-xs font-black tracking-[0.35em] text-[#C9A84C]/60">WANDERLOOM</p>
+          <p className="text-xs font-black tracking-[0.35em] text-brand-gold/60">WANDERLOOM</p>
           <p className="mt-2 text-[11px] font-bold text-white/35">بوابة العملاء · الجلسات</p>
         </footer>
       </div>

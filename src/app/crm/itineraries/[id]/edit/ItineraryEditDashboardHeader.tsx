@@ -62,7 +62,7 @@ export default function ItineraryEditDashboardHeader({
   );
 
   return (
-    <header className="sticky top-0 z-50 border-b border-[#D4AF37] bg-[#FAFAFA] shadow-sm">
+    <header className="sticky top-0 z-50 border-b border-brand-gold bg-[#FAFAFA] shadow-sm">
       <div className="mx-auto flex max-w-[1920px] flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6">
         <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
           <Link href="/crm/itineraries" className={VIP_BTN_GHOST}>
@@ -84,7 +84,7 @@ export default function ItineraryEditDashboardHeader({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <label className="flex items-center gap-2 rounded-lg border border-[#D4AF37] bg-white px-3 py-2">
+          <label className="flex items-center gap-2 rounded-lg border border-brand-gold bg-white px-3 py-2">
             <span className="text-[10px] font-bold text-[#1E2720]">فتح 24س للعميل</span>
             <button
               type="button"
@@ -97,7 +97,7 @@ export default function ItineraryEditDashboardHeader({
               }`}
             >
               <span
-                className={`absolute top-0.5 h-5 w-5 rounded-full bg-[#D4AF37] shadow transition ${
+                className={`absolute top-0.5 h-5 w-5 rounded-full bg-brand-gold shadow transition ${
                   bypass24hLock ? 'right-0.5' : 'left-0.5'
                 }`}
               />
@@ -105,7 +105,7 @@ export default function ItineraryEditDashboardHeader({
           </label>
 
           <button type="button" onClick={onAddDay} className={VIP_BTN_GHOST}>
-            <Plus className="h-4 w-4 text-[#D4AF37]" aria-hidden />
+            <Plus className="h-4 w-4 text-brand-gold" aria-hidden />
             إضافة يوم
           </button>
           <button type="button" onClick={onSave} disabled={saving} className={VIP_BTN_OLIVE}>
@@ -133,7 +133,7 @@ export default function ItineraryEditDashboardHeader({
       </div>
 
       {notice ? (
-        <p className="border-t border-[#D4AF37]/30 bg-white px-4 py-2 text-center text-xs font-bold text-[#1E2720] sm:px-6">
+        <p className="border-t border-brand-gold/30 bg-white px-4 py-2 text-center text-xs font-bold text-[#1E2720] sm:px-6">
           {notice}
         </p>
       ) : null}

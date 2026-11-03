@@ -41,7 +41,7 @@ type Props = {
 };
 
 const inputClass =
-  'w-full rounded-md border border-gray-300 bg-white p-2 font-bold text-gray-900 placeholder-gray-400 outline-none focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37]';
+  'w-full rounded-md border border-gray-300 bg-white p-2 font-bold text-gray-900 placeholder-gray-400 outline-none focus:border-brand-gold focus:ring-1 focus:ring-brand-gold';
 const selectClass = inputClass;
 
 type ActivityCardProps = {
@@ -76,7 +76,7 @@ function ActivityCard({
       ref={innerRef}
       {...draggableProps}
       className={`mb-2 rounded-xl border bg-[#F9F9F6] p-3 ${
-        isDragging ? 'border-[#D4AF37] shadow-lg' : 'border-[#1E2720]/10'
+        isDragging ? 'border-brand-gold shadow-lg' : 'border-[#1E2720]/10'
       }`}
     >
       <div className="flex items-start gap-2">
@@ -86,7 +86,7 @@ function ActivityCard({
         >
           <GripVertical className="h-4 w-4" />
         </span>
-        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#D4AF37] text-xs font-black text-[#1E2720]">
+        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-gold text-xs font-black text-[#1E2720]">
           {index + 1}
         </span>
         <div className="min-w-0 flex-1">
@@ -354,9 +354,9 @@ export default function ItineraryBuilderDaysPanel({
             key={day.id}
             className={`group relative inline-flex items-center rounded-xl transition ${
               day.id === activeDayId
-                ? 'bg-[#D4AF37] text-[#1E2720]'
+                ? 'bg-brand-gold text-[#1E2720]'
                 : isLight
-                  ? 'bg-white text-[#1E2720]/70 ring-1 ring-[#1E2720]/10 hover:ring-[#D4AF37]/40'
+                  ? 'bg-white text-[#1E2720]/70 ring-1 ring-[#1E2720]/10 hover:ring-brand-gold/40'
                   : 'bg-white/10 text-gray-200 ring-1 ring-white/15 hover:bg-white/15'
             }`}
           >
@@ -381,7 +381,7 @@ export default function ItineraryBuilderDaysPanel({
                   if (!ok) return;
                   handleDeleteDay(idx);
                 }}
-                className={`mr-1.5 rounded-lg p-1 opacity-0 transition group-hover:opacity-100 focus:opacity-100 ${
+                className={`mr-1.5 rounded-lg p-1 transition ${
                   day.id === activeDayId
                     ? 'text-[#1E2720]/70 hover:bg-black/10 hover:text-red-700'
                     : 'text-current/50 hover:bg-red-50 hover:text-red-600'
@@ -418,7 +418,7 @@ export default function ItineraryBuilderDaysPanel({
         className={`flex min-h-[min(60vh,520px)] flex-col rounded-2xl border p-4 ${
           isLight
             ? 'border-[#1E2720]/10 bg-white shadow-sm'
-            : 'border-[#D4AF37]/20 bg-[#060b14]/40'
+            : 'border-brand-gold/20 bg-[#060b14]/40'
         }`}
       >
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -429,7 +429,7 @@ export default function ItineraryBuilderDaysPanel({
               <button
                 type="button"
                 onClick={() => activeDay && setPickerDayId(activeDay.id)}
-                className="inline-flex items-center gap-1 rounded-xl bg-[#D4AF37] px-3 py-2 text-xs font-black text-[#1E2720]"
+                className="inline-flex items-center gap-1 rounded-xl bg-brand-gold px-3 py-2 text-xs font-black text-[#1E2720]"
               >
                 <Plus className="h-3.5 w-3.5" />
                 إضافة نشاط
@@ -466,10 +466,10 @@ export default function ItineraryBuilderDaysPanel({
                         {...provided.droppableProps}
                         className={`min-h-[200px] rounded-xl border p-2 transition ${
                           snapshot.isDraggingOver
-                            ? 'border-[#D4AF37]/50 bg-[#D4AF37]/10'
+                            ? 'border-brand-gold/50 bg-brand-gold/10'
                             : isLight
                               ? 'border-[#1E2720]/10 bg-[#F9F9F6]'
-                              : 'border-[#D4AF37]/30 bg-white/5'
+                              : 'border-brand-gold/30 bg-white/5'
                         }`}
                       >
                         {acts.length === 0 ? (
@@ -516,7 +516,7 @@ export default function ItineraryBuilderDaysPanel({
                         {...provided.droppableProps}
                         className={`min-h-[52px] rounded-lg border border-dashed px-3 py-2 transition ${
                           snapshot.isDraggingOver
-                            ? 'border-[#D4AF37] bg-[#D4AF37]/10'
+                            ? 'border-brand-gold bg-brand-gold/10'
                             : isLight
                               ? 'border-[#1E2720]/15 bg-[#F9F9F6]'
                               : 'border-white/15 bg-white/5'

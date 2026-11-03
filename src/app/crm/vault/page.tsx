@@ -207,7 +207,7 @@ export default function VaultPage() {
           <button
             type="button"
             onClick={openAddModal}
-            className="flex items-center gap-2 rounded-2xl bg-[#C59B4B] px-6 py-3 text-xs font-bold text-slate-900 shadow-sm transition-all hover:bg-[#B2883A]"
+            className="flex items-center gap-2 rounded-2xl bg-brand-gold px-6 py-3 text-xs font-bold text-slate-900 shadow-sm transition-all hover:bg-[#B2883A]"
           >
             <span>+ إضافة مكان</span>
           </button>
@@ -232,7 +232,7 @@ export default function VaultPage() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="بحث بالاسم..."
-          className="rounded-2xl border border-slate-200 bg-[#F8F5EE]/60 px-4 py-3 outline-none focus:border-[#C59B4B]"
+          className="rounded-2xl border border-slate-200 bg-[#F8F5EE]/60 px-4 py-3 outline-none focus:border-brand-gold"
         />
         <select
           value={filterCountry}
@@ -240,7 +240,7 @@ export default function VaultPage() {
             setFilterCountry(e.target.value)
             setFilterCity('')
           }}
-          className="rounded-2xl border border-slate-200 bg-[#F8F5EE]/60 px-4 py-3 font-bold text-slate-800 outline-none focus:border-[#C59B4B]"
+          className="rounded-2xl border border-slate-200 bg-[#F8F5EE]/60 px-4 py-3 font-bold text-slate-800 outline-none focus:border-brand-gold"
         >
           <option value="">كل الدول ({countries.length})</option>
           {countries.map((c) => (
@@ -252,7 +252,7 @@ export default function VaultPage() {
         <select
           value={filterCity}
           onChange={(e) => setFilterCity(e.target.value)}
-          className="rounded-2xl border border-slate-200 bg-[#F8F5EE]/60 px-4 py-3 font-bold text-slate-800 outline-none focus:border-[#C59B4B]"
+          className="rounded-2xl border border-slate-200 bg-[#F8F5EE]/60 px-4 py-3 font-bold text-slate-800 outline-none focus:border-brand-gold"
         >
           <option value="">كل المدن ({activeCities.length})</option>
           {activeCities.map((c) => (
@@ -264,7 +264,7 @@ export default function VaultPage() {
         <select
           value={filterCat}
           onChange={(e) => setFilterCat(e.target.value)}
-          className="rounded-2xl border border-slate-200 bg-[#F8F5EE]/60 px-4 py-3 font-bold text-slate-800 outline-none focus:border-[#C59B4B]"
+          className="rounded-2xl border border-slate-200 bg-[#F8F5EE]/60 px-4 py-3 font-bold text-slate-800 outline-none focus:border-brand-gold"
         >
           <option value="">كل التصنيفات</option>
           {categoryOptions.map((opt) => (
@@ -288,7 +288,7 @@ export default function VaultPage() {
             {places.map((p) => (
               <div
                 key={p.id}
-                className="group relative space-y-3 rounded-3xl border border-slate-200 bg-white p-5 text-center shadow-sm transition-all hover:border-[#C59B4B]"
+                className="group relative space-y-3 rounded-3xl border border-slate-200 bg-white p-5 text-center shadow-sm transition-all hover:border-brand-gold"
               >
                 <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-200 bg-[#F8F5EE] text-xl text-slate-600">
                   <Folder className="h-5 w-5" aria-hidden />
@@ -435,7 +435,7 @@ export default function VaultPage() {
                   value={newPlace.name}
                   onChange={(e) => setNewPlace({ ...newPlace, name: e.target.value })}
                   placeholder="اسم المكان"
-                  className="w-full rounded-2xl border border-slate-300 bg-[#F8F5EE]/40 p-3 outline-none focus:border-[#C59B4B]"
+                  className="w-full rounded-2xl border border-slate-300 bg-[#F8F5EE]/40 p-3 outline-none focus:border-brand-gold"
                 />
               </div>
               <div>
@@ -445,7 +445,7 @@ export default function VaultPage() {
                   value={newPlace.country}
                   onChange={(e) => setNewPlace({ ...newPlace, country: e.target.value })}
                   placeholder="اسم الدولة"
-                  className="w-full rounded-2xl border border-slate-300 bg-[#F8F5EE]/40 p-3 font-bold text-slate-900 outline-none focus:border-[#C59B4B]"
+                  className="w-full rounded-2xl border border-slate-300 bg-[#F8F5EE]/40 p-3 font-bold text-slate-900 outline-none focus:border-brand-gold"
                 />
               </div>
               <div>
@@ -455,7 +455,7 @@ export default function VaultPage() {
                   value={newPlace.city}
                   onChange={(e) => setNewPlace({ ...newPlace, city: e.target.value })}
                   placeholder="اسم المدينة"
-                  className="w-full rounded-2xl border border-slate-300 bg-[#F8F5EE]/40 p-3 font-bold text-slate-900 outline-none focus:border-[#C59B4B]"
+                  className="w-full rounded-2xl border border-slate-300 bg-[#F8F5EE]/40 p-3 font-bold text-slate-900 outline-none focus:border-brand-gold"
                 />
               </div>
               <div>
@@ -464,7 +464,7 @@ export default function VaultPage() {
                   value={newPlace.sub_tag}
                   onChange={(e) => setNewPlace({ ...newPlace, sub_tag: e.target.value })}
                   rows={3}
-                  className="w-full rounded-2xl border border-slate-300 bg-[#F8F5EE]/40 p-3 outline-none focus:border-[#C59B4B]"
+                  className="w-full rounded-2xl border border-slate-300 bg-[#F8F5EE]/40 p-3 outline-none focus:border-brand-gold"
                 />
               </div>
               <div>
@@ -472,7 +472,7 @@ export default function VaultPage() {
                 <select
                   value={newPlace.category}
                   onChange={(e) => setNewPlace({ ...newPlace, category: e.target.value })}
-                  className="w-full rounded-2xl border border-slate-300 bg-[#F8F5EE]/40 p-3 font-bold outline-none focus:border-[#C59B4B]"
+                  className="w-full rounded-2xl border border-slate-300 bg-[#F8F5EE]/40 p-3 font-bold outline-none focus:border-brand-gold"
                 >
                   {categoryOptions.map((opt) => (
                     <option key={opt.id} value={opt.id}>
@@ -486,7 +486,7 @@ export default function VaultPage() {
               <button
                 type="button"
                 onClick={() => void addNewPlace()}
-                className="flex-1 rounded-2xl bg-[#C59B4B] py-3.5 text-xs font-bold text-slate-900 shadow-sm transition-all hover:bg-[#B2883A]"
+                className="flex-1 rounded-2xl bg-brand-gold py-3.5 text-xs font-bold text-slate-900 shadow-sm transition-all hover:bg-[#B2883A]"
               >
                 إضافة المكان
               </button>

@@ -194,20 +194,20 @@ export default function PortalPageClient() {
       <div className="absolute inset-x-0 top-0 z-10 flex justify-center px-4 pt-6 sm:pt-8">
             <Link
               href="/"
-          className="rounded-full border border-[#D4AF37]/25 bg-[#2A362C]/40 px-5 py-2 text-xs font-bold text-white/80 transition-colors hover:border-[#D4AF37]/45 hover:text-[#D4AF37]"
+          className="rounded-full border border-brand-gold/25 bg-[#2A362C]/40 px-5 py-2 text-xs font-bold text-white/80 transition-colors hover:border-brand-gold/45 hover:text-brand-gold"
             >
               العودة للموقع الرئيسي
             </Link>
           </div>
 
       <main className="relative z-[1] w-full max-w-md">
-        <div className="rounded-2xl border border-[#D4AF37]/20 bg-[#2A362C]/80 p-8 shadow-[0_28px_90px_rgba(0,0,0,0.55)] backdrop-blur-xl sm:p-10">
+        <div className="rounded-2xl border border-brand-gold/20 bg-[#2A362C]/80 p-8 shadow-[0_28px_90px_rgba(0,0,0,0.55)] backdrop-blur-xl sm:p-10">
           <div className="mb-8 flex w-full flex-col items-center text-center">
-            <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-full border border-[#D4AF37]/30 bg-[#1E2720]/80 shadow-[0_0_24px_rgba(212,175,55,0.12)]">
-              <Shield className="h-6 w-6 text-[#D4AF37]" strokeWidth={1.75} aria-hidden />
+            <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-full border border-brand-gold/30 bg-[#1E2720]/80 shadow-[0_0_24px_rgba(212,175,55,0.12)]">
+              <Shield className="h-6 w-6 text-brand-gold" strokeWidth={1.75} aria-hidden />
       </div>
 
-            <h1 className="font-[family-name:var(--font-playfair),Georgia,serif] text-3xl font-semibold uppercase tracking-[0.32em] text-[#D4AF37] sm:text-4xl">
+            <h1 className="font-[family-name:var(--font-playfair),Georgia,serif] text-3xl font-semibold uppercase tracking-[0.32em] text-brand-gold sm:text-4xl">
               Wanderloom
             </h1>
 
@@ -217,9 +217,9 @@ export default function PortalPageClient() {
       </div>
 
           <div className="mb-7 flex items-center gap-3">
-            <div className="h-px flex-1 bg-gradient-to-l from-transparent to-[#D4AF37]/35" />
-            <div className="h-1 w-1 rotate-45 bg-[#D4AF37]" aria-hidden />
-            <div className="h-px flex-1 bg-gradient-to-r from-transparent to-[#D4AF37]/35" />
+            <div className="h-px flex-1 bg-gradient-to-l from-transparent to-brand-gold/35" />
+            <div className="h-1 w-1 rotate-45 bg-brand-gold" aria-hidden />
+            <div className="h-px flex-1 bg-gradient-to-r from-transparent to-brand-gold/35" />
           </div>
 
           <form
@@ -230,7 +230,7 @@ export default function PortalPageClient() {
             className="space-y-5"
           >
             <div className="text-center">
-              <p className="text-sm font-semibold text-[#D4AF37]">الوصول الآمن لمسارك أو ملفك</p>
+              <p className="text-sm font-semibold text-brand-gold">الوصول الآمن لمسارك أو ملفك</p>
               <p className="mt-1.5 text-xs leading-relaxed text-white/65">
                 أدخل مفتاح الرحلة أو الرمز الشخصي الخاص المُرسل إليك من فريق الكونسيرج
               </p>
@@ -245,7 +245,7 @@ export default function PortalPageClient() {
               </label>
               <div className="relative">
                 <KeyRound
-                  className="pointer-events-none absolute start-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#D4AF37]/55"
+                  className="pointer-events-none absolute start-4 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-gold/55"
                   aria-hidden
                 />
                 <input
@@ -258,7 +258,7 @@ export default function PortalPageClient() {
                   value={passcode}
                   onChange={(e) => setPasscode(e.target.value)}
                   placeholder="WL-1234-XX أو VIP-0006VA"
-                  className="pointer-events-auto w-full rounded-xl border border-[#D4AF37]/40 bg-white/10 p-4 ps-11 text-center text-xl font-bold tracking-[0.12em] text-white outline-none transition placeholder:text-white/35 focus:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37]"
+                  className="pointer-events-auto w-full rounded-xl border border-brand-gold/40 bg-white/10 p-4 ps-11 text-center text-xl font-bold tracking-[0.12em] text-white outline-none transition placeholder:text-white/35 focus:border-brand-gold focus:ring-2 focus:ring-brand-gold"
                   autoFocus
                   required
                 />
@@ -277,14 +277,14 @@ export default function PortalPageClient() {
             <button
               type="submit"
               disabled={loading || !(passcode || '').trim()}
-              className="w-full rounded-xl bg-[#D4AF37] py-4 text-sm font-bold text-[#1E2720] transition-colors hover:bg-[#C5A028] disabled:cursor-not-allowed disabled:opacity-50"
+              className="w-full rounded-xl bg-brand-gold py-4 text-sm font-bold text-[#1E2720] transition-colors hover:bg-[#C5A028] disabled:cursor-not-allowed disabled:opacity-50"
             >
               {loading ? 'جارٍ التحقق…' : 'فتح الخزنة الآمنة'}
             </button>
           </form>
         </div>
 
-        <p className="mt-8 text-center text-[10px] font-medium uppercase tracking-[0.32em] text-[#D4AF37]/50">
+        <p className="mt-8 text-center text-[10px] font-medium uppercase tracking-[0.32em] text-brand-gold/50">
           WANDERLOOM · PRIVATE &amp; CONFIDENTIAL
         </p>
       </main>

@@ -71,17 +71,17 @@ export function QuoteFinancialSummaryCard({
     >
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-[#D4AF37]/35 bg-[#D4AF37]/10">
-            <Wallet className="h-4 w-4 text-[#b8952d]" aria-hidden />
+          <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-brand-gold/35 bg-brand-gold/10">
+            <Wallet className="h-4 w-4 text-brand-gold" aria-hidden />
           </span>
           <div className="text-right">
-            <p className="text-xs font-bold uppercase tracking-widest text-[#b8952d]">
+            <p className="text-xs font-bold uppercase tracking-widest text-brand-gold">
               Financial Ledger
             </p>
             <h2 className="text-lg font-extrabold text-slate-900">الملخص المالي للرحلة</h2>
           </div>
         </div>
-        {loading ? <Loader2 className="h-4 w-4 animate-spin text-[#b8952d]" aria-hidden /> : null}
+        {loading ? <Loader2 className="h-4 w-4 animate-spin text-brand-gold" aria-hidden /> : null}
       </div>
 
       {error ? (

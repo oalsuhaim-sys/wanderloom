@@ -107,7 +107,7 @@ function ReceiptLightbox({
             href={url}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-xs font-semibold text-slate-600 underline-offset-2 hover:underline dark:text-[#D4AF37]"
+            className="text-xs font-semibold text-slate-600 underline-offset-2 hover:underline dark:text-brand-gold"
           >
             فتح في تبويب جديد ↗
           </a>
@@ -288,7 +288,7 @@ export function ReceiptVerificationPanel({
       >
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-amber-700/80 dark:text-[#D4AF37]/80">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-amber-700/80 dark:text-brand-gold/80">
               Bank Transfer · Pending Verification
             </p>
             <h2 className="mt-1 text-base font-bold text-slate-900 dark:text-white">
@@ -299,7 +299,7 @@ export function ReceiptVerificationPanel({
               أو ارفض — التأكيد يفعّل ترحيل العميل تلقائياً.
             </p>
           </div>
-          <span className="rounded-full bg-amber-100 px-3 py-1 text-[11px] font-bold text-amber-900 dark:bg-[#D4AF37]/15 dark:text-[#D4AF37]">
+          <span className="rounded-full bg-amber-100 px-3 py-1 text-[11px] font-bold text-amber-900 dark:bg-brand-gold/15 dark:text-brand-gold">
             {invoices.length} بانتظار التحقق
           </span>
         </div>
@@ -330,7 +330,7 @@ export function ReceiptVerificationPanel({
                     {receiptUrl ? (
                       pdf ? (
                         <div className="flex h-full min-h-[9rem] flex-col items-center justify-center gap-2 text-slate-500">
-                          <FileText className="h-8 w-8 text-amber-600 dark:text-[#D4AF37]" />
+                          <FileText className="h-8 w-8 text-amber-600 dark:text-brand-gold" />
                           <span className="text-[11px] font-semibold">ملف PDF</span>
                         </div>
                       ) : (
@@ -365,7 +365,7 @@ export function ReceiptVerificationPanel({
                         {' · '}
                         {formatInvoiceDate(inv.updated_at || inv.created_at)}
                       </p>
-                      <p className="mt-2 inline-flex rounded-full bg-amber-50 px-2.5 py-1 text-[10px] font-bold text-amber-800 dark:bg-[#D4AF37]/10 dark:text-[#D4AF37]">
+                      <p className="mt-2 inline-flex rounded-full bg-amber-50 px-2.5 py-1 text-[10px] font-bold text-amber-800 dark:bg-brand-gold/10 dark:text-brand-gold">
                         بانتظار التحقق
                       </p>
                     </div>

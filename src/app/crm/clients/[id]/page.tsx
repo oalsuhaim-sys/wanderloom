@@ -22,6 +22,7 @@ import { formatBirthdayDisplayDate } from '@/lib/birthday-radar'
 import { calculateAge, resolveClientDisplayAge } from '@/lib/client-crm-profile'
 import Client360Profile from '@/app/crm/clients/_components/Client360Profile';
 import ClientFinancialHub from '@/app/crm/clients/_components/ClientFinancialHub';
+import ClientFollowupsLog from '@/app/crm/clients/_components/ClientFollowupsLog';
 import ClientWalletLedgerCard from '@/app/crm/clients/_components/ClientWalletLedgerCard';
 import ReferralQrCard from '@/app/crm/clients/_components/ReferralQrCard';
 import { ClientReferralBadge } from '@/components/crm/ClientReferralBadge';
@@ -263,36 +264,40 @@ export default function ClientDetailPage() {
 
       // Active trip request banner — from linked lead; auto-hides when travel_date < today
       let activeRequest: ActiveTripRequest | null = null
+      let leadRows: Record<string, unknown>[] = []
       try {
         const phone = String(c.phone_wa ?? '').trim()
-        let leadRows: Record<string, unknown>[] = []
-        const byClient = await supabase
+        const { data, error: leadsError } = await supabase
           .from('leads')
           .select(
-            'id, destinations, travel_date, travel_days, travelers_count, status, full_name, created_at',
+            'id, destinations, travel_date, travel_days, travelers_count, status, full_name, created_at, referral_code',
           )
           .eq('client_id', clientKey)
           .order('created_at', { ascending: false })
           .limit(8)
 
-        if (!byClient.error && Array.isArray(byClient.data)) {
-          leadRows = byClient.data as Record<string, unknown>[]
+        if (!leadsError && Array.isArray(data)) {
+          leadRows = data as Record<string, unknown>[]
         } else if (
-          byClient.error &&
-          /client_id|column|schema cache|does not exist/i.test(byClient.error.message ?? '') &&
+          leadsError &&
+          /client_id|column|schema cache|does not exist/i.test(leadsError.message ?? '') &&
           phone
         ) {
           const byPhone = await supabase
             .from('leads')
             .select(
-              'id, destinations, travel_date, travel_days, travelers_count, status, full_name, created_at',
+              'id, destinations, travel_date, travel_days, travelers_count, status, full_name, created_at, referral_code',
             )
             .eq('phone_wa', phone)
             .order('created_at', { ascending: false })
             .limit(8)
           if (!byPhone.error && Array.isArray(byPhone.data)) {
             leadRows = byPhone.data as Record<string, unknown>[]
+          } else if (byPhone.error) {
+            console.error('Error fetching leads:', byPhone.error)
           }
+        } else if (leadsError) {
+          console.error('Error fetching leads:', leadsError)
         }
 
         const targetTrip = resolveClientTargetTrip(c as Record<string, unknown>)
@@ -325,7 +330,7 @@ export default function ClientDetailPage() {
           )
         }
       } catch (err) {
-        console.warn('[client-detail] active trip request lookup:', err)
+        console.error('Error fetching leads:', err)
       }
       setActiveTripRequest(activeRequest)
 
@@ -333,6 +338,7 @@ export default function ClientDetailPage() {
         const normalizedClient = {
           ...c,
           ref_code: String(c.ref_code ?? '').trim(),
+          referral_code: String(c.referral_code ?? '').trim(),
           total_profit: clientQuickStatNum(c.total_profit),
           total_spent: clientQuickStatNum(c.total_spent),
           wallet_balance: clientQuickStatNum(c.wallet_balance),
@@ -831,10 +837,15 @@ export default function ClientDetailPage() {
   }
 
   const resolveDnaClientId = (): string | number | null => {
-    const id = client?.id ?? clientId
+    const id = client?.id ?? client?._id ?? clientId
     if (id == null || String(id).trim() === '') return null
     return id
   }
+
+  /** معرّف محفظة العهدة: من سجل العميل ثم من params.id */
+  const walletClientId = String(
+    client?.id ?? client?._id ?? clientId ?? '',
+  ).trim()
 
   const buildDnaUrlForClient = (resolvedId: string | number): string => {
     return buildClientDnaWelcomeUrlByClientId(
@@ -1051,7 +1062,7 @@ export default function ClientDetailPage() {
           onClick={() => void handleGenerateClaudeProposal()}
           disabled={generatingClaudeProposal || generatingDnaProposal}
           title="توليد عرض سعر كامل بواسطة Claude AI من DNA وتواريخ الرحلة"
-          className="inline-flex items-center gap-2 rounded-xl border border-[#C9A84C]/60 bg-gradient-to-l from-[#D4AF37] to-[#C9A84C] px-4 py-2.5 text-sm font-black text-[#1C4532] shadow-sm transition hover:brightness-105 disabled:opacity-60"
+          className="inline-flex items-center gap-2 rounded-xl border border-brand-gold/60 bg-gradient-to-l from-brand-gold to-brand-gold px-4 py-2.5 text-sm font-black text-[#1C4532] shadow-sm transition hover:brightness-105 disabled:opacity-60"
         >
           {generatingClaudeProposal ? (
             <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
@@ -1072,7 +1083,7 @@ export default function ClientDetailPage() {
           {generatingDnaProposal ? (
             <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
           ) : (
-            <Sparkles className="h-4 w-4 text-[#C9A84C]" aria-hidden />
+            <Sparkles className="h-4 w-4 text-brand-gold" aria-hidden />
           )}
           {generatingDnaProposal ? 'جاري التوليد…' : 'توليد عرض سعر من DNA العميل'}
         </button>
@@ -1120,7 +1131,7 @@ export default function ClientDetailPage() {
           <>
             <span
               className={`inline-flex shrink-0 items-center gap-1 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-medium text-white backdrop-blur-sm ${
-                onboardingDone ? '' : 'dark:border-[#D4AF37]/30 dark:bg-[#D4AF37]/10 dark:text-[#D4AF37]'
+                onboardingDone ? '' : 'dark:border-brand-gold/30 dark:bg-brand-gold/10 dark:text-brand-gold'
               }`}
             >
               {onboardingDone ? 'اكتمل التعارف' : 'بانتظار العميل'}
@@ -1233,7 +1244,7 @@ export default function ClientDetailPage() {
                 setLaunchTripItineraryUrl(null)
                 setShowLaunchTripModal(true)
               }}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-2xl !bg-white px-5 py-3.5 text-sm font-semibold !text-slate-900 shadow-sm transition hover:!bg-slate-50 sm:w-auto dark:!border dark:!border-[#D4AF37]/50 dark:!bg-[#D4AF37]/20 dark:!text-[#D4AF37] dark:hover:!bg-[#D4AF37]/30"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-2xl !bg-white px-5 py-3.5 text-sm font-semibold !text-slate-900 shadow-sm transition hover:!bg-slate-50 sm:w-auto dark:!border dark:!border-brand-gold/50 dark:!bg-brand-gold/20 dark:!text-brand-gold dark:hover:!bg-brand-gold/30"
             >
               <Plane size={18} aria-hidden />
               إطلاق رحلة جديدة ✈️
@@ -1253,7 +1264,7 @@ export default function ClientDetailPage() {
           <section className={cardClass}>
             <div className="mb-4">
               <h2 className="inline-flex items-center gap-2 text-base font-semibold text-slate-900 dark:text-gray-100">
-                <Sparkles className="h-5 w-5 text-[#D4AF37]" aria-hidden />
+                <Sparkles className="h-5 w-5 text-brand-gold" aria-hidden />
                 تفاصيل الـ DNA السياحي للعميل
               </h2>
               <p className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400">
@@ -1399,8 +1410,10 @@ export default function ClientDetailPage() {
 
           <ClientFinancialHub clientId={clientId} />
 
+          <ClientFollowupsLog clientId={clientId} clientName={String(client?.name ?? '')} />
+
           <ClientWalletLedgerCard
-            clientId={clientId}
+            clientId={walletClientId}
             initialBalance={clientQuickStatNum(client?.wallet_balance)}
             onBalanceChange={(next) =>
               setClient((prev) => (prev ? { ...prev, wallet_balance: next } : prev))
@@ -1464,7 +1477,7 @@ export default function ClientDetailPage() {
                   setLaunchTripItineraryUrl(null)
                   setShowLaunchTripModal(true)
                 }}
-                className="inline-flex items-center gap-1 rounded-xl border border-[#D4AF37]/40 bg-[#FEFDF9] px-3 py-2 text-xs font-bold text-[#1E2720] hover:bg-amber-50"
+                className="inline-flex items-center gap-1 rounded-xl border border-brand-gold/40 bg-[#FEFDF9] px-3 py-2 text-xs font-bold text-[#1E2720] hover:bg-amber-50"
               >
                 <Plus size={12} />
                 إطلاق رحلة
@@ -1537,7 +1550,7 @@ export default function ClientDetailPage() {
                         {t.backend === 'itineraries' && t.viewUrl ? (
                           <Link
                             href={t.viewUrl}
-                            className="rounded-lg bg-[#1E2720] px-3 py-2 text-[10px] font-bold text-[#D4AF37]"
+                            className="rounded-lg bg-[#1E2720] px-3 py-2 text-[10px] font-bold text-brand-gold"
                           >
                             فتح المسار
                           </Link>
@@ -1576,7 +1589,7 @@ export default function ClientDetailPage() {
         <aside className="space-y-4 lg:col-span-1">
           <section className={cardClass}>
             <h2 className="mb-3 inline-flex items-center gap-2 text-base font-black text-slate-900">
-              <Link2 size={16} className="text-[#D4AF37]" />
+              <Link2 size={16} className="text-brand-gold" />
               رابط التعارف السري
             </h2>
             <p className="mb-3 text-xs leading-relaxed text-slate-600">
@@ -1634,7 +1647,7 @@ export default function ClientDetailPage() {
               type="button"
               onClick={() => void handleGenerateClaudeProposal()}
               disabled={generatingClaudeProposal || generatingDnaProposal}
-              className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-[#C9A84C]/60 bg-gradient-to-l from-[#D4AF37] to-[#C9A84C] px-4 py-3 text-sm font-black text-[#1C4532] shadow-sm transition hover:brightness-105 disabled:opacity-60"
+              className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-brand-gold/60 bg-gradient-to-l from-brand-gold to-brand-gold px-4 py-3 text-sm font-black text-[#1C4532] shadow-sm transition hover:brightness-105 disabled:opacity-60"
             >
               {generatingClaudeProposal ? (
                 <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
@@ -1649,12 +1662,12 @@ export default function ClientDetailPage() {
               type="button"
               onClick={() => void handleGenerateDnaProposal()}
               disabled={generatingDnaProposal || generatingClaudeProposal}
-              className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-[#C9A84C]/50 bg-[#FEFDF9] px-4 py-3 text-sm font-black text-[#1C4532] shadow-sm transition hover:bg-amber-50 disabled:opacity-60"
+              className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-brand-gold/50 bg-[#FEFDF9] px-4 py-3 text-sm font-black text-[#1C4532] shadow-sm transition hover:bg-amber-50 disabled:opacity-60"
             >
               {generatingDnaProposal ? (
                 <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
               ) : (
-                <Sparkles size={16} className="text-[#C9A84C]" aria-hidden />
+                <Sparkles size={16} className="text-brand-gold" aria-hidden />
               )}
               توليد عرض سعر من DNA العميل
             </button>
@@ -1711,7 +1724,7 @@ export default function ClientDetailPage() {
               <button
                 type="button"
                 onClick={() => void generateCode()}
-                className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#D4AF37] px-4 py-3 text-sm font-extrabold text-black shadow-sm transition-all hover:bg-[#b8952d]"
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-brand-gold px-4 py-3 text-sm font-extrabold text-black shadow-sm transition-all hover:bg-brand-gold"
               >
                 <span aria-hidden>🎁</span>
                 <span>توليد كود إحالة</span>
@@ -1915,7 +1928,7 @@ export default function ClientDetailPage() {
                 type="button"
                 disabled={launchTripSaving}
                 onClick={() => void submitLaunchTrip()}
-                className="flex-1 rounded-xl bg-gradient-to-l from-[#D4AF37] to-[#B8941F] py-2.5 text-sm font-black text-[#0D0F0E] disabled:opacity-60"
+                className="flex-1 rounded-xl bg-gradient-to-l from-brand-gold to-[#B8941F] py-2.5 text-sm font-black text-[#0D0F0E] disabled:opacity-60"
               >
                 {launchTripSaving ? 'جارٍ الإطلاق...' : 'إطلاق الرحلة'}
               </button>

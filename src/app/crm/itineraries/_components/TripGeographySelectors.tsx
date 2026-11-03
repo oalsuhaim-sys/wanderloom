@@ -92,7 +92,7 @@ export default function TripGeographySelectors({
                 }}
                 className={`flex items-center gap-2 rounded-2xl border px-6 py-3 text-xs font-bold transition-all ${
                   active
-                    ? 'border-[#C59B4B] bg-[#C59B4B] text-slate-900 shadow-sm'
+                    ? 'border-brand-gold bg-brand-gold text-slate-900 shadow-sm'
                     : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
                 }`}
               >
@@ -144,7 +144,7 @@ export default function TripGeographySelectors({
                       key={city}
                       className={`inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-bold transition ${
                         cities.includes(city)
-                          ? 'border-[#D4AF37] bg-[#D4AF37] text-slate-950'
+                          ? 'border-brand-gold bg-brand-gold text-slate-950'
                           : 'border-slate-200 bg-white text-slate-600'
                       }`}
                     >
@@ -193,7 +193,7 @@ export default function TripGeographySelectors({
                     key={country}
                     className={`flex cursor-pointer items-center gap-2 rounded-xl border px-4 py-2 text-xs font-bold transition-all ${
                       selected
-                        ? 'border-[#C59B4B] bg-white text-slate-900 shadow-sm'
+                        ? 'border-brand-gold bg-white text-slate-900 shadow-sm'
                         : 'border-slate-200 bg-white/60 text-slate-600 hover:bg-white'
                     }`}
                   >
@@ -208,7 +208,7 @@ export default function TripGeographySelectors({
                           onCitiesChange(cities.filter((c) => allowed.has(c)));
                         }
                       }}
-                      className="h-3.5 w-3.5 rounded accent-[#C59B4B]"
+                      className="h-3.5 w-3.5 rounded accent-brand-gold"
                     />
                     <span>{country}</span>
                   </label>
@@ -235,7 +235,7 @@ export default function TripGeographySelectors({
                         key={city}
                         className={`inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-bold transition ${
                           cities.includes(city)
-                            ? 'border-[#D4AF37] bg-[#D4AF37] text-slate-950'
+                            ? 'border-brand-gold bg-brand-gold text-slate-950'
                             : 'border-slate-200 bg-white text-slate-600'
                         }`}
                       >

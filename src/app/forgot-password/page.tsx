@@ -13,7 +13,7 @@ export default function ForgotPasswordPage() {
       <Suspense
         fallback={
           <div className="flex min-h-screen items-center justify-center">
-            <Loader2 className="h-10 w-10 animate-spin text-[#cda04c]" />
+            <Loader2 className="h-10 w-10 animate-spin text-brand-gold" />
           </div>
         }
       >

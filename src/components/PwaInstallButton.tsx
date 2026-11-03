@@ -23,10 +23,10 @@ export default function PwaInstallButton({
 
   const baseClass =
     variant === 'sidebar'
-      ? 'flex w-full items-center justify-center gap-2 rounded-[14px] border border-[#cda04c]/45 bg-gradient-to-l from-[#cda04c]/15 to-white/5 px-3 py-2.5 text-xs font-black text-[#cda04c] transition hover:border-[#cda04c]/70 hover:bg-[#cda04c]/20'
+      ? 'flex w-full items-center justify-center gap-2 rounded-[14px] border border-brand-gold/45 bg-gradient-to-l from-brand-gold/15 to-white/5 px-3 py-2.5 text-xs font-black text-brand-gold transition hover:border-brand-gold/70 hover:bg-brand-gold/20'
       : variant === 'banner'
-        ? 'inline-flex w-full items-center justify-center gap-2 rounded-xl border border-[#cda04c]/40 bg-[#0B1511] px-4 py-2.5 text-xs font-black text-[#cda04c] shadow-sm transition hover:bg-[#12201a] sm:w-auto sm:text-sm'
-        : 'inline-flex items-center justify-center gap-2 rounded-full border border-[#cda04c]/45 bg-[#1E2720] px-4 py-2 text-xs font-bold text-[#cda04c] shadow-[0_4px_20px_rgba(205,160,76,0.18)] transition hover:border-[#cda04c]/70 hover:bg-[#252f28] sm:text-sm';
+        ? 'inline-flex w-full items-center justify-center gap-2 rounded-xl border border-brand-gold/40 bg-[#0B1511] px-4 py-2.5 text-xs font-black text-brand-gold shadow-sm transition hover:bg-[#12201a] sm:w-auto sm:text-sm'
+        : 'inline-flex items-center justify-center gap-2 rounded-full border border-brand-gold/45 bg-[#1E2720] px-4 py-2 text-xs font-bold text-brand-gold shadow-[0_4px_20px_rgba(205,160,76,0.18)] transition hover:border-brand-gold/70 hover:bg-[#252f28] sm:text-sm';
 
   return (
     <>

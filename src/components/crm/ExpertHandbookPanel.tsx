@@ -88,8 +88,8 @@ export function ExpertHandbookPanel({
               onClick={() => setActive(item.id)}
               className={`inline-flex shrink-0 items-center gap-2 rounded-xl border px-3 py-2 text-right text-xs font-black transition sm:text-sm ${
                 selected
-                  ? 'border-[#D4AF37]/60 bg-[#D4AF37] text-[#1A3B2A] shadow-sm'
-                  : 'border-slate-200 bg-white/80 text-slate-600 hover:border-[#D4AF37]/35 hover:text-slate-900 dark:border-[#2D3F3A] dark:bg-[#22302C] dark:text-slate-300 dark:hover:border-[#D4AF37]/40'
+                  ? 'border-brand-gold/60 bg-brand-gold text-[#1A3B2A] shadow-sm'
+                  : 'border-slate-200 bg-white/80 text-slate-600 hover:border-brand-gold/35 hover:text-slate-900 dark:border-[#2D3F3A] dark:bg-[#22302C] dark:text-slate-300 dark:hover:border-brand-gold/40'
               }`}
             >
               <Icon className="h-3.5 w-3.5 shrink-0 opacity-80" aria-hidden />
@@ -103,11 +103,11 @@ export function ExpertHandbookPanel({
         role="tabpanel"
         id={`${tabsId}-panel-${tab.id}`}
         aria-labelledby={`${tabsId}-${tab.id}`}
-        className={`rounded-2xl border border-[#D4AF37]/20 bg-gradient-to-b from-[#FDFBF7] to-white p-4 shadow-sm dark:from-[#1E2A26] dark:to-[#22302C] sm:p-6 ${
+        className={`rounded-2xl border border-brand-gold/20 bg-gradient-to-b from-[#FDFBF7] to-white p-4 shadow-sm dark:from-[#1E2A26] dark:to-[#22302C] sm:p-6 ${
           compact ? '' : 'sm:p-8'
         }`}
       >
-        <p className="text-[10px] font-black uppercase tracking-[0.28em] text-[#9C7A3C]">
+        <p className="text-[10px] font-black uppercase tracking-[0.28em] text-brand-gold">
           {tab.eyebrow}
         </p>
         <h2
@@ -128,7 +128,7 @@ export function ExpertHandbookPanel({
               className="rounded-xl border border-slate-200/80 bg-white/70 p-4 dark:border-[#2D3F3A] dark:bg-[#1A2421]/60 sm:p-5"
             >
               <h3 className="flex items-center gap-2 text-sm font-black text-[#1C2E3A] dark:text-[#F4EFE6] sm:text-base">
-                <Sparkles className="h-4 w-4 shrink-0 text-[#D4AF37]" aria-hidden />
+                <Sparkles className="h-4 w-4 shrink-0 text-brand-gold" aria-hidden />
                 {section.title}
               </h3>
               <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
@@ -142,7 +142,7 @@ export function ExpertHandbookPanel({
                       className="flex items-start gap-2 text-xs font-medium leading-relaxed text-slate-500 dark:text-slate-400 sm:text-sm"
                     >
                       <span
-                        className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[#D4AF37]"
+                        className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-brand-gold"
                         aria-hidden
                       />
                       {bullet}
@@ -152,7 +152,7 @@ export function ExpertHandbookPanel({
               ) : null}
               {renderSectionVisual(section.visual, compact)}
               {section.callout ? (
-                <p className="mt-3 rounded-lg border border-[#D4AF37]/30 bg-[#D4AF37]/10 px-3 py-2 text-xs font-bold leading-relaxed text-[#5C4A22] dark:text-[#E8D5A3]">
+                <p className="mt-3 rounded-lg border border-brand-gold/30 bg-brand-gold/10 px-3 py-2 text-xs font-bold leading-relaxed text-[#5C4A22] dark:text-[#E8D5A3]">
                   {section.callout}
                 </p>
               ) : null}
@@ -171,7 +171,7 @@ type ExpertHandbookHeaderProps = {
 export function ExpertHandbookHeader({ compact = false }: ExpertHandbookHeaderProps) {
   return (
     <header className={compact ? 'mb-4' : 'mb-6 sm:mb-8'}>
-      <p className="text-[10px] font-black uppercase tracking-[0.35em] text-[#9C7A3C]">
+      <p className="text-[10px] font-black uppercase tracking-[0.35em] text-brand-gold">
         Wanderloom Expert Handbook
       </p>
       <h1
@@ -179,7 +179,7 @@ export function ExpertHandbookHeader({ compact = false }: ExpertHandbookHeaderPr
           compact ? 'text-xl sm:text-2xl' : 'text-2xl sm:text-3xl'
         }`}
       >
-        <BookOpen className="h-6 w-6 text-[#D4AF37] sm:h-7 sm:w-7" aria-hidden />
+        <BookOpen className="h-6 w-6 text-brand-gold sm:h-7 sm:w-7" aria-hidden />
         دليل خبير واندرلوم 📖
       </h1>
       <p className="mt-2 max-w-2xl text-sm font-medium leading-relaxed text-slate-500 dark:text-slate-400">

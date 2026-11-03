@@ -9,7 +9,7 @@ import { ClientErrorBoundary } from '@/components/ClientErrorBoundary';
 function PricingFallback() {
   return (
     <div className="flex min-h-[40vh] items-center justify-center gap-3 bg-[#f8fafc] text-sm font-medium text-slate-500">
-      <Loader2 className="h-5 w-5 animate-spin text-[#b8952d]" />
+      <Loader2 className="h-5 w-5 animate-spin text-brand-gold" />
       جاري تحميل حاسبة التسعير…
     </div>
   );

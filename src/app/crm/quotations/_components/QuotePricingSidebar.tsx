@@ -52,10 +52,10 @@ export function QuotePricingSidebar({
 }: QuotePricingSidebarProps) {
   return (
     <aside
-      className={`rounded-2xl border border-[#C9A84C]/35 bg-gradient-to-br from-[#1C4532] via-[#163528] to-[#0f241c] p-5 text-white shadow-lg shadow-[#1C4532]/20 ${className}`}
+      className={`rounded-2xl border border-brand-gold/35 bg-gradient-to-br from-[#1C4532] via-[#163528] to-[#0f241c] p-5 text-white shadow-lg shadow-[#1C4532]/20 ${className}`}
       aria-label="ملخص التسعير"
     >
-      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-[#C9A84C]/75">
+      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-brand-gold/75">
         Live Pricing
       </p>
       <h2 className="mt-1 text-sm font-black text-white">ملخص التكلفة</h2>
@@ -63,22 +63,22 @@ export function QuotePricingSidebar({
 
       <div className="mt-4 space-y-2.5 border-b border-white/10 pb-4">
         <LineItem
-          icon={<Plane className="h-3.5 w-3.5 text-[#C9A84C]" aria-hidden />}
+          icon={<Plane className="h-3.5 w-3.5 text-brand-gold" aria-hidden />}
           label="الطيران"
           value={flightsTotal}
         />
         <LineItem
-          icon={<Building2 className="h-3.5 w-3.5 text-[#C9A84C]" aria-hidden />}
+          icon={<Building2 className="h-3.5 w-3.5 text-brand-gold" aria-hidden />}
           label="الفنادق"
           value={hotelsTotal}
         />
         <LineItem
-          icon={<Ticket className="h-3.5 w-3.5 text-[#C9A84C]" aria-hidden />}
+          icon={<Ticket className="h-3.5 w-3.5 text-brand-gold" aria-hidden />}
           label="الفعاليات"
           value={activitiesTotal}
         />
         <LineItem
-          icon={<Bus className="h-3.5 w-3.5 text-[#C9A84C]" aria-hidden />}
+          icon={<Bus className="h-3.5 w-3.5 text-brand-gold" aria-hidden />}
           label="المواصلات"
           value={transportsTotal}
         />
@@ -103,11 +103,11 @@ export function QuotePricingSidebar({
         ) : null}
       </div>
 
-      <div className="mt-5 rounded-xl border border-[#C9A84C]/30 bg-[#C9A84C]/10 px-4 py-4 text-center">
-        <p className="text-[10px] font-bold uppercase tracking-wider text-[#C9A84C]/80">
+      <div className="mt-5 rounded-xl border border-brand-gold/30 bg-brand-gold/10 px-4 py-4 text-center">
+        <p className="text-[10px] font-bold uppercase tracking-wider text-brand-gold/80">
           الإجمالي للعميل
         </p>
-        <p className="mt-1 text-2xl font-black text-[#C9A84C]" dir="ltr">
+        <p className="mt-1 text-2xl font-black text-brand-gold" dir="ltr">
           {formatInvoiceAmount(grandTotal)}
         </p>
       </div>

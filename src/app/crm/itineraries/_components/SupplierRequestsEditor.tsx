@@ -132,7 +132,7 @@ export default function SupplierRequestsEditor({
   return (
     <div className="space-y-4">
       {filteredSuppliers.length === 0 ? (
-        <p className="rounded-lg border border-[#cda04c]/30 bg-[#FFFBF0] px-4 py-3 text-sm font-bold text-[#1e3f20]">
+        <p className="rounded-lg border border-brand-gold/30 bg-[#FFFBF0] px-4 py-3 text-sm font-bold text-[#1e3f20]">
           لا يوجد موردين مسجلين لوجهة ({destinationLabel}) في قاعدة البيانات.
         </p>
       ) : (
@@ -143,7 +143,7 @@ export default function SupplierRequestsEditor({
       )}
 
       {requests.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-[#cda04c]/40 bg-[#FEFDF9] px-4 py-6 text-center text-sm text-gray-600">
+        <p className="rounded-lg border border-dashed border-brand-gold/40 bg-[#FEFDF9] px-4 py-6 text-center text-sm text-gray-600">
           لا توجد طلبات بعد. اضغط «إضافة طلب مورد» لبدء دورة المتابعة.
         </p>
       ) : (
@@ -158,7 +158,7 @@ export default function SupplierRequestsEditor({
               className="rounded-xl border border-[#1e3f20]/10 bg-white p-4 shadow-sm"
             >
               <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                <span className="text-xs font-black uppercase tracking-wide text-[#cda04c]">
+                <span className="text-xs font-black uppercase tracking-wide text-brand-gold">
                   طلب #{index + 1}
                 </span>
                 <button
@@ -184,7 +184,7 @@ export default function SupplierRequestsEditor({
                     }
                     onChange={(e) => handleSupplierPick(index, e.target.value)}
                     disabled={filteredSuppliers.length === 0}
-                    className="rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm font-bold text-gray-900 outline-none focus:border-[#cda04c] disabled:bg-gray-100"
+                    className="rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm font-bold text-gray-900 outline-none focus:border-brand-gold disabled:bg-gray-100"
                   >
                     <option value="">— اختر مورد —</option>
                     {filteredSuppliers.map((supplier) => (
@@ -210,7 +210,7 @@ export default function SupplierRequestsEditor({
                         service_type: e.target.value as SupplierRequest['service_type'],
                       })
                     }
-                    className="rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm font-bold text-gray-900 outline-none focus:border-[#cda04c]"
+                    className="rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm font-bold text-gray-900 outline-none focus:border-brand-gold"
                   >
                     {SUPPLIER_SERVICE_TYPE_OPTIONS.map((opt) => (
                       <option key={opt.value} value={opt.value}>
@@ -237,7 +237,7 @@ export default function SupplierRequestsEditor({
                     onChange={(e) => update(index, { details: e.target.value })}
                     rows={2}
                     placeholder="عدد الغرف، وقت الاستلام، تفضيلات VIP…"
-                    className="resize-y rounded-lg border border-gray-300 px-3 py-2.5 text-sm text-gray-900 outline-none focus:border-[#cda04c]"
+                    className="resize-y rounded-lg border border-gray-300 px-3 py-2.5 text-sm text-gray-900 outline-none focus:border-brand-gold"
                   />
                 </label>
 
@@ -248,7 +248,7 @@ export default function SupplierRequestsEditor({
                     onChange={(e) =>
                       update(index, { status: e.target.value as SupplierRequest['status'] })
                     }
-                    className="rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm font-bold text-gray-900 outline-none focus:border-[#cda04c]"
+                    className="rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm font-bold text-gray-900 outline-none focus:border-brand-gold"
                   >
                     {SUPPLIER_REQUEST_STATUS_OPTIONS.map((opt) => (
                       <option key={opt.value} value={opt.value}>
@@ -266,7 +266,7 @@ export default function SupplierRequestsEditor({
                     onChange={(e) => update(index, { supplierPhone: e.target.value })}
                     placeholder="+82… / +966… / LINE ID"
                     dir="ltr"
-                    className="rounded-lg border border-[#1e3f20]/15 bg-white px-3 py-2.5 text-sm text-gray-900 outline-none focus:border-[#cda04c]"
+                    className="rounded-lg border border-[#1e3f20]/15 bg-white px-3 py-2.5 text-sm text-gray-900 outline-none focus:border-brand-gold"
                   />
                 </label>
 
@@ -295,7 +295,7 @@ export default function SupplierRequestsEditor({
       <button
         type="button"
         onClick={() => onChange([...requests, createEmptySupplierRequest()])}
-        className="inline-flex items-center gap-1.5 rounded-lg border border-[#cda04c]/50 bg-[#1e3f20] px-4 py-2.5 text-sm font-bold text-[#cda04c] transition hover:bg-[#163018]"
+        className="inline-flex items-center gap-1.5 rounded-lg border border-brand-gold/50 bg-[#1e3f20] px-4 py-2.5 text-sm font-bold text-brand-gold transition hover:bg-[#163018]"
       >
         <Plus className="h-4 w-4" aria-hidden />
         إضافة طلب مورد

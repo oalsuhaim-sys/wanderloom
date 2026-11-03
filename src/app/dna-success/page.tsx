@@ -58,8 +58,8 @@ function QuoteReadyActions({
   }
 
   return (
-    <div className="mt-6 w-full space-y-3 rounded-2xl border border-[#D4AF37]/35 bg-[#1A2421]/80 p-4 text-right">
-      <p className="text-sm font-bold text-[#D4AF37]">
+    <div className="mt-6 w-full space-y-3 rounded-2xl border border-brand-gold/35 bg-[#1A2421]/80 p-4 text-right">
+      <p className="text-sm font-bold text-brand-gold">
         تم إكمال الـ DNA بنجاح! عرض السعر جاهز الآن للعميل.
       </p>
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -67,7 +67,7 @@ function QuoteReadyActions({
           href={previewUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#D4AF37] px-4 py-3 text-sm font-black text-[#0D0F0E] transition hover:brightness-110"
+          className="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-gold px-4 py-3 text-sm font-black text-[#0D0F0E] transition hover:brightness-110"
         >
           <Eye className="h-4 w-4" aria-hidden />
           معاينة عرض السعر للعميل
@@ -123,7 +123,7 @@ function DnaSuccessContent() {
         style={{ fontFamily: 'var(--font-tajawal), system-ui, sans-serif' }}
       >
         <div className="mx-auto mb-4 max-w-4xl text-center">
-          <p className="text-xs font-black tracking-widest text-[#D4AF37]">WANDERLOOM VIP</p>
+          <p className="text-xs font-black tracking-widest text-brand-gold">WANDERLOOM VIP</p>
           <h1 className="mt-2 text-xl font-black text-[#1e3f20] sm:text-2xl">
             تم حفظ بطاقة DNA بنجاح
           </h1>
@@ -156,16 +156,16 @@ function DnaSuccessContent() {
       />
 
       <div className="relative z-10 mx-auto flex min-h-screen max-w-xl flex-col items-center justify-center px-4 py-14 text-center sm:px-6">
-        <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-[#D4AF37]/30 bg-[#D4AF37]/10 px-4 py-1.5 text-xs font-bold tracking-widest text-[#D4AF37]">
+        <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-brand-gold/30 bg-brand-gold/10 px-4 py-1.5 text-xs font-bold tracking-widest text-brand-gold">
           <Sparkles className="h-3.5 w-3.5" aria-hidden />
           WANDERLOOM VIP
         </div>
 
-        <div className="w-full rounded-3xl border border-[#D4AF37]/35 bg-[#141816]/90 px-6 py-12 shadow-[0_0_60px_rgba(212,175,55,0.12)] backdrop-blur-sm sm:px-10 sm:py-14">
+        <div className="w-full rounded-3xl border border-brand-gold/35 bg-[#141816]/90 px-6 py-12 shadow-[0_0_60px_rgba(212,175,55,0.12)] backdrop-blur-sm sm:px-10 sm:py-14">
           <div className="mb-6 text-5xl" aria-hidden>
             🦅🌿
           </div>
-          <h1 className="text-2xl font-black text-[#D4AF37] sm:text-3xl">تم حفظ بطاقة DNA بنجاح</h1>
+          <h1 className="text-2xl font-black text-brand-gold sm:text-3xl">تم حفظ بطاقة DNA بنجاح</h1>
           <p className="mx-auto mt-4 max-w-md text-sm leading-8 text-[#E8E4DC] sm:text-base">
             شكراً لثقتك. مستشار السفر الخاص بك بدأ قراءة تفضيلاتك — الخطوة التالية هي اختيار موعد جلسة
             قراءة الأمنيات عبر اتصال مرئي.
@@ -191,7 +191,7 @@ function DnaSuccessContent() {
 
           <Link
             href="/"
-            className="mt-6 inline-block text-xs font-bold text-[#A8A49C] underline-offset-4 transition hover:text-[#D4AF37] hover:underline"
+            className="mt-6 inline-block text-xs font-bold text-[#A8A49C] underline-offset-4 transition hover:text-brand-gold hover:underline"
           >
             العودة للموقع
           </Link>
@@ -210,7 +210,7 @@ export default function DnaSuccessPage() {
     <Suspense
       fallback={
         <main className="flex min-h-screen items-center justify-center bg-[#0D0F0E]" dir="rtl">
-          <p className="text-sm font-bold text-[#D4AF37]">جاري التحميل…</p>
+          <p className="text-sm font-bold text-brand-gold">جاري التحميل…</p>
         </main>
       }
     >

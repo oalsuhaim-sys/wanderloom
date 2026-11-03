@@ -7,7 +7,7 @@ function PageFallback() {
   return (
     <div
       dir="rtl"
-      className="mx-auto flex min-h-[50vh] max-w-4xl items-center justify-center gap-2 px-4 pb-10 font-black text-[#D4AF37]"
+      className="mx-auto flex min-h-[50vh] max-w-4xl items-center justify-center gap-2 px-4 pb-10 font-black text-brand-gold"
     >
       <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
       جاري تحميل الشاشة…

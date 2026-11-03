@@ -14,15 +14,15 @@ export function DnaAlreadySubmittedCard({
   message = 'استلمنا تفاصيل حلمك بعناية. فريقنا ينسج الآن تجربةً خاصة بك — سنعود إليك قريباً بلمسة Wanderloom.',
 }: DnaAlreadySubmittedCardProps) {
   return (
-    <div className="flex flex-1 flex-col items-center justify-center rounded-3xl border border-[#D4AF37]/35 bg-[#141816]/90 px-6 py-14 text-center shadow-[0_0_60px_rgba(212,175,55,0.12)] backdrop-blur-sm">
-      <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-full border border-[#D4AF37]/40 bg-[#D4AF37]/10">
-        <CheckCircle2 className="h-10 w-10 text-[#D4AF37]" aria-hidden />
+    <div className="flex flex-1 flex-col items-center justify-center rounded-3xl border border-brand-gold/35 bg-[#141816]/90 px-6 py-14 text-center shadow-[0_0_60px_rgba(212,175,55,0.12)] backdrop-blur-sm">
+      <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-full border border-brand-gold/40 bg-brand-gold/10">
+        <CheckCircle2 className="h-10 w-10 text-brand-gold" aria-hidden />
       </div>
-      <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-[#D4AF37]/30 bg-[#D4AF37]/10 px-4 py-1.5 text-xs font-bold tracking-widest text-[#D4AF37]">
+      <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-brand-gold/30 bg-brand-gold/10 px-4 py-1.5 text-xs font-bold tracking-widest text-brand-gold">
         <Sparkles className="h-3.5 w-3.5" aria-hidden />
         WANDERLOOM VIP
       </div>
-      <h2 className="text-xl font-black text-[#D4AF37] sm:text-2xl">شكراً لثقتك</h2>
+      <h2 className="text-xl font-black text-brand-gold sm:text-2xl">شكراً لثقتك</h2>
       <p className="mx-auto mt-4 max-w-md text-sm leading-8 text-[#E8E4DC] sm:text-base">
         {displayName ? `${displayName}، ` : ''}
         {message}

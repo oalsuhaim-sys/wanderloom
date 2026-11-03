@@ -145,12 +145,12 @@ export function PublicHomePage({ sessions, sessionsLoadError, sessionsDemo }: Pu
 
         <footer className="border-t border-[#1C2E3A]/10 bg-transparent px-4 py-10 text-center sm:py-12">
           <InterestFooterCta />
-          <p className="text-xs font-black tracking-[0.4em] text-[#9C7A3C]/80">{t.footer.brand}</p>
+          <p className="text-xs font-black tracking-[0.4em] text-public-gold/80">{t.footer.brand}</p>
           <p className="mt-2 text-[11px] font-bold text-gray-500">{t.footer.tagline}</p>
           <p className="mt-5">
             <a
               href={`mailto:${WANDERLOOM_CONTACT_EMAIL}?subject=${encodeURIComponent(t.footer.emailSubject)}`}
-              className="text-[11px] font-bold text-[#9C7A3C] underline decoration-[#9C7A3C]/40 underline-offset-4 transition hover:text-[#9C7A3C]"
+              className="text-[11px] font-bold text-public-gold underline decoration-public-gold/40 underline-offset-4 transition hover:text-public-gold"
             >
               {WANDERLOOM_CONTACT_EMAIL}
             </a>

@@ -127,17 +127,17 @@ export default function SimpleItineraryDayPlanner({
       <div className="sticky top-0 z-40 mb-6 rounded-2xl border border-slate-200 bg-slate-50 p-6 text-slate-800 shadow-sm">
         <div className="mb-4 flex items-center justify-between gap-3">
           <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.22em] text-[#D4AF37]/80">
+            <p className="text-[10px] font-black uppercase tracking-[0.22em] text-brand-gold/80">
               Timeline
             </p>
-            <h2 className="text-lg font-bold text-[#D4AF37]">خط زمني للمسار</h2>
+            <h2 className="text-lg font-bold text-brand-gold">خط زمني للمسار</h2>
           </div>
           <button
             type="button"
             onClick={openAddDayDrawer}
-            className="inline-flex items-center gap-2 rounded-xl border border-[#D4AF37]/40 bg-white px-4 py-2 text-sm font-bold text-[#D4AF37] transition hover:border-[#D4AF37] hover:bg-slate-50"
+            className="inline-flex items-center gap-2 rounded-xl border border-brand-gold/40 bg-white px-4 py-2 text-sm font-bold text-brand-gold transition hover:border-brand-gold hover:bg-slate-50"
           >
-            <Plus className="h-4 w-4 text-[#D4AF37]" aria-hidden />
+            <Plus className="h-4 w-4 text-brand-gold" aria-hidden />
             إضافة يوم جديد
           </button>
         </div>
@@ -148,10 +148,10 @@ export default function SimpleItineraryDayPlanner({
             return (
               <div
                 key={day.id}
-                className={`group relative inline-flex items-center gap-1 rounded-xl transition ${
+                className={`inline-flex items-center gap-0.5 rounded-xl transition ${
                   day.id === activeDayId
-                    ? 'bg-[#D4AF37] text-[#0F172A]'
-                    : 'border border-slate-200 bg-white text-slate-700 hover:border-[#D4AF37]/40'
+                    ? 'bg-brand-gold text-[#0F172A]'
+                    : 'border border-slate-200 bg-white text-slate-700 hover:border-brand-gold/40'
                 }`}
               >
                 <button
@@ -176,7 +176,7 @@ export default function SimpleItineraryDayPlanner({
                       if (!ok) return;
                       onDeleteDay?.(idx);
                     }}
-                    className={`ml-0.5 mr-1.5 rounded-lg p-1 opacity-0 transition group-hover:opacity-100 focus:opacity-100 ${
+                    className={`mr-1.5 rounded-lg p-1 transition ${
                       day.id === activeDayId
                         ? 'text-[#0F172A]/70 hover:bg-black/10 hover:text-red-700'
                         : 'text-slate-400 hover:bg-red-50 hover:text-red-600'
@@ -193,8 +193,8 @@ export default function SimpleItineraryDayPlanner({
 
       <p className="mb-4 text-xs font-bold text-slate-600">
         زر «إضافة للمسار» يضيف المعلم إلى اليوم المحدّد بالذهبي. اسحب من بنك الأماكن أو بين
-        الأيام لإعادة ترتيب الأماكن. مرّر على تبويب اليوم لإظهار زر الحذف 🗑️ (لا يمكن حذف
-        اليوم الوحيد). استخدم ✏️ لتسمية اليوم، و⬆️⬇️ لنقل اليوم بالكامل.
+        الأيام لإعادة ترتيب الأماكن. استخدم 🗑️ بجانب تبويب اليوم أو بطاقة اليوم للحذف
+        (لا يمكن حذف اليوم الوحيد). استخدم ✏️ لتسمية اليوم، و⬆️⬇️ لنقل اليوم بالكامل.
       </p>
 
       {predictiveWishContext ? (
@@ -222,6 +222,7 @@ export default function SimpleItineraryDayPlanner({
             editingDayId={editingDayId}
             editDayTitle={editDayTitle}
             onActiveDayIdChange={onActiveDayIdChange}
+            onDeleteDay={onDeleteDay}
             onMoveDay={onMoveDay}
             onStartEditTitle={startEditDayTitle}
             onEditDayTitleChange={setEditDayTitle}

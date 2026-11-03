@@ -13,9 +13,9 @@ export default function VipLuxuryQuotationView({ customerName, destination, quot
   const total = quotationTotalEstimate(quotation);
 
   return (
-    <section className="mb-8 overflow-hidden rounded-2xl border border-[#D4AF37]/45 bg-gradient-to-br from-[#FFFBF0] via-white to-[#FEFDF9] p-6 shadow-[0_8px_32px_rgba(212,175,55,0.15)]">
+    <section className="mb-8 overflow-hidden rounded-2xl border border-brand-gold/45 bg-gradient-to-br from-[#FFFBF0] via-white to-[#FEFDF9] p-6 shadow-[0_8px_32px_rgba(212,175,55,0.15)]">
       <div className="mb-6 text-center">
-        <span className="inline-block rounded-full border border-[#D4AF37]/40 bg-[#D4AF37]/10 px-4 py-1 text-[10px] font-black uppercase tracking-[0.2em] text-[#1E2720]">
+        <span className="inline-block rounded-full border border-brand-gold/40 bg-brand-gold/10 px-4 py-1 text-[10px] font-black uppercase tracking-[0.2em] text-[#1E2720]">
           Wanderloom Proposal
         </span>
         <h2 className="mt-3 text-2xl font-black text-[#1E2720]">عرض سعر حصري ✨</h2>
@@ -31,9 +31,9 @@ export default function VipLuxuryQuotationView({ customerName, destination, quot
         <PriceRow label="رسوم الخدمة والكونسيرج" value={quotation.serviceFee} />
       </div>
 
-      <div className="mt-6 rounded-xl border border-[#D4AF37]/30 bg-[#1E2720] px-5 py-4 text-center">
-        <p className="text-xs font-bold uppercase tracking-wider text-[#D4AF37]/80">الإجمالي التقديري</p>
-        <p className="mt-1 text-3xl font-black text-[#D4AF37]">
+      <div className="mt-6 rounded-xl border border-brand-gold/30 bg-[#1E2720] px-5 py-4 text-center">
+        <p className="text-xs font-bold uppercase tracking-wider text-brand-gold/80">الإجمالي التقديري</p>
+        <p className="mt-1 text-3xl font-black text-brand-gold">
           {total > 0 ? `${total.toLocaleString('ar-SA')} SAR` : 'حسب التخصيص'}
         </p>
       </div>

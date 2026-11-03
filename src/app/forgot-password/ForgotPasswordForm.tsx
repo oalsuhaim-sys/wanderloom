@@ -80,7 +80,7 @@ export default function ForgotPasswordForm() {
             <button
               type="button"
               onClick={() => router.push('/login')}
-              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#cda04c] py-3.5 text-sm font-black text-white"
+              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-brand-gold py-3.5 text-sm font-black text-[#1A3B2A]"
             >
               العودة لتسجيل الدخول
             </button>
@@ -95,7 +95,7 @@ export default function ForgotPasswordForm() {
 
             <label className="mb-8 block text-right">
               <span className="mb-2 flex items-center gap-2 text-xs font-black text-gray-600">
-                <Mail className="h-3.5 w-3.5 text-[#cda04c]" />
+                <Mail className="h-3.5 w-3.5 text-brand-gold" />
                 البريد الإلكتروني
               </span>
               <input
@@ -103,7 +103,7 @@ export default function ForgotPasswordForm() {
                 autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full rounded-2xl border border-[#1e3f20]/15 bg-[#FDFBF7] px-4 py-3.5 text-sm outline-none ring-[#cda04c]/20 focus:ring-2"
+                className="w-full rounded-2xl border border-[#1e3f20]/15 bg-[#FDFBF7] px-4 py-3.5 text-sm outline-none ring-brand-gold/20 focus:ring-2"
                 placeholder="name@wanderloom.com"
               />
             </label>
@@ -111,7 +111,7 @@ export default function ForgotPasswordForm() {
             <button
               type="submit"
               disabled={loading}
-              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#cda04c] py-4 text-sm font-black text-white disabled:opacity-50"
+              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-brand-gold py-4 text-sm font-black text-[#1A3B2A] disabled:opacity-50"
             >
               {loading ? (
                 <>

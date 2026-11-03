@@ -187,11 +187,11 @@ export default function LoginForm() {
     <div className="relative z-10 mx-auto flex min-h-screen max-w-lg flex-col justify-center px-4 py-16 sm:px-6">
       <Toaster position="top-center" />
       <div className="mb-10 text-center">
-        <div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-3xl border border-[#cda04c]/30 bg-[#cda04c]/10 shadow-lg shadow-[#cda04c]/10">
-          <Crown className="h-10 w-10 text-[#cda04c]" strokeWidth={1.25} />
+        <div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-3xl border border-brand-gold/30 bg-brand-gold/10 shadow-lg shadow-brand-gold/10">
+          <Crown className="h-10 w-10 text-brand-gold" strokeWidth={1.25} />
         </div>
         <p className="mb-2 text-[11px] font-black uppercase tracking-[0.45em] text-[#1e3f20]/80">Wanderloom</p>
-        <h1 className="bg-gradient-to-l from-[#1e3f20] via-[#cda04c] to-[#9a7b45] bg-clip-text text-3xl font-black text-transparent sm:text-4xl">
+        <h1 className="bg-gradient-to-l from-[#1e3f20] via-brand-gold to-[#9a7b45] bg-clip-text text-3xl font-black text-transparent sm:text-4xl">
           {isForgotPasswordView ? 'استعادة كلمة المرور' : 'بوابة الموظفين'}
         </h1>
         <p className="mt-3 text-sm font-semibold leading-relaxed text-gray-600">
@@ -206,8 +206,8 @@ export default function LoginForm() {
           onSubmit={(e) => void handleResetPassword(e)}
           className="rounded-[2rem] border border-[#1e3f20]/10 bg-white p-8 shadow-lg shadow-[#1e3f20]/5 sm:p-10"
         >
-          <div className="mb-6 flex items-center gap-2 rounded-2xl border border-[#cda04c]/20 bg-[#cda04c]/5 px-4 py-3 text-xs font-bold text-[#9a7b45]">
-            <Mail className="h-4 w-4 shrink-0 text-[#cda04c]" />
+          <div className="mb-6 flex items-center gap-2 rounded-2xl border border-brand-gold/20 bg-brand-gold/5 px-4 py-3 text-xs font-bold text-[#9a7b45]">
+            <Mail className="h-4 w-4 shrink-0 text-brand-gold" />
             إرسال رابط الاستعادة عبر البريد
           </div>
 
@@ -219,7 +219,7 @@ export default function LoginForm() {
 
           <label className="mb-8 block text-right">
             <span className="mb-2 flex items-center gap-2 text-xs font-black text-gray-600">
-              <Mail className="h-3.5 w-3.5 text-[#cda04c]" />
+              <Mail className="h-3.5 w-3.5 text-brand-gold" />
               البريد الإلكتروني
             </span>
             <input
@@ -227,7 +227,7 @@ export default function LoginForm() {
               autoComplete="email"
               value={resetEmail}
               onChange={(e) => setResetEmail(e.target.value)}
-              className="w-full rounded-2xl border border-[#1e3f20]/15 bg-[#FDFBF7] px-4 py-3.5 text-sm text-[#111111] outline-none ring-[#cda04c]/20 placeholder:text-gray-400 focus:ring-2"
+              className="w-full rounded-2xl border border-[#1e3f20]/15 bg-[#FDFBF7] px-4 py-3.5 text-sm text-[#111111] outline-none ring-brand-gold/20 placeholder:text-gray-400 focus:ring-2"
               placeholder="name@wanderloom.com"
             />
           </label>
@@ -235,7 +235,7 @@ export default function LoginForm() {
           <button
             type="submit"
             disabled={loading}
-            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#cda04c] py-4 text-sm font-black text-white shadow-lg shadow-[#cda04c]/20 transition hover:bg-[#b3893d] disabled:opacity-50"
+            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-brand-gold py-4 text-sm font-black text-[#1A3B2A] shadow-lg shadow-brand-gold/20 transition hover:bg-[#C4A030] disabled:opacity-50"
           >
             {loading ? (
               <>
@@ -260,8 +260,8 @@ export default function LoginForm() {
           onSubmit={(e) => void handleSubmit(e)}
           className="rounded-[2rem] border border-[#1e3f20]/10 bg-white p-8 shadow-lg shadow-[#1e3f20]/5 sm:p-10"
         >
-          <div className="mb-6 flex items-center gap-2 rounded-2xl border border-[#cda04c]/20 bg-[#cda04c]/5 px-4 py-3 text-xs font-bold text-[#9a7b45]">
-            <Sparkles className="h-4 w-4 shrink-0 text-[#cda04c]" />
+          <div className="mb-6 flex items-center gap-2 rounded-2xl border border-brand-gold/20 bg-brand-gold/5 px-4 py-3 text-xs font-bold text-[#9a7b45]">
+            <Sparkles className="h-4 w-4 shrink-0 text-brand-gold" />
             تسجيل الدخول عبر Supabase Auth
           </div>
 
@@ -273,7 +273,7 @@ export default function LoginForm() {
 
           <label className="mb-5 block text-right">
             <span className="mb-2 flex items-center gap-2 text-xs font-black text-gray-600">
-              <Mail className="h-3.5 w-3.5 text-[#cda04c]" />
+              <Mail className="h-3.5 w-3.5 text-brand-gold" />
               البريد الإلكتروني
             </span>
             <input
@@ -281,14 +281,14 @@ export default function LoginForm() {
               autoComplete="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-2xl border border-[#1e3f20]/15 bg-[#FDFBF7] px-4 py-3.5 text-sm text-[#111111] outline-none ring-[#cda04c]/20 placeholder:text-gray-400 focus:ring-2"
+              className="w-full rounded-2xl border border-[#1e3f20]/15 bg-[#FDFBF7] px-4 py-3.5 text-sm text-[#111111] outline-none ring-brand-gold/20 placeholder:text-gray-400 focus:ring-2"
               placeholder="name@wanderloom.com"
             />
           </label>
 
           <label className="mb-3 block text-right">
             <span className="mb-2 flex items-center gap-2 text-xs font-black text-gray-600">
-              <Lock className="h-3.5 w-3.5 text-[#cda04c]" />
+              <Lock className="h-3.5 w-3.5 text-brand-gold" />
               كلمة المرور
             </span>
             <input
@@ -296,7 +296,7 @@ export default function LoginForm() {
               autoComplete="current-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-2xl border border-[#1e3f20]/15 bg-[#FDFBF7] px-4 py-3.5 text-sm text-[#111111] outline-none ring-[#cda04c]/20 placeholder:text-gray-400 focus:ring-2"
+              className="w-full rounded-2xl border border-[#1e3f20]/15 bg-[#FDFBF7] px-4 py-3.5 text-sm text-[#111111] outline-none ring-brand-gold/20 placeholder:text-gray-400 focus:ring-2"
               placeholder="••••••••"
             />
           </label>
@@ -314,7 +314,7 @@ export default function LoginForm() {
           <button
             type="submit"
             disabled={loading}
-            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#cda04c] py-4 text-sm font-black text-white shadow-lg shadow-[#cda04c]/20 transition hover:bg-[#b3893d] disabled:opacity-50"
+            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-brand-gold py-4 text-sm font-black text-[#1A3B2A] shadow-lg shadow-brand-gold/20 transition hover:bg-[#C4A030] disabled:opacity-50"
           >
             {loading ? (
               <>

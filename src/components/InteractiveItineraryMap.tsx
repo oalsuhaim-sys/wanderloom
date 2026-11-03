@@ -28,7 +28,7 @@ type DisplayMarker = VipMapMarker & {
 };
 
 const DEFAULT_CENTER: [number, number] = [35.6762, 139.6503];
-const GOLD = '#C59B4B';
+const GOLD = '#D4AF37';
 
 function createGoldPin(number: number | string) {
   return L.divIcon({

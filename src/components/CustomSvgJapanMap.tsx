@@ -210,7 +210,7 @@ export default function CustomSvgJapanMap({
           <path
             d="M 0 10 A 10 10 0 0 1 20 10 A 10 10 0 0 1 40 10 M -10 20 A 10 10 0 0 1 10 20 A 10 10 0 0 1 30 20"
             fill="none"
-            stroke="#C59B4B"
+            stroke="#D4AF37"
             strokeWidth="1"
           />
         </pattern>
@@ -218,7 +218,7 @@ export default function CustomSvgJapanMap({
       </svg>
 
       <div className="absolute top-4 right-4 z-20 flex items-center gap-3 rounded-2xl border border-slate-800/80 bg-[#0B0F17]/90 px-4 py-2 shadow-xl backdrop-blur-md">
-        <span className="font-serif text-xl text-[#C59B4B]">{kanji}</span>
+        <span className="font-serif text-xl text-brand-gold">{kanji}</span>
         <div>
           <span className="block text-[10px] font-bold text-slate-400">منطقة التركيز</span>
           <h3 className="text-xs font-extrabold text-slate-100">{label}</h3>
@@ -243,7 +243,7 @@ export default function CustomSvgJapanMap({
               '',
             )}
             fill="none"
-            stroke="#C59B4B"
+            stroke="#D4AF37"
             strokeWidth="2"
             strokeDasharray="6,6"
             opacity="0.8"
@@ -271,7 +271,7 @@ export default function CustomSvgJapanMap({
                 cx={place.svgX}
                 cy={place.svgY}
                 r="12"
-                fill="#C59B4B"
+                fill="#D4AF37"
                 opacity="0.25"
                 className="animate-ping"
               />
@@ -279,7 +279,7 @@ export default function CustomSvgJapanMap({
                 cx={place.svgX}
                 cy={place.svgY}
                 r="9"
-                fill="#C59B4B"
+                fill="#D4AF37"
                 stroke="#0B0F17"
                 strokeWidth="2"
                 className="transition-transform group-hover:scale-125"
@@ -300,14 +300,14 @@ export default function CustomSvgJapanMap({
       </svg>
 
       {hoveredPlace ? (
-        <div className="absolute right-4 bottom-4 left-4 flex animate-in fade-in items-center justify-between rounded-2xl border border-[#C59B4B]/40 bg-[#151C28]/95 p-3 text-xs shadow-xl duration-200">
+        <div className="absolute right-4 bottom-4 left-4 flex animate-in fade-in items-center justify-between rounded-2xl border border-brand-gold/40 bg-[#151C28]/95 p-3 text-xs shadow-xl duration-200">
           <div>
             <h4 className="font-bold text-slate-100">{hoveredPlace.name}</h4>
-            <span className="text-[10px] font-medium text-[#C59B4B]">
+            <span className="text-[10px] font-medium text-brand-gold">
               {hoveredPlace.category || 'معلم سياحي'}
             </span>
           </div>
-          <span className="rounded-xl bg-[#C59B4B] px-3 py-1.5 text-[10px] font-bold text-slate-950">
+          <span className="rounded-xl bg-brand-gold px-3 py-1.5 text-[10px] font-bold text-slate-950">
             فتح بخرائط جوجل
           </span>
         </div>

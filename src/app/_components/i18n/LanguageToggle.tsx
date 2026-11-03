@@ -13,7 +13,7 @@ export function LanguageToggle() {
 
   return (
     <div
-      className="flex items-center rounded-full border border-[#c9a84c]/25 bg-black/30 p-0.5 backdrop-blur-md"
+      className="flex items-center rounded-full border border-brand-gold/25 bg-black/30 p-0.5 backdrop-blur-md"
       role="group"
       aria-label="Language"
     >

@@ -67,7 +67,7 @@ export default function ContentCampaignsClient() {
         <header className="mb-6 rounded-[1.5rem] border border-[#1e3f20]/10 bg-white p-4 shadow-[0_16px_48px_rgba(30,63,32,0.07)] sm:mb-8 sm:rounded-[2rem] sm:p-6 md:p-8">
           <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between sm:gap-6">
             <div className="min-w-0">
-              <p className="inline-flex items-center gap-2 rounded-full border border-[#cda04c]/35 bg-[#cda04c]/10 px-3 py-1.5 text-[10px] font-black text-[#9a7b45] sm:px-4 sm:text-[11px]">
+              <p className="inline-flex items-center gap-2 rounded-full border border-brand-gold/35 bg-brand-gold/10 px-3 py-1.5 text-[10px] font-black text-[#9a7b45] sm:px-4 sm:text-[11px]">
                 <Megaphone className="h-3.5 w-3.5" aria-hidden />
                 Content & Campaigns
               </p>
@@ -82,7 +82,7 @@ export default function ContentCampaignsClient() {
               href="/crm/marketing/hub"
               className="inline-flex items-center gap-2 self-start rounded-xl border border-[#1e3f20]/20 bg-white px-4 py-2.5 text-xs font-black text-[#1e3f20] shadow-sm transition hover:bg-[#f4f0e6]"
             >
-              <Clapperboard className="h-4 w-4 text-[#cda04c]" aria-hidden />
+              <Clapperboard className="h-4 w-4 text-brand-gold" aria-hidden />
               مركز التسويق الكامل
             </Link>
           </div>
@@ -90,7 +90,7 @@ export default function ContentCampaignsClient() {
 
         <section className="mb-8 space-y-4">
           <div>
-            <p className="text-xs font-black text-[#cda04c]">Production Workflow</p>
+            <p className="text-xs font-black text-brand-gold">Production Workflow</p>
             <h2 className="mt-1 text-lg font-black text-[#1e3f20]">استوديو الإنتاج — AI × بشري</h2>
           </div>
           <MarketingProductionStudio />
@@ -99,7 +99,7 @@ export default function ContentCampaignsClient() {
         <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
           <article className={LUXURY_CARD}>
             <div>
-              <p className="flex items-center gap-2 text-xs font-black text-[#cda04c]">
+              <p className="flex items-center gap-2 text-xs font-black text-brand-gold">
                 <Video className="h-4 w-4" aria-hidden />
                 TikTok · Reels
               </p>
@@ -109,38 +109,38 @@ export default function ContentCampaignsClient() {
 
             {loading ? (
               <div className="flex flex-1 flex-col items-center justify-center gap-3 py-12">
-                <Loader2 className="h-8 w-8 animate-spin text-[#cda04c]" aria-hidden />
+                <Loader2 className="h-8 w-8 animate-spin text-brand-gold" aria-hidden />
                 <p className="text-sm font-bold text-gray-500">جاري تحميل الخطة…</p>
               </div>
             ) : tiktokPlan.length === 0 ? (
               <div className="flex flex-1 flex-col items-center justify-center rounded-2xl border border-dashed border-[#1e3f20]/12 bg-[#FDFBF7] px-6 py-10 text-center">
-                <CalendarDays className="mb-3 h-10 w-10 text-[#cda04c]/60" aria-hidden />
+                <CalendarDays className="mb-3 h-10 w-10 text-brand-gold/60" aria-hidden />
                 <p className="text-sm font-black text-[#1e3f20]">لا توجد عناصر تيك توك بعد</p>
                 <p className="mt-2 text-xs font-bold text-gray-500">
                   أضف مواعيد من{' '}
-                  <Link href="/crm/marketing/hub" className="text-[#cda04c] underline">
+                  <Link href="/crm/marketing/hub" className="text-brand-gold underline">
                     مركز التسويق
                   </Link>{' '}
                   مع منصة TikTok
                 </p>
               </div>
             ) : (
-              <ol className="max-h-[420px] space-y-3 overflow-y-auto border-r-2 border-[#cda04c]/30 pr-4">
+              <ol className="max-h-[420px] space-y-3 overflow-y-auto border-r-2 border-brand-gold/30 pr-4">
                 {tiktokPlan.map((slot, index) => (
                   <li
                     key={slot.id}
                     className="relative rounded-xl border border-[#1e3f20]/8 bg-[#FDFBF7] px-4 py-3"
                   >
-                    <span className="absolute -right-[calc(0.75rem+1px)] top-3 flex h-5 w-5 items-center justify-center rounded-full border border-[#cda04c] bg-white text-[9px] font-black text-[#1e3f20]">
+                    <span className="absolute -right-[calc(0.75rem+1px)] top-3 flex h-5 w-5 items-center justify-center rounded-full border border-brand-gold bg-white text-[9px] font-black text-[#1e3f20]">
                       {index + 1}
                     </span>
-                    <p className="text-[10px] font-black text-[#cda04c]">{slot.date || '—'}</p>
+                    <p className="text-[10px] font-black text-brand-gold">{slot.date || '—'}</p>
                     <h3 className="mt-1 text-sm font-black text-[#1e3f20]">{slot.topic || '—'}</h3>
                     <div className="mt-2 flex flex-wrap gap-2">
                       <span className="rounded-full border border-[#1e3f20]/15 px-2.5 py-0.5 text-[10px] font-black">
                         {slot.format || 'Reel'}
                       </span>
-                      <span className="rounded-full border border-[#cda04c]/40 bg-[#cda04c]/10 px-2.5 py-0.5 text-[10px] font-black">
+                      <span className="rounded-full border border-brand-gold/40 bg-brand-gold/10 px-2.5 py-0.5 text-[10px] font-black">
                         {slot.platform || 'TikTok'}
                       </span>
                     </div>

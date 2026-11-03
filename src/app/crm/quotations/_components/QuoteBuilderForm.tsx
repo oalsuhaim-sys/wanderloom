@@ -502,7 +502,7 @@ function teamMemberRole(roleRaw: string, isAdmin?: boolean): 'expert' | 'employe
 }
 
 const expertSelectClass =
-  'w-full rounded-xl border border-[#2D3F3A] bg-[#1A2421] px-4 py-3 text-white outline-none focus:border-[#D4AF37] disabled:opacity-60';
+  'w-full rounded-xl border border-[#2D3F3A] bg-[#1A2421] px-4 py-3 text-white outline-none focus:border-brand-gold disabled:opacity-60';
 
 type QuoteBuilderFormProps = {
   editQuoteId: string;
@@ -530,14 +530,14 @@ function parseDestinationPrefill(raw: string): string[] {
 }
 
 const fieldClass =
-  'w-full rounded-lg border border-gray-200 bg-white p-3 text-sm font-semibold text-[#1A3B2A] outline-none transition-all placeholder:text-slate-400 focus:border-[#C5A059] focus:ring-2 focus:ring-[#C5A059]/50 dark:border-[#2D3F3A] dark:bg-[#2A3834] dark:text-gray-100 dark:placeholder:text-slate-500';
+  'w-full rounded-lg border border-gray-200 bg-white p-3 text-sm font-semibold text-[#1A3B2A] outline-none transition-all placeholder:text-slate-400 focus:border-brand-gold focus:ring-2 focus:ring-brand-gold/50 dark:border-[#2D3F3A] dark:bg-[#2A3834] dark:text-gray-100 dark:placeholder:text-slate-500';
 const labelClass = 'mb-1.5 block text-sm font-medium text-slate-900 dark:text-white';
 const helperClass = 'mt-1.5 block text-xs font-medium leading-relaxed text-slate-500 dark:text-slate-400';
 const requiredMarkClass = 'ms-1 text-rose-400';
 const cardClass =
   'rounded-2xl border border-gray-100 bg-white p-4 shadow-sm transition-all duration-300 hover:shadow-[0_10px_20px_rgba(0,0,0,0.05)] dark:border-[#2D3F3A] dark:bg-[#22302C] sm:p-5';
 const cellInputClass =
-  'w-full min-w-[4rem] border-0 bg-transparent px-2 py-2 text-xs font-bold text-[#1A3B2A] outline-none placeholder:text-slate-400 focus:bg-[#C5A059]/10 focus:ring-1 focus:ring-inset focus:ring-[#C5A059]/40 dark:text-gray-100 dark:placeholder:text-slate-500';
+  'w-full min-w-[4rem] border-0 bg-transparent px-2 py-2 text-xs font-bold text-[#1A3B2A] outline-none placeholder:text-slate-400 focus:bg-brand-gold/10 focus:ring-1 focus:ring-inset focus:ring-brand-gold/40 dark:text-gray-100 dark:placeholder:text-slate-500';
 const thClass =
   'bg-[#1A3B2A]/5 px-2 py-4 text-start text-xs font-semibold text-[#1A3B2A] border-b border-gray-200 dark:bg-[#1A2421] dark:text-gray-100 dark:border-[#2D3F3A]';
 
@@ -2307,7 +2307,7 @@ export function QuoteBuilderForm({
 
       {/* Top AI + Template action toolbar */}
       <section
-        className="mb-5 rounded-2xl border border-[#C9A84C]/35 bg-gradient-to-l from-[#FEFDF9] via-white to-[#FFF8E7] p-3 shadow-sm dark:from-[#1A2421] dark:via-[#22302C] dark:to-[#1A2421] dark:border-[#D4AF37]/30 sm:p-4"
+        className="mb-5 rounded-2xl border border-brand-gold/35 bg-gradient-to-l from-[#FEFDF9] via-white to-[#FFF8E7] p-3 shadow-sm dark:from-[#1A2421] dark:via-[#22302C] dark:to-[#1A2421] dark:border-brand-gold/30 sm:p-4"
         aria-label="أدوات الذكاء الاصطناعي والقوالب"
       >
         <div className="flex flex-wrap items-center gap-2">
@@ -2316,7 +2316,7 @@ export function QuoteBuilderForm({
             onClick={() => void handleGenerateClaudeProposal()}
             disabled={saving || readOnly || generatingClaudeProposal || generatingDnaProposal}
             title="توليد عرض كامل بواسطة Claude AI من DNA العميل وتواريخ الرحلة"
-            className="inline-flex items-center gap-2 rounded-xl border border-[#C9A84C]/60 bg-gradient-to-l from-[#D4AF37] to-[#C9A84C] px-4 py-2.5 text-sm font-black text-[#1C4532] shadow-sm transition hover:brightness-105 disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-xl border border-brand-gold/60 bg-gradient-to-l from-brand-gold to-brand-gold px-4 py-2.5 text-sm font-black text-[#1C4532] shadow-sm transition hover:brightness-105 disabled:opacity-50"
           >
             {generatingClaudeProposal ? (
               <Loader2 size={16} className="animate-spin" aria-hidden />
@@ -2339,25 +2339,25 @@ export function QuoteBuilderForm({
             title="حفظ هيكل العرض الحالي كقالب قابل لإعادة الاستخدام"
             className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-black text-slate-800 shadow-sm transition hover:bg-slate-50 disabled:opacity-50 dark:border-[#2D3F3A] dark:bg-[#22302C] dark:text-white dark:hover:bg-[#2A3A35]"
           >
-            <FolderOpen size={16} className="text-[#C9A84C]" aria-hidden />
+            <FolderOpen size={16} className="text-brand-gold" aria-hidden />
             📁 حفظ عرض السعر كقالب
           </button>
         </div>
 
         {showTemplateSavePanel ? (
-          <div className="mt-3 flex flex-col gap-2 rounded-xl border border-[#C9A84C]/30 bg-white/80 p-3 dark:bg-[#1A2421]/80 sm:flex-row sm:items-center">
+          <div className="mt-3 flex flex-col gap-2 rounded-xl border border-brand-gold/30 bg-white/80 p-3 dark:bg-[#1A2421]/80 sm:flex-row sm:items-center">
             <input
               type="text"
               value={templateSaveTitle}
               onChange={(e) => setTemplateSaveTitle(e.target.value)}
               placeholder='اسم القالب — مثال: "عرض سويسرا وإيطاليا - فاخر"'
-              className="min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-900 outline-none ring-[#C9A84C]/40 focus:ring-2 dark:border-[#2D3F3A] dark:bg-[#22302C] dark:text-white"
+              className="min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-900 outline-none ring-brand-gold/40 focus:ring-2 dark:border-[#2D3F3A] dark:bg-[#22302C] dark:text-white"
             />
             <button
               type="button"
               onClick={() => void handleSaveProposalAsTemplate()}
               disabled={templateBusy || readOnly}
-              className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#1C4532] px-4 py-2 text-sm font-black text-[#D4AF37] transition hover:brightness-110 disabled:opacity-50"
+              className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#1C4532] px-4 py-2 text-sm font-black text-brand-gold transition hover:brightness-110 disabled:opacity-50"
             >
               {templateBusy ? (
                 <Loader2 size={14} className="animate-spin" aria-hidden />
@@ -2390,7 +2390,7 @@ export function QuoteBuilderForm({
             type="button"
             onClick={handleApplyProposalTemplate}
             disabled={!selectedTemplateId || readOnly}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#D4AF37] px-4 py-2.5 text-sm font-extrabold text-[#1C4532] shadow-sm transition hover:bg-[#c4a030] disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-gold px-4 py-2.5 text-sm font-extrabold text-[#1C4532] shadow-sm transition hover:bg-[#c4a030] disabled:cursor-not-allowed disabled:opacity-50"
           >
             تطبيق القالب على العرض
           </button>
@@ -2421,7 +2421,7 @@ export function QuoteBuilderForm({
             onClick={() => void handleGenerateFullDnaProposal()}
             disabled={saving || readOnly || generatingDnaProposal || generatingClaudeProposal}
             title="توليد مسودة عرض كاملة من DNA العميل وتواريخ الرحلة النشطة"
-            className="inline-flex items-center gap-1.5 rounded-xl border border-[#C9A84C]/50 bg-[#FEFDF9] px-3 py-2 text-xs font-black text-[#1C4532] shadow-sm transition hover:bg-amber-50 disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-brand-gold/50 bg-[#FEFDF9] px-3 py-2 text-xs font-black text-[#1C4532] shadow-sm transition hover:bg-amber-50 disabled:opacity-50"
           >
             {generatingDnaProposal ? (
               <Loader2 size={14} className="animate-spin" aria-hidden />
@@ -2435,7 +2435,7 @@ export function QuoteBuilderForm({
             onClick={() => setAiGenerateOpen(true)}
             disabled={saving || readOnly}
             title="توليد أيام الرحلة من DNA العميل عبر Claude"
-            className="inline-flex items-center gap-1.5 rounded-xl border border-[#C9A84C]/50 bg-[#D4AF37] px-3 py-2 text-xs font-black text-[#1C4532] shadow-sm transition hover:bg-[#c4a030] disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-brand-gold/50 bg-brand-gold px-3 py-2 text-xs font-black text-[#1C4532] shadow-sm transition hover:bg-[#c4a030] disabled:opacity-50"
           >
             <Sparkles size={14} aria-hidden />
             توليد المسار بـ AI
@@ -2445,9 +2445,9 @@ export function QuoteBuilderForm({
             onClick={handleDnaHotelMatch}
             disabled={saving || readOnly}
             title="اختيار فندقين لكل مدينة حسب تفضيل إقامة العميل في DNA، بتواريخ محسوبة"
-            className="inline-flex items-center gap-1.5 rounded-xl border border-[#C9A84C]/50 bg-[#FEFDF9] px-3 py-2 text-xs font-black text-[#1C4532] shadow-sm transition hover:bg-amber-50 disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-brand-gold/50 bg-[#FEFDF9] px-3 py-2 text-xs font-black text-[#1C4532] shadow-sm transition hover:bg-amber-50 disabled:opacity-50"
           >
-            <Sparkles size={14} className="text-[#C9A84C]" aria-hidden />
+            <Sparkles size={14} className="text-brand-gold" aria-hidden />
             مطابقة الفنادق حسب DNA
           </button>
           {isQuoteSaved ? (
@@ -2467,7 +2467,7 @@ export function QuoteBuilderForm({
                     toast.error('تعذر نسخ الرابط — انسخه يدوياً.');
                   }
                 }}
-                className="inline-flex items-center gap-1.5 rounded-xl border border-[#C9A84C]/50 bg-gradient-to-l from-[#FEFDF9] to-[#FFF8E7] px-3 py-2 text-xs font-black text-[#1C4532] shadow-sm transition hover:border-[#C9A84C] hover:bg-amber-50"
+                className="inline-flex items-center gap-1.5 rounded-xl border border-brand-gold/50 bg-gradient-to-l from-[#FEFDF9] to-[#FFF8E7] px-3 py-2 text-xs font-black text-[#1C4532] shadow-sm transition hover:border-brand-gold hover:bg-amber-50"
               >
                 <Link2 size={14} aria-hidden />
                 🔗 نسخ رابط العميل
@@ -2631,7 +2631,7 @@ export function QuoteBuilderForm({
 
         {clientContext ? (
           <div className="rounded-xl border border-[#2D3F3A]/50 bg-[#22302C]/60 px-3 py-2 text-[11px] font-semibold text-slate-300">
-            <span className="text-[#D4AF37]">طلب الرحلة:</span>{' '}
+            <span className="text-brand-gold">طلب الرحلة:</span>{' '}
             {(clientContext.destinations ?? []).length
               ? joinDestinationsSafe(clientContext.destinations)
               : clientContext.targetTrip || '—'}
@@ -2650,7 +2650,7 @@ export function QuoteBuilderForm({
                     console.error('[QuoteBuilder] re-apply trip header:', err);
                   }
                 }}
-                className="mr-2 inline-flex rounded-md border border-[#D4AF37]/35 px-2 py-0.5 text-[10px] font-bold text-[#D4AF37] hover:bg-[#D4AF37]/10"
+                className="mr-2 inline-flex rounded-md border border-brand-gold/35 px-2 py-0.5 text-[10px] font-bold text-brand-gold hover:bg-brand-gold/10"
               >
                 تعبئة الوجهات والتواريخ
               </button>
@@ -2745,7 +2745,7 @@ export function QuoteBuilderForm({
             <button
               type="button"
               onClick={addDestination}
-              className="shrink-0 rounded-xl border border-[#C9A84C]/50 bg-[#FEFDF9] px-4 text-xs font-black text-[#1C4532] hover:bg-amber-50"
+              className="shrink-0 rounded-xl border border-brand-gold/50 bg-[#FEFDF9] px-4 text-xs font-black text-[#1C4532] hover:bg-amber-50"
             >
               <Plus size={14} className="inline" aria-hidden /> إضافة
             </button>
@@ -2755,7 +2755,7 @@ export function QuoteBuilderForm({
               {destinations.map((d, i) => (
                 <li
                   key={`${d}-${i}`}
-                  className="inline-flex items-center gap-1 rounded-full bg-[#1C4532] px-3 py-1 text-xs font-bold text-[#C9A84C]"
+                  className="inline-flex items-center gap-1 rounded-full bg-[#1C4532] px-3 py-1 text-xs font-bold text-brand-gold"
                 >
                   {d}
                   <button type="button" onClick={() => removeDestination(i)} aria-label={`حذف ${d}`}>
@@ -2789,8 +2789,8 @@ export function QuoteBuilderForm({
         </div>
       </section>
 
-      <div className="mb-6 rounded-2xl border border-[#D4AF37]/40 bg-white p-5 shadow-sm">
-        <label className="mb-2 flex items-center gap-2 text-base font-extrabold text-[#b8952d]">
+      <div className="mb-6 rounded-2xl border border-brand-gold/40 bg-white p-5 shadow-sm">
+        <label className="mb-2 flex items-center gap-2 text-base font-extrabold text-brand-gold">
           <span aria-hidden>🧮</span>
           <span>ربط بحساب تسعير قروب سابق (Group Pricing Import)</span>
         </label>
@@ -2799,7 +2799,7 @@ export function QuoteBuilderForm({
           onChange={(e) => {
             void handleImportPricing(e.target.value);
           }}
-          className="w-full rounded-xl border border-slate-300 bg-slate-50 p-3 font-bold text-slate-800 outline-none transition focus:ring-2 focus:ring-[#D4AF37]"
+          className="w-full rounded-xl border border-slate-300 bg-slate-50 p-3 font-bold text-slate-800 outline-none transition focus:ring-2 focus:ring-brand-gold"
         >
           <option value="">- اختر تسعير قروب مسبق لاستدراج البيانات تلقائياً -</option>
           {savedPricings.map((pricing) => (
@@ -2840,7 +2840,7 @@ export function QuoteBuilderForm({
               className={fieldClass}
             />
             {marginProfit > 0 ? (
-              <p className="mt-1 text-[10px] font-bold text-emerald-700 dark:text-[#D4AF37]">
+              <p className="mt-1 text-[10px] font-bold text-emerald-700 dark:text-brand-gold">
                 هامش: {marginProfit.toLocaleString('ar-SA')} ر.س
               </p>
             ) : null}
@@ -2857,11 +2857,11 @@ export function QuoteBuilderForm({
             />
           </label>
         </div>
-        <div className="rounded-xl border border-[#C9A84C]/30 bg-[#1C4532] px-4 py-3 text-center">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-[#C9A84C]/80">
+        <div className="rounded-xl border border-brand-gold/30 bg-[#1C4532] px-4 py-3 text-center">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-brand-gold/80">
             الإجمالي للعميل
           </p>
-          <p className="mt-1 text-2xl font-black text-[#C9A84C]" dir="ltr">
+          <p className="mt-1 text-2xl font-black text-brand-gold" dir="ltr">
             {grandTotal.toLocaleString('ar-SA')} ر.س
           </p>
         </div>
@@ -2869,7 +2869,7 @@ export function QuoteBuilderForm({
 
       {clientContext ? (
         <div className="mb-6 rounded-2xl border border-slate-200/90 bg-white p-6 text-right shadow-sm">
-          <h3 className="mb-4 text-base font-extrabold text-[#b8952d]">
+          <h3 className="mb-4 text-base font-extrabold text-brand-gold">
             دليل الـ DNA للعميل (للاستدلال أثناء التسعير)
           </h3>
           <div className="grid grid-cols-2 gap-4 text-sm font-bold text-slate-800 md:grid-cols-4">
@@ -2932,7 +2932,7 @@ export function QuoteBuilderForm({
 
       <ProposalSection
         title="مقترحات الطيران"
-        icon={<Plane size={18} className="text-[#C9A84C]" aria-hidden />}
+        icon={<Plane size={18} className="text-brand-gold" aria-hidden />}
         onAdd={() => setFlights((prev) => [...prev, createEmptyFlightProposal()])}
       >
         <table className="w-full min-w-[720px] border-collapse">
@@ -3003,7 +3003,7 @@ export function QuoteBuilderForm({
           {canIssueInvoice ? (
             <section className={`${cardClass} mb-5`}>
               <h2 className="mb-3 flex items-center gap-2 text-sm font-black text-slate-900 dark:text-white">
-                <Receipt size={18} className="text-[#C9A84C]" aria-hidden />
+                <Receipt size={18} className="text-brand-gold" aria-hidden />
                 الفوترة
               </h2>
               <p className="mb-3 text-xs font-semibold text-slate-500">
@@ -3012,7 +3012,7 @@ export function QuoteBuilderForm({
               <button
                 type="button"
                 onClick={() => setInvoiceModalOpen(true)}
-                className="inline-flex items-center gap-2 rounded-xl border border-[#C9A84C]/50 bg-gradient-to-l from-[#FEFDF9] to-[#FFF8E7] px-4 py-2.5 text-xs font-black text-[#1C4532] shadow-sm transition hover:border-[#C9A84C] hover:bg-amber-50"
+                className="inline-flex items-center gap-2 rounded-xl border border-brand-gold/50 bg-gradient-to-l from-[#FEFDF9] to-[#FFF8E7] px-4 py-2.5 text-xs font-black text-[#1C4532] shadow-sm transition hover:border-brand-gold hover:bg-amber-50"
               >
                 <Receipt size={14} aria-hidden />
                 إصدار فاتورة
@@ -3036,7 +3036,7 @@ export function QuoteBuilderForm({
         type="button"
         disabled={saving || readOnly}
         onClick={() => void handleSave()}
-        className="inline-flex h-11 min-h-11 w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-l from-[#8A6B2A] to-[#C9A84C] px-6 py-3 text-sm font-black text-[#1C4532] shadow-md disabled:opacity-60 sm:w-auto sm:py-4"
+        className="inline-flex h-11 min-h-11 w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-l from-[#8A6B2A] to-brand-gold px-6 py-3 text-sm font-black text-[#1C4532] shadow-md disabled:opacity-60 sm:w-auto sm:py-4"
       >
         {saving ? (
           <>
@@ -3104,7 +3104,7 @@ function ProposalSection({
         <button
           type="button"
           onClick={onAdd}
-          className="inline-flex items-center gap-1 rounded-lg border border-[#C9A84C]/40 bg-[#FEFDF9] px-3 py-1.5 text-[10px] font-black text-[#1C4532] hover:bg-amber-50"
+          className="inline-flex items-center gap-1 rounded-lg border border-brand-gold/40 bg-[#FEFDF9] px-3 py-1.5 text-[10px] font-black text-[#1C4532] hover:bg-amber-50"
         >
           <Plus size={12} aria-hidden />
           صف جديد

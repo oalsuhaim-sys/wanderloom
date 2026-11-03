@@ -61,7 +61,7 @@ export type GroupManagementProps = {
 
 function InterestIcon({ interest, size = 14 }: { interest: FellowshipInterest; size?: number }) {
   const Icon = INTEREST_ICONS[interest] ?? Sparkles;
-  return <Icon size={size} className="shrink-0 text-[#D4AF37]" aria-hidden />;
+  return <Icon size={size} className="shrink-0 text-brand-gold" aria-hidden />;
 }
 
 function ClientInterestBadges({ client }: { client: FellowshipClientDna }) {
@@ -73,7 +73,7 @@ function ClientInterestBadges({ client }: { client: FellowshipClientDna }) {
       {client.priorityInterests.map((key) => (
         <span
           key={key}
-          className="inline-flex items-center gap-1 rounded-full border border-[#D4AF37]/30 bg-[#D4AF37]/10 px-2 py-0.5 text-[9px] font-bold text-[#f5e6b8]"
+          className="inline-flex items-center gap-1 rounded-full border border-brand-gold/30 bg-brand-gold/10 px-2 py-0.5 text-[9px] font-bold text-[#f5e6b8]"
           title={FELLOWSHIP_INTEREST_META[key].labelAr}
         >
           <InterestIcon interest={key} size={10} />
@@ -169,12 +169,12 @@ function FellowshipNodeGraph({
         {pairs.slice(0, 6).map((pair) => (
           <li
             key={`${pair.clientAId}-${pair.clientBId}`}
-            className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[#D4AF37]/20 bg-[#001f3f]/40 px-3 py-2"
+            className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-brand-gold/20 bg-[#001f3f]/40 px-3 py-2"
           >
             <span className="text-[11px] font-bold text-white/90">
               {pair.clientAName} ↔ {pair.clientBName}
             </span>
-            <span className="inline-flex items-center gap-1 text-[10px] font-black text-[#D4AF37]">
+            <span className="inline-flex items-center gap-1 text-[10px] font-black text-brand-gold">
               {pair.sharedInterests[0] ? <InterestIcon interest={pair.sharedInterests[0]} size={12} /> : null}
               {pair.matchLabel}
             </span>
@@ -220,21 +220,21 @@ function PlaneSeatMockup({
   }, [seatPairs, clients, clientMap]);
 
   return (
-    <div className="rounded-2xl border border-[#D4AF37]/25 bg-gradient-to-b from-[#0a1628] to-[#001f3f] p-4">
+    <div className="rounded-2xl border border-brand-gold/25 bg-gradient-to-b from-[#0a1628] to-[#001f3f] p-4">
       <div className="mb-3 flex items-center justify-center">
-        <div className="h-8 w-24 rounded-t-[2rem] border border-[#D4AF37]/30 bg-[#D4AF37]/10" />
+        <div className="h-8 w-24 rounded-t-[2rem] border border-brand-gold/30 bg-brand-gold/10" />
       </div>
       <div className="space-y-2">
         {rows.map((row, idx) => (
           <div key={idx} className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
             <SeatChip client={row.left} side="يمين" />
-            <span className="text-[9px] font-black text-[#D4AF37]/70">{String(idx + 1).padStart(2, '0')}</span>
+            <span className="text-[9px] font-black text-brand-gold/70">{String(idx + 1).padStart(2, '0')}</span>
             <SeatChip client={row.right} side="يسار" align="end" />
           </div>
         ))}
       </div>
       {rows.some((r) => r.label) ? (
-        <p className="mt-3 text-center text-[10px] font-semibold text-[#D4AF37]/80">
+        <p className="mt-3 text-center text-[10px] font-semibold text-brand-gold/80">
           الأزواج المتطابقة بجانب بعض — لتنسيق الأرواح
         </p>
       ) : null}
@@ -256,7 +256,7 @@ function SeatChip({
   }
   return (
     <div
-      className={`rounded-xl border border-[#D4AF37]/35 bg-[#D4AF37]/10 px-2 py-1.5 ${
+      className={`rounded-xl border border-brand-gold/35 bg-brand-gold/10 px-2 py-1.5 ${
         align === 'end' ? 'text-left' : 'text-right'
       }`}
     >
@@ -281,10 +281,10 @@ function DinnerTablesMockup({
       {tables.map((table) => (
         <div
           key={table.tableIndex}
-          className="relative rounded-2xl border border-[#D4AF37]/25 bg-[#121816] p-4 pt-8"
+          className="relative rounded-2xl border border-brand-gold/25 bg-[#121816] p-4 pt-8"
         >
-          <div className="absolute left-1/2 top-3 h-14 w-14 -translate-x-1/2 rounded-full border-2 border-[#D4AF37]/50 bg-[#001f3f]/80 shadow-[0_0_20px_rgba(212,175,55,0.25)]" />
-          <p className="relative z-10 mb-3 text-center text-[10px] font-black text-[#D4AF37]">
+          <div className="absolute left-1/2 top-3 h-14 w-14 -translate-x-1/2 rounded-full border-2 border-brand-gold/50 bg-[#001f3f]/80 shadow-[0_0_20px_rgba(212,175,55,0.25)]" />
+          <p className="relative z-10 mb-3 text-center text-[10px] font-black text-brand-gold">
             طاولة {table.tableIndex}
           </p>
           <ul className="space-y-2">
@@ -430,11 +430,11 @@ export default function GroupManagement({
   }
 
   return (
-    <div className="flex max-h-[90dvh] flex-col overflow-hidden rounded-2xl border border-[#D4AF37]/30 bg-[#0d1210] shadow-[0_24px_80px_rgba(0,0,0,0.55)]" dir="rtl">
-      <header className="shrink-0 border-b border-[#D4AF37]/20 bg-gradient-to-l from-[#001f3f] to-[#1E2720] px-5 py-4 sm:px-6">
+    <div className="flex max-h-[90dvh] flex-col overflow-hidden rounded-2xl border border-brand-gold/30 bg-[#0d1210] shadow-[0_24px_80px_rgba(0,0,0,0.55)]" dir="rtl">
+      <header className="shrink-0 border-b border-brand-gold/20 bg-gradient-to-l from-[#001f3f] to-[#1E2720] px-5 py-4 sm:px-6">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.28em] text-[#D4AF37]/80">
+            <p className="text-[10px] font-black uppercase tracking-[0.28em] text-brand-gold/80">
               Fellowship Matching
             </p>
             <h2 className="mt-1 text-lg font-extrabold text-white sm:text-xl">
@@ -460,7 +460,7 @@ export default function GroupManagement({
       <div className="flex-1 overflow-y-auto px-4 py-5 sm:px-6">
         <section className="mb-6 rounded-2xl border border-white/10 bg-[#121816] p-4">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-            <h3 className="flex items-center gap-2 text-sm font-black text-[#D4AF37]">
+            <h3 className="flex items-center gap-2 text-sm font-black text-brand-gold">
               <Users className="h-4 w-4" />
               المسجّلون في الرحلة ({selectedIds.length}/{MAX_REGISTRANTS})
             </h3>
@@ -468,7 +468,7 @@ export default function GroupManagement({
               type="button"
               disabled={saving || !groupTripId}
               onClick={() => void saveRegistrants()}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-[#D4AF37] px-4 py-2 text-xs font-black text-[#001f3f] transition hover:brightness-105 disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-xl bg-brand-gold px-4 py-2 text-xs font-black text-[#001f3f] transition hover:brightness-105 disabled:opacity-50"
             >
               {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
               حفظ القائمة
@@ -492,7 +492,7 @@ export default function GroupManagement({
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="بحث عن عميل…"
-              className="w-full rounded-xl border border-white/10 bg-[#0d1210] py-2.5 pe-3 ps-10 text-right text-sm font-semibold text-white outline-none focus:border-[#D4AF37]/50"
+              className="w-full rounded-xl border border-white/10 bg-[#0d1210] py-2.5 pe-3 ps-10 text-right text-sm font-semibold text-white outline-none focus:border-brand-gold/50"
             />
           </div>
 
@@ -509,7 +509,7 @@ export default function GroupManagement({
                   <label
                     key={c.id}
                     className={`flex cursor-pointer items-center justify-between gap-2 rounded-lg px-3 py-2 transition ${
-                      checked ? 'bg-[#D4AF37]/15' : 'hover:bg-white/5'
+                      checked ? 'bg-brand-gold/15' : 'hover:bg-white/5'
                     } ${disabled ? 'cursor-not-allowed opacity-40' : ''}`}
                   >
                     <span className="text-xs font-bold text-white">{c.name}</span>
@@ -518,7 +518,7 @@ export default function GroupManagement({
                       checked={checked}
                       disabled={disabled}
                       onChange={() => toggleClient(c.id)}
-                      className="h-4 w-4 accent-[#D4AF37]"
+                      className="h-4 w-4 accent-brand-gold"
                     />
                   </label>
                 );
@@ -529,29 +529,29 @@ export default function GroupManagement({
 
         {loadingDna ? (
           <div className="flex flex-col items-center justify-center py-16 text-white/50">
-            <Loader2 className="mb-3 h-8 w-8 animate-spin text-[#D4AF37]" />
+            <Loader2 className="mb-3 h-8 w-8 animate-spin text-brand-gold" />
             <p className="text-sm font-semibold">تحليل DNA السياحي…</p>
           </div>
         ) : selectedIds.length < 2 ? (
-          <div className="rounded-2xl border border-dashed border-[#D4AF37]/30 px-6 py-12 text-center">
+          <div className="rounded-2xl border border-dashed border-brand-gold/30 px-6 py-12 text-center">
             <p className="text-sm font-bold text-white/70">
               اختر عميلين على الأقل لبدء التطابق البشري
             </p>
           </div>
         ) : (
           <div className="space-y-6">
-            <section className="rounded-2xl border border-[#D4AF37]/20 bg-[#121816] p-4 sm:p-5">
-              <h3 className="mb-4 text-sm font-black text-[#D4AF37]">خريطة التوافق — DNA Graph</h3>
+            <section className="rounded-2xl border border-brand-gold/20 bg-[#121816] p-4 sm:p-5">
+              <h3 className="mb-4 text-sm font-black text-brand-gold">خريطة التوافق — DNA Graph</h3>
               <FellowshipNodeGraph clients={matchResult.clients} pairs={matchResult.pairs} />
             </section>
 
-            <section className="rounded-2xl border border-[#D4AF37]/20 bg-[#121816] p-4 sm:p-5">
-              <h3 className="mb-4 text-sm font-black text-[#D4AF37]">توزيع مقاعد الطائرة</h3>
+            <section className="rounded-2xl border border-brand-gold/20 bg-[#121816] p-4 sm:p-5">
+              <h3 className="mb-4 text-sm font-black text-brand-gold">توزيع مقاعد الطائرة</h3>
               <PlaneSeatMockup seatPairs={matchResult.seatPairs} clients={matchResult.clients} />
             </section>
 
-            <section className="rounded-2xl border border-[#D4AF37]/20 bg-[#121816] p-4 sm:p-5">
-              <h3 className="mb-4 text-sm font-black text-[#D4AF37]">طاولات العشاء</h3>
+            <section className="rounded-2xl border border-brand-gold/20 bg-[#121816] p-4 sm:p-5">
+              <h3 className="mb-4 text-sm font-black text-brand-gold">طاولات العشاء</h3>
               <DinnerTablesMockup tables={matchResult.dinnerTables} clients={matchResult.clients} />
             </section>
           </div>

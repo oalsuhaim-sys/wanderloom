@@ -66,7 +66,7 @@ const PAGE = 'min-h-screen bg-[#FDFBF7] pb-36 text-[#243223]';
 const PAGE_DONE = 'min-h-screen bg-[#FDFBF7] text-[#243223]';
 const GOLD = 'text-[#b8954d]';
 const OLIVE = 'text-[#243223]';
-const GOLD_BRIGHT = 'text-[#d4af37]';
+const GOLD_BRIGHT = 'text-brand-gold';
 
 function formatSar(value: number): string {
   return `${value.toLocaleString('ar-SA')} ر.س`;
@@ -181,7 +181,7 @@ function VoyageRouteMap({ cities }: { cities: string[] }) {
           <defs>
             <linearGradient id="routeGlow" x1="0%" y1="0%" x2="100%" y2="0%">
               <stop offset="0%" stopColor="#b8954d" stopOpacity="0.15" />
-              <stop offset="50%" stopColor="#d4af37" stopOpacity="0.55" />
+              <stop offset="50%" stopColor="#D4AF37" stopOpacity="0.55" />
               <stop offset="100%" stopColor="#b8954d" stopOpacity="0.15" />
             </linearGradient>
             <filter id="softGlow" x="-40%" y="-40%" width="180%" height="180%">
@@ -947,7 +947,7 @@ export function PremiumInteractiveQuotation({ quotation }: Props) {
               >
                 <div
                   className={
-                    'pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-[#d4af37]/70 to-transparent'
+                    'pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-brand-gold/70 to-transparent'
                   }
                   aria-hidden
                 />
@@ -1003,7 +1003,7 @@ export function PremiumInteractiveQuotation({ quotation }: Props) {
               disabled={submitting}
               onClick={() => void handleAcceptQuote()}
               className={
-                'inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[#243223] px-6 py-3.5 text-sm font-semibold text-[#d4af37] shadow-lg transition hover:bg-[#30402c] disabled:opacity-70 sm:w-auto'
+                'inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[#243223] px-6 py-3.5 text-sm font-semibold text-brand-gold shadow-lg transition hover:bg-[#30402c] disabled:opacity-70 sm:w-auto'
               }
             >
               {submitting ? (

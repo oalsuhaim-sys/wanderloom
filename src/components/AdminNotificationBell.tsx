@@ -251,7 +251,7 @@ export function AdminNotificationBell({
       <button
         type="button"
         onClick={() => setOpen((current) => !current)}
-        className="relative flex h-10 w-10 items-center justify-center rounded-xl border border-transparent bg-slate-900 text-white shadow-lg transition-colors duration-200 hover:opacity-90 dark:border dark:border-[#D4AF37]/30 dark:bg-[#22302C] dark:text-[#D4AF37]"
+        className="relative flex h-10 w-10 items-center justify-center rounded-xl border border-transparent bg-slate-900 text-white shadow-lg transition-colors duration-200 hover:opacity-90 dark:border dark:border-brand-gold/30 dark:bg-[#22302C] dark:text-brand-gold"
         aria-label={`الإشعارات: ${counts.totalPending} معلّقة`}
         aria-expanded={open}
       >
@@ -264,7 +264,7 @@ export function AdminNotificationBell({
       </button>
 
       {open ? (
-        <div className="absolute left-0 top-full z-[60] mt-2 w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-[#D4AF37]/20 bg-white shadow-2xl">
+        <div className="absolute left-0 top-full z-[60] mt-2 w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-brand-gold/20 bg-white shadow-2xl">
           <div className="flex items-center justify-between border-b border-slate-100 bg-gradient-to-l from-[#10251B] to-[#08140F] px-4 py-3 text-white">
             <div>
               <p className="text-sm font-black">مركز التنبيهات</p>
@@ -278,7 +278,7 @@ export function AdminNotificationBell({
               type="button"
               onClick={() => void refresh(true)}
               disabled={refreshing}
-              className="rounded-lg p-2 text-[#D4AF37] transition hover:bg-white/10 disabled:opacity-50"
+              className="rounded-lg p-2 text-brand-gold transition hover:bg-white/10 disabled:opacity-50"
               aria-label="تحديث التنبيهات"
             >
               <RefreshCw
@@ -395,7 +395,7 @@ export function AdminNotificationBell({
               onClick={() => setOpen(false)}
               className="flex items-center gap-3 rounded-xl border border-slate-100 p-3 transition hover:border-sky-200 hover:bg-sky-50"
             >
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#D4AF37]/15 text-[#1E2720]">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-gold/15 text-[#1E2720]">
                 <Luggage className="h-5 w-5" aria-hidden />
               </span>
               <span className="min-w-0 flex-1">
@@ -406,7 +406,7 @@ export function AdminNotificationBell({
                   لديك {counts.pendingGroupTrips} طلبات معلّقة
                 </span>
               </span>
-              <span className="rounded-full bg-[#D4AF37]/25 px-2.5 py-1 text-xs font-black text-[#1E2720]">
+              <span className="rounded-full bg-brand-gold/25 px-2.5 py-1 text-xs font-black text-[#1E2720]">
                 {counts.pendingGroupTrips}
               </span>
             </Link>

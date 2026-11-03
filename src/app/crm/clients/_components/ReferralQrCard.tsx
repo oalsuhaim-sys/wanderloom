@@ -87,7 +87,7 @@ export default function ReferralQrCard({ referralCode, className = '' }: Referra
         type="button"
         onClick={handleDownload}
         disabled={!referralUrl}
-        className="mt-4 inline-flex items-center justify-center gap-2 rounded-lg border border-[#D4AF37]/30 bg-[#1E2720] px-4 py-2 text-[11px] font-bold text-[#D4AF37] shadow-sm transition hover:bg-[#162019] disabled:cursor-not-allowed disabled:opacity-50"
+        className="mt-4 inline-flex items-center justify-center gap-2 rounded-lg border border-brand-gold/30 bg-[#1E2720] px-4 py-2 text-[11px] font-bold text-brand-gold shadow-sm transition hover:bg-[#162019] disabled:cursor-not-allowed disabled:opacity-50"
       >
         <Download className="h-3.5 w-3.5" aria-hidden />
         تحميل الباركود

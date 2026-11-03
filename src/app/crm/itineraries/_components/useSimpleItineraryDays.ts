@@ -193,14 +193,13 @@ export function useSimpleItineraryDays(initialDays?: SimpleItineraryDay[]) {
   );
 
   const updatePlaceNotes = useCallback((dayId: number, placeIndex: number, notes: string) => {
-    const normalized = String(notes ?? '').trim();
     setItineraryDays((prev) =>
       prev.map((day) => {
         if (day.id !== dayId) return day;
         return {
           ...day,
           places: day.places.map((p, index) =>
-            index === placeIndex ? { ...p, notes: normalized || undefined } : p,
+            index === placeIndex ? { ...p, notes: notes || undefined } : p,
           ),
         };
       }),
@@ -348,6 +347,8 @@ export function useSimpleItineraryDays(initialDays?: SimpleItineraryDay[]) {
     activeDayLabel,
     handleAddDay,
     handleDeleteDay,
+    /** alias مطابق لطلب الواجهة */
+    deleteDay: handleDeleteDay,
     moveDay,
     handleAddPlace,
     handleRemovePlace,

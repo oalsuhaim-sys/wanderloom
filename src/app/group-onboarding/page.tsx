@@ -36,7 +36,7 @@ type TripInfo = {
 };
 
 const FIELD =
-  'w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-900 outline-none transition focus:border-[#C5A059] focus:ring-2 focus:ring-[#C5A059]/40';
+  'w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-900 outline-none transition focus:border-public-gold focus:ring-2 focus:ring-public-gold/40';
 
 const FIELD_LABEL = 'block text-xs font-extrabold';
 
@@ -177,7 +177,7 @@ function GroupOnboardingForm() {
       className="min-h-dvh bg-[#FDFBF7] text-[#111]"
       style={{
         backgroundImage:
-          'radial-gradient(ellipse 80% 50% at 50% -10%, rgba(217,119,6,0.14), transparent 55%)',
+          'radial-gradient(ellipse 80% 50% at 50% -10%, rgba(197,155,39,0.16), transparent 55%)',
       }}
     >
       <div className="mx-auto max-w-lg px-4 pb-10 pt-[max(2.5rem,env(safe-area-inset-top))] sm:py-14">
@@ -189,7 +189,7 @@ function GroupOnboardingForm() {
 
         <header className="mb-6 text-center sm:mb-8">
           <span
-            style={brandGoldBadgeStyle}
+            style={{ ...brandGoldBadgeStyle, borderColor: '#C59B27', color: '#B8860B' }}
             className="inline-block rounded-md border px-2.5 py-0.5 text-[11px] font-extrabold"
           >
             Wanderloom · Group Registration
@@ -204,7 +204,7 @@ function GroupOnboardingForm() {
 
         {loadingTrip ? (
           <div className="flex items-center justify-center gap-2 rounded-2xl border border-dashed border-[#1e3f20]/15 bg-white py-16 text-sm font-bold text-gray-500">
-            <Loader2 className="h-5 w-5 animate-spin text-[#C5A059]" aria-hidden />
+            <Loader2 className="h-5 w-5 animate-spin text-public-gold" aria-hidden />
             جاري تحميل الرحلة…
           </div>
         ) : tripError || !trip ? (
@@ -212,7 +212,7 @@ function GroupOnboardingForm() {
             <p className="text-sm font-black text-rose-900">{tripError ?? 'تعذر التحميل.'}</p>
             <Link
               href="/#groups"
-              className="mt-4 inline-flex rounded-xl bg-[#1e3f20] px-5 py-2.5 text-xs font-black text-[#cda04c]"
+              className="mt-4 inline-flex rounded-xl bg-[#1e3f20] px-5 py-2.5 text-xs font-black text-public-gold"
             >
               تصفّح الرحلات المتاحة
             </Link>
@@ -327,7 +327,7 @@ function GroupOnboardingForm() {
               <button
                 type="submit"
                 disabled={submitting || !isPhoneValid}
-                style={brandGoldButtonStyle}
+                style={{ ...brandGoldButtonStyle, backgroundColor: '#C59B27' }}
                 className="inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3.5 text-sm font-extrabold shadow-sm transition-all hover:opacity-90 disabled:opacity-60"
               >
                 {submitting ? (
@@ -352,7 +352,7 @@ export default function GroupOnboardingPage() {
     <Suspense
       fallback={
         <div className="flex min-h-dvh items-center justify-center bg-[#FDFBF7] text-sm font-bold text-gray-500">
-          <Loader2 className="me-2 h-5 w-5 animate-spin text-[#C5A059]" aria-hidden />
+          <Loader2 className="me-2 h-5 w-5 animate-spin text-public-gold" aria-hidden />
           جاري التحميل…
         </div>
       }

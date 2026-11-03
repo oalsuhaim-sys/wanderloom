@@ -26,10 +26,10 @@ import { barcodeWidthsFromSeed } from '@/lib/vip-boarding-barcode';
 const MASKED_SECRET = '[يظهر بعد الاعتماد]';
 /** Deep green ink — follows the client's light / dark choice (see globals.css). */
 const INK = 'var(--wl-ink, #1e3f20)';
-const GOLD = '#cda04c';
+const GOLD = '#D4AF37';
 
 const TICKET_CARD =
-  'relative overflow-hidden rounded-3xl border border-[#cda04c]/20 bg-white p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] sm:p-8';
+  'relative overflow-hidden rounded-3xl border border-brand-gold/20 bg-white p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] sm:p-8';
 
 type Props = {
   trip: PublicItinerary;
@@ -69,7 +69,7 @@ function TicketGoldAccent() {
   return (
     <>
       <span
-        className="pointer-events-none absolute -end-8 -top-8 h-24 w-24 rounded-full bg-[#cda04c]/8"
+        className="pointer-events-none absolute -end-8 -top-8 h-24 w-24 rounded-full bg-brand-gold/8"
         aria-hidden
       />
       <span
@@ -84,9 +84,9 @@ function GoldTimelineConnector({ icon: Icon }: { icon: typeof Plane }) {
   return (
     <div className="flex shrink-0 flex-col items-center justify-center px-2">
       <div className="flex w-full items-center gap-1">
-        <span className="h-px flex-1 bg-gradient-to-l from-[#cda04c]/50 to-[#cda04c]/10" aria-hidden />
-        <Icon className="h-4 w-4 shrink-0 text-[#cda04c]" aria-hidden />
-        <span className="h-px flex-1 bg-gradient-to-r from-[#cda04c]/50 to-[#cda04c]/10" aria-hidden />
+        <span className="h-px flex-1 bg-gradient-to-l from-brand-gold/50 to-brand-gold/10" aria-hidden />
+        <Icon className="h-4 w-4 shrink-0 text-brand-gold" aria-hidden />
+        <span className="h-px flex-1 bg-gradient-to-r from-brand-gold/50 to-brand-gold/10" aria-hidden />
       </div>
     </div>
   );
@@ -113,7 +113,7 @@ function DetailCell({
     <div className="min-w-0 text-center">
       <p className="text-xs text-gray-400">{label}</p>
       <p
-        className={`mt-1 truncate text-sm font-bold text-gray-900 ${highlight ? 'font-mono text-[#cda04c]' : ''}`}
+        className={`mt-1 truncate text-sm font-bold text-gray-900 ${highlight ? 'font-mono text-brand-gold' : ''}`}
         style={highlight ? { color: GOLD } : undefined}
         dir={ltr ? 'ltr' : textDir(value)}
       >
@@ -168,13 +168,13 @@ function LuxuryFlightTicketCard({
   if (!fd || !hasVipFlightVoucherData(fd)) {
     if (!flightSummary) {
       return (
-        <p className="rounded-3xl border border-[#cda04c]/20 bg-[#F9F9F6] px-4 py-8 text-center text-sm text-[#1E2720]/55">
+        <p className="rounded-3xl border border-brand-gold/20 bg-[#F9F9F6] px-4 py-8 text-center text-sm text-[#1E2720]/55">
           لم تُضف تفاصيل طيران بعد — يتواصل معك الكونسيرج قبل السفر.
         </p>
       );
     }
     return (
-      <p className="whitespace-pre-wrap rounded-3xl border border-[#cda04c]/20 bg-white p-6 text-sm leading-relaxed text-[#1E2720]/85 shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
+      <p className="whitespace-pre-wrap rounded-3xl border border-brand-gold/20 bg-white p-6 text-sm leading-relaxed text-[#1E2720]/85 shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
         {flightSummary}
       </p>
     );
@@ -218,7 +218,7 @@ function LuxuryFlightTicketCard({
       <TicketGoldAccent />
 
       <div className="relative mb-2 flex items-center justify-end">
-        <span className="shrink-0 rounded-full bg-[#cda04c]/10 px-3 py-1 text-[10px] font-black uppercase tracking-wider text-[#cda04c]">
+        <span className="shrink-0 rounded-full bg-brand-gold/10 px-3 py-1 text-[10px] font-black uppercase tracking-wider text-brand-gold">
           VIP
         </span>
       </div>
@@ -320,8 +320,8 @@ function LuxuryHotelTicketCard({
 
       {/* Header */}
       <div className="relative mb-5 flex items-start gap-3" dir="rtl">
-        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#F9F9F6] ring-1 ring-[#cda04c]/25">
-          <BedDouble className="h-5 w-5 text-[#cda04c]" aria-hidden />
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#F9F9F6] ring-1 ring-brand-gold/25">
+          <BedDouble className="h-5 w-5 text-brand-gold" aria-hidden />
         </span>
         <div className="min-w-0 flex-1">
           <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-gray-400">
@@ -335,7 +335,7 @@ function LuxuryHotelTicketCard({
             {hotel.name}
           </h3>
           {hotel.categoryLabel ? (
-            <p className="mt-1 text-xs font-semibold text-[#cda04c]">{hotel.categoryLabel}</p>
+            <p className="mt-1 text-xs font-semibold text-brand-gold">{hotel.categoryLabel}</p>
           ) : null}
         </div>
       </div>
@@ -344,7 +344,7 @@ function LuxuryHotelTicketCard({
       <div className="relative rounded-2xl bg-[#F9F9F6] px-4 py-5" dir="rtl">
         <div className="flex items-center justify-between gap-2">
           <div className="min-w-0 flex-1 text-right">
-            <p className="text-[10px] font-semibold tracking-wide text-[#cda04c]/90">
+            <p className="text-[10px] font-semibold tracking-wide text-brand-gold/90">
               تسجيل الدخول
             </p>
             <p className="mt-1 text-sm font-bold sm:text-base" style={{ color: INK }} dir="rtl">
@@ -355,7 +355,7 @@ function LuxuryHotelTicketCard({
           <GoldTimelineConnector icon={Moon} />
 
           <div className="min-w-0 flex-1 text-left">
-            <p className="text-[10px] font-semibold tracking-wide text-[#cda04c]/90">
+            <p className="text-[10px] font-semibold tracking-wide text-brand-gold/90">
               تسجيل الخروج
             </p>
             <p className="mt-1 text-sm font-bold sm:text-base" style={{ color: INK }} dir="rtl">
@@ -370,7 +370,7 @@ function LuxuryHotelTicketCard({
         <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0 flex-1 text-center sm:text-start">
             <p className="text-xs text-gray-400">رقم التأكيد</p>
-            <p className="mt-1 font-mono text-sm font-bold text-[#cda04c]" dir="ltr">
+            <p className="mt-1 font-mono text-sm font-bold text-brand-gold" dir="ltr">
               {confirm}
             </p>
           </div>
@@ -382,7 +382,7 @@ function LuxuryHotelTicketCard({
                 href={mapsHref}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="mt-1 inline-flex max-w-full items-center justify-center gap-1.5 text-xs leading-relaxed text-[#1E2720]/80 transition-colors hover:text-[#cda04c] hover:underline sm:justify-end"
+                className="mt-1 inline-flex max-w-full items-center justify-center gap-1.5 text-xs leading-relaxed text-[#1E2720]/80 transition-colors hover:text-brand-gold hover:underline sm:justify-end"
                 dir={textDir(address)}
               >
                 <span aria-hidden>📍</span>
@@ -411,13 +411,13 @@ function ActivityTicketCard({
     <article className={TICKET_CARD}>
       <TicketGoldAccent />
       <div dir="rtl">
-        <p className="text-[10px] font-semibold tracking-wide text-[#cda04c]/90">اسم الفعالية</p>
+        <p className="text-[10px] font-semibold tracking-wide text-brand-gold/90">اسم الفعالية</p>
         <p className="mt-1 text-base font-black" style={{ color: INK }}>
           {ticket?.title?.trim() || '—'}
         </p>
         <div className="mt-5 grid grid-cols-1 gap-4 border-t-2 border-dashed border-gray-200 pt-4 sm:grid-cols-2">
           <div>
-            <p className="text-[10px] font-semibold tracking-wide text-[#cda04c]/90">
+            <p className="text-[10px] font-semibold tracking-wide text-brand-gold/90">
               تاريخ ووقت الدخول
             </p>
             <p className="mt-1 text-sm font-bold" style={{ color: INK }} dir="ltr">
@@ -425,10 +425,10 @@ function ActivityTicketCard({
             </p>
           </div>
           <div>
-            <p className="text-[10px] font-semibold tracking-wide text-[#cda04c]/90">
+            <p className="text-[10px] font-semibold tracking-wide text-brand-gold/90">
               رقم التذكرة
             </p>
-            <p className="mt-1 font-mono text-sm font-bold text-[#cda04c]" dir="ltr">
+            <p className="mt-1 font-mono text-sm font-bold text-brand-gold" dir="ltr">
               {maskSecrets ? MASKED_SECRET : ticket?.ticket_number?.trim() || '—'}
             </p>
           </div>
@@ -448,7 +448,7 @@ export default function VipClientBookingsTab({ trip, maskSecrets = false }: Prop
 
       <section>
         <h2 className="mb-4 flex items-center gap-2 text-sm font-black text-[#1E2720]">
-          <Plane className="h-4 w-4 text-[#cda04c]" aria-hidden />
+          <Plane className="h-4 w-4 text-brand-gold" aria-hidden />
           الطيران
         </h2>
         <div className="flex flex-col gap-4">
@@ -458,11 +458,11 @@ export default function VipClientBookingsTab({ trip, maskSecrets = false }: Prop
 
       <section>
         <h2 className="mb-4 flex items-center gap-2 text-sm font-black text-[#1E2720]">
-          <BedDouble className="h-4 w-4 text-[#cda04c]" aria-hidden />
+          <BedDouble className="h-4 w-4 text-brand-gold" aria-hidden />
           الفنادق
         </h2>
         {hotels.length === 0 ? (
-          <p className="rounded-3xl border border-[#cda04c]/20 bg-[#F9F9F6] px-4 py-8 text-center text-sm text-[#1E2720]/55">
+          <p className="rounded-3xl border border-brand-gold/20 bg-[#F9F9F6] px-4 py-8 text-center text-sm text-[#1E2720]/55">
             لا توجد حجوزات فندقية مُدرجة بعد.
           </p>
         ) : (
@@ -476,11 +476,11 @@ export default function VipClientBookingsTab({ trip, maskSecrets = false }: Prop
 
       <section>
         <h2 className="mb-4 flex items-center gap-2 text-sm font-black text-[#1E2720]">
-          <Ticket className="h-4 w-4 text-[#cda04c]" aria-hidden />
+          <Ticket className="h-4 w-4 text-brand-gold" aria-hidden />
           تذاكر الفعاليات 🎟️
         </h2>
         {tickets.length === 0 ? (
-          <p className="rounded-3xl border border-[#cda04c]/20 bg-[#F9F9F6] px-4 py-8 text-center text-sm text-[#1E2720]/55">
+          <p className="rounded-3xl border border-brand-gold/20 bg-[#F9F9F6] px-4 py-8 text-center text-sm text-[#1E2720]/55">
             لا توجد تذاكر فعاليات مُدرجة بعد.
           </p>
         ) : (

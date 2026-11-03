@@ -84,7 +84,7 @@ export function salesStageSelectClass(stage: string, variant: 'light' | 'luxury'
   }
 
   const base =
-    'w-full rounded-xl border px-3 py-2.5 text-xs font-black outline-none transition focus:ring-2 focus:ring-[#d4af37]/45 [color-scheme:light]'
+    'w-full rounded-xl border px-3 py-2.5 text-xs font-black outline-none transition focus:ring-2 focus:ring-brand-gold/45 [color-scheme:light]'
   return `${base} ${salesStageBadgeClass(stage)}`
 }
 
@@ -104,6 +104,6 @@ export function salesStageLuxuryBadgeClass(stage: string): string {
     case SALES_STAGE_ACTIVE_TRAVELER:
       return 'border-violet-500/40 bg-violet-950/40 text-violet-200/95'
     default:
-      return 'border-gray-600/80 bg-gray-800 text-[#d4af37]/75'
+      return 'border-gray-600/80 bg-gray-800 text-brand-gold/75'
   }
 }

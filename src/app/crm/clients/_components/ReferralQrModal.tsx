@@ -49,7 +49,7 @@ export default function ReferralQrModal({
               id="referral-qr-modal-title"
               className="inline-flex items-center gap-2 text-sm font-black text-[#1c3d27]"
             >
-              <QrCode className="h-4 w-4 text-[#D4AF37]" aria-hidden />
+              <QrCode className="h-4 w-4 text-brand-gold" aria-hidden />
               باركود الإحالة
             </h2>
             {clientName ? (

@@ -85,19 +85,19 @@ function WanderloomBlackCard({
 }) {
   return (
     <div
-      className="relative flex h-56 flex-col justify-between overflow-hidden rounded-2xl border border-[#C5A059]/30 bg-gradient-to-br from-gray-900 to-black p-6 text-white shadow-2xl"
+      className="relative flex h-56 flex-col justify-between overflow-hidden rounded-2xl border border-brand-gold/30 bg-gradient-to-br from-gray-900 to-black p-6 text-white shadow-2xl"
       aria-label="بطاقة Wanderloom VIP"
     >
       <div
-        className="pointer-events-none absolute -bottom-16 -right-10 h-40 w-40 rounded-full bg-[#C5A059]/15 blur-3xl"
+        className="pointer-events-none absolute -bottom-16 -right-10 h-40 w-40 rounded-full bg-brand-gold/15 blur-3xl"
         aria-hidden
       />
 
       <div className="relative z-10 flex items-start justify-between gap-3">
-        <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#C5A059]/15 ring-1 ring-[#C5A059]/35">
-          <Crown className="h-5 w-5 text-[#C5A059]" aria-hidden />
+        <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-gold/15 ring-1 ring-brand-gold/35">
+          <Crown className="h-5 w-5 text-brand-gold" aria-hidden />
         </span>
-        <p className="text-[10px] font-black uppercase tracking-[0.28em] text-[#C5A059]">
+        <p className="text-[10px] font-black uppercase tracking-[0.28em] text-brand-gold">
           {tierDisplayLabel(tier)}
         </p>
       </div>
@@ -114,7 +114,7 @@ function WanderloomBlackCard({
           <p className="text-[10px] font-bold text-white/45">
             {upcomingDestination ? 'الوجهة القادمة' : 'العضوية'}
           </p>
-          <p className="mt-0.5 inline-flex items-center gap-1.5 text-sm font-black text-[#C5A059]">
+          <p className="mt-0.5 inline-flex items-center gap-1.5 text-sm font-black text-brand-gold">
             {upcomingDestination ? (
               <>
                 <Plane className="h-3.5 w-3.5" aria-hidden />
@@ -162,7 +162,7 @@ function ReferralWealthCard({
   return (
     <section className="rounded-2xl border border-gray-100 bg-white/70 p-6 shadow-sm backdrop-blur-md">
       <div className="mb-5 flex items-center gap-2">
-        <Gift className="h-4 w-4 text-[#C5A059]" aria-hidden />
+        <Gift className="h-4 w-4 text-brand-gold" aria-hidden />
         <h2 className="text-sm font-black text-[#1A3B2A]">كود الإحالة والمكافآت</h2>
       </div>
 
@@ -181,7 +181,7 @@ function ReferralWealthCard({
           type="button"
           onClick={() => void handleCopy()}
           disabled={!referralCode}
-          className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[#1A3B2A]/15 bg-white text-[#1A3B2A] transition-all duration-300 hover:-translate-y-0.5 hover:border-[#C5A059]/50 hover:text-[#C5A059] disabled:cursor-not-allowed disabled:opacity-40"
+          className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[#1A3B2A]/15 bg-white text-[#1A3B2A] transition-all duration-300 hover:-translate-y-0.5 hover:border-brand-gold/50 hover:text-brand-gold disabled:cursor-not-allowed disabled:opacity-40"
           aria-label={copied ? 'تم النسخ' : 'نسخ كود الإحالة'}
         >
           {copied ? <Check className="h-3.5 w-3.5" aria-hidden /> : <Copy className="h-3.5 w-3.5" aria-hidden />}
@@ -192,7 +192,7 @@ function ReferralWealthCard({
         <div className="flex flex-col items-center justify-center space-y-2 text-center md:px-2">
           <span className="text-sm font-medium text-gray-500">رصيد المكافآت</span>
           <span
-            className="text-xl font-bold text-[#C5A059] md:text-2xl"
+            className="text-xl font-bold text-brand-gold md:text-2xl"
             style={{ textShadow: '0 0 20px rgba(197, 160, 89, 0.25)' }}
             dir="ltr"
           >
@@ -234,7 +234,7 @@ function TripArchiveList({
 }) {
   if (trips.length === 0) {
     return (
-      <p className="rounded-2xl border border-dashed border-[#C5A059]/25 bg-white/60 px-5 py-6 text-sm font-semibold text-gray-500">
+      <p className="rounded-2xl border border-dashed border-brand-gold/25 bg-white/60 px-5 py-6 text-sm font-semibold text-gray-500">
         لا توجد رحلات مسجّلة بعد.
       </p>
     );
@@ -258,7 +258,7 @@ function TripArchiveList({
             <div className="flex min-w-0 flex-1 items-center gap-3">
               <GoogleMapsPinLink
                 href={googleMapsSearchUrl(trip.destination || trip.title)}
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#1A3B2A]/5 text-[#C5A059] ring-1 ring-[#1A3B2A]/10 hover:bg-[#1A3B2A]/10"
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#1A3B2A]/5 text-brand-gold ring-1 ring-[#1A3B2A]/10 hover:bg-[#1A3B2A]/10"
                 iconClassName="h-4 w-4"
               />
               <Link href={trip.viewUrl} className="min-w-0 flex-1">
@@ -281,14 +281,14 @@ function TripArchiveList({
               <span
                 className={`rounded-full px-3 py-1 text-sm font-bold ${
                   upcoming
-                    ? 'bg-[#C5A059]/15 text-[#8A6B2A]'
+                    ? 'bg-brand-gold/15 text-[#8A6B2A]'
                     : 'bg-[#1A3B2A]/10 text-[#1A3B2A]'
                 }`}
               >
                 {upcoming ? 'قادمة' : 'مكتملة'}
               </span>
               <ChevronLeft
-                className="h-4 w-4 text-gray-300 transition group-hover:text-[#C5A059]"
+                className="h-4 w-4 text-gray-300 transition group-hover:text-brand-gold"
                 aria-hidden
               />
             </Link>
@@ -378,7 +378,7 @@ function GoogleMapsPinLink({
       target="_blank"
       rel="noopener noreferrer"
       onClick={(e) => e.stopPropagation()}
-      className={`z-10 inline-flex cursor-pointer items-center justify-center transition-all duration-200 hover:scale-110 hover:text-[#C5A059] ${className || 'text-gray-400'}`}
+      className={`z-10 inline-flex cursor-pointer items-center justify-center transition-all duration-200 hover:scale-110 hover:text-brand-gold ${className || 'text-gray-400'}`}
       title="عرض المكان على الخريطة"
       aria-label="عرض المكان على الخريطة"
     >
@@ -461,7 +461,7 @@ function AlbumPhotoCard({
   }
 
   return (
-    <div className="memory-card-wrapper group relative aspect-square overflow-hidden rounded-xl shadow-md ring-1 ring-[#C5A059]/15">
+    <div className="memory-card-wrapper group relative aspect-square overflow-hidden rounded-xl shadow-md ring-1 ring-brand-gold/15">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={memory.imageUrl}
@@ -523,7 +523,7 @@ function AlbumPhotoCard({
           </span>
           <GoogleMapsPinLink
             href={exactMapUrl}
-            className="inline-flex items-center justify-center text-white/70 hover:text-[#C5A059]"
+            className="inline-flex items-center justify-center text-white/70 hover:text-brand-gold"
             iconClassName="h-5 w-5 drop-shadow-md"
           />
         </div>
@@ -557,7 +557,7 @@ function TripAlbumCover({
     <button
       type="button"
       onClick={onOpen}
-      className="memory-card-wrapper group relative aspect-square w-full overflow-hidden rounded-xl bg-[#1A3B2A]/5 text-right shadow-md ring-1 ring-[#C5A059]/20 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg"
+      className="memory-card-wrapper group relative aspect-square w-full overflow-hidden rounded-xl bg-[#1A3B2A]/5 text-right shadow-md ring-1 ring-brand-gold/20 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg"
       aria-label={`فتح ألبوم ${title}`}
     >
       {showCover ? (
@@ -570,7 +570,7 @@ function TripAlbumCover({
         />
       ) : (
         <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-[#1A3B2A] to-[#0f2419]">
-          <Images className="h-8 w-8 text-[#C5A059]/60" aria-hidden />
+          <Images className="h-8 w-8 text-brand-gold/60" aria-hidden />
         </div>
       )}
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent" />
@@ -582,7 +582,7 @@ function TripAlbumCover({
           </p>
         ) : null}
         <p className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-white/15 px-2 py-0.5 text-[10px] font-bold backdrop-blur-sm">
-          <Images className="h-3 w-3 text-[#C5A059]" aria-hidden />
+          <Images className="h-3 w-3 text-brand-gold" aria-hidden />
           {photoCount} {photoCount === 1 ? 'صورة' : 'صور'}
         </p>
       </div>
@@ -632,7 +632,7 @@ function MemoriesAlbumsSection({
           <button
             type="button"
             onClick={() => setSelectedTripAlbum(null)}
-            className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-bold text-[#1A3B2A] shadow-sm transition hover:border-[#C5A059]/40 hover:text-[#C5A059]"
+            className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-bold text-[#1A3B2A] shadow-sm transition hover:border-brand-gold/40 hover:text-brand-gold"
           >
             <ArrowRight className="h-3.5 w-3.5" aria-hidden />
             العودة للألبومات
@@ -662,7 +662,7 @@ function MemoriesAlbumsSection({
                       ? ''
                       : googleMapsSearchUrl(cityGroup.title)
                   }
-                  className="text-[#C5A059]"
+                  className="text-brand-gold"
                   iconClassName="h-4 w-4"
                 />
                 {cityGroup.title}
@@ -702,7 +702,7 @@ function MemoriesAlbumsSection({
         id="client-memories-title"
         className="mb-4 flex items-center gap-2 text-lg font-black text-[#1A3B2A]"
       >
-        <Images className="h-5 w-5 text-[#C5A059]" aria-hidden />
+        <Images className="h-5 w-5 text-brand-gold" aria-hidden />
         ذكريات الرحلة
       </h2>
       <div className="mt-4 grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
@@ -783,7 +783,7 @@ export default function ClientProfileVipDashboard({
           />
 
           <div className="rounded-2xl border border-gray-100 bg-white/70 p-5 shadow-sm backdrop-blur-md">
-            <p className="text-[10px] font-black uppercase tracking-[0.22em] text-[#C5A059]">
+            <p className="text-[10px] font-black uppercase tracking-[0.22em] text-brand-gold">
               تفاصيل العضوية
             </p>
             <p className="mt-3 text-xs font-semibold text-gray-500">
@@ -795,7 +795,7 @@ export default function ClientProfileVipDashboard({
             {activeTrip && !isSameItineraryPage ? (
               <Link
                 href={activeTrip.viewUrl}
-                className="group mt-4 inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#1A3B2A] px-5 py-3 text-sm font-black text-[#C5A059] shadow-md transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg"
+                className="group mt-4 inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#1A3B2A] px-5 py-3 text-sm font-black text-brand-gold shadow-md transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg"
               >
                 <Ticket className="h-4 w-4" aria-hidden />
                 الذهاب إلى مسار {activeTrip.destination}
@@ -828,7 +828,7 @@ export default function ClientProfileVipDashboard({
               id="past-trips-title"
               className="mb-4 flex items-center gap-2 text-lg font-black text-[#1A3B2A]"
             >
-              <History className="h-5 w-5 text-[#C5A059]" aria-hidden />
+              <History className="h-5 w-5 text-brand-gold" aria-hidden />
               أرشيف الرحلات
             </h2>
             <TripArchiveList
@@ -839,7 +839,7 @@ export default function ClientProfileVipDashboard({
 
           <section className="rounded-2xl border border-gray-100 bg-white/70 p-5 shadow-sm backdrop-blur-md">
             <h2 className="mb-4 flex items-center gap-2 text-sm font-black text-[#1A3B2A]">
-              <Wallet className="h-4 w-4 text-[#C5A059]" aria-hidden />
+              <Wallet className="h-4 w-4 text-brand-gold" aria-hidden />
               سجل المحفظة
             </h2>
             <VipClientWalletLedger clientId={client.id} />

@@ -321,7 +321,7 @@ export function clientDisplayTierBadge(
     return {
       label: custom,
       className:
-        'rounded-md border border-[#D4AF37]/50 bg-[#D4AF37]/15 px-2.5 py-1 text-xs font-bold text-[#8B7355] dark:text-[#D4AF37]',
+        'rounded-md border border-brand-gold/50 bg-brand-gold/15 px-2.5 py-1 text-xs font-bold text-[#8B7355] dark:text-brand-gold',
     }
   }
 
@@ -330,21 +330,21 @@ export function clientDisplayTierBadge(
     return {
       label: 'ذهبي',
       className:
-        'rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-800 dark:border-[#D4AF37]/40 dark:bg-[#D4AF37]/15 dark:text-[#D4AF37]',
+        'rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-800 dark:border-brand-gold/40 dark:bg-brand-gold/15 dark:text-brand-gold',
     }
   }
   if (vip === 'black') {
     return {
       label: 'Black',
       className:
-        'rounded-md border border-slate-700 bg-slate-900 px-2.5 py-1 text-xs font-bold text-[#D4AF37]',
+        'rounded-md border border-slate-700 bg-slate-900 px-2.5 py-1 text-xs font-bold text-brand-gold',
     }
   }
   if (vip === 'signature') {
     return {
       label: 'Signature',
       className:
-        'rounded-md border border-[#D4AF37]/60 bg-[#001f3f] px-2.5 py-1 text-xs font-bold text-[#D4AF37]',
+        'rounded-md border border-brand-gold/60 bg-[#001f3f] px-2.5 py-1 text-xs font-bold text-brand-gold',
     }
   }
 
@@ -353,7 +353,7 @@ export function clientDisplayTierBadge(
     return {
       label: tier === 'vvip' ? 'VVIP' : 'VIP',
       className:
-        'rounded-md border border-[#D4AF37]/50 bg-gradient-to-l from-[#d4af37]/20 to-[#e8c96a]/20 px-2.5 py-1 text-xs font-bold text-[#1c3d27] dark:text-[#D4AF37]',
+        'rounded-md border border-brand-gold/50 bg-gradient-to-l from-brand-gold/20 to-[#e8c96a]/20 px-2.5 py-1 text-xs font-bold text-[#1c3d27] dark:text-brand-gold',
     }
   }
 

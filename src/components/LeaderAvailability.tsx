@@ -171,7 +171,7 @@ export function LeaderAvailability({ leaderId }: { leaderId: string }) {
     >
       <div className="border-b border-slate-100 bg-gradient-to-r from-slate-900 to-slate-800 px-5 py-4 text-white dark:border-[#2D3F3A] dark:from-[#1A2421] dark:to-[#22302C]">
         <div className="flex items-center gap-3">
-          <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/15 bg-white/10 text-white dark:border-[#D4AF37]/30 dark:bg-[#D4AF37]/10 dark:text-[#D4AF37]">
+          <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/15 bg-white/10 text-white dark:border-brand-gold/30 dark:bg-brand-gold/10 dark:text-brand-gold">
             <CalendarDays className="h-5 w-5" />
           </span>
           <div>
@@ -188,7 +188,7 @@ export function LeaderAvailability({ leaderId }: { leaderId: string }) {
         <div className="relative z-0 mx-auto w-full max-w-[300px] shrink-0 overflow-visible rounded-2xl border border-slate-200 bg-white p-3 dark:border-[#2D3F3A] dark:bg-[#1A2421] md:mx-0">
           {loading ? (
             <div className="flex min-h-48 items-center justify-center gap-2 text-sm font-medium text-slate-500 dark:text-slate-400">
-              <Loader2 className="h-5 w-5 animate-spin text-slate-400 dark:text-[#D4AF37]" />
+              <Loader2 className="h-5 w-5 animate-spin text-slate-400 dark:text-brand-gold" />
               جاري تحميل التقويم…
             </div>
           ) : (
@@ -231,15 +231,15 @@ export function LeaderAvailability({ leaderId }: { leaderId: string }) {
                   day: 'relative flex items-center justify-center p-0 text-center',
                   day_button: DAY_BTN,
                   selected:
-                    '[&>button]:bg-slate-900 [&>button]:text-white dark:[&>button]:bg-[#D4AF37]/25 dark:[&>button]:text-[#D4AF37]',
+                    '[&>button]:bg-slate-900 [&>button]:text-white dark:[&>button]:bg-brand-gold/25 dark:[&>button]:text-brand-gold',
                   range_start:
-                    '[&>button]:bg-slate-900 [&>button]:text-white dark:[&>button]:bg-[#D4AF37]/30 dark:[&>button]:text-[#D4AF37]',
+                    '[&>button]:bg-slate-900 [&>button]:text-white dark:[&>button]:bg-brand-gold/30 dark:[&>button]:text-brand-gold',
                   range_end:
-                    '[&>button]:bg-slate-900 [&>button]:text-white dark:[&>button]:bg-[#D4AF37]/30 dark:[&>button]:text-[#D4AF37]',
+                    '[&>button]:bg-slate-900 [&>button]:text-white dark:[&>button]:bg-brand-gold/30 dark:[&>button]:text-brand-gold',
                   range_middle:
                     '[&>button]:bg-slate-100 [&>button]:text-slate-900 dark:[&>button]:bg-[#2D3F3A] dark:[&>button]:text-gray-100',
                   today:
-                    '[&>button]:ring-1 [&>button]:ring-[#D4AF37]/50',
+                    '[&>button]:ring-1 [&>button]:ring-brand-gold/50',
                   outside: '[&>button]:text-slate-300 dark:[&>button]:text-slate-600',
                   disabled: '[&>button]:opacity-40',
                   hidden: 'invisible',
@@ -279,7 +279,7 @@ export function LeaderAvailability({ leaderId }: { leaderId: string }) {
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="text-xs font-bold text-slate-900 dark:text-white">
                   {format(range.from, 'd MMMM yyyy', { locale: arSA })}
-                  <span className="mx-1.5 text-slate-400 dark:text-[#D4AF37]">←</span>
+                  <span className="mx-1.5 text-slate-400 dark:text-brand-gold">←</span>
                   {format(range.to ?? range.from, 'd MMMM yyyy', {
                     locale: arSA,
                   })}
@@ -287,7 +287,7 @@ export function LeaderAvailability({ leaderId }: { leaderId: string }) {
                 <button
                   type="button"
                   onClick={clearSelection}
-                  className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-500 hover:text-slate-800 dark:hover:text-[#D4AF37]"
+                  className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-500 hover:text-slate-800 dark:hover:text-brand-gold"
                 >
                   <X className="h-3 w-3" />
                   إلغاء
@@ -323,7 +323,7 @@ export function LeaderAvailability({ leaderId }: { leaderId: string }) {
                 type="button"
                 onClick={() => void save()}
                 disabled={saving}
-                className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-transparent bg-slate-900 py-2 text-xs font-bold text-white shadow-sm transition-all hover:opacity-90 disabled:opacity-60 dark:border-[#D4AF37]/40 dark:bg-[#D4AF37]/20 dark:text-[#D4AF37]"
+                className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-transparent bg-slate-900 py-2 text-xs font-bold text-white shadow-sm transition-all hover:opacity-90 disabled:opacity-60 dark:border-brand-gold/40 dark:bg-brand-gold/20 dark:text-brand-gold"
               >
                 {saving ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -357,7 +357,7 @@ export function LeaderAvailability({ leaderId }: { leaderId: string }) {
         {/* Saved intervals column — always visible beside compact calendar */}
         <aside className="relative z-0 min-w-[260px] flex-1 overflow-visible rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-[#2D3F3A] dark:bg-[#22302C]">
           <h3 className="inline-flex items-center gap-2 text-sm font-bold text-slate-900 dark:text-white">
-            <Clock3 className="h-4 w-4 text-[#D4AF37]" />
+            <Clock3 className="h-4 w-4 text-brand-gold" />
             الفترات المحفوظة
           </h3>
           {records.length ? (
@@ -394,7 +394,7 @@ export function LeaderAvailability({ leaderId }: { leaderId: string }) {
                       <button
                         type="button"
                         onClick={() => editRecord(record)}
-                        className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-[#D4AF37] dark:hover:bg-[#2D3F3A]"
+                        className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-brand-gold dark:hover:bg-[#2D3F3A]"
                         aria-label="تعديل الفترة"
                       >
                         <Pencil className="h-3.5 w-3.5" />

@@ -373,15 +373,26 @@ export async function fetchPlacesBankPage(
   };
 }
 
+/** إحصاء مدينة في بنك الأماكن — تُعرض فقط إن كان لديها معالم */
+export type PlacesBankCityStat = {
+  name: string;
+  placesCount: number;
+  hasPlaces: boolean;
+};
+
 /** مصدر الحقيقة الوحيد لدول/مدن القوائم المنسدلة والأزرار */
 export type PlacesBankDestinations = {
   countries: string[];
+  /** مدن نشطة فقط (placesCount > 0) لكل دولة */
   citiesByCountry: Record<string, string[]>;
+  /** تفاصيل العدد لكل مدينة — للمنافذ الإدارية */
+  cityStatsByCountry: Record<string, PlacesBankCityStat[]>;
 };
 
 const EMPTY_PLACES_BANK_DESTINATIONS: PlacesBankDestinations = {
   countries: [],
   citiesByCountry: {},
+  cityStatsByCountry: {},
 };
 
 function slugifyDestinationToken(value: string): string {
@@ -412,18 +423,19 @@ function resolvePlacesBankCountryMeta(countryLabel: string): { id: string; label
 
 /**
  * يجلب الدول والمدن المميزة من جدول بنك الأماكن (`places`).
- * الناتج: `{ countries, citiesByCountry }` — مصدر الحقيقة لكل قوائم الوجهات.
+ * المدن الفارغة (0 مكان باسم صالح) تُستبعد تلقائياً من القوائم المنسدلة.
  */
 export async function getPlacesBankDestinations(
   client: SupabaseClient,
 ): Promise<PlacesBankDestinations> {
-  const map = new Map<string, Set<string>>();
+  /** country → city → placesCount */
+  const counts = new Map<string, Map<string, number>>();
   const pageSize = 1000;
 
   for (let offset = 0; offset < PLACES_BANK_FETCH_LIMIT; offset += pageSize) {
     const { data, error } = await client
       .from(PLACES_BANK_TABLE)
-      .select('country, city')
+      .select('country, city, name')
       .order('country', { ascending: true })
       .range(offset, offset + pageSize - 1);
 
@@ -435,26 +447,79 @@ export async function getPlacesBankDestinations(
 
     for (const row of data) {
       const country = String((row as { country?: string | null }).country ?? '').trim();
-      if (!country) continue;
       const city = String((row as { city?: string | null }).city ?? '').trim();
-      if (!map.has(country)) map.set(country, new Set());
-      if (city) map.get(country)!.add(city);
+      const name = String((row as { name?: string | null }).name ?? '').trim();
+      // تجاهل الصفوف بلا دولة/مدينة أو بلا اسم مكان صالح
+      if (!country || !city || !name) continue;
+
+      if (!counts.has(country)) counts.set(country, new Map());
+      const cityMap = counts.get(country)!;
+      cityMap.set(city, (cityMap.get(city) ?? 0) + 1);
     }
 
     if (data.length < pageSize) break;
   }
 
-  const countries = [...map.keys()].sort((a, b) => a.localeCompare(b, 'ar'));
   const citiesByCountry: Record<string, string[]> = {};
-  for (const country of countries) {
-    citiesByCountry[country] = [...(map.get(country) ?? [])].sort((a, b) =>
-      a.localeCompare(b, 'ar'),
-    );
+  const cityStatsByCountry: Record<string, PlacesBankCityStat[]> = {};
+  const countries: string[] = [];
+
+  for (const [country, cityMap] of [...counts.entries()].sort((a, b) =>
+    a[0].localeCompare(b[0], 'ar'),
+  )) {
+    const stats: PlacesBankCityStat[] = [...cityMap.entries()]
+      .map(([name, placesCount]) => ({
+        name,
+        placesCount,
+        hasPlaces: placesCount > 0,
+      }))
+      .filter((s) => s.hasPlaces && s.placesCount > 0)
+      .sort((a, b) => a.name.localeCompare(b.name, 'ar'));
+
+    if (!stats.length) continue;
+
+    countries.push(country);
+    citiesByCountry[country] = stats.map((s) => s.name);
+    cityStatsByCountry[country] = stats;
   }
 
   return countries.length
-    ? { countries, citiesByCountry }
+    ? { countries, citiesByCountry, cityStatsByCountry }
     : EMPTY_PLACES_BANK_DESTINATIONS;
+}
+
+/**
+ * يحذف كل معالم مدينة ضمن دولة من بنك الأماكن (صلاحية أدمن).
+ * إن كانت المدينة فارغة مسبقاً يُرجع deleted=0 دون خطأ.
+ */
+export async function deletePlacesBankCity(
+  client: SupabaseClient,
+  country: string,
+  city: string,
+): Promise<{ deleted: number; country: string; city: string }> {
+  const countryLabel = String(country ?? '').trim();
+  const cityLabel = String(city ?? '').trim();
+  if (!countryLabel || !cityLabel) {
+    throw new Error('الدولة والمدينة مطلوبتان لحذف المدينة.');
+  }
+
+  const { data, error } = await client
+    .from(PLACES_BANK_TABLE)
+    .delete()
+    .eq('country', countryLabel)
+    .eq('city', cityLabel)
+    .select('id');
+
+  if (error) {
+    console.error('[deletePlacesBankCity]', error.message);
+    throw error;
+  }
+
+  return {
+    deleted: Array.isArray(data) ? data.length : 0,
+    country: countryLabel,
+    city: cityLabel,
+  };
 }
 
 /** يحوّل ناتج بنك الأماكن إلى شكل TripCountryDef للنماذج العامة والـ DNA */

@@ -17,10 +17,10 @@ import type {
 } from '@/lib/marketing-hub-types';
 
 export const MARKETING_FIELD =
-  'w-full rounded-lg border border-gray-300 bg-[#FDFBF7] p-3 text-sm font-bold text-[#111111] outline-none transition focus:border-[#cda04c] focus:ring-1 focus:ring-[#cda04c]';
+  'w-full rounded-lg border border-gray-300 bg-[#FDFBF7] p-3 text-sm font-bold text-[#111111] outline-none transition focus:border-brand-gold focus:ring-1 focus:ring-brand-gold';
 
 export const MARKETING_TEXTAREA =
-  'crm-marketing-textarea w-full resize-y overflow-y-auto rounded-lg border border-gray-300 bg-[#FDFBF7] p-3 text-sm font-bold text-[#111111] outline-none transition focus:border-[#cda04c] focus:ring-1 focus:ring-[#cda04c] min-h-[200px]';
+  'crm-marketing-textarea w-full resize-y overflow-y-auto rounded-lg border border-gray-300 bg-[#FDFBF7] p-3 text-sm font-bold text-[#111111] outline-none transition focus:border-brand-gold focus:ring-1 focus:ring-brand-gold min-h-[200px]';
 
 export type OperationsModalKind = 'human' | 'calendar';
 
@@ -35,7 +35,7 @@ export type OperationsModalState =
 
 export function guideStatusClass(status: string | null | undefined): string {
   const s = status ?? '';
-  if (s.includes('مونتاج')) return 'border-[#cda04c]/50 bg-[#cda04c]/10 text-[#7a5f28]';
+  if (s.includes('مونتاج')) return 'border-brand-gold/50 bg-brand-gold/10 text-[#7a5f28]';
   if (s.includes('بانتظار')) return 'border-amber-300/60 bg-amber-50 text-amber-900';
   return 'border-[#1e3f20]/25 bg-[#1e3f20]/8 text-[#1e3f20]';
 }
@@ -57,7 +57,7 @@ function ModalShell({
       onClick={onClose}
     >
       <div
-        className="max-h-[92dvh] w-[95%] max-w-lg overflow-y-auto rounded-t-2xl border border-[#cda04c]/30 bg-[#FDFBF7] p-4 shadow-2xl sm:max-h-[90vh] sm:w-full sm:rounded-2xl sm:p-6 md:w-3/4 md:max-w-2xl lg:w-1/2 lg:max-w-3xl"
+        className="max-h-[92dvh] w-[95%] max-w-lg overflow-y-auto rounded-t-2xl border border-brand-gold/30 bg-[#FDFBF7] p-4 shadow-2xl sm:max-h-[90vh] sm:w-full sm:rounded-2xl sm:p-6 md:w-3/4 md:max-w-2xl lg:w-1/2 lg:max-w-3xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-4 flex items-center justify-between">

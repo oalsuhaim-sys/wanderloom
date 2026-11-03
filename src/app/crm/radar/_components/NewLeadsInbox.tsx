@@ -59,6 +59,8 @@ type NewLeadsInboxProps = {
   onRefresh: () => void | Promise<void>;
   /** Optimistic remove from radar inbox after approval */
   onLeadApproved?: (leadId: string) => void;
+  /** Remove a deleted request from the inbox list and its counter. */
+  onRequestDeleted?: (leadId: string) => void;
   /** Inbox lead moved to the client-meetings column. */
   onMovedToMeeting?: (leadId: string) => void;
   /** Switch the radar tabs to the meetings column. `sample` counts the demo card. */
@@ -588,8 +590,8 @@ function LeadDetailModal({
             <span>{isExplicitGroupTripLead(lead) ? 'موافقة وترحيل' : 'موافقة على الطلب'}</span>
           </button>
           ) : (
-            <div className="space-y-3 rounded-xl border border-[#D4AF37]/35 bg-[#D4AF37]/10 p-4 text-right shadow-sm">
-              <p className="text-sm font-extrabold text-[#b8952d]">
+            <div className="space-y-3 rounded-xl border border-brand-gold/35 bg-brand-gold/10 p-4 text-right shadow-sm">
+              <p className="text-sm font-extrabold text-brand-gold">
                 تمت الموافقة — ملف العميل جاهز في قاعدة العملاء
               </p>
               <p className="text-xs font-medium text-slate-600">رابط استبيان Travel DNA</p>
@@ -604,7 +606,7 @@ function LeadDetailModal({
                   type="button"
                   onClick={() => void copyText(acceptedDnaUrl || dnaUrl, 'dna')}
                   disabled={!(acceptedDnaUrl || dnaUrl)}
-                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-800 bg-[#1A2421] px-4 py-2.5 text-sm font-bold text-[#D4AF37] transition hover:opacity-90 disabled:opacity-50"
+                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-800 bg-[#1A2421] px-4 py-2.5 text-sm font-bold text-brand-gold transition hover:opacity-90 disabled:opacity-50"
                 >
                   <Copy className="h-4 w-4" aria-hidden />
                   {copied === 'dna' ? 'تم النسخ' : 'نسخ الرابط'}
@@ -678,6 +680,8 @@ type InboxCardLead = {
   referral_code: string;
   notes: string;
   email: string;
+  /** leads.client_id — used to match an incomplete client_trips row */
+  clientId?: string;
   isSample?: boolean;
   source?: CrmLeadWithIntake;
 };
@@ -805,6 +809,10 @@ function toInboxCard(lead: CrmLeadWithIntake): InboxCardLead {
     referral_code: String(lead.referral_code ?? '').trim(),
     notes: String(lead.final_thoughts ?? '').trim(),
     email: String(lead.email ?? '').trim(),
+    clientId:
+      lead.client_id != null && String(lead.client_id).trim()
+        ? String(lead.client_id).trim()
+        : undefined,
     source: lead,
   };
 }
@@ -821,11 +829,14 @@ export function NewLeadsInbox({
   onLeadApproved,
   onMovedToMeeting,
   onShowMeetings,
+  onRequestDeleted,
 }: NewLeadsInboxProps) {
   const [busyApproveId, setBusyApproveId] = useState<string | null>(null);
   const [movingId, setMovingId] = useState<string | null>(null);
   const [selectedLead, setSelectedLead] = useState<InboxCardLead | null>(null);
   const [demoMeeting, setDemoMeeting] = useState<InboxCardLead | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<InboxCardLead | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   async function persistMeetingStatus(leadId: string) {
     const preferred = await supabase.from('leads').update({ status: 'meeting_scheduled' }).eq('id', leadId);
@@ -862,6 +873,42 @@ export function NewLeadsInbox({
       toast.error(err instanceof Error ? err.message : 'خطأ أثناء نقل الطلب.');
     } finally {
       setMovingId(null);
+    }
+  }
+
+  async function confirmDeleteRequest() {
+    if (!pendingDelete || deletingId) return;
+    const lead = pendingDelete;
+    if (lead.isSample) {
+      setPendingDelete(null);
+      if (selectedLead?.id === lead.id) setSelectedLead(null);
+      onRequestDeleted?.(lead.id);
+      return;
+    }
+
+    setDeletingId(lead.id);
+    try {
+      const clientId = lead.clientId ?? (lead.source?.client_id != null ? String(lead.source.client_id) : '');
+      const query = clientId.trim() ? `?client_id=${encodeURIComponent(clientId.trim())}` : '';
+      const response = await fetch(`/api/crm/requests/${encodeURIComponent(lead.id)}${query}`, {
+        method: 'DELETE',
+      });
+      const payload = (await response.json().catch(() => null)) as {
+        success?: boolean;
+        ok?: boolean;
+        error?: string;
+      } | null;
+      if (!response.ok || payload?.success === false || payload?.ok === false) {
+        throw new Error(payload?.error || 'تعذر حذف الطلب.');
+      }
+      setPendingDelete(null);
+      if (selectedLead?.id === lead.id) setSelectedLead(null);
+      onRequestDeleted?.(lead.id);
+      toast.success('تم حذف الطلب. ملف العميل ما زال محفوظاً.');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'تعذر حذف الطلب.');
+    } finally {
+      setDeletingId(null);
     }
   }
 
@@ -903,7 +950,7 @@ export function NewLeadsInbox({
 
         {loading ? (
           <div className="flex min-h-[160px] flex-col items-center justify-center gap-3 rounded-3xl border border-slate-200 bg-white">
-            <div className="h-10 w-10 animate-spin rounded-full border-4 border-[#C59B4B] border-t-transparent" />
+            <div className="h-10 w-10 animate-spin rounded-full border-4 border-brand-gold border-t-transparent" />
             <span className="text-xs font-bold text-slate-700">جاري تحميل رادار الطلبات...</span>
           </div>
         ) : (
@@ -993,7 +1040,7 @@ export function NewLeadsInbox({
                         </span>
                       ))}
                     </div>
-                    <span className="shrink-0 font-bold text-[#C59B4B]">📍 الرحلة:</span>
+                    <span className="shrink-0 font-bold text-brand-gold">📍 الرحلة:</span>
                   </div>
 
                   {lead.interests.length > 0 ? (
@@ -1034,13 +1081,30 @@ export function NewLeadsInbox({
                   </button>
                 ) : null}
 
-                <button
-                  type="button"
-                  onClick={() => setSelectedLead(lead)}
-                  className="w-full rounded-2xl bg-[#C59B4B] py-3.5 text-center text-xs font-bold text-slate-900 shadow-sm transition-all hover:bg-[#B2883A]"
-                >
-                  عرض التفاصيل
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedLead(lead)}
+                    className="min-w-0 flex-1 rounded-2xl bg-brand-gold py-3.5 text-center text-xs font-bold text-slate-900 shadow-sm transition-all hover:bg-[#B2883A]"
+                  >
+                    عرض التفاصيل
+                  </button>
+                  {panel === 'inbox' ? (
+                    <button
+                      type="button"
+                      disabled={deletingId === lead.id}
+                      onClick={() => setPendingDelete(lead)}
+                      className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-2xl border border-rose-200 bg-rose-50 px-3 py-3.5 text-xs font-bold text-rose-700 transition hover:bg-rose-100 disabled:opacity-60"
+                    >
+                      {deletingId === lead.id ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+                      ) : (
+                        <Trash2 className="h-3.5 w-3.5" aria-hidden />
+                      )}
+                      حذف الطلب
+                    </button>
+                  ) : null}
+                </div>
               </article>
             );
               });
@@ -1131,7 +1195,7 @@ export function NewLeadsInbox({
                 {selectedLead.referral_code ? (
                   <Link
                     href={`/influencers/${encodeURIComponent(selectedLead.referral_code)}`}
-                    className="font-mono text-sm font-bold text-slate-900 hover:text-[#C59B4B]"
+                    className="font-mono text-sm font-bold text-slate-900 hover:text-brand-gold"
                   >
                     {selectedLead.referral_code}
                   </Link>
@@ -1160,7 +1224,7 @@ export function NewLeadsInbox({
                   type="button"
                   disabled={movingId === selectedLead.id}
                   onClick={() => void handleApproveAndMoveToMeeting(selectedLead)}
-                  className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#C59B4B] py-3.5 text-center text-xs font-bold text-slate-900 shadow-md transition-all hover:bg-[#B2883A] disabled:opacity-60 sm:flex-1"
+                  className="flex w-full items-center justify-center gap-2 rounded-2xl bg-brand-gold py-3.5 text-center text-xs font-bold text-slate-900 shadow-md transition-all hover:bg-[#B2883A] disabled:opacity-60 sm:flex-1"
                 >
                   <span>📅</span>
                   <span>
@@ -1181,6 +1245,46 @@ export function NewLeadsInbox({
           </div>
         </div>
       ) : null}
+
+      {pendingDelete
+        ? createPortal(
+            <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
+              <div
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="delete-request-title"
+                className="w-full max-w-md space-y-5 rounded-3xl border border-rose-100 bg-white p-6 text-right shadow-2xl"
+              >
+                <h2 id="delete-request-title" className="text-base font-bold text-slate-900">
+                  حذف الطلب
+                </h2>
+                <p className="text-sm font-medium leading-relaxed text-slate-700">
+                  هل أنت متأكد من حذف هذا الطلب؟ سيبقى ملف العميل محفوظاً في قاعدة بيانات العملاء.
+                </p>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    disabled={deletingId !== null}
+                    onClick={() => setPendingDelete(null)}
+                    className="flex-1 rounded-2xl border border-slate-200 bg-white py-3 text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+                  >
+                    إلغاء
+                  </button>
+                  <button
+                    type="button"
+                    disabled={deletingId !== null}
+                    onClick={() => void confirmDeleteRequest()}
+                    className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-2xl border border-rose-200 bg-rose-50 py-3 text-xs font-bold text-rose-700 hover:bg-rose-100 disabled:opacity-60"
+                  >
+                    {deletingId ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden /> : null}
+                    تأكيد الحذف
+                  </button>
+                </div>
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
     </div>
   );
 }

@@ -40,7 +40,7 @@ import {
 import { marketingSupabase } from '@/lib/marketing-supabase-client';
 
 const BACK_BTN =
-  'mb-6 inline-flex items-center gap-1 rounded-full border border-[#cda04c]/35 bg-[#111111]/60 px-2.5 py-1 text-[10px] font-bold text-[#cda04c]/90 backdrop-blur-sm transition hover:border-[#cda04c]/55 hover:text-[#cda04c]';
+  'mb-6 inline-flex items-center gap-1 rounded-full border border-brand-gold/35 bg-[#111111]/60 px-2.5 py-1 text-[10px] font-bold text-brand-gold/90 backdrop-blur-sm transition hover:border-brand-gold/55 hover:text-brand-gold';
 
 function BrandCard({
   title,
@@ -165,8 +165,8 @@ export default function MarketingStrategyClient() {
             <span>← العودة للعمليات</span>
           </Link>
 
-          <header className="mb-10 rounded-[1.75rem] border border-[#cda04c]/25 bg-[#111111]/90 p-6 shadow-[0_24px_80px_rgba(0,0,0,0.45)] backdrop-blur-sm sm:p-8">
-            <p className="inline-flex items-center gap-2 rounded-full border border-[#cda04c]/35 bg-[#cda04c]/10 px-3 py-1 text-[10px] font-black text-[#cda04c]">
+          <header className="mb-10 rounded-[1.75rem] border border-brand-gold/25 bg-[#111111]/90 p-6 shadow-[0_24px_80px_rgba(0,0,0,0.45)] backdrop-blur-sm sm:p-8">
+            <p className="inline-flex items-center gap-2 rounded-full border border-brand-gold/35 bg-brand-gold/10 px-3 py-1 text-[10px] font-black text-brand-gold">
               <Sparkles className="h-3.5 w-3.5" aria-hidden />
               Content & Strategy Studio
             </p>
@@ -178,14 +178,14 @@ export default function MarketingStrategyClient() {
 
           {loading ? (
             <div className="flex min-h-[280px] flex-col items-center justify-center gap-3 rounded-2xl border border-white/10 bg-white/5 p-12">
-              <Loader2 className="h-8 w-8 animate-spin text-[#cda04c]" aria-hidden />
+              <Loader2 className="h-8 w-8 animate-spin text-brand-gold" aria-hidden />
               <p className="text-sm font-bold text-[#A8A49C]">جاري تحميل لوحة الاستراتيجية…</p>
             </div>
           ) : (
             <div className="space-y-14">
               <section aria-label="مصنع الـ AI">
                 <div className="mb-5 flex items-center gap-2">
-                  <Sparkles className="h-5 w-5 text-[#cda04c]" aria-hidden />
+                  <Sparkles className="h-5 w-5 text-brand-gold" aria-hidden />
                   <h2 className="text-xl font-black text-white">مصنع الـ AI</h2>
                 </div>
                 <div className="rounded-2xl border border-slate-200 bg-[#F9FAFB] p-4 shadow-sm dark:border-[#2D3F3A] dark:bg-[#1A2421] sm:p-6 md:p-8">
@@ -196,14 +196,14 @@ export default function MarketingStrategyClient() {
               <section aria-label="دليل الإنتاج البشري">
                 <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
                   <div className="flex items-center gap-2">
-                    <Clapperboard className="h-5 w-5 text-[#cda04c]" aria-hidden />
+                    <Clapperboard className="h-5 w-5 text-brand-gold" aria-hidden />
                     <h2 className="text-xl font-black text-white">دليل الإنتاج البشري</h2>
                   </div>
                   <button
                     type="button"
                     disabled={busy}
                     onClick={() => setModal({ open: true, kind: 'human', mode: 'add' })}
-                    className="inline-flex items-center gap-1.5 rounded-full border border-[#cda04c]/45 px-3 py-1.5 text-[11px] font-bold text-[#cda04c] transition hover:bg-[#cda04c]/10 disabled:opacity-50"
+                    className="inline-flex items-center gap-1.5 rounded-full border border-brand-gold/45 px-3 py-1.5 text-[11px] font-bold text-brand-gold transition hover:bg-brand-gold/10 disabled:opacity-50"
                   >
                     <Plus className="h-3.5 w-3.5" aria-hidden />
                     إضافة دليل
@@ -223,7 +223,7 @@ export default function MarketingStrategyClient() {
                       >
                         <div className="flex flex-wrap items-start justify-between gap-3">
                           <div>
-                            <span className="rounded-full border border-[#cda04c]/35 bg-[#cda04c]/10 px-3 py-1 text-[10px] font-black text-[#9a7b45]">
+                            <span className="rounded-full border border-brand-gold/35 bg-brand-gold/10 px-3 py-1 text-[10px] font-black text-[#9a7b45]">
                               {item.platform ?? ''}
                             </span>
                             <h3 className="mt-3 text-lg font-black text-[#1e3f20]">{item.title ?? ''}</h3>
@@ -248,8 +248,8 @@ export default function MarketingStrategyClient() {
                             </button>
                           </div>
                         </div>
-                        <div className="rounded-xl border border-[#cda04c]/30 bg-[#FFFBF0] p-4">
-                          <p className="mb-2 flex items-center gap-2 text-xs font-black text-[#cda04c]">
+                        <div className="rounded-xl border border-brand-gold/30 bg-[#FFFBF0] p-4">
+                          <p className="mb-2 flex items-center gap-2 text-xs font-black text-brand-gold">
                             <Video className="h-3.5 w-3.5" /> الخطاف
                           </p>
                           <p className="text-sm font-bold text-[#2d3a33]">{item.hook ?? ''}</p>
@@ -276,7 +276,7 @@ export default function MarketingStrategyClient() {
 
               <section aria-label="هوية العلامة">
                 <div className="mb-5 flex items-center gap-2">
-                  <Crown className="h-5 w-5 text-[#cda04c]" aria-hidden />
+                  <Crown className="h-5 w-5 text-brand-gold" aria-hidden />
                   <h2 className="text-xl font-black text-white">هوية العلامة</h2>
                 </div>
                 <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -304,10 +304,10 @@ export default function MarketingStrategyClient() {
                       className={MARKETING_FIELD}
                     />
                     <div className="mt-4 flex flex-wrap justify-center gap-3">
-                      {['#FDFBF7', '#1e3f20', '#cda04c', '#111111'].map((hex) => (
+                      {['#FDFBF7', '#1e3f20', '#D4AF37', '#111111'].map((hex) => (
                         <span
                           key={hex}
-                          className="rounded-full border border-[#cda04c]/20 bg-[#fffaf1] px-4 py-1.5 text-sm font-bold text-[#1e3f20]"
+                          className="rounded-full border border-brand-gold/20 bg-[#fffaf1] px-4 py-1.5 text-sm font-bold text-[#1e3f20]"
                         >
                           {hex}
                         </span>

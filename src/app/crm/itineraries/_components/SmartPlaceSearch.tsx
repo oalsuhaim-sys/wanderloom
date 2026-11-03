@@ -154,18 +154,18 @@ export default function SmartPlaceSearch({ value, onQueryChange, onPlaceSelect, 
 
   return (
     <div ref={rootRef} className="relative mb-2 w-full">
-      <label className="mb-2 block text-sm font-bold text-[#D4AF37]">ابحث عن المكان (تلقائي)</label>
+      <label className="mb-2 block text-sm font-bold text-brand-gold">ابحث عن المكان (تلقائي)</label>
       <input
         type="text"
         value={value}
         onChange={(e) => onQueryChange(e.target.value)}
         placeholder="مثال: برج إيفل، متحف اللوفر..."
-        className="w-full rounded-xl border border-slate-300 bg-slate-50 p-3 font-bold text-slate-900 placeholder:text-slate-600 focus:border-[#D4AF37] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#D4AF37]"
+        className="w-full rounded-xl border border-slate-300 bg-slate-50 p-3 font-bold text-slate-900 placeholder:text-slate-600 focus:border-brand-gold focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-gold"
         autoComplete="off"
       />
 
       {loading ? (
-        <div className="pointer-events-none absolute start-3 top-[2.65rem] text-xs font-semibold text-[#D4AF37]">
+        <div className="pointer-events-none absolute start-3 top-[2.65rem] text-xs font-semibold text-brand-gold">
           جاري البحث...
         </div>
       ) : null}
@@ -175,7 +175,7 @@ export default function SmartPlaceSearch({ value, onQueryChange, onPlaceSelect, 
       ) : null}
 
       {results.length > 0 ? (
-        <ul className="absolute z-[100] mt-1 max-h-60 w-full overflow-y-auto rounded-xl border border-[#D4AF37]/50 bg-[#2A362C] shadow-2xl">
+        <ul className="absolute z-[100] mt-1 max-h-60 w-full overflow-y-auto rounded-xl border border-brand-gold/50 bg-[#2A362C] shadow-2xl">
           {results.map((place) => (
             <li key={place.id}>
               <button

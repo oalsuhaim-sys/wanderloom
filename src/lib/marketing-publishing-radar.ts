@@ -61,8 +61,8 @@ export function urgencyMeta(urgency: MarketingPublishUrgency): {
       emoji: '🟡',
       label: 'مجدول لغد',
       badge: 'قريباً (غداً)',
-      cardClass: 'border-[#D4AF37]/35 bg-[#D4AF37]/10 ring-1 ring-[#D4AF37]/15',
-      dotClass: 'bg-[#D4AF37] shadow-[0_0_8px_rgba(212,175,55,0.35)]',
+      cardClass: 'border-brand-gold/35 bg-brand-gold/10 ring-1 ring-brand-gold/15',
+      dotClass: 'bg-brand-gold shadow-[0_0_8px_rgba(212,175,55,0.35)]',
     };
   }
   return {

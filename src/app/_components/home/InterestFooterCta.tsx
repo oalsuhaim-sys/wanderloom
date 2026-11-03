@@ -6,7 +6,7 @@ import { openInterestModal } from '@/app/_components/home/InterestModal';
 
 export function InterestFooterCta() {
   return (
-    <div className="mx-auto mb-8 max-w-md rounded-2xl border border-[#9C7A3C]/25 bg-gradient-to-br from-[#F4EFE6] to-white px-6 py-6 shadow-sm">
+    <div className="mx-auto mb-8 max-w-md rounded-2xl border border-public-gold/25 bg-gradient-to-br from-[#F4EFE6] to-white px-6 py-6 shadow-sm">
       <p className="text-sm font-black text-[#1C2E3A] sm:text-base">هل تخطط لرحلة مستقبلاً؟</p>
       <p className="mt-1 text-xs font-semibold leading-relaxed text-gray-500">
         سجّل اهتمامك وسنُبقيك على اطلاع بأفضل الوجهات والعروض.

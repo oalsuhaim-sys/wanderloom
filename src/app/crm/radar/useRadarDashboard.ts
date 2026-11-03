@@ -69,7 +69,7 @@ export async function fetchRadarDashboardPayload(): Promise<RadarDashboardPayloa
   if (!supabase) throw new Error('Supabase غير مهيأ.');
 
   const itineraryCols =
-    'id, customer_name, title, destination, status, dates, start_date, end_date, is_template, client_id, supplier_requests, updated_at, expected_profit, clients(name)';
+    'id, customer_name, title, destination, status, dates, start_date, end_date, is_template, client_id, supplier_requests, updated_at, expected_profit, clients(id, name)';
 
   const loadCoreQueries = () =>
     Promise.all([
@@ -113,7 +113,7 @@ export async function fetchRadarDashboardPayload(): Promise<RadarDashboardPayloa
       const fallback = await supabase
         .from('itineraries')
         .select(
-          'id, customer_name, title, destination, status, dates, start_date, end_date, is_template, client_id, clients(name)',
+          'id, customer_name, title, destination, status, dates, start_date, end_date, is_template, client_id, clients(id, name)',
         )
         .not('is_template', 'eq', true);
       if (fallback.error) throw new Error(fallback.error.message || 'تعذر تحميل الرادار.');

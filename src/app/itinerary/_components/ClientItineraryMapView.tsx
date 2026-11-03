@@ -20,7 +20,7 @@ const InteractiveItineraryMap = dynamic(
 
 const WEEKDAY_SHORT_AR = ['أحد', 'إثنين', 'ثلاثاء', 'أربعاء', 'خميس', 'جمعة', 'سبت'];
 const WEEKDAY_KANJI = ['日', '月', '火', '水', '木', '金', '土'];
-const GOLD = '#C59B4B';
+const GOLD = '#D4AF37';
 
 type ClientItineraryMapViewProps = {
   days: PublicItineraryDay[];
@@ -128,7 +128,7 @@ export default function ClientItineraryMapView({
           onClick={() => setSelectedDayIndex(null)}
           className={`shrink-0 rounded-2xl border px-4 py-3 text-xs font-bold transition-all ${
             selectedDayIndex === null
-              ? 'border-[#C59B4B] bg-[#C59B4B] text-slate-950'
+              ? 'border-brand-gold bg-brand-gold text-slate-950'
               : 'border-slate-800 bg-[#151C28] text-slate-400'
           }`}
         >
@@ -145,7 +145,7 @@ export default function ClientItineraryMapView({
               onClick={() => setSelectedDayIndex(idx)}
               className={`min-w-[65px] shrink-0 rounded-2xl border p-3 text-center transition-all ${
                 isSelected
-                  ? 'border-[#C59B4B] bg-[#1E293B] text-white ring-1 ring-[#C59B4B]'
+                  ? 'border-brand-gold bg-[#1E293B] text-white ring-1 ring-brand-gold'
                   : 'border-slate-800 bg-[#151C28] text-slate-400'
               }`}
             >
@@ -164,7 +164,7 @@ export default function ClientItineraryMapView({
 
       <div className="relative overflow-hidden rounded-3xl border border-slate-800/80 bg-[#0B0F17] shadow-2xl">
         <div className="absolute top-4 right-4 z-20 rounded-2xl border border-slate-800 bg-[#0B0F17]/90 px-4 py-2 shadow-xl backdrop-blur-md">
-          <span className="block text-[10px] font-bold text-[#C59B4B]">منطقة التركيز</span>
+          <span className="block text-[10px] font-bold text-brand-gold">منطقة التركيز</span>
           <h3 className="text-xs font-extrabold text-slate-100">{displayCity}</h3>
         </div>
 
@@ -182,7 +182,7 @@ export default function ClientItineraryMapView({
               ? `تفاصيل ${currentMeta.dayName} (${currentMeta.dateStr})`
               : 'جدول الرحلة الكاملة'}
           </h2>
-          <span className="text-[11px] font-bold text-[#C59B4B]">
+          <span className="text-[11px] font-bold text-brand-gold">
             {currentDay
               ? `${currentDay.activities.length} أماكن`
               : `${days.length} أيام`}
@@ -214,14 +214,14 @@ export default function ClientItineraryMapView({
                   href={googleMapsUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="group flex cursor-pointer items-center justify-between rounded-2xl border border-slate-800/80 bg-[#151C28] p-4 transition-all hover:border-[#C59B4B]"
+                  className="group flex cursor-pointer items-center justify-between rounded-2xl border border-slate-800/80 bg-[#151C28] p-4 transition-all hover:border-brand-gold"
                 >
                   <div className="flex items-center gap-3">
-                    <span className="flex h-8 w-8 items-center justify-center rounded-full border border-[#C59B4B]/40 bg-[#C59B4B]/20 font-mono text-xs font-bold text-[#C59B4B] transition-all group-hover:bg-[#C59B4B] group-hover:text-slate-950">
+                    <span className="flex h-8 w-8 items-center justify-center rounded-full border border-brand-gold/40 bg-brand-gold/20 font-mono text-xs font-bold text-brand-gold transition-all group-hover:bg-brand-gold group-hover:text-slate-950">
                       {i + 1}
                     </span>
                     <div>
-                      <h4 className="text-xs font-bold text-slate-100 transition-colors group-hover:text-[#C59B4B]">
+                      <h4 className="text-xs font-bold text-slate-100 transition-colors group-hover:text-brand-gold">
                         {name}
                       </h4>
                       <span className="text-[10px] font-medium text-slate-500">
@@ -230,7 +230,7 @@ export default function ClientItineraryMapView({
                     </div>
                   </div>
 
-                  <span className="rounded-xl bg-slate-800 px-3 py-1.5 text-[10px] font-bold text-slate-400 transition-all group-hover:bg-[#C59B4B] group-hover:text-slate-950">
+                  <span className="rounded-xl bg-slate-800 px-3 py-1.5 text-[10px] font-bold text-slate-400 transition-all group-hover:bg-brand-gold group-hover:text-slate-950">
                     فتح المكان
                   </span>
                 </a>
@@ -251,10 +251,10 @@ export default function ClientItineraryMapView({
                   key={`full-${day.index}-${idx}`}
                   type="button"
                   onClick={() => setSelectedDayIndex(idx)}
-                  className="flex w-full items-center justify-between rounded-2xl border border-slate-800/80 bg-[#151C28] p-4 text-right transition-all hover:border-[#C59B4B]"
+                  className="flex w-full items-center justify-between rounded-2xl border border-slate-800/80 bg-[#151C28] p-4 text-right transition-all hover:border-brand-gold"
                 >
                   <div className="flex items-center gap-3">
-                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#C59B4B] text-xs font-bold text-slate-950 shadow-md">
+                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-gold text-xs font-bold text-slate-950 shadow-md">
                       {meta.dayNumber}
                     </span>
                     <div>

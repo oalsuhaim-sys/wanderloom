@@ -24,7 +24,7 @@ export default function LoginPage() {
       <Suspense
         fallback={
           <div className="relative z-10 flex min-h-screen items-center justify-center">
-            <Loader2 className="h-10 w-10 animate-spin text-[#cda04c]" aria-label="جاري التحميل" />
+            <Loader2 className="h-10 w-10 animate-spin text-brand-gold" aria-label="جاري التحميل" />
           </div>
         }
       >

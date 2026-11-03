@@ -45,7 +45,7 @@ export const PHILOSOPHY_OPTIONS = [
   'هندسة الهدوء',
 ] as const;
 
-export const COLOR_PALETTE = ['#1C2E3A', '#27403A', '#9C7A3C', '#F4EFE6'] as const;
+export const COLOR_PALETTE = ['#1C2E3A', '#27403A', '#D4AF37', '#F4EFE6'] as const;
 
 /** Default philosophy when «تلقائي حسب الصيغة» is selected. */
 export function resolvePhilosophyForFormat(format: string, philosophy: string): string {
@@ -173,7 +173,7 @@ Return ONLY a valid JSON object (no markdown fences) matching this exact schema 
     "music": "...",
     "color_grade": "...",
     "assets": "...",
-    "color_palette": ["#1C2E3A", "#27403A", "#9C7A3C", "#F4EFE6"]
+    "color_palette": ["#1C2E3A", "#27403A", "#D4AF37", "#F4EFE6"]
   },
   "cta_section": {
     "stage": "الوعي|الاهتمام|التحويل",
@@ -189,7 +189,7 @@ Return ONLY a valid JSON object (no markdown fences) matching this exact schema 
 Rules:
 - Arabic luxury travel tone — warm, precise, never loud or spammy.
 - Fill every field; never leave placeholders.
-- color_palette MUST be exactly ["#1C2E3A","#27403A","#9C7A3C","#F4EFE6"] unless a strong creative reason says otherwise (still keep 4 hex codes).
+- color_palette MUST be exactly ["#1C2E3A","#27403A","#D4AF37","#F4EFE6"] unless a strong creative reason says otherwise (still keep 4 hex codes).
 - script_markdown must include the classic 5-section Wanderloom Master Markdown for archival.
 - Adapt beats timing slightly to format, but keep the 4 beat keys.`;
 

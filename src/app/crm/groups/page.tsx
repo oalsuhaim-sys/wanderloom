@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Loader2, X } from 'lucide-react';
+import toast from 'react-hot-toast';
 import GroupManagement from '@/app/itinerary/_components/GroupManagement';
 import { parseRegisteredClientIds } from '@/lib/fellowship-matching';
 
@@ -208,10 +209,10 @@ function tripDateLabels(trip: GroupTripRow): { dates_ar: string; dates_en: strin
 
 
 const inputClass =
-  'w-full rounded-lg border border-white/10 bg-[#12261B] px-4 py-3 text-sm font-medium text-white outline-none transition-all duration-300 placeholder:text-gray-500 focus:border-[#C5A059] focus:ring-1 focus:ring-[#C5A059] [color-scheme:dark]';
+  'w-full rounded-lg border border-white/10 bg-[#12261B] px-4 py-3 text-sm font-medium text-white outline-none transition-all duration-300 placeholder:text-gray-500 focus:border-brand-gold focus:ring-1 focus:ring-brand-gold [color-scheme:dark]';
 
 const textareaClass =
-  'custom-scrollbar w-full min-h-[88px] resize-y rounded-lg border border-white/10 bg-[#12261B] px-4 py-3 font-normal text-sm leading-relaxed text-gray-200 outline-none transition-all duration-300 placeholder:text-gray-500 focus:border-[#C5A059] focus:ring-1 focus:ring-[#C5A059] [color-scheme:dark]';
+  'custom-scrollbar w-full min-h-[88px] resize-y rounded-lg border border-white/10 bg-[#12261B] px-4 py-3 font-normal text-sm leading-relaxed text-gray-200 outline-none transition-all duration-300 placeholder:text-gray-500 focus:border-brand-gold focus:ring-1 focus:ring-brand-gold [color-scheme:dark]';
 
 const labelClass = 'mb-1 block text-xs font-medium text-gray-400';
 
@@ -252,7 +253,7 @@ function isAmenityChecked(arValue: string, item: Amenity): boolean {
 
 function SectionTitle({ children }: { children: ReactNode }) {
   return (
-    <h3 className="mb-1 text-right text-xs font-bold uppercase tracking-[0.18em] text-[#C5A059]">
+    <h3 className="mb-1 text-right text-xs font-bold uppercase tracking-[0.18em] text-brand-gold">
       {children}
     </h3>
   );
@@ -294,6 +295,7 @@ export default function AdminGroupsPage() {
   const [selectedDates, setSelectedDates] = useState(EMPTY_SELECTED_DATES);
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [visibilityBusyId, setVisibilityBusyId] = useState<string | null>(null);
   const [leaders, setLeaders] = useState<GroupTripLeaderOption[]>([]);
   const [leadersLoading, setLeadersLoading] = useState(true);
   const [leadersError, setLeadersError] = useState<string | null>(null);
@@ -609,6 +611,38 @@ export default function AdminGroupsPage() {
     }
   }
 
+  /** Site visibility — column `group_trips.is_active` (public pages filter `.eq('is_active', true)`). */
+  async function handleToggleVisibility(trip: GroupTripRow) {
+    if (!supabase || visibilityBusyId) return;
+    const tripId = String(trip.id);
+    const nextVisible = trip.is_active === false;
+    setVisibilityBusyId(tripId);
+    setTrips((prev) =>
+      prev.map((row) => (String(row.id) === tripId ? { ...row, is_active: nextVisible } : row)),
+    );
+    try {
+      const { error: updateError } = await supabase
+        .from('group_trips')
+        .update({ is_active: nextVisible })
+        .eq('id', trip.id);
+      if (updateError) throw updateError;
+      toast.success(
+        nextVisible ? 'تم إظهار القروب في الموقع' : 'تم إخفاء القروب من الموقع',
+      );
+    } catch (e) {
+      setTrips((prev) =>
+        prev.map((row) =>
+          String(row.id) === tripId ? { ...row, is_active: trip.is_active !== false } : row,
+        ),
+      );
+      toast.error(
+        e instanceof Error ? e.message : 'تعذر تحديث ظهور القروب. تحقق من صلاحيات Supabase.',
+      );
+    } finally {
+      setVisibilityBusyId(null);
+    }
+  }
+
   return (
     <ClientErrorBoundary
       fallbackTitle="تعذّر تحميل صفحة القروبات"
@@ -691,9 +725,11 @@ export default function AdminGroupsPage() {
                     datesAr={dateLabels.dates_ar}
                     datesEn={dateLabels.dates_en}
                     deleting={deletingId === trip.id}
+                    visibilityBusy={visibilityBusyId === String(trip.id)}
                     onEdit={() => openEditModal(trip)}
                     onDelete={() => void handleDelete(trip.id)}
                     onFellowship={() => setFellowshipTrip(trip)}
+                    onToggleVisibility={() => void handleToggleVisibility(trip)}
                   />
                 );
               })}
@@ -764,7 +800,7 @@ export default function AdminGroupsPage() {
               <div className="text-right">
                 <h2
                   id="group-trip-modal-title"
-                  className="text-xl font-bold text-[#C5A059]"
+                  className="text-xl font-bold text-brand-gold"
                 >
                   {editingId ? 'تعديل رحلة قروب' : 'إضافة قروب جديد'}
                 </h2>
@@ -788,11 +824,11 @@ export default function AdminGroupsPage() {
                 {/* Status toggle */}
                 <div className="mb-1 flex items-center justify-between gap-4 rounded-xl border border-white/5 bg-[#12261B] p-4">
                   <div className="text-right">
-                    <p className="text-sm font-bold text-white">حالة الرحلة</p>
+                    <p className="text-sm font-bold text-white">الظهور في الموقع</p>
                     <p className="mt-0.5 text-xs font-medium text-gray-400">
                       {formData.is_active
-                        ? 'نشطة — تظهر للعملاء على الموقع'
-                        : 'مخفية — لن تظهر للعملاء'}
+                        ? 'ظاهر في الموقع — يظهر للزوار في قسم الرحلات الجماعية'
+                        : 'مخفي من الموقع — لن يظهر للزوار'}
                     </p>
                   </div>
                   <label className="group relative inline-flex cursor-pointer items-center">
@@ -804,7 +840,7 @@ export default function AdminGroupsPage() {
                       }
                       className="peer sr-only"
                     />
-                    <span className="h-7 w-12 rounded-full bg-gray-700 transition-colors peer-checked:bg-[#C5A059] peer-focus-visible:ring-2 peer-focus-visible:ring-[#C5A059]/50 after:absolute after:right-[3px] after:top-[3px] after:h-[22px] after:w-[22px] after:rounded-full after:bg-white after:shadow after:transition-all after:content-[''] peer-checked:after:-translate-x-[20px]" />
+                    <span className="h-7 w-12 rounded-full bg-gray-700 transition-colors peer-checked:bg-brand-gold peer-focus-visible:ring-2 peer-focus-visible:ring-brand-gold/50 after:absolute after:right-[3px] after:top-[3px] after:h-[22px] after:w-[22px] after:rounded-full after:bg-white after:shadow after:transition-all after:content-[''] peer-checked:after:-translate-x-[20px]" />
                   </label>
                 </div>
 
@@ -902,7 +938,7 @@ export default function AdminGroupsPage() {
                     {leadersLoading ? (
                       <p className="mt-2 inline-flex items-center gap-1.5 text-[11px] font-bold text-gray-400">
                         <Loader2
-                          className="h-3.5 w-3.5 animate-spin text-[#C5A059]"
+                          className="h-3.5 w-3.5 animate-spin text-brand-gold"
                           aria-hidden
                         />
                         جاري تحميل الليدرز…
@@ -961,8 +997,8 @@ export default function AdminGroupsPage() {
                       />
                     </label>
                     {formData.dates_ar || formData.dates_en ? (
-                      <div className="rounded-xl border border-[#C5A059]/20 bg-[#12261B] px-4 py-3 sm:col-span-2">
-                        <p className="text-xs font-bold text-[#C5A059]">
+                      <div className="rounded-xl border border-brand-gold/20 bg-[#12261B] px-4 py-3 sm:col-span-2">
+                        <p className="text-xs font-bold text-brand-gold">
                           معاينة التواريخ المحفوظة
                         </p>
                         <p className="mt-1 text-sm font-bold text-white">
@@ -1058,8 +1094,8 @@ export default function AdminGroupsPage() {
                           key={`inc_${item.id}`}
                           className={`flex cursor-pointer items-start gap-3 rounded-xl border px-3 py-3 transition ${
                             isChecked
-                              ? 'border-[#C5A059]/45 bg-[#C5A059]/10 shadow-sm'
-                              : 'border-white/10 bg-[#12261B] hover:border-[#C5A059]/25'
+                              ? 'border-brand-gold/45 bg-brand-gold/10 shadow-sm'
+                              : 'border-white/10 bg-[#12261B] hover:border-brand-gold/25'
                           }`}
                         >
                           <input
@@ -1068,7 +1104,7 @@ export default function AdminGroupsPage() {
                             onChange={(e) =>
                               handleSmartCheckbox('includes', item, e.target.checked)
                             }
-                            className="mt-0.5 h-4 w-4 shrink-0 rounded border-white/20 bg-[#0B1912] text-[#C5A059] focus:ring-[#C5A059]"
+                            className="mt-0.5 h-4 w-4 shrink-0 rounded border-white/20 bg-[#0B1912] text-brand-gold focus:ring-brand-gold"
                           />
                           <span className="text-sm font-semibold leading-snug text-white">
                             {item.ar}
@@ -1084,7 +1120,7 @@ export default function AdminGroupsPage() {
                     })}
                   </div>
                   {formData.includes_ar ? (
-                    <p className="rounded-lg border border-[#C5A059]/20 bg-[#12261B] px-3 py-2 text-xs font-bold text-[#C5A059]">
+                    <p className="rounded-lg border border-brand-gold/20 bg-[#12261B] px-3 py-2 text-xs font-bold text-brand-gold">
                       {formData.includes_ar}
                     </p>
                   ) : null}
@@ -1177,7 +1213,7 @@ export default function AdminGroupsPage() {
                           }
                           className="peer sr-only"
                         />
-                        <span className="h-7 w-12 rounded-full bg-gray-700 transition-colors peer-checked:bg-[#C5A059] after:absolute after:right-[3px] after:top-[3px] after:h-[22px] after:w-[22px] after:rounded-full after:bg-white after:shadow after:transition-all after:content-[''] peer-checked:after:-translate-x-[20px]" />
+                        <span className="h-7 w-12 rounded-full bg-gray-700 transition-colors peer-checked:bg-brand-gold after:absolute after:right-[3px] after:top-[3px] after:h-[22px] after:w-[22px] after:rounded-full after:bg-white after:shadow after:transition-all after:content-[''] peer-checked:after:-translate-x-[20px]" />
                       </label>
                     </div>
                   </div>
@@ -1211,7 +1247,7 @@ export default function AdminGroupsPage() {
                 type="button"
                 onClick={() => void handleSave()}
                 disabled={saving}
-                className="inline-flex items-center gap-2 rounded-lg bg-[#C5A059] px-8 py-2 text-sm font-bold text-white shadow-[0_0_15px_rgba(197,160,89,0.3)] transition-all hover:bg-[#b08d4f] disabled:opacity-60"
+                className="inline-flex items-center gap-2 rounded-lg bg-brand-gold px-8 py-2 text-sm font-bold text-white shadow-[0_0_15px_rgba(197,160,89,0.3)] transition-all hover:bg-[#b08d4f] disabled:opacity-60"
               >
                 {saving ? (
                   <Loader2 className="h-4 w-4 animate-spin" aria-hidden />

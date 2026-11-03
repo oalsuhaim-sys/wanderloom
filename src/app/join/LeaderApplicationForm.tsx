@@ -15,12 +15,12 @@ import {
 } from '@/lib/referral-url'
 
 const INPUT_CLASS =
-  'h-11 w-full rounded-xl border border-gray-200/90 bg-white/80 px-4 text-sm font-bold text-[#111111] outline-none transition placeholder:text-gray-400 focus:border-[#cda04c]/70 focus:ring-2 focus:ring-[#cda04c]/25'
+  'h-11 w-full rounded-xl border border-gray-200/90 bg-white/80 px-4 text-sm font-bold text-[#111111] outline-none transition placeholder:text-gray-400 focus:border-public-gold/70 focus:ring-2 focus:ring-public-gold/25'
 
-const FIELD_LABEL = 'mb-1.5 block text-right text-xs font-black tracking-wide text-[#cda04c]'
+const FIELD_LABEL = 'mb-1.5 block text-right text-xs font-black tracking-wide text-public-gold'
 
 const DNA_FIELD =
-  'w-full rounded-xl border border-gray-200/90 bg-white/80 px-4 py-3 text-sm font-semibold text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-[#1e3f20]/40 focus:ring-2 focus:ring-[#cda04c]/25 [color-scheme:light]'
+  'w-full rounded-xl border border-gray-200/90 bg-white/80 px-4 py-3 text-sm font-semibold text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-[#1e3f20]/40 focus:ring-2 focus:ring-public-gold/25 [color-scheme:light]'
 
 function LeaderApplicationFormInner() {
   const searchParams = useSearchParams()
@@ -73,7 +73,7 @@ function LeaderApplicationFormInner() {
   if (!leaderCode) {
     return (
       <div className="mx-auto max-w-lg rounded-3xl border border-[#1e3f20]/10 bg-white/90 p-8 text-center shadow-xl backdrop-blur-sm">
-        <Sparkles className="mx-auto h-10 w-10 text-[#cda04c]" aria-hidden />
+        <Sparkles className="mx-auto h-10 w-10 text-public-gold" aria-hidden />
         <h1 className="mt-4 text-xl font-black text-[#0f1e16]">دعوة حصرية فقط</h1>
         <p className="mt-3 text-sm font-bold leading-relaxed text-gray-600">
           هذه الصفحة مخصّصة للانضمام عبر شركاء وندرلُوم. استخدم رابط أو باركود الدعوة الذي
@@ -166,7 +166,7 @@ export default function LeaderApplicationForm() {
     <Suspense
       fallback={
         <div className="flex min-h-[40vh] items-center justify-center">
-          <Loader2 className="h-10 w-10 animate-spin text-[#cda04c]" aria-label="جاري التحميل" />
+          <Loader2 className="h-10 w-10 animate-spin text-public-gold" aria-label="جاري التحميل" />
         </div>
       }
     >

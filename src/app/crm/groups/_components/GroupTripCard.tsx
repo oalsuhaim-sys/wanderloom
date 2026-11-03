@@ -3,6 +3,8 @@
 import {
   CalendarDays,
   ClipboardList,
+  Eye,
+  EyeOff,
   Link2,
   Loader2,
   Pencil,
@@ -30,9 +32,11 @@ type Props = {
   datesAr: string;
   datesEn: string;
   deleting: boolean;
+  visibilityBusy?: boolean;
   onEdit: () => void;
   onDelete: () => void;
   onFellowship: () => void;
+  onToggleVisibility: () => void;
 };
 
 export default function GroupTripCard({
@@ -40,11 +44,14 @@ export default function GroupTripCard({
   datesAr,
   datesEn,
   deleting,
+  visibilityBusy = false,
   onEdit,
   onDelete,
   onFellowship,
+  onToggleVisibility,
 }: Props) {
   const [copying, setCopying] = useState(false);
+  const isVisibleOnSite = trip.is_active !== false;
   const booked = resolveConfirmedSeatCount(trip);
   const capacity = Math.max(0, Number(trip.max_seats) || 0);
   const { to: endIso } = parseGroupTripStoredDates(trip.dates_ar, trip.dates_en);
@@ -203,6 +210,28 @@ export default function GroupTripCard({
               <Link2 className="h-3.5 w-3.5 text-slate-400" aria-hidden />
             )}
             نسخ الرابط
+          </button>
+          <button
+            type="button"
+            disabled={visibilityBusy || deleting}
+            onClick={onToggleVisibility}
+            title={isVisibleOnSite ? 'إخفاء القروب من الموقع' : 'إظهار القروب في الموقع'}
+            aria-pressed={isVisibleOnSite}
+            aria-label={isVisibleOnSite ? 'ظاهر في الموقع' : 'مخفي من الموقع'}
+            className={`inline-flex w-full items-center justify-center gap-1.5 rounded-xl px-4 py-2.5 text-sm font-medium transition active:scale-[0.98] disabled:opacity-60 sm:w-auto ${
+              isVisibleOnSite
+                ? 'bg-emerald-50 text-emerald-800 ring-1 ring-emerald-600/25 hover:bg-emerald-100'
+                : 'bg-slate-50 text-slate-500 ring-1 ring-slate-200 hover:bg-slate-100'
+            }`}
+          >
+            {visibilityBusy ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+            ) : isVisibleOnSite ? (
+              <Eye className="h-3.5 w-3.5 text-emerald-600" aria-hidden />
+            ) : (
+              <EyeOff className="h-3.5 w-3.5 text-slate-400" aria-hidden />
+            )}
+            {isVisibleOnSite ? 'ظاهر في الموقع' : 'مخفي من الموقع'}
           </button>
           <button
             type="button"

@@ -65,9 +65,9 @@ const ARROW = '\u2190'
 const ELLIPSIS = '\u2026'
 
 const GLASS_CARD_CLASS =
-  'overflow-hidden rounded-2xl border border-[#d4af37]/35 bg-[#1E2720]/55 p-5 shadow-[0_0_15px_rgba(212,175,55,0.4)] backdrop-blur-md'
+  'overflow-hidden rounded-2xl border border-brand-gold/35 bg-[#1E2720]/55 p-5 shadow-[0_0_15px_rgba(212,175,55,0.4)] backdrop-blur-md'
 
-const DISCOVER_CARD_CLASS = `${GLASS_CARD_CLASS} transition duration-200 hover:border-[#d4af37]/50 hover:shadow-[0_0_22px_rgba(212,175,55,0.45)]`
+const DISCOVER_CARD_CLASS = `${GLASS_CARD_CLASS} transition duration-200 hover:border-brand-gold/50 hover:shadow-[0_0_22px_rgba(212,175,55,0.45)]`
 
 /** نمط باركود 1D عمودي ذهبي — عروض متغيرة لمحاكاة مسح واقعي */
 const GOLDEN_BARCODE_WIDTHS = [
@@ -78,7 +78,7 @@ const GOLDEN_BARCODE_WIDTHS = [
 function StubVerticalLabel({ children, mono }: { children: ReactNode; mono?: boolean }) {
   return (
     <span
-      className={`block whitespace-nowrap text-[10px] font-black uppercase tracking-[0.14em] text-[#d4af37] ${
+      className={`block whitespace-nowrap text-[10px] font-black uppercase tracking-[0.14em] text-brand-gold ${
         mono ? 'font-mono tracking-wider' : ''
       }`}
       style={{
@@ -134,7 +134,7 @@ function GoldenBoardingBarcode() {
       {GOLDEN_BARCODE_WIDTHS.map((w, i) => (
         <div
           key={i}
-          className={`h-full shrink-0 ${i % 2 === 0 ? 'bg-[#d4af37]' : 'bg-[#d4af37]/12'}`}
+          className={`h-full shrink-0 ${i % 2 === 0 ? 'bg-brand-gold' : 'bg-brand-gold/12'}`}
           style={{ width: w, minWidth: 1 }}
         />
       ))}
@@ -146,16 +146,16 @@ function WeatherForecastCard({ weather }: { weather: PublicWeatherForecast }) {
   const tempRange = `${weather.tempMin}°C - ${weather.tempMax}°C`
   return (
     <article className={`relative ${GLASS_CARD_CLASS}`}>
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-[#d4af37]/6 via-transparent to-transparent" />
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-brand-gold/6 via-transparent to-transparent" />
       <div className="relative">
-        <div className="mb-3 flex items-center gap-2 text-xs font-black text-[#d4af37]">
+        <div className="mb-3 flex items-center gap-2 text-xs font-black text-brand-gold">
           <CloudSun className="h-4 w-4 shrink-0" aria-hidden />
           الطقس المتوقع
         </div>
         <h3 className="text-base font-black text-white" dir="ltr">
           {weather.destination}
         </h3>
-        <p className="mt-2 text-xl font-black text-[#d4af37]" dir="ltr">
+        <p className="mt-2 text-xl font-black text-brand-gold" dir="ltr">
           {tempRange}
         </p>
         <p className="mt-1 text-sm font-semibold text-white/70">{weather.condition}</p>
@@ -181,7 +181,7 @@ function CopyTaxiPhraseButton({ phrase }: { phrase: string }) {
     <button
       type="button"
       onClick={() => void handleCopy()}
-      className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[#d4af37]/35 bg-[#d4af37]/10 text-[#d4af37] transition hover:bg-[#d4af37]/20"
+      className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-brand-gold/35 bg-brand-gold/10 text-brand-gold transition hover:bg-brand-gold/20"
       aria-label={copied ? 'تم النسخ' : 'نسخ العبارة'}
       title={copied ? 'تم النسخ' : 'نسخ العبارة'}
     >
@@ -195,15 +195,15 @@ function DiscoverDestinationSection({ discover }: { discover: PublicDestinationD
 
   return (
     <section className="mb-8" dir="rtl">
-      <h2 className="mb-4 text-center text-lg font-black tracking-wide text-[#d4af37]">اكتشف الوجهة</h2>
+      <h2 className="mb-4 text-center text-lg font-black tracking-wide text-brand-gold">اكتشف الوجهة</h2>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         {discover.destinationStory ? (
           <article className={`relative ${DISCOVER_CARD_CLASS}`}>
-            <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-[#d4af37]/6 via-transparent to-transparent" />
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-brand-gold/6 via-transparent to-transparent" />
             <div className="relative">
               <div className="mb-3 flex items-center gap-2">
-                <BookOpen className="h-5 w-5 shrink-0 text-[#d4af37]" strokeWidth={2.25} aria-hidden />
-                <h3 className="text-xs font-black text-[#d4af37]">نبذة الوجهة</h3>
+                <BookOpen className="h-5 w-5 shrink-0 text-brand-gold" strokeWidth={2.25} aria-hidden />
+                <h3 className="text-xs font-black text-brand-gold">نبذة الوجهة</h3>
               </div>
               <p className="whitespace-pre-wrap text-sm font-medium leading-relaxed text-white/85">
                 {discover.destinationStory}
@@ -214,11 +214,11 @@ function DiscoverDestinationSection({ discover }: { discover: PublicDestinationD
 
         {discover.taxiPhrase ? (
           <article className={`relative ${DISCOVER_CARD_CLASS}`}>
-            <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-[#d4af37]/6 via-transparent to-transparent" />
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-brand-gold/6 via-transparent to-transparent" />
             <div className="relative">
               <div className="mb-3 flex items-center gap-2">
-                <MessageCircle className="h-5 w-5 shrink-0 text-[#d4af37]" strokeWidth={2.25} aria-hidden />
-                <h3 className="text-xs font-black text-[#d4af37]">للتواصل مع السائق</h3>
+                <MessageCircle className="h-5 w-5 shrink-0 text-brand-gold" strokeWidth={2.25} aria-hidden />
+                <h3 className="text-xs font-black text-brand-gold">للتواصل مع السائق</h3>
               </div>
               <div className="flex items-start justify-between gap-3">
                 <p
@@ -236,13 +236,13 @@ function DiscoverDestinationSection({ discover }: { discover: PublicDestinationD
 
         {discover.secretGem ? (
           <article
-            className={`relative ${DISCOVER_CARD_CLASS} border-[#d4af37]/60 shadow-[0_0_22px_rgba(212,175,55,0.55)] ring-1 ring-[#d4af37]/30`}
+            className={`relative ${DISCOVER_CARD_CLASS} border-brand-gold/60 shadow-[0_0_22px_rgba(212,175,55,0.55)] ring-1 ring-brand-gold/30`}
           >
-            <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-[#d4af37]/12 via-transparent to-[#161D18]/40" />
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-brand-gold/12 via-transparent to-[#161D18]/40" />
             <div className="relative">
               <div className="mb-3 flex items-center gap-2">
-                <Key className="h-5 w-5 shrink-0 text-[#d4af37]" strokeWidth={2.25} aria-hidden />
-                <h3 className="text-xs font-black text-[#d4af37]">أسرار الوجهة</h3>
+                <Key className="h-5 w-5 shrink-0 text-brand-gold" strokeWidth={2.25} aria-hidden />
+                <h3 className="text-xs font-black text-brand-gold">أسرار الوجهة</h3>
               </div>
               <p className="whitespace-pre-wrap text-sm font-semibold leading-relaxed text-white/90">
                 {discover.secretGem}
@@ -288,16 +288,16 @@ function BoardingPassCard({ fd }: { fd: Record<string, unknown> }) {
           : ''
 
   return (
-    <section className="relative overflow-hidden rounded-2xl border border-[#d4af37]/35 bg-[#1E2720]/55 shadow-[0_8px_32px_rgba(0,0,0,0.35)] backdrop-blur-md">
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-[#d4af37]/8 via-transparent to-[#2A362C]/40" />
+    <section className="relative overflow-hidden rounded-2xl border border-brand-gold/35 bg-[#1E2720]/55 shadow-[0_8px_32px_rgba(0,0,0,0.35)] backdrop-blur-md">
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-brand-gold/8 via-transparent to-[#2A362C]/40" />
       <div className="relative flex min-h-[12rem] flex-row overflow-hidden">
         <div className="min-w-0 flex-1 px-5 py-5 sm:px-6 sm:py-6">
           <div className="mb-4 flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2 text-xs font-black text-[#d4af37]">
+            <div className="flex items-center gap-2 text-xs font-black text-brand-gold">
               <Plane className="h-4 w-4 shrink-0" aria-hidden />
               تفاصيل الطيران
             </div>
-            <span className="rounded-full border border-[#d4af37]/30 bg-[#d4af37]/10 px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[#d4af37]/90">
+            <span className="rounded-full border border-brand-gold/30 bg-brand-gold/10 px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-brand-gold/90">
               VIP
             </span>
           </div>
@@ -306,11 +306,11 @@ function BoardingPassCard({ fd }: { fd: Record<string, unknown> }) {
             className="text-center text-2xl font-black tracking-tight text-white sm:text-3xl"
             dir="ltr"
           >
-            <span className="text-[#d4af37]">{fromMain}</span>
+            <span className="text-brand-gold">{fromMain}</span>
             <span className="mx-2 inline-block text-white/40" aria-hidden>
               {'\u2708\uFE0F'}
             </span>
-            <span className="text-[#d4af37]">{toMain}</span>
+            <span className="text-brand-gold">{toMain}</span>
           </p>
           {routeSub ? (
             <p className="mt-1 text-center text-[11px] font-medium text-white/45" dir="ltr">
@@ -323,7 +323,7 @@ function BoardingPassCard({ fd }: { fd: Record<string, unknown> }) {
               <p className="text-[9px] font-bold uppercase tracking-wider text-white/40">
                 Flight No
               </p>
-              <p className="font-mono text-sm font-bold text-[#d4af37]" dir="ltr">
+              <p className="font-mono text-sm font-bold text-brand-gold" dir="ltr">
                 {flightNo}
               </p>
             </div>
@@ -537,11 +537,11 @@ export default function PublicVipItineraryView({
     return (
       <div
         dir="rtl"
-        className="relative flex min-h-[100dvh] items-center justify-center overflow-hidden bg-[#1E2720] font-[family-name:var(--font-tajawal),system-ui,sans-serif] text-[#d4af37]"
+        className="relative flex min-h-[100dvh] items-center justify-center overflow-hidden bg-[#1E2720] font-[family-name:var(--font-tajawal),system-ui,sans-serif] text-brand-gold"
       >
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-[#d4af37]/10 via-[#1E2720] to-[#1E2720]"
+          className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-brand-gold/10 via-[#1E2720] to-[#1E2720]"
         />
         <p className="relative z-[1] animate-pulse text-sm font-semibold tracking-wide">
           {'\u062c\u0627\u0631\u064a \u062a\u062c\u0647\u064a\u0632 \u0631\u062d\u0644\u062a\u0643' + ELLIPSIS}
@@ -595,7 +595,7 @@ export default function PublicVipItineraryView({
       <VipConfidentialWatermark />
       {offlineMode ? (
         <p
-          className="bg-[#d4af37]/15 px-4 py-2 text-center text-xs font-bold text-[#d4af37]"
+          className="bg-brand-gold/15 px-4 py-2 text-center text-xs font-bold text-brand-gold"
           role="status"
         >
           {'\u0648\u0636\u0639 \u0627\u0644\u0639\u0631\u0636 \u0628\u062f\u0648\u0646 \u0627\u062a\u0635\u0627\u0644 \u2014 \u0628\u064a\u0627\u0646\u0627\u062a \u0645\u062e\u0632\u0651\u0646\u0629 \u0645\u062d\u0644\u064a\u0627\u064b'}
@@ -614,13 +614,13 @@ export default function PublicVipItineraryView({
         />
         <div className="absolute inset-0 bg-gradient-to-t from-[#1E2720] via-[#1E2720]/75 to-[#1E2720]/40" />
         <div className="relative flex min-h-[42vh] flex-col justify-end px-5 pb-10 pt-16 sm:px-8">
-          <span className="mb-3 inline-flex w-fit items-center gap-2 rounded-full border border-[#d4af37]/40 bg-[#d4af37]/10 px-4 py-1.5 text-[10px] font-black uppercase tracking-[0.25em] text-[#d4af37]">
+          <span className="mb-3 inline-flex w-fit items-center gap-2 rounded-full border border-brand-gold/40 bg-brand-gold/10 px-4 py-1.5 text-[10px] font-black uppercase tracking-[0.25em] text-brand-gold">
             Wanderloom VIP
           </span>
           <h1 className="text-3xl font-black leading-tight text-white sm:text-4xl">{trip.title}</h1>
-          <p className="mt-2 text-lg font-bold text-[#d4af37]">{trip.destination}</p>
+          <p className="mt-2 text-lg font-bold text-brand-gold">{trip.destination}</p>
           <p className="mt-3 flex items-center gap-2 text-sm font-semibold text-white/80">
-            <Calendar className="h-4 w-4 shrink-0 text-[#d4af37]" aria-hidden />
+            <Calendar className="h-4 w-4 shrink-0 text-brand-gold" aria-hidden />
             {dateRange}
           </p>
           <p className="mt-1 text-sm text-white/60">
@@ -658,14 +658,14 @@ export default function PublicVipItineraryView({
 
         {trip.highlights.length > 0 ? (
           <section className="mb-8">
-            <h2 className="mb-3 text-sm font-black uppercase tracking-wider text-[#d4af37]">
+            <h2 className="mb-3 text-sm font-black uppercase tracking-wider text-brand-gold">
               {'\u0623\u0628\u0631\u0632 \u0627\u0644\u0644\u062d\u0638\u0627\u062a'}
             </h2>
             <div className="flex flex-wrap gap-2">
               {trip.highlights.map((h) => (
                 <span
                   key={h}
-                  className="rounded-full border border-[#d4af37]/30 bg-[#2A362C] px-3 py-1.5 text-xs font-bold text-white/90"
+                  className="rounded-full border border-brand-gold/30 bg-[#2A362C] px-3 py-1.5 text-xs font-bold text-white/90"
                 >
                   {h}
                 </span>
@@ -677,7 +677,7 @@ export default function PublicVipItineraryView({
           href={googleMapsSearchUrl(trip.destination)}
           target="_blank"
           rel="noopener noreferrer"
-          className="mb-6 flex items-center justify-center gap-2 rounded-2xl border border-[#d4af37]/35 bg-[#2A362C] py-4 text-sm font-black text-[#d4af37] transition hover:bg-[#354239]"
+          className="mb-6 flex items-center justify-center gap-2 rounded-2xl border border-brand-gold/35 bg-[#2A362C] py-4 text-sm font-black text-brand-gold transition hover:bg-[#354239]"
         >
           <MapPin className="h-5 w-5 shrink-0" aria-hidden />
           {'\u0627\u0633\u062a\u0643\u0634\u0641'} {trip.destination} {'\u0639\u0644\u0649 \u0627\u0644\u062e\u0631\u064a\u0637\u0629'}
@@ -749,7 +749,7 @@ export default function PublicVipItineraryView({
         href={waUrl(conciergeText)}
         target="_blank"
         rel="noopener noreferrer"
-        className="fixed bottom-24 left-6 z-50 flex items-center gap-2.5 rounded-full border border-[#d4af37]/50 bg-[#d4af37] px-5 py-3.5 text-sm font-black text-[#1E2720] shadow-[0_0_15px_rgba(212,175,55,0.4)] transition hover:scale-[1.03] hover:shadow-[0_0_22px_rgba(212,175,55,0.55)] active:scale-[0.98] sm:bottom-28 sm:left-8"
+        className="fixed bottom-24 left-6 z-50 flex items-center gap-2.5 rounded-full border border-brand-gold/50 bg-brand-gold px-5 py-3.5 text-sm font-black text-[#1E2720] shadow-[0_0_15px_rgba(212,175,55,0.4)] transition hover:scale-[1.03] hover:shadow-[0_0_22px_rgba(212,175,55,0.55)] active:scale-[0.98] sm:bottom-28 sm:left-8"
         aria-label="الكونسيرج الشخصي — واتساب"
       >
         <Bell className="h-5 w-5 shrink-0" aria-hidden strokeWidth={2.25} />

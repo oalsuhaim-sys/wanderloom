@@ -5,7 +5,7 @@ import { MapPin, Star } from 'lucide-react'
 import { type PublicItineraryExperience } from '@/lib/public-itinerary'
 
 const GLASS_CARD_CLASS =
-  'overflow-hidden rounded-xl border border-[#D4AF37]/30 bg-white shadow-sm'
+  'overflow-hidden rounded-xl border border-brand-gold/30 bg-white shadow-sm'
 
 const TXT_DIRECTIONS = '\uD83D\uDCCD \u0627\u0644\u0627\u062a\u062c\u0627\u0647\u0627\u062a'
 const TXT_TICKETS = '\uD83C\uDF9F\uFE0F \u062d\u062c\u0632 \u0627\u0644\u062a\u0630\u0627\u0643\u0631'
@@ -19,7 +19,7 @@ type VipItineraryActivitiesTabProps = {
 export default function VipItineraryActivitiesTab({ experiences }: VipItineraryActivitiesTabProps) {
   if (experiences.length === 0) {
     return (
-      <p className="rounded-xl border border-[#D4AF37]/25 bg-white py-12 text-center text-sm font-medium text-[#1E2720]/55 shadow-sm">
+      <p className="rounded-xl border border-brand-gold/25 bg-white py-12 text-center text-sm font-medium text-[#1E2720]/55 shadow-sm">
         {TXT_EMPTY}
       </p>
     )
@@ -32,7 +32,7 @@ export default function VipItineraryActivitiesTab({ experiences }: VipItineraryA
         return (
           <article key={exp.id} className={GLASS_CARD_CLASS}>
             <div className="flex flex-row gap-3 p-4">
-              <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-xl border border-[#D4AF37]/25 bg-[#F9F9F6]">
+              <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-xl border border-brand-gold/25 bg-[#F9F9F6]">
                 {exp.imageUrl ? (
                   <>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -40,7 +40,7 @@ export default function VipItineraryActivitiesTab({ experiences }: VipItineraryA
                   </>
                 ) : (
                   <div className="flex h-full items-center justify-center">
-                    <Star className="h-8 w-8 text-[#d4af37]/30" aria-hidden />
+                    <Star className="h-8 w-8 text-brand-gold/30" aria-hidden />
                   </div>
                 )}
               </div>
@@ -49,7 +49,7 @@ export default function VipItineraryActivitiesTab({ experiences }: VipItineraryA
                   <h3 className="text-sm font-extrabold text-[#1E2720] sm:text-base">{exp.title}</h3>
                   {exp.dateTime ? (
                     <span
-                      className="shrink-0 rounded-full border border-[#d4af37]/35 bg-[#d4af37]/10 px-2 py-0.5 text-[10px] font-bold text-[#d4af37]"
+                      className="shrink-0 rounded-full border border-brand-gold/35 bg-brand-gold/10 px-2 py-0.5 text-[10px] font-bold text-brand-gold"
                       dir="ltr"
                     >
                       {exp.dateTime}
@@ -66,9 +66,9 @@ export default function VipItineraryActivitiesTab({ experiences }: VipItineraryA
                     href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(exp.mapsQuery)}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className={`flex flex-1 items-center justify-center gap-2 rounded-lg border border-[#D4AF37] bg-transparent py-2 px-4 text-sm font-bold text-[#1E2720] transition-colors hover:bg-[#D4AF37]/10 ${bookingHref ? '' : 'max-w-xs flex-none'}`}
+                    className={`flex flex-1 items-center justify-center gap-2 rounded-lg border border-brand-gold bg-transparent py-2 px-4 text-sm font-bold text-[#1E2720] transition-colors hover:bg-brand-gold/10 ${bookingHref ? '' : 'max-w-xs flex-none'}`}
                   >
-                    <MapPin className="h-4 w-4 shrink-0 text-[#D4AF37]" aria-hidden />
+                    <MapPin className="h-4 w-4 shrink-0 text-brand-gold" aria-hidden />
                     <span>{TXT_DIRECTIONS}</span>
                   </a>
                   {bookingHref ? (
@@ -76,7 +76,7 @@ export default function VipItineraryActivitiesTab({ experiences }: VipItineraryA
                       href={bookingHref}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex flex-1 items-center justify-center gap-2 rounded-lg border border-[#D4AF37] bg-transparent py-2 px-4 text-sm font-bold text-[#1E2720] transition-colors hover:bg-[#D4AF37]/10"
+                      className="flex flex-1 items-center justify-center gap-2 rounded-lg border border-brand-gold bg-transparent py-2 px-4 text-sm font-bold text-[#1E2720] transition-colors hover:bg-brand-gold/10"
                     >
                       <span>{TXT_TICKETS}</span>
                     </a>

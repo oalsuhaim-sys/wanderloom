@@ -61,7 +61,7 @@ export function InterestModal({ open, onClose }: Props) {
         <div className="mb-5 flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1 text-right">
             <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-[#1C2E3A]/5 px-3 py-1 text-[10px] font-black text-[#1C2E3A]">
-              <Heart className="h-3.5 w-3.5 text-[#9C7A3C]" aria-hidden />
+              <Heart className="h-3.5 w-3.5 text-public-gold" aria-hidden />
               تسجيل اهتمام
             </div>
             <h2 id="interest-modal-title" className="text-lg font-black text-[#1C2E3A] sm:text-xl">

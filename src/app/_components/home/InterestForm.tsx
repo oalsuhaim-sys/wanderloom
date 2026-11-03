@@ -11,9 +11,9 @@ import { requireValidPhone, WHATSAPP_INCOMPLETE_ERROR } from '@/lib/phoneUtils';
 import { normalizeAffiliateRef, persistAffiliateRef } from '@/lib/referral-url';
 
 const INPUT_CLASS =
-  'h-11 w-full rounded-xl border border-gray-200/90 bg-white/80 px-4 text-sm font-bold text-[#1C2E3A] outline-none transition placeholder:text-gray-400 focus:border-[#9C7A3C]/70 focus:ring-2 focus:ring-[#9C7A3C]/25';
+  'h-11 w-full rounded-xl border border-gray-200/90 bg-white/80 px-4 text-sm font-bold text-[#1C2E3A] outline-none transition placeholder:text-gray-400 focus:border-public-gold/70 focus:ring-2 focus:ring-public-gold/25';
 
-const FIELD_LABEL = 'mb-2 block text-right text-xs font-black tracking-wide text-[#9C7A3C]';
+const FIELD_LABEL = 'mb-2 block text-right text-xs font-black tracking-wide text-public-gold';
 
 type InterestFormProps = {
   variant?: 'default' | 'modal';
@@ -88,7 +88,7 @@ export function InterestForm({ variant = 'default', onSuccess }: InterestFormPro
         <button
           type="button"
           onClick={() => setSuccessMessage('')}
-          className="mt-6 text-sm font-bold text-[#9C7A3C] underline decoration-[#9C7A3C]/40 underline-offset-4 transition hover:text-[#9C7A3C]"
+          className="mt-6 text-sm font-bold text-public-gold underline decoration-public-gold/40 underline-offset-4 transition hover:text-public-gold"
         >
           {variant === 'modal' ? 'إغلاق' : 'تسجيل اهتمام آخر'}
         </button>
@@ -160,7 +160,7 @@ export function InterestForm({ variant = 'default', onSuccess }: InterestFormPro
         <ReferralCodeField
           value={referralCode}
           onChange={setReferralCode}
-          inputClassName="h-11 focus:border-[#9C7A3C]/70 focus:ring-[#9C7A3C]/25"
+          inputClassName="h-11 focus:border-public-gold/70 focus:ring-public-gold/25"
         />
       </div>
 

@@ -14,7 +14,7 @@ import {
   YAxis,
 } from 'recharts';
 
-const PIE_COLORS = ['#1C4532', '#C9A84C', '#2D6A4F', '#40916C', '#95D5B2', '#6B7280', '#92400E', '#1E3A5F'];
+const PIE_COLORS = ['#1C4532', '#D4AF37', '#2D6A4F', '#40916C', '#95D5B2', '#6B7280', '#92400E', '#1E3A5F'];
 
 export type PieDatum = { name: string; value: number };
 export type LineDatum = { month: string; confirmed: number };
@@ -77,7 +77,7 @@ export function CrmDashboardCharts({
                 name="مؤكدة"
                 stroke="#1C4532"
                 strokeWidth={2.5}
-                dot={{ fill: '#C9A84C', r: 4 }}
+                dot={{ fill: '#D4AF37', r: 4 }}
                 activeDot={{ r: 6 }}
               />
             </LineChart>

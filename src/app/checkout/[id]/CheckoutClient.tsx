@@ -16,9 +16,9 @@ import {
 import { formatSarAmount, type AgencyBankDetails } from '@/lib/system-settings'
 
 const PANEL =
-  'rounded-[1.75rem] border border-[#d4af37]/20 bg-gradient-to-b from-[#121816] to-[#0a0d0b] p-6 shadow-[0_24px_80px_rgba(0,0,0,0.45)] sm:p-8'
+  'rounded-[1.75rem] border border-brand-gold/20 bg-gradient-to-b from-[#121816] to-[#0a0d0b] p-6 shadow-[0_24px_80px_rgba(0,0,0,0.45)] sm:p-8'
 
-const GOLD = 'text-[#d4af37]'
+const GOLD = 'text-brand-gold'
 
 export default function CheckoutClient() {
   const params = useParams()
@@ -154,16 +154,16 @@ export default function CheckoutClient() {
         }}
       />
 
-      <header className="relative z-10 border-b border-[#d4af37]/10 bg-[#0a0d0b]/80 px-4 py-4 backdrop-blur-md sm:px-8">
+      <header className="relative z-10 border-b border-brand-gold/10 bg-[#0a0d0b]/80 px-4 py-4 backdrop-blur-md sm:px-8">
         <div className="mx-auto flex max-w-2xl items-center justify-between gap-4">
           <Link
             href="/"
-            className="text-xs font-black tracking-[0.2em] text-[#d4af37]/80 transition hover:text-[#d4af37]"
+            className="text-xs font-black tracking-[0.2em] text-brand-gold/80 transition hover:text-brand-gold"
           >
             WANDERLOOM
           </Link>
           <span className="inline-flex items-center gap-1.5 text-[10px] font-bold text-white/40">
-            <ShieldCheck className="h-3.5 w-3.5 text-[#d4af37]/70" aria-hidden />
+            <ShieldCheck className="h-3.5 w-3.5 text-brand-gold/70" aria-hidden />
             سداد آمن
           </span>
         </div>
@@ -216,8 +216,8 @@ export default function CheckoutClient() {
                     </dd>
                   </div>
                 ) : null}
-                <div className="flex items-center justify-between gap-3 rounded-xl border border-[#d4af37]/30 bg-[#d4af37]/10 px-4 py-4">
-                  <dt className="text-[10px] font-bold text-[#d4af37]/80">مبلغ السداد</dt>
+                <div className="flex items-center justify-between gap-3 rounded-xl border border-brand-gold/30 bg-brand-gold/10 px-4 py-4">
+                  <dt className="text-[10px] font-bold text-brand-gold/80">مبلغ السداد</dt>
                   <dd className="text-xl font-black text-[#f5e6b8]">{amountLabel}</dd>
                 </div>
               </dl>
@@ -240,8 +240,8 @@ export default function CheckoutClient() {
                     {bank?.accountName || '—'}
                   </dd>
                 </div>
-                <div className="rounded-xl border border-[#d4af37]/25 bg-[#d4af37]/5 px-4 py-3">
-                  <dt className="text-[10px] font-bold text-[#d4af37]/70">رقم الآيبان (IBAN)</dt>
+                <div className="rounded-xl border border-brand-gold/25 bg-brand-gold/5 px-4 py-3">
+                  <dt className="text-[10px] font-bold text-brand-gold/70">رقم الآيبان (IBAN)</dt>
                   <dd className="mt-2 flex items-center justify-between gap-3">
                     <span
                       className="font-mono text-sm font-black tracking-wide text-[#f5f0e6]"
@@ -253,7 +253,7 @@ export default function CheckoutClient() {
                       type="button"
                       onClick={() => void copyIban()}
                       disabled={!bank?.iban}
-                      className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-[#d4af37]/35 bg-[#d4af37]/10 px-3 py-1.5 text-[10px] font-black text-[#d4af37] transition hover:bg-[#d4af37]/20 disabled:opacity-40"
+                      className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-brand-gold/35 bg-brand-gold/10 px-3 py-1.5 text-[10px] font-black text-brand-gold transition hover:bg-brand-gold/20 disabled:opacity-40"
                     >
                       {copied ? (
                         <>
@@ -295,8 +295,8 @@ export default function CheckoutClient() {
                 onClick={() => fileInputRef.current?.click()}
                 className={`flex cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed px-6 py-12 text-center transition ${
                   dragOver
-                    ? 'border-[#d4af37]/60 bg-[#d4af37]/10'
-                    : 'border-white/15 bg-black/20 hover:border-[#d4af37]/35 hover:bg-[#d4af37]/5'
+                    ? 'border-brand-gold/60 bg-brand-gold/10'
+                    : 'border-white/15 bg-black/20 hover:border-brand-gold/35 hover:bg-brand-gold/5'
                 }`}
               >
                 {uploading ? (
@@ -306,10 +306,10 @@ export default function CheckoutClient() {
                   </>
                 ) : (
                   <>
-                    <Upload className="h-10 w-10 text-[#d4af37]/60" aria-hidden />
+                    <Upload className="h-10 w-10 text-brand-gold/60" aria-hidden />
                     <p className="text-sm font-black text-white/80">اضغط أو اسحب إيصال التحويل هنا</p>
                     {selectedFile ? (
-                      <p className="text-xs font-semibold text-[#d4af37]/80">{selectedFile.name}</p>
+                      <p className="text-xs font-semibold text-brand-gold/80">{selectedFile.name}</p>
                     ) : (
                       <p className="text-[11px] font-semibold text-white/35">JPG · PNG · WebP · PDF</p>
                     )}

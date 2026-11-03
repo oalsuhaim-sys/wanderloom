@@ -194,13 +194,13 @@ export default function PlacesBankExplorer({
       <div className={VIP_PANEL_HEAD}>
         <h2 className="text-sm font-bold text-[#1E2720]">مستكشف بنك الأماكن</h2>
         <p className="mt-0.5 text-[11px] font-semibold text-[#1E2720]/60">The Vault · 6400+ مكان</p>
-        <p className="mt-2 rounded-lg border border-[#D4AF37] bg-[#FAFAFA] px-2 py-1.5 text-[10px] font-bold text-[#1E2720]">
+        <p className="mt-2 rounded-lg border border-brand-gold bg-[#FAFAFA] px-2 py-1.5 text-[10px] font-bold text-[#1E2720]">
           يُضاف إلى: {activeDayLabel}
         </p>
       </div>
 
       {proximityOn && proximityOrigin ? (
-        <div className="shrink-0 border-b border-[#D4AF37] bg-[#D4AF37]/10 px-3 py-2">
+        <div className="shrink-0 border-b border-brand-gold bg-brand-gold/10 px-3 py-2">
           <div className="flex items-start justify-between gap-2">
             <p className="text-[11px] font-bold leading-snug text-[#1E2720]">
               📍 ضمن {PROXIMITY_RADIUS_KM} كم من: {proximityOrigin.placeName}
@@ -208,7 +208,7 @@ export default function PlacesBankExplorer({
             <button
               type="button"
               onClick={onClearProximity}
-              className="shrink-0 rounded border border-[#D4AF37] bg-white px-2 py-1 text-[10px] font-bold text-[#1E2720]"
+              className="shrink-0 rounded border border-brand-gold bg-white px-2 py-1 text-[10px] font-bold text-[#1E2720]"
             >
               <X className="inline h-3 w-3" aria-hidden /> إلغاء
             </button>
@@ -216,7 +216,7 @@ export default function PlacesBankExplorer({
         </div>
       ) : null}
 
-      <div className="shrink-0 space-y-2 border-b border-[#D4AF37]/40 bg-[#FAFAFA] p-3">
+      <div className="shrink-0 space-y-2 border-b border-brand-gold/40 bg-[#FAFAFA] p-3">
         <div className="relative">
           <Search className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
           <input
@@ -273,7 +273,7 @@ export default function PlacesBankExplorer({
       <div className={VIP_PANEL_BODY}>
         {loading ? (
           <div className="flex flex-col items-center py-16">
-            <Loader2 className="h-8 w-8 animate-spin text-[#D4AF37]" />
+            <Loader2 className="h-8 w-8 animate-spin text-brand-gold" />
             <p className="mt-2 text-xs font-bold text-slate-600">جاري التحميل…</p>
           </div>
         ) : error ? (
@@ -290,7 +290,7 @@ export default function PlacesBankExplorer({
                 <li
                   key={p.id}
                   className={`rounded-lg border bg-white p-3 transition ${
-                    added ? 'border-[#1E2720] bg-[#D4AF37]/25' : 'border-[#D4AF37]/60'
+                    added ? 'border-[#1E2720] bg-brand-gold/25' : 'border-brand-gold/60'
                   }`}
                 >
                   <div className="flex gap-2">
@@ -299,11 +299,11 @@ export default function PlacesBankExplorer({
                       <img
                         src={String(p.image_url)}
                         alt=""
-                        className="h-14 w-14 shrink-0 rounded-md border border-[#D4AF37]/40 object-cover"
+                        className="h-14 w-14 shrink-0 rounded-md border border-brand-gold/40 object-cover"
                       />
                     ) : (
-                      <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-md border border-[#D4AF37]/40 bg-[#FAFAFA]">
-                        <MapPin className="h-5 w-5 text-[#D4AF37]" />
+                      <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-md border border-brand-gold/40 bg-[#FAFAFA]">
+                        <MapPin className="h-5 w-5 text-brand-gold" />
                       </div>
                     )}
                     <div className="min-w-0 flex-1">
@@ -317,7 +317,7 @@ export default function PlacesBankExplorer({
                           <p className="truncate text-sm font-bold text-[#1E2720]">{p.name}</p>
                         </div>
                         {dist != null ? (
-                          <span className="shrink-0 rounded bg-slate-100 px-1.5 py-0.5 text-[9px] font-bold text-[#D4AF37]">
+                          <span className="shrink-0 rounded bg-slate-100 px-1.5 py-0.5 text-[9px] font-bold text-brand-gold">
                             {formatDistanceKmAr(dist)}
                           </span>
                         ) : null}
@@ -341,7 +341,7 @@ export default function PlacesBankExplorer({
                   <button
                     type="button"
                     onClick={() => handleAdd(p)}
-                    className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg border-2 border-[#1E2720] bg-[#D4AF37] py-2.5 text-sm font-bold text-[#1E2720] shadow-sm hover:brightness-105"
+                    className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg border-2 border-[#1E2720] bg-brand-gold py-2.5 text-sm font-bold text-[#1E2720] shadow-sm hover:brightness-105"
                   >
                     إضافة للمسار
                     <span className="text-lg leading-none" aria-hidden>
@@ -356,7 +356,7 @@ export default function PlacesBankExplorer({
       </div>
 
       {totalPages > 1 ? (
-        <footer className="flex shrink-0 items-center justify-between border-t border-[#D4AF37]/40 bg-[#FAFAFA] px-3 py-2">
+        <footer className="flex shrink-0 items-center justify-between border-t border-brand-gold/40 bg-[#FAFAFA] px-3 py-2">
           <button
             type="button"
             disabled={page <= 0}

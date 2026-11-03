@@ -1,9 +1,9 @@
 /** Wanderloom official gold — explicit hex (never default Tailwind orange). */
 export const BRAND_GOLD = {
-  DEFAULT: '#9C7A3C',
-  HOVER: '#826533',
-  BG: '#9C7A3C',
-  ACCENT: '#9C7A3C',
+  DEFAULT: '#D4AF37',
+  HOVER: '#C4A030',
+  BG: '#D4AF37',
+  ACCENT: '#D4AF37',
   LIGHT: '#F4EFE6',
   LIGHT_SOFT: '#EFE6D4',
   LIGHT_BORDER: '#E0D0A8',
@@ -11,7 +11,7 @@ export const BRAND_GOLD = {
   TEXT: '#6A5329',
   TEXT_DARK: '#3A2E17',
   BORDER: '#E0D0A8',
-  ON_GOLD: '#F4EFE6',
+  ON_GOLD: '#1A3B2A',
   BADGE_TEXT: '#6A5329',
 } as const;
 

@@ -10,7 +10,7 @@ export default function VipCompassPreferences({
   badges = MOCK_VIP_PREFERENCE_BADGES,
 }: Props) {
   return (
-    <div className="mb-5 rounded-xl border border-[#D4AF37]/35 bg-gradient-to-l from-[#FAFAFA] via-white to-[#FAFAFA] px-4 py-3 shadow-sm">
+    <div className="mb-5 rounded-xl border border-brand-gold/35 bg-gradient-to-l from-[#FAFAFA] via-white to-[#FAFAFA] px-4 py-3 shadow-sm">
       <p className="mb-2 text-xs font-black tracking-wide text-[#1E2720]">
         🎯 بوصلة تفضيلات الـ VIP
       </p>

@@ -12,7 +12,7 @@ import {
 import { CRM_CARD_INTERACTIVE, CRM_KPI_CARD, CRM_KPI_VALUE } from '@/lib/crm-luxury-ui';
 
 const PLATFORM_BAR: Record<string, string> = {
-  Instagram: 'bg-[#D4AF37]',
+  Instagram: 'bg-brand-gold',
   TikTok: 'bg-cyan-500',
   YouTube: 'bg-red-500',
   LinkedIn: 'bg-sky-600',
@@ -52,14 +52,14 @@ export default function DashboardTab({ items }: DashboardTabProps) {
       value: counts.ideas,
       hint: 'أفكار خام لم تدخل الإنتاج بعد',
       icon: Lightbulb,
-      tone: 'text-[#D4AF37]',
+      tone: 'text-brand-gold',
     },
   ] as const;
 
   return (
     <section dir="rtl" className="space-y-4" aria-labelledby="dashboard-tab-heading">
       <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-[#2D3F3A] dark:bg-[#22302C] sm:p-6">
-        <p className="text-xs font-semibold tracking-wide text-slate-400 dark:text-[#D4AF37]/80">
+        <p className="text-xs font-semibold tracking-wide text-slate-400 dark:text-brand-gold/80">
           Performance
         </p>
         <h2
@@ -154,7 +154,7 @@ export default function DashboardTab({ items }: DashboardTabProps) {
                   </div>
                   <div className="h-2.5 overflow-hidden rounded-full bg-slate-100 dark:bg-[#1A2421]">
                     <div
-                      className="h-full rounded-full bg-slate-800 dark:bg-[#D4AF37]"
+                      className="h-full rounded-full bg-slate-800 dark:bg-brand-gold"
                       style={{ width: `${item.percent}%` }}
                     />
                   </div>

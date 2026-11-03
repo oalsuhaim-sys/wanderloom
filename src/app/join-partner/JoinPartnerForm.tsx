@@ -9,7 +9,7 @@ import { PublicNavbar } from '@/app/_components/home/PublicNavbar'
 import PlacesBankSpecialtyPicker from '@/components/PlacesBankSpecialtyPicker'
 
 const FIELD =
-  'h-12 w-full rounded-2xl border border-[#1e3f20]/15 bg-white/90 px-4 text-sm font-semibold text-[#0f1e16] outline-none transition placeholder:text-gray-400 focus:border-[#cda04c] focus:ring-2 focus:ring-[#cda04c]/25'
+  'h-12 w-full rounded-2xl border border-[#1e3f20]/15 bg-white/90 px-4 text-sm font-semibold text-[#0f1e16] outline-none transition placeholder:text-gray-400 focus:border-public-gold focus:ring-2 focus:ring-public-gold/25'
 
 type PartnerType = 'leader' | 'expert'
 
@@ -76,7 +76,7 @@ function JoinPartnerFormInner() {
 
   if (done) {
     return (
-      <div className="mx-auto max-w-lg rounded-[2rem] border border-[#cda04c]/30 bg-white/95 p-10 text-center shadow-2xl shadow-[#1e3f20]/10">
+      <div className="mx-auto max-w-lg rounded-[2rem] border border-public-gold/30 bg-white/95 p-10 text-center shadow-2xl shadow-[#1e3f20]/10">
         <CheckCircle2 className="mx-auto h-12 w-12 text-[#1e3f20]" aria-hidden />
         <h1 className="mt-4 text-2xl font-black text-[#0f1e16]">تم استلام طلبك</h1>
         <p className="mt-3 text-sm font-semibold leading-relaxed text-gray-600">
@@ -84,7 +84,7 @@ function JoinPartnerFormInner() {
         </p>
         <Link
           href="/"
-          className="mt-8 inline-flex rounded-2xl bg-[#1e3f20] px-6 py-3 text-sm font-black text-[#cda04c]"
+          className="mt-8 inline-flex rounded-2xl bg-[#1e3f20] px-6 py-3 text-sm font-black text-public-gold"
         >
           العودة للرئيسية
         </Link>
@@ -98,7 +98,7 @@ function JoinPartnerFormInner() {
       className="mx-auto w-full max-w-lg space-y-5 rounded-[2rem] border border-[#1e3f20]/10 bg-[#FDFBF7]/95 p-8 shadow-2xl shadow-[#1e3f20]/08 sm:p-10"
     >
       <div className="text-center">
-        <Sparkles className="mx-auto h-7 w-7 text-[#cda04c]" aria-hidden />
+        <Sparkles className="mx-auto h-7 w-7 text-public-gold" aria-hidden />
         <p className="mt-3 text-[10px] font-black uppercase tracking-[0.35em] text-[#6b5c38]">
           Wanderloom Partners
         </p>
@@ -142,7 +142,7 @@ function JoinPartnerFormInner() {
       </label>
 
       {urlDestination ? (
-        <div className="rounded-2xl border border-[#cda04c]/35 bg-[#cda04c]/10 px-4 py-3 text-sm font-bold text-[#6b5c38]">
+        <div className="rounded-2xl border border-public-gold/35 bg-public-gold/10 px-4 py-3 text-sm font-bold text-[#6b5c38]">
           الوجهة المرتبطة بالرابط:{' '}
           <span className="font-black text-[#1e3f20]">{urlDestination}</span>
         </div>
@@ -189,7 +189,7 @@ function JoinPartnerFormInner() {
       <button
         type="submit"
         disabled={pending}
-        className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#1e3f20] py-3.5 text-sm font-black text-[#cda04c] shadow-lg shadow-[#1e3f20]/15 transition hover:bg-[#163018] disabled:opacity-60"
+        className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#1e3f20] py-3.5 text-sm font-black text-public-gold shadow-lg shadow-[#1e3f20]/15 transition hover:bg-[#163018] disabled:opacity-60"
       >
         {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
         {pending ? 'جاري الإرسال…' : 'إرسال طلب الانضمام'}
@@ -203,7 +203,7 @@ export default function JoinPartnerForm() {
     <Suspense
       fallback={
         <div className="flex min-h-[40vh] items-center justify-center">
-          <Loader2 className="h-10 w-10 animate-spin text-[#cda04c]" aria-label="جاري التحميل" />
+          <Loader2 className="h-10 w-10 animate-spin text-public-gold" aria-label="جاري التحميل" />
         </div>
       }
     >

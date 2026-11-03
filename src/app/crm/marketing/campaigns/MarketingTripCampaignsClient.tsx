@@ -236,7 +236,7 @@ function SocialSettingsModal({
                   className={[
                     'rounded-xl border px-3 py-2.5 text-sm font-bold transition',
                     provider === opt.id
-                      ? 'border-[#C9A84C] bg-[#D4AF37]/15 text-[#1C4532] dark:text-[#D4AF37]'
+                      ? 'border-brand-gold bg-brand-gold/15 text-[#1C4532] dark:text-brand-gold'
                       : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-[#2D3F3A] dark:bg-[#1A2421] dark:text-slate-300',
                   ].join(' ')}
                 >
@@ -267,7 +267,7 @@ function SocialSettingsModal({
                     ? 'BUFFER_ACCESS_TOKEN'
                     : 'METRICOOL_API_KEY'
               }
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-[#C9A84C] focus:ring-2 focus:ring-[#D4AF37]/20 dark:border-[#2D3F3A] dark:bg-[#1A2421] dark:text-white"
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-brand-gold focus:ring-2 focus:ring-brand-gold/20 dark:border-[#2D3F3A] dark:bg-[#1A2421] dark:text-white"
             />
           </label>
 
@@ -284,7 +284,7 @@ function SocialSettingsModal({
               placeholder={
                 provider === 'buffer' ? 'profileId1, profileId2' : 'METRICOOL_BLOG_ID'
               }
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-[#C9A84C] focus:ring-2 focus:ring-[#D4AF37]/20 dark:border-[#2D3F3A] dark:bg-[#1A2421] dark:text-white"
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-brand-gold focus:ring-2 focus:ring-brand-gold/20 dark:border-[#2D3F3A] dark:bg-[#1A2421] dark:text-white"
             />
           </label>
 
@@ -309,7 +309,7 @@ function SocialSettingsModal({
                 type="button"
                 onClick={() => void save()}
                 disabled={saving}
-                className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-bold text-white disabled:opacity-50 dark:bg-[#D4AF37] dark:text-[#1C4532]"
+                className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-bold text-white disabled:opacity-50 dark:bg-brand-gold dark:text-[#1C4532]"
               >
                 {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                 حفظ
@@ -341,7 +341,7 @@ function CampaignResultPanel({
       </div>
 
       <section>
-        <h4 className="mb-2 text-xs font-black text-[#9C7A3C]">
+        <h4 className="mb-2 text-xs font-black text-brand-gold">
           منشورات اجتماعية ({campaign.socialPosts.length})
         </h4>
         <div className="grid gap-3 md:grid-cols-3">
@@ -362,7 +362,7 @@ function CampaignResultPanel({
                   {post.body}
                 </p>
                 {post.hashtags.length ? (
-                  <p className="mt-2 text-xs text-[#9C7A3C]">{post.hashtags.join(' ')}</p>
+                  <p className="mt-2 text-xs text-brand-gold">{post.hashtags.join(' ')}</p>
                 ) : null}
               </div>
             );
@@ -371,7 +371,7 @@ function CampaignResultPanel({
       </section>
 
       <section>
-        <h4 className="mb-2 text-xs font-black text-[#9C7A3C]">
+        <h4 className="mb-2 text-xs font-black text-brand-gold">
           سكربتات فيديو ({campaign.videoScripts.length})
         </h4>
         <div className="grid gap-3 md:grid-cols-2">
@@ -389,13 +389,13 @@ function CampaignResultPanel({
                 />
               </div>
               <p className="text-xs text-slate-500">
-                <span className="font-bold text-slate-700 dark:text-[#D4AF37]">Visual: </span>
+                <span className="font-bold text-slate-700 dark:text-brand-gold">Visual: </span>
                 {script.visualHook}
               </p>
               <p className="mt-2 text-sm leading-relaxed text-slate-800 dark:text-slate-100">
                 {script.voiceover}
               </p>
-              <p className="mt-2 text-xs font-bold text-[#1C4532] dark:text-[#D4AF37]">
+              <p className="mt-2 text-xs font-bold text-[#1C4532] dark:text-brand-gold">
                 CTA: {script.onScreenCta}
               </p>
             </div>
@@ -404,7 +404,7 @@ function CampaignResultPanel({
       </section>
 
       <section>
-        <h4 className="mb-2 text-xs font-black text-[#9C7A3C]">تعليقات جاهزة للجدولة</h4>
+        <h4 className="mb-2 text-xs font-black text-brand-gold">تعليقات جاهزة للجدولة</h4>
         <div className="space-y-2">
           {campaign.captions.map((cap, idx) => (
             <div
@@ -641,7 +641,7 @@ export default function MarketingTripCampaignsClient() {
   return (
     <div dir="rtl" className="space-y-6">
       <header className="space-y-3">
-        <p className="inline-flex items-center gap-2 text-xs font-black tracking-wide text-[#9C7A3C]">
+        <p className="inline-flex items-center gap-2 text-xs font-black tracking-wide text-brand-gold">
           <Megaphone className="h-3.5 w-3.5" aria-hidden />
           محرك التسويق الآلي · WanderLoom
         </p>
@@ -716,9 +716,9 @@ export default function MarketingTripCampaignsClient() {
               onClick={() => setMode(tab.id)}
               className={[
                 'inline-flex min-h-[48px] shrink-0 flex-col items-start justify-center gap-0.5 rounded-xl px-3.5 py-2 text-right transition sm:min-w-[11rem]',
-                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/20 dark:focus-visible:ring-[#D4AF37]/40',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/20 dark:focus-visible:ring-brand-gold/40',
                 isActive
-                  ? 'bg-white text-slate-900 shadow-sm dark:bg-[#22302C] dark:text-[#D4AF37] dark:ring-1 dark:ring-[#D4AF37]/30'
+                  ? 'bg-white text-slate-900 shadow-sm dark:bg-[#22302C] dark:text-brand-gold dark:ring-1 dark:ring-brand-gold/30'
                   : 'text-slate-500 hover:bg-white/70 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-[#22302C]/70',
               ].join(' ')}
             >
@@ -753,7 +753,7 @@ export default function MarketingTripCampaignsClient() {
                 type="button"
                 onClick={() => void generateCampaign({ mode })}
                 disabled={conceptGenerating || Boolean(generatingKey)}
-                className="inline-flex items-center gap-2 rounded-xl border border-[#C9A84C]/60 bg-gradient-to-l from-[#D4AF37] to-[#C9A84C] px-4 py-2.5 text-sm font-black text-[#1C4532] shadow-sm transition hover:brightness-105 disabled:opacity-50"
+                className="inline-flex items-center gap-2 rounded-xl border border-brand-gold/60 bg-gradient-to-l from-brand-gold to-brand-gold px-4 py-2.5 text-sm font-black text-[#1C4532] shadow-sm transition hover:brightness-105 disabled:opacity-50"
               >
                 {conceptGenerating ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -771,7 +771,7 @@ export default function MarketingTripCampaignsClient() {
                 {conceptScheduling ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
-                  <CalendarClock className="h-4 w-4 text-[#C9A84C]" />
+                  <CalendarClock className="h-4 w-4 text-brand-gold" />
                 )}
                 📅 جدولة النشر
               </button>
@@ -815,12 +815,12 @@ export default function MarketingTripCampaignsClient() {
                   <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                     <div className="min-w-0 flex-1 space-y-2">
                       <div className="flex flex-wrap items-center gap-2">
-                        <Plane className="h-4 w-4 text-[#C9A84C]" aria-hidden />
+                        <Plane className="h-4 w-4 text-brand-gold" aria-hidden />
                         <h3 className="text-lg font-black text-slate-900 dark:text-white">
                           {trip.title}
                         </h3>
                         {trip.badge ? (
-                          <span className="rounded-full bg-[#D4AF37]/15 px-2.5 py-0.5 text-[10px] font-black text-[#9C7A3C]">
+                          <span className="rounded-full bg-brand-gold/15 px-2.5 py-0.5 text-[10px] font-black text-brand-gold">
                             {trip.badge}
                           </span>
                         ) : null}
@@ -845,7 +845,7 @@ export default function MarketingTripCampaignsClient() {
                         type="button"
                         onClick={() => void generateCampaign({ mode: 'group', trip })}
                         disabled={generating || Boolean(generatingKey)}
-                        className="inline-flex items-center gap-2 rounded-xl border border-[#C9A84C]/60 bg-gradient-to-l from-[#D4AF37] to-[#C9A84C] px-4 py-2.5 text-sm font-black text-[#1C4532] shadow-sm transition hover:brightness-105 disabled:opacity-50"
+                        className="inline-flex items-center gap-2 rounded-xl border border-brand-gold/60 bg-gradient-to-l from-brand-gold to-brand-gold px-4 py-2.5 text-sm font-black text-[#1C4532] shadow-sm transition hover:brightness-105 disabled:opacity-50"
                       >
                         {generating ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
@@ -863,7 +863,7 @@ export default function MarketingTripCampaignsClient() {
                         {scheduling ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
                         ) : (
-                          <CalendarClock className="h-4 w-4 text-[#C9A84C]" />
+                          <CalendarClock className="h-4 w-4 text-brand-gold" />
                         )}
                         📅 جدولة النشر
                       </button>

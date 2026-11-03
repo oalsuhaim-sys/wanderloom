@@ -28,7 +28,7 @@ export function GeneralContactSection() {
           href={waHref}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex w-full min-w-[220px] items-center justify-center gap-2 rounded-2xl bg-[#9C7A3C] px-8 py-4 text-sm font-black text-[#F4EFE6] shadow-lg shadow-[#9C7A3C]/20 transition hover:bg-[#9C7A3C] sm:w-auto"
+          className="inline-flex w-full min-w-[220px] items-center justify-center gap-2 rounded-2xl bg-public-gold px-8 py-4 text-sm font-black text-[#1A3B2A] shadow-lg shadow-public-gold/20 transition hover:bg-[#B8860B] sm:w-auto"
         >
           <MessageCircle className="h-5 w-5" aria-hidden />
           {c.whatsappCta}

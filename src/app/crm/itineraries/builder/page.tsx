@@ -108,7 +108,7 @@ import {
   WL_TOGGLE_INACTIVE,
 } from '@/lib/itinerary-builder-ui';
 
-const ACTIVE_TRIP_KIND = `${WL_TOGGLE_BASE} ${WL_TOGGLE_ACTIVE} border border-[#D4AF37] ring-2 ring-[#D4AF37]/35`;
+const ACTIVE_TRIP_KIND = `${WL_TOGGLE_BASE} ${WL_TOGGLE_ACTIVE} border border-brand-gold ring-2 ring-brand-gold/35`;
 const IDLE_TRIP_KIND = `${WL_TOGGLE_BASE} ${WL_TOGGLE_INACTIVE}`;
 const ACTIVE_TRIP_KIND_TITLE = 'block text-sm font-black text-slate-950';
 const IDLE_TRIP_KIND_TITLE = 'block text-sm font-black text-slate-100';
@@ -295,7 +295,7 @@ export default function ItineraryBuilderWorkspace() {
     <Suspense
       fallback={
         <div className="itinerary-builder-page flex min-h-[50vh] items-center justify-center gap-2 bg-[#f8fafc] text-sm font-bold text-slate-600">
-          <Loader2 className="h-5 w-5 animate-spin text-[#D4AF37]" aria-hidden />
+          <Loader2 className="h-5 w-5 animate-spin text-brand-gold" aria-hidden />
           جاري تحميل مساحة البناء…
         </div>
       }
@@ -1577,12 +1577,12 @@ function ItineraryBuilderPageContent() {
         <div>
           <Link
             href="/crm/itineraries"
-            className="mb-2 flex items-center gap-1 text-sm font-medium text-slate-600 transition-colors hover:text-[#D4AF37]"
+            className="mb-2 flex items-center gap-1 text-sm font-medium text-slate-600 transition-colors hover:text-brand-gold"
           >
             <ArrowRight className="h-4 w-4" aria-hidden />
             ← العودة إلى المسارات
           </Link>
-          <h1 className="text-2xl font-extrabold tracking-wide text-[#D4AF37] sm:text-3xl">
+          <h1 className="text-2xl font-extrabold tracking-wide text-brand-gold sm:text-3xl">
             مساحة بناء المسار الذكي
           </h1>
           <div className="mt-2">
@@ -1595,7 +1595,7 @@ function ItineraryBuilderPageContent() {
             onClick={() => setAiGenerateOpen(true)}
             disabled={saving || quoteLoading}
             title="توليد المسار من DNA العميل عبر Claude"
-            className="inline-flex items-center gap-2 rounded-xl border border-[#D4AF37]/50 bg-[#D4AF37] px-4 py-2.5 text-sm font-black text-[#1A3B2A] shadow-md transition hover:bg-[#c4a030] disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-xl border border-brand-gold/50 bg-brand-gold px-4 py-2.5 text-sm font-black text-[#1A3B2A] shadow-md transition hover:bg-[#c4a030] disabled:opacity-50"
           >
             <Sparkles className="h-4 w-4" aria-hidden />
             توليد المسار بـ AI
@@ -1629,7 +1629,7 @@ function ItineraryBuilderPageContent() {
 
       {/* نوع المسار — إلزامي قبل البناء */}
       <section className={`mb-6 ${WL_SECTION}`}>
-        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-[#D4AF37]/80">
+        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-brand-gold/80">
           Step 1 · Trip Type
         </p>
         <h2 className={WL_TITLE}>نوع المسار</h2>
@@ -1691,7 +1691,7 @@ function ItineraryBuilderPageContent() {
               </select>
             </label>
             {quoteLoading ? (
-              <p className="mt-2 inline-flex items-center gap-2 text-xs font-bold text-[#D4AF37]">
+              <p className="mt-2 inline-flex items-center gap-2 text-xs font-bold text-brand-gold">
                 <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
                 جاري مزامنة بيانات العرض…
               </p>
@@ -1704,7 +1704,7 @@ function ItineraryBuilderPageContent() {
               </p>
             ) : null}
             {selectedClientId ? (
-              <p className="mt-2 rounded-xl border border-[#D4AF37]/30 bg-slate-50 px-3 py-2 text-xs font-bold text-slate-700">
+              <p className="mt-2 rounded-xl border border-brand-gold/30 bg-slate-50 px-3 py-2 text-xs font-bold text-slate-700">
                 العميل المرتبط بالمسار: {activeClient?.name || `عميل #${selectedClientId}`} — سيظهر
                 زر «الملف الشخصي» في بوابة العميل عند الحفظ.
               </p>
@@ -1864,7 +1864,7 @@ function ItineraryBuilderPageContent() {
           <span className="text-sm font-bold text-slate-700">
             {isGroup ? 'كود القروب' : 'كود العميل'}
           </span>
-          <div className="inline-flex w-fit max-w-full items-center gap-2 rounded-xl border border-[#D4AF37]/50 bg-slate-50 px-4 py-2">
+          <div className="inline-flex w-fit max-w-full items-center gap-2 rounded-xl border border-brand-gold/50 bg-slate-50 px-4 py-2">
             <input
               type="text"
               value={accessCode}
@@ -1872,7 +1872,7 @@ function ItineraryBuilderPageContent() {
               placeholder="---"
               dir="ltr"
               size={Math.max(accessCode.length || 3, 7)}
-              className="min-w-[5ch] border-0 bg-transparent p-0 text-sm font-bold tracking-wider text-[#D4AF37] outline-none placeholder:text-[#D4AF37]/40"
+              className="min-w-[5ch] border-0 bg-transparent p-0 text-sm font-bold tracking-wider text-brand-gold outline-none placeholder:text-brand-gold/40"
             />
           </div>
         </div>
@@ -1884,7 +1884,7 @@ function ItineraryBuilderPageContent() {
           <h3 className={WL_TITLE}>
             <span>💰</span> الملخص المالي للحجز
             {quoteFieldsLocked ? (
-              <span className="rounded-full border border-[#D4AF37]/40 bg-slate-50 px-2 py-0.5 text-[10px] font-black text-[#D4AF37]">
+              <span className="rounded-full border border-brand-gold/40 bg-slate-50 px-2 py-0.5 text-[10px] font-black text-brand-gold">
                 من عرض السعر
               </span>
             ) : null}
@@ -1961,7 +1961,7 @@ function ItineraryBuilderPageContent() {
             type="button"
             onClick={() => void handleSaveAsTemplate()}
             disabled={templateBusy}
-            className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#C59B4B]/40 bg-[#F8F5EE] px-4 py-2.5 text-sm font-bold text-[#8C6D2D] transition-all hover:bg-[#F2E8D7] disabled:opacity-60"
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-brand-gold/40 bg-[#F8F5EE] px-4 py-2.5 text-sm font-bold text-[#8C6D2D] transition-all hover:bg-[#F2E8D7] disabled:opacity-60"
           >
             <Copy className="h-4 w-4" aria-hidden />
             {templateBusy ? 'جاري الحفظ…' : 'حفظ كقالب'}
@@ -2060,7 +2060,7 @@ function ItineraryBuilderPageContent() {
             {preTripServices.map((service, index) => (
               <div key={`pre-trip-${index}`} className={WL_CARD}>
                 <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                  <span className="text-xs font-black uppercase tracking-wide text-[#D4AF37]">
+                  <span className="text-xs font-black uppercase tracking-wide text-brand-gold">
                     خدمة #{index + 1}
                   </span>
                   <button
@@ -2177,7 +2177,7 @@ function ItineraryBuilderPageContent() {
 
             {placesSourceTab === 'bank' ? (
               <>
-            <h3 className="text-lg font-bold text-[#D4AF37]">
+            <h3 className="text-lg font-bold text-brand-gold">
               بنك الأماكن
               {placesLoading ? ' · جاري التحميل…' : ''}
             </h3>
@@ -2188,7 +2188,7 @@ function ItineraryBuilderPageContent() {
               placeholder="ابحث بالاسم أو الحي..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full rounded-xl border border-slate-300 bg-slate-50 p-3 font-bold text-slate-900 placeholder:text-slate-500 focus:border-[#D4AF37] focus:bg-white outline-none"
+              className="w-full rounded-xl border border-slate-300 bg-slate-50 p-3 font-bold text-slate-900 placeholder:text-slate-500 focus:border-brand-gold focus:bg-white outline-none"
             />
             {/* الفلاتر الذكية (تم إصلاح الخلل هنا) */}
             <div className="flex gap-2">

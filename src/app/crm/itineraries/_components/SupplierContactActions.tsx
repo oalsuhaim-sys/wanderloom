@@ -32,7 +32,7 @@ const CHANNEL_APPS: SupplierContactApp[] = ['whatsapp', 'line', 'kakao'];
 
 const labelClass = 'mb-2 block text-xs font-semibold text-slate-700';
 const inputClass =
-  'w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-900 outline-none transition focus:border-[#D4AF37] placeholder:text-slate-600 [color-scheme:light]';
+  'w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-900 outline-none transition focus:border-brand-gold placeholder:text-slate-600 [color-scheme:light]';
 
 export default function SupplierContactActions({
   hotel,
@@ -68,7 +68,7 @@ export default function SupplierContactActions({
   return (
     <div className="flex w-full flex-col gap-3">
       <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
-        <span className="flex items-center gap-2 text-base font-bold text-[#D4AF37]">
+        <span className="flex items-center gap-2 text-base font-bold text-brand-gold">
           المورد المعتمد للوجهة
         </span>
         <label className="flex cursor-pointer items-center gap-1.5 text-[10px] font-bold text-slate-600">
@@ -76,14 +76,14 @@ export default function SupplierContactActions({
             type="checkbox"
             checked={isManualSupplier}
             onChange={(e) => onManualSupplierChange(e.target.checked)}
-            className="rounded border-slate-200 accent-[#D4AF37]"
+            className="rounded border-slate-200 accent-brand-gold"
           />
           إدخال رقم يدوياً
         </label>
       </div>
 
       {suppliers.length === 0 && !isManualSupplier ? (
-        <p className="rounded-xl border border-[#D4AF37]/35 bg-white px-3 py-2 text-xs font-bold text-[#D4AF37]">
+        <p className="rounded-xl border border-brand-gold/35 bg-white px-3 py-2 text-xs font-bold text-brand-gold">
           لا يوجد موردون مسجلون لوجهة ({destinationLabel}). فعّل «إدخال رقم يدوياً» أو أضف موردين من
           قسم الموردين.
         </p>
@@ -131,7 +131,7 @@ export default function SupplierContactActions({
       </div>
 
       {error ? <p className="text-xs font-bold text-red-400">{error}</p> : null}
-      {notice ? <p className="text-xs font-bold text-[#D4AF37]">{notice}</p> : null}
+      {notice ? <p className="text-xs font-bold text-brand-gold">{notice}</p> : null}
     </div>
   );
 }

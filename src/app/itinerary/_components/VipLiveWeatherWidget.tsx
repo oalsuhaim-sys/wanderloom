@@ -21,8 +21,8 @@ type VipLiveWeatherWidgetProps = {
 
 function WeatherIcon({ code, large }: { code: string; large?: boolean }) {
   const className = large
-    ? 'h-7 w-7 shrink-0 text-[#D4AF37]'
-    : 'h-6 w-6 shrink-0 text-[#D4AF37]'
+    ? 'h-7 w-7 shrink-0 text-brand-gold'
+    : 'h-6 w-6 shrink-0 text-brand-gold'
   switch (code) {
     case 'clear':
       return <Sun className={className} aria-hidden />
@@ -123,23 +123,23 @@ export default function VipLiveWeatherWidget({
 
   return (
     <section
-      className={`relative overflow-hidden rounded-2xl border border-[#D4AF37]/35 bg-gradient-to-br from-[#1E2720] via-[#232d26] to-[#181f1a] px-4 py-4 shadow-[0_10px_36px_rgba(0,0,0,0.28)] sm:px-5 ${className}`}
+      className={`relative overflow-hidden rounded-2xl border border-brand-gold/35 bg-gradient-to-br from-[#1E2720] via-[#232d26] to-[#181f1a] px-4 py-4 shadow-[0_10px_36px_rgba(0,0,0,0.28)] sm:px-5 ${className}`}
       aria-label={`طقس ${queryCity}`}
       dir="rtl"
     >
       <div
-        className="pointer-events-none absolute -left-6 -top-6 h-24 w-24 rounded-full bg-[#D4AF37]/12 blur-2xl"
+        className="pointer-events-none absolute -left-6 -top-6 h-24 w-24 rounded-full bg-brand-gold/12 blur-2xl"
         aria-hidden
       />
       <div
-        className="pointer-events-none absolute -bottom-8 -right-4 h-28 w-28 rounded-full bg-[#D4AF37]/8 blur-2xl"
+        className="pointer-events-none absolute -bottom-8 -right-4 h-28 w-28 rounded-full bg-brand-gold/8 blur-2xl"
         aria-hidden
       />
 
       <div className="relative flex items-center gap-3 sm:gap-4">
-        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-[#D4AF37]/30 bg-[#D4AF37]/10 sm:h-14 sm:w-14">
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-brand-gold/30 bg-brand-gold/10 sm:h-14 sm:w-14">
           {loading ? (
-            <Loader2 className="h-5 w-5 animate-spin text-[#D4AF37]" aria-hidden />
+            <Loader2 className="h-5 w-5 animate-spin text-brand-gold" aria-hidden />
           ) : data ? (
             <WeatherIcon code={data.icon} large />
           ) : null}
@@ -147,7 +147,7 @@ export default function VipLiveWeatherWidget({
 
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <p className="text-[10px] font-black uppercase tracking-[0.22em] text-[#D4AF37]/85">
+            <p className="text-[10px] font-black uppercase tracking-[0.22em] text-brand-gold/85">
               الطقس الآن
             </p>
             {data && !loading ? (
@@ -170,7 +170,7 @@ export default function VipLiveWeatherWidget({
 
         {data && !loading ? (
           <div className="shrink-0 text-end">
-            <p className="text-3xl font-black leading-none text-[#D4AF37] sm:text-4xl" dir="ltr">
+            <p className="text-3xl font-black leading-none text-brand-gold sm:text-4xl" dir="ltr">
               {data.temp}°
             </p>
             <p className="mt-1 text-[10px] font-bold text-white/40" dir="ltr">

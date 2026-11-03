@@ -11,8 +11,8 @@ type Props = {
 export default function VipClientDocumentsSection({ documents }: Props) {
   if (!documents.length) {
     return (
-      <section className="rounded-2xl border border-dashed border-[#D4AF37]/30 bg-[#FAFAFA] px-4 py-8 text-center">
-        <FileText className="mx-auto mb-3 h-8 w-8 text-[#D4AF37]/60" aria-hidden />
+      <section className="rounded-2xl border border-dashed border-brand-gold/30 bg-[#FAFAFA] px-4 py-8 text-center">
+        <FileText className="mx-auto mb-3 h-8 w-8 text-brand-gold/60" aria-hidden />
         <p className="text-sm font-bold text-[#1E2720]/70">لا توجد وثائق PDF مرفوعة بعد</p>
         <p className="mt-1 text-xs text-[#1E2720]/45">
           تذاكر الطيران وقسائم الفنادق ستظهر هنا فور رفعها من فريق الكونسيرج.
@@ -22,9 +22,9 @@ export default function VipClientDocumentsSection({ documents }: Props) {
   }
 
   return (
-    <section className="rounded-2xl border border-[#D4AF37]/30 bg-white p-4 shadow-sm">
+    <section className="rounded-2xl border border-brand-gold/30 bg-white p-4 shadow-sm">
       <h2 className="mb-3 flex items-center gap-2 text-sm font-black text-[#1E2720]">
-        <FileText className="h-4 w-4 text-[#D4AF37]" aria-hidden />
+        <FileText className="h-4 w-4 text-brand-gold" aria-hidden />
         وثائق الحجوزات الرسمية (PDF)
       </h2>
       <ul className="space-y-2">
@@ -51,7 +51,7 @@ export default function VipClientDocumentsSection({ documents }: Props) {
               target="_blank"
               rel="noreferrer"
               download
-              className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-[#1E2720] px-3 py-2 text-xs font-bold text-[#D4AF37] transition hover:bg-black"
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-[#1E2720] px-3 py-2 text-xs font-bold text-brand-gold transition hover:bg-black"
             >
               <Download className="h-3.5 w-3.5" aria-hidden />
               تحميل

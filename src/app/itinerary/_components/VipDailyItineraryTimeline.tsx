@@ -116,7 +116,7 @@ function CategoryTag({ activity }: { activity: PublicItineraryActivity }) {
     <span
       className={`inline-flex max-w-full items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-bold sm:text-[11px] ${meta.accentClass}`}
     >
-      <Icon className="h-3.5 w-3.5 shrink-0 text-[#C5A059]" aria-hidden />
+      <Icon className="h-3.5 w-3.5 shrink-0 text-brand-gold" aria-hidden />
       <span className="truncate">{activity.categoryLabel ?? meta.label}</span>
     </span>
   )
@@ -132,7 +132,7 @@ function MapsPinLink({ href, dark = false }: { href: string; dark?: boolean }) {
       onClick={(e) => e.stopPropagation()}
       className={dark
         ? 'inline-flex h-10 w-10 items-center justify-center rounded-full border border-[color:var(--rv-line-strong)] bg-[color:var(--rv-gold-tint)] text-[color:var(--rv-gold-text)] transition-all duration-200 hover:scale-110'
-        : 'inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#C5A059]/25 bg-[#F9F9F6] text-[#C5A059] transition-all duration-200 hover:scale-110 hover:border-[#C5A059]/50 hover:bg-[#1A3B2A] hover:text-[#C5A059]'}
+        : 'inline-flex h-10 w-10 items-center justify-center rounded-full border border-brand-gold/25 bg-[#F9F9F6] text-brand-gold transition-all duration-200 hover:scale-110 hover:border-brand-gold/50 hover:bg-[#1A3B2A] hover:text-brand-gold'}
       title="عرض المكان على الخريطة"
       aria-label="عرض المكان على الخريطة"
     >
@@ -253,9 +253,9 @@ export function ActivityActionPills({
           rel="noopener noreferrer"
           className={dark
             ? 'inline-flex items-center gap-1.5 rounded-full border border-[color:var(--rv-line-strong)] bg-[color:var(--rv-gold-tint)] px-3 py-2 text-xs font-bold text-[color:var(--rv-cream)] transition'
-            : 'inline-flex items-center gap-1.5 rounded-full border border-[#C5A059]/30 bg-[#F9F9F6] px-3 py-2 text-xs font-bold text-[#1A3B2A] transition hover:border-[#C5A059]/50 hover:bg-[#1A3B2A] hover:text-white'}
+            : 'inline-flex items-center gap-1.5 rounded-full border border-brand-gold/30 bg-[#F9F9F6] px-3 py-2 text-xs font-bold text-[#1A3B2A] transition hover:border-brand-gold/50 hover:bg-[#1A3B2A] hover:text-white'}
         >
-          <Ticket className="h-3.5 w-3.5 text-[#C5A059]" aria-hidden />
+          <Ticket className="h-3.5 w-3.5 text-brand-gold" aria-hidden />
           التذاكر
         </a>
       ) : null}
@@ -269,7 +269,7 @@ export function ActivityActionPills({
         disabled={isUploading || !canUpload}
         className={dark
           ? 'inline-flex items-center gap-1.5 rounded-full bg-[color:var(--rv-gold)] px-3.5 py-2 text-xs font-black text-[color:var(--rv-on-gold)] transition disabled:cursor-not-allowed disabled:opacity-50'
-          : 'inline-flex items-center gap-1.5 rounded-full border border-gray-100 bg-white px-3 py-2 text-xs font-bold text-gray-600 transition hover:border-[#C5A059]/30 hover:text-[#1A3B2A] disabled:cursor-not-allowed disabled:opacity-50'}
+          : 'inline-flex items-center gap-1.5 rounded-full border border-gray-100 bg-white px-3 py-2 text-xs font-bold text-gray-600 transition hover:border-brand-gold/30 hover:text-[#1A3B2A] disabled:cursor-not-allowed disabled:opacity-50'}
       >
         <Camera className="h-3.5 w-3.5" aria-hidden />
         {isUploading ? 'جاري الرفع…' : !canUpload ? 'بانتظار التأكيد' : 'وثّق اللحظة'}
@@ -299,14 +299,14 @@ function DayHotelStartAnchor({
   const mapsHref = buildGoogleMapsPlaceSearchUrl(hotelName, mapsQuery)
 
   return (
-    <div className="mb-4 rounded-2xl border border-[#C5A059]/20 bg-white p-4 shadow-sm">
-      <span className="text-xs font-bold text-[#C5A059]">نقطة الانطلاق</span>
+    <div className="mb-4 rounded-2xl border border-brand-gold/20 bg-white p-4 shadow-sm">
+      <span className="text-xs font-bold text-brand-gold">نقطة الانطلاق</span>
       <h3 className="mt-1 text-base font-bold text-[#1A3B2A]">{hotelName}</h3>
       <a
         href={mapsHref}
         target="_blank"
         rel="noopener noreferrer"
-        className="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-gray-500 underline decoration-gray-200 underline-offset-4 transition hover:text-[#C5A059]"
+        className="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-gray-500 underline decoration-gray-200 underline-offset-4 transition hover:text-brand-gold"
       >
         <MapPin className="h-3.5 w-3.5" aria-hidden />
         عرض على الخريطة
@@ -326,7 +326,7 @@ function DayHotelEndAnchor({ hotelName }: { hotelName: string }) {
         href={mapsHref}
         target="_blank"
         rel="noopener noreferrer"
-        className="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-gray-500 underline decoration-gray-200 underline-offset-4 transition hover:text-[#C5A059]"
+        className="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-gray-500 underline decoration-gray-200 underline-offset-4 transition hover:text-brand-gold"
       >
         <MapPin className="h-3.5 w-3.5" aria-hidden />
         عرض على الخريطة
@@ -366,7 +366,7 @@ function HotelTransitConnector({
         href={uberHref}
         target="_blank"
         rel="noopener noreferrer"
-        className="font-bold text-[#C5A059] transition hover:text-[#1A3B2A]"
+        className="font-bold text-brand-gold transition hover:text-[#1A3B2A]"
       >
         {uberLabel}
       </a>
@@ -387,7 +387,7 @@ function ActivityCarTransitConnector({
   const directionsHref = buildGoogleMapsDirectionsUrl(fromName, toName)
 
   return (
-    <div className="my-3 flex flex-wrap items-center gap-3 rounded-xl border border-dashed border-[#C5A059]/30 bg-[#F9F9F6] px-3 py-2.5 text-sm">
+    <div className="my-3 flex flex-wrap items-center gap-3 rounded-xl border border-dashed border-brand-gold/30 bg-[#F9F9F6] px-3 py-2.5 text-sm">
       {duration ? (
         <span className="text-xs font-bold text-gray-500">{duration}</span>
       ) : null}
@@ -403,7 +403,7 @@ function ActivityCarTransitConnector({
         href={uberHref}
         target="_blank"
         rel="noopener noreferrer"
-        className="font-bold text-[#C5A059] transition hover:text-[#1A3B2A]"
+        className="font-bold text-brand-gold transition hover:text-[#1A3B2A]"
       >
         احجز أوبر للمحطة التالية
       </a>
@@ -434,10 +434,10 @@ function ActivityTimelineCard({
   const thumb = activity.imageUrl?.trim()
 
   return (
-    <article className="group relative mb-4 flex flex-col gap-5 rounded-2xl border border-gray-100 bg-white p-5 shadow-sm transition-all duration-300 hover:border-[#C5A059]/30 hover:shadow-md sm:flex-row">
+    <article className="group relative mb-4 flex flex-col gap-5 rounded-2xl border border-gray-100 bg-white p-5 shadow-sm transition-all duration-300 hover:border-brand-gold/30 hover:shadow-md sm:flex-row">
       {/* Time / icon column */}
       <div className="flex min-w-[80px] flex-row items-center justify-center gap-3 border-b border-gray-100 pb-4 sm:flex-col sm:border-b-0 sm:border-l sm:pb-0 sm:pl-4">
-        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#1A3B2A]/5 text-[#C5A059]">
+        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#1A3B2A]/5 text-brand-gold">
           <ContextIcon className="h-5 w-5" aria-hidden />
         </div>
         {timeText ? (
@@ -468,7 +468,7 @@ function ActivityTimelineCard({
           <CategoryTag activity={activity} />
           {activity.locationLabel ? (
             <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-gray-400">
-              <MapPin className="h-3 w-3 text-[#C5A059]" aria-hidden />
+              <MapPin className="h-3 w-3 text-brand-gold" aria-hidden />
               {activity.locationLabel}
             </span>
           ) : null}
@@ -526,14 +526,14 @@ function DayBlock({
   return (
     <section id={`day-${dayIndex}`} className="relative scroll-mt-28">
       <div
-        className="absolute -right-[41px] top-1.5 z-10 h-5 w-5 rounded-full border-[3px] border-[#C5A059] bg-[#1A3B2A] shadow-[0_0_10px_rgba(197,160,89,0.5)] md:-right-[49px]"
+        className="absolute -right-[41px] top-1.5 z-10 h-5 w-5 rounded-full border-[3px] border-brand-gold bg-[#1A3B2A] shadow-[0_0_10px_rgba(197,160,89,0.5)] md:-right-[49px]"
         aria-hidden
       />
 
       <header className="mb-6 flex flex-wrap items-center gap-3 pr-2">
         <h3 className="text-2xl font-bold text-[#1A3B2A]">{dayTitle}</h3>
         {day.dateLabel ? (
-          <span className="rounded-full border border-[#C5A059]/20 bg-white px-3 py-1 text-xs font-bold text-[#C5A059]">
+          <span className="rounded-full border border-brand-gold/20 bg-white px-3 py-1 text-xs font-bold text-brand-gold">
             {day.dateLabel}
           </span>
         ) : null}
@@ -579,7 +579,7 @@ function DayBlock({
                 />
               ) : showTransit && transitDuration !== '' ? (
                 <div className="flex justify-center py-3">
-                  <div className="inline-flex items-center gap-1.5 rounded-full border border-[#C5A059]/30 bg-white px-3 py-1.5 text-xs font-bold text-[#1A3B2A] shadow-sm">
+                  <div className="inline-flex items-center gap-1.5 rounded-full border border-brand-gold/30 bg-white px-3 py-1.5 text-xs font-bold text-[#1A3B2A] shadow-sm">
                     <span aria-hidden>{transitModeEmoji(transitMode)}</span>
                     <span>{transitDuration}</span>
                   </div>
@@ -671,7 +671,7 @@ function LuxuryItineraryHero({
 
       <div className="absolute inset-0 z-10 flex flex-col justify-end p-6 md:p-8">
         {destination && destination !== headline ? (
-          <p className="text-[11px] font-bold uppercase tracking-[0.28em] text-[#C5A059]">
+          <p className="text-[11px] font-bold uppercase tracking-[0.28em] text-brand-gold">
             {destination}
           </p>
         ) : null}
@@ -685,7 +685,7 @@ function LuxuryItineraryHero({
             </span>
           ) : null}
           {pill ? (
-            <span className="rounded-full border border-[#C5A059]/40 bg-[#C5A059]/15 px-3 py-1 text-xs font-bold text-[#C5A059] shadow-[0_0_12px_rgba(197,160,89,0.25)] backdrop-blur-md">
+            <span className="rounded-full border border-brand-gold/40 bg-brand-gold/15 px-3 py-1 text-xs font-bold text-brand-gold shadow-[0_0_12px_rgba(197,160,89,0.25)] backdrop-blur-md">
               {pill}
             </span>
           ) : null}
@@ -746,7 +746,7 @@ export default function VipDailyItineraryTimeline({
 
   if (days.length === 0) {
     return (
-      <p className="rounded-2xl border border-[#C5A059]/20 bg-white py-12 text-center text-sm font-medium text-gray-500 shadow-sm">
+      <p className="rounded-2xl border border-brand-gold/20 bg-white py-12 text-center text-sm font-medium text-gray-500 shadow-sm">
         {TXT_EMPTY_DAYS}…
       </p>
     )
@@ -817,7 +817,7 @@ export default function VipDailyItineraryTimeline({
             })}
           </nav>
 
-          <div className="relative mr-4 space-y-12 border-r-2 border-[#C5A059]/20 pr-10 md:mr-8 md:pr-12">
+          <div className="relative mr-4 space-y-12 border-r-2 border-brand-gold/20 pr-10 md:mr-8 md:pr-12">
             {days.map((day, index) => (
               <DayBlock
                 key={`day-${day.index}`}

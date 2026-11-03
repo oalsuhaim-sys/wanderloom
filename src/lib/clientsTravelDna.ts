@@ -62,6 +62,9 @@ export type VipClientProfile = {
   referrals_count: number
   /** Own affiliate / share code — SSOT column `clients.ref_code` */
   ref_code: string
+  /** clients.referral_code, else the linked lead code */
+  referral_code: string
+  leads?: Array<{ referral_code?: string | null }>
   lead_source: string
   /** CRM contact status badge: مهتم | جديد | عميل | … */
   status: string
@@ -132,7 +135,7 @@ export function activityLevelBadgeClass(level: string): string {
   if (s.includes('مغامرة') || s.includes('نشاط')) {
     return 'border-orange-200/80 bg-orange-50 text-orange-900 dark:border-orange-800/50 dark:bg-orange-950/30 dark:text-orange-300'
   }
-  return 'border-[#D4AF37]/35 bg-[#D4AF37]/10 text-[#1c3d27] dark:text-[#D4AF37]'
+  return 'border-brand-gold/35 bg-brand-gold/10 text-[#1c3d27] dark:text-brand-gold'
 }
 
 export type ClientDnaAdvancedFields = {
@@ -229,10 +232,10 @@ export function tierDisplayLabel(tier: ClientTier): string {
 
 export function tierBadgeClassName(tier: ClientTier): string {
   if (tier === 'vip') {
-    return 'rounded-full border border-[#d4af37]/60 bg-gradient-to-l from-[#d4af37] to-[#e8c96a] px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-[#001f3f] shadow-sm'
+    return 'rounded-full border border-brand-gold/60 bg-gradient-to-l from-brand-gold to-[#e8c96a] px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-[#001f3f] shadow-sm'
   }
   if (tier === 'vvip') {
-    return 'rounded-full border border-[#d4af37]/70 bg-[#001f3f] px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-[#d4af37] shadow-[0_0_14px_rgba(212,175,55,0.55)] ring-1 ring-[#d4af37]/40'
+    return 'rounded-full border border-brand-gold/70 bg-[#001f3f] px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-brand-gold shadow-[0_0_14px_rgba(212,175,55,0.55)] ring-1 ring-brand-gold/40'
   }
   return 'rounded-full border border-gray-200 bg-gray-100 px-2.5 py-1 text-[10px] font-bold text-gray-600'
 }
@@ -370,6 +373,27 @@ export function resolveClientTargetTrip(raw: Record<string, unknown>): string {
 }
 
 /** توحيد صف `clients` من أعمدة VIP أو الحقول القديمة + travel_dna */
+function normalizeClientLeads(value: unknown): Array<{ referral_code?: string | null }> {
+  const rows = Array.isArray(value) ? value : value && typeof value === 'object' ? [value] : []
+  return rows
+    .filter((row): row is Record<string, unknown> => Boolean(row) && typeof row === 'object')
+    .map((row) => ({
+      referral_code: row.referral_code != null ? String(row.referral_code) : null,
+    }))
+}
+
+/** clients.referral_code, then clients.ref_code, then the linked lead. */
+export function resolveClientReferralBadgeCode(client: {
+  referral_code?: unknown
+  ref_code?: unknown
+  leads?: unknown
+}): string {
+  const own =
+    String(client.referral_code ?? '').trim() || String(client.ref_code ?? '').trim()
+  const leadCode = String(normalizeClientLeads(client.leads)[0]?.referral_code ?? '').trim()
+  return own || leadCode
+}
+
 export function normalizeVipClient(raw: Record<string, unknown>): VipClientProfile | null {
   const id = raw.id != null ? String(raw.id) : ''
   if (!id) return null
@@ -434,6 +458,8 @@ export function normalizeVipClient(raw: Record<string, unknown>): VipClientProfi
     })(),
     referrals_count: pickNum(raw, ['referrals_count', 'referral_count']),
     ref_code: pick(raw, ['ref_code']),
+    referral_code: resolveClientReferralBadgeCode(raw),
+    leads: normalizeClientLeads(raw.leads),
     lead_source: pick(raw, ['lead_source']),
     status: pick(raw, ['status']),
     is_influencer,

@@ -5,7 +5,7 @@ import { BedDouble, MapPin } from 'lucide-react'
 import { googleMapsSearchUrl, type PublicItineraryHotel } from '@/lib/public-itinerary'
 
 const GLASS_CARD_CLASS =
-  'overflow-hidden rounded-xl border border-[#D4AF37]/30 bg-white shadow-sm'
+  'overflow-hidden rounded-xl border border-brand-gold/30 bg-white shadow-sm'
 
 const TXT_LOCATION = '\u0627\u0644\u0645\u0648\u0642\u0639'
 const TXT_CHECKIN = '\u0648\u0635\u0648\u0644 \u0627\u0644\u0648\u0635\u0648\u0644'
@@ -21,7 +21,7 @@ type VipItineraryHotelsTabProps = {
 export default function VipItineraryHotelsTab({ hotels }: VipItineraryHotelsTabProps) {
   if (hotels.length === 0) {
     return (
-      <p className="rounded-xl border border-[#D4AF37]/25 bg-white py-12 text-center text-sm font-medium text-[#1E2720]/55 shadow-sm">
+      <p className="rounded-xl border border-brand-gold/25 bg-white py-12 text-center text-sm font-medium text-[#1E2720]/55 shadow-sm">
         {TXT_EMPTY}
       </p>
     )
@@ -40,7 +40,7 @@ export default function VipItineraryHotelsTab({ hotels }: VipItineraryHotelsTabP
               </>
             ) : (
               <div className="flex h-full items-center justify-center">
-                <BedDouble className="h-12 w-12 text-[#d4af37]/25" aria-hidden />
+                <BedDouble className="h-12 w-12 text-brand-gold/25" aria-hidden />
               </div>
             )}
           </div>
@@ -67,7 +67,7 @@ export default function VipItineraryHotelsTab({ hotels }: VipItineraryHotelsTabP
               {hotel.bookingReference ? (
                 <div className="flex justify-between gap-2">
                   <dt className="font-semibold text-[#1E2720]/45">{TXT_REF}</dt>
-                  <dd className="font-mono text-[11px] font-bold text-[#d4af37]" dir="ltr">
+                  <dd className="font-mono text-[11px] font-bold text-brand-gold" dir="ltr">
                     {hotel.bookingReference}
                   </dd>
                 </div>
@@ -77,7 +77,7 @@ export default function VipItineraryHotelsTab({ hotels }: VipItineraryHotelsTabP
               href={googleMapsSearchUrl(hotel.mapsQuery)}
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-full border border-[#d4af37]/45 bg-transparent px-3 py-2.5 text-xs font-bold text-[#d4af37] transition hover:bg-[#d4af37]/10"
+              className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-full border border-brand-gold/45 bg-transparent px-3 py-2.5 text-xs font-bold text-brand-gold transition hover:bg-brand-gold/10"
             >
               <MapPin className="h-3.5 w-3.5 shrink-0" aria-hidden />
               <span>{TXT_LOCATION}</span>

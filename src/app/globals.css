@@ -18,19 +18,22 @@
   --color-brand-primary: #1c2e3a;
   --color-brand-dark: #122029;
   --color-brand-surface: #162833;
-  --color-brand-gold: #9c7a3c;
+  --color-brand-gold: #d4af37;
   --color-brand-charcoal: #122029;
   --color-brand-offwhite: #f4efe6;
   --color-brand-muted: #6b7c86;
+
+  /* Public landing gold — deeper than CRM brand-gold, for cream backgrounds */
+  --color-public-gold: #c59b27;
 
   /* Warm gold scale — overrides default Tailwind orange drift */
   --color-amber-50: #f4efe6;
   --color-amber-100: #efe6d4;
   --color-amber-200: #e0d0a8;
-  --color-amber-300: #c9ad6e;
-  --color-amber-400: #b08d4a;
-  --color-amber-500: #9c7a3c;
-  --color-amber-600: #826533;
+  --color-amber-300: #d4af37;
+  --color-amber-400: #d4af37;
+  --color-amber-500: #d4af37;
+  --color-amber-600: #c4a030;
   --color-amber-700: #6a5329;
   --color-amber-800: #524020;
   --color-amber-900: #3a2e17;
@@ -139,9 +142,9 @@ body {
   color: #d4af37 !important;
 }
 
-.crm-command-center .itinerary-builder-page button.bg-\[\#D4AF37\],
-.crm-command-center .itinerary-builder-page .bg-\[\#D4AF37\] {
-  color: #020617 !important;
+.crm-command-center .itinerary-builder-page button.bg-brand-gold,
+.crm-command-center .itinerary-builder-page .bg-brand-gold {
+  color: #1a3b2a !important;
 }
 
 /* Force dark text on native selects/options (Places Bank country/city filters) */
@@ -313,8 +316,8 @@ body {
 .crm-command-center.dark .border-slate-800,
 .crm-command-center.dark .border-gray-100,
 .crm-command-center.dark .border-gray-200,
-.crm-command-center.dark .border-\[\#C9A84C\]\/55,
-.crm-command-center.dark .border-\[\#C9A84C\]\/45 {
+.crm-command-center.dark .border-brand-gold\/55,
+.crm-command-center.dark .border-brand-gold\/45 {
   border-color: #2d3f3a !important;
 }
 
@@ -516,7 +519,7 @@ body {
 }
 
 .crm-command-center .crm-kpi-value {
-  color: #9c7a3c;
+  color: var(--color-brand-gold);
   font-weight: 700;
   font-size: 1.875rem;
   line-height: 2.25rem;
@@ -555,8 +558,8 @@ body {
   select
 ):not([class*='border-0']):not(.crm-marketing-textarea):focus {
   outline: none;
-  border-color: #9c7a3c;
-  box-shadow: 0 0 0 2px rgb(156 122 60 / 0.5);
+  border-color: var(--color-brand-gold);
+  box-shadow: 0 0 0 2px rgb(212 175 55 / 0.5);
 }
 
 /* ——— Wanderloom landing: woven “W” thread watermark ——— */
@@ -573,18 +576,30 @@ body {
 /* ——— Landing Phase 1: glass navbar + hero CTAs (plain CSS — always ships) ——— */
 .wl-public-navbar {
   background-color: rgb(244 239 230 / 0.88) !important;
-  border-bottom-color: rgb(156 122 60 / 0.28) !important;
+  border-bottom-color: rgb(197 155 39 / 0.4) !important;
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  box-shadow: 0 1px 0 rgb(156 122 60 / 0.12), 0 8px 24px rgb(28 46 58 / 0.04);
+  box-shadow: 0 1px 0 rgb(197 155 39 / 0.16), 0 8px 24px rgb(28 46 58 / 0.04);
 }
 
-.wl-public-nav-logo {
-  color: #9c7a3c;
+.wl-public-navbar .wl-public-nav-logo {
+  color: #c59b27;
 }
 
-.wl-public-nav-logo:hover {
-  color: #826533;
+.wl-public-navbar .wl-public-nav-logo:hover {
+  color: #b8860b;
+}
+
+/* Gold lettering on cream. Fills stay #C59B27; type steps down to #B8860B so it stays readable. */
+.text-public-gold {
+  color: #b8860b;
+}
+
+.bg-\[\#1C2E3A\].text-public-gold,
+.bg-\[\#1e3f20\].text-public-gold,
+.bg-\[\#1C2E3A\] .text-public-gold,
+.bg-\[\#1e3f20\] .text-public-gold {
+  color: #c59b27;
 }
 
 .wl-public-nav-link {
@@ -592,21 +607,21 @@ body {
 }
 
 .wl-public-nav-link:hover {
-  color: #9c7a3c;
+  color: #c59b27;
 }
 
 .wl-public-nav-underline {
-  background-color: #9c7a3c;
+  background-color: #c59b27;
 }
 
 .wl-public-nav-partner {
-  color: #9c7a3c;
-  border-color: rgb(156 122 60 / 0.55);
+  color: #c59b27;
+  border-color: rgb(197 155 39 / 0.7);
 }
 
 .wl-public-nav-partner:hover {
-  color: #826533;
-  border-color: #9c7a3c;
+  color: #b8860b;
+  border-color: #b8860b;
 }
 
 .wl-hero-cta {
@@ -621,14 +636,14 @@ body {
 }
 
 .wl-hero-cta--gold {
-  background-color: #9c7a3c;
-  color: #f4efe6;
-  box-shadow: 0 8px 18px rgb(156 122 60 / 0.28);
+  background-color: #c59b27;
+  color: #1a3b2a;
+  box-shadow: 0 8px 18px rgb(197 155 39 / 0.32);
 }
 
 .wl-hero-cta--gold:hover {
-  background-color: #826533;
-  box-shadow: 0 12px 28px rgb(156 122 60 / 0.38);
+  background-color: #b8860b;
+  box-shadow: 0 12px 28px rgb(184 134 11 / 0.38);
 }
 
 .wl-hero-cta--green {
@@ -685,7 +700,7 @@ body {
 .wl-dest-tag.is-active {
   background: #1c2e3a;
   color: #f4efe6;
-  border-color: #9c7a3c;
+  border-color: #c59b27;
   box-shadow: 0 4px 14px rgb(28 46 58 / 0.25);
   transform: scale(1.05);
 }
@@ -714,7 +729,7 @@ body {
 }
 
 .wl-quiz-option.is-selected {
-  border-color: #9c7a3c;
+  border-color: #c59b27;
   background: #1c2e3a;
   color: #f4efe6;
   box-shadow: 0 8px 22px rgb(28 46 58 / 0.18);
@@ -737,9 +752,9 @@ body {
 }
 
 .wl-quiz-option.is-selected .wl-quiz-option-mark {
-  border-color: #9c7a3c;
-  background: #9c7a3c;
-  color: #f4efe6;
+  border-color: #c59b27;
+  background: #c59b27;
+  color: #1a3b2a;
 }
 
 /* ——— Landing Phase 3: editorial About Us scroll reveal ——— */
@@ -774,7 +789,7 @@ body {
 
 .wl-about-manifesto {
   border-right-width: 4px;
-  border-right-color: #9c7a3c;
+  border-right-color: #c59b27;
   border-right-style: solid;
   border-top-right-radius: 9999px;
   border-bottom-right-radius: 9999px;
@@ -1338,10 +1353,10 @@ input[type='radio'].wanderloom-raw-radio::after {
   }
 
   /* Keep explicit gold accents readable on print (values/totals, not labels) */
-  body.group-pricing-printing .text-\[\#D4AF37\],
-  body.group-pricing-printing [class*='text-[#D4AF37]'] {
-    color: #8c6d35 !important;
-    -webkit-text-fill-color: #8c6d35 !important;
+  body.group-pricing-printing .text-brand-gold,
+  body.group-pricing-printing [class*='text-brand-gold'] {
+    color: #d4af37 !important;
+    -webkit-text-fill-color: #d4af37 !important;
     font-weight: 800 !important;
   }
 
@@ -1424,10 +1439,10 @@ input[type='radio'].wanderloom-raw-radio::after {
     -webkit-text-fill-color: #020617 !important;
   }
 
-  body.group-pricing-printing .text-\[\#D4AF37\],
-  body.group-pricing-printing [class*='text-[#D4AF37]'] {
-    color: #8c6d35 !important;
-    -webkit-text-fill-color: #8c6d35 !important;
+  body.group-pricing-printing .text-brand-gold,
+  body.group-pricing-printing [class*='text-brand-gold'] {
+    color: #d4af37 !important;
+    -webkit-text-fill-color: #d4af37 !important;
     font-weight: 800 !important;
   }
 
@@ -1709,7 +1724,7 @@ input[type='radio'].wanderloom-raw-radio::after {
   --rv-line-strong: rgba(212, 175, 55, 0.45);
   --rv-gold: #d4af37;
   --rv-gold-text: #d4af37;
-  --rv-gold-soft: #c9a65e;
+  --rv-gold-soft: #d4af37;
   --rv-gold-tint: rgba(212, 175, 55, 0.1);
   --rv-gold-tint-2: rgba(212, 175, 55, 0.18);
   --rv-on-gold: #141c17;
@@ -1753,11 +1768,11 @@ input[type='radio'].wanderloom-raw-radio::after {
   --rv-inset: #f9f9f6;
   --rv-glass: rgba(253, 251, 247, 0.94);
   --rv-glass-strong: rgba(255, 255, 255, 0.9);
-  --rv-line: rgba(197, 160, 89, 0.28);
-  --rv-line-strong: rgba(197, 160, 89, 0.55);
-  --rv-gold: #c9a33a;
-  --rv-gold-text: #8a6a14;
-  --rv-gold-soft: #86692a;
+  --rv-line: rgba(212, 175, 55, 0.28);
+  --rv-line-strong: rgba(212, 175, 55, 0.55);
+  --rv-gold: #d4af37;
+  --rv-gold-text: #d4af37;
+  --rv-gold-soft: #d4af37;
   --rv-gold-tint: rgba(212, 175, 55, 0.1);
   --rv-gold-tint-2: rgba(212, 175, 55, 0.2);
   --rv-on-gold: #1e2720;
@@ -1768,7 +1783,7 @@ input[type='radio'].wanderloom-raw-radio::after {
   --rv-shadow: 0 8px 30px rgba(0, 0, 0, 0.05);
   --rv-watermark: rgba(30, 39, 32, 0.04);
   --rv-hero-fade: #f9f9f6;
-  --rv-city-0: #b08a1c;
+  --rv-city-0: #d4af37;
   --rv-city-1: #3f7656;
   --rv-city-2: #bf5636;
   --rv-city-3: #34708f;

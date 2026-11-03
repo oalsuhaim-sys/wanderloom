@@ -492,7 +492,7 @@ export function GroupOnboardingInbox({ leads, loading, error, onRefresh, onLeadD
                           [lead.id]: next,
                         }));
                       }}
-                      className="min-w-[10rem] flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-bold text-slate-800 outline-none focus:border-[#C5A059] focus:ring-1 focus:ring-[#C5A059]/30"
+                      className="min-w-[10rem] flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-bold text-slate-800 outline-none focus:border-brand-gold focus:ring-1 focus:ring-brand-gold/30"
                     >
                       <option value="" disabled>
                         {tripsLoading ? 'جاري تحميل الرحلات…' : 'قرار الرحلة: اختر الرحلة…'}

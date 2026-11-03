@@ -85,7 +85,7 @@ const emptyForm = (): MemoryFormState => ({
 });
 
 const FIELD_CLASS =
-  "w-full p-3 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-[#D4AF37]/50 focus:border-[#D4AF37] text-gray-800 bg-white";
+  "w-full p-3 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-brand-gold/50 focus:border-brand-gold text-gray-800 bg-white";
 
 function normalizeUrlKey(url: string): string {
   try {
@@ -984,7 +984,7 @@ export default function MemoriesPage() {
           <button
             type="button"
             onClick={() => void fetchMemories()}
-            className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-5 py-3 font-bold text-gray-700 shadow-sm transition hover:border-[#D4AF37]/40"
+            className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-5 py-3 font-bold text-gray-700 shadow-sm transition hover:border-brand-gold/40"
           >
             تحديث العدّاد
           </button>
@@ -994,7 +994,7 @@ export default function MemoriesPage() {
               resetForm();
               setIsModalOpen(true);
             }}
-            className="flex items-center gap-2 rounded-xl bg-[#D4AF37] px-5 py-2.5 text-sm font-extrabold text-black shadow-sm transition-all hover:bg-[#b8952d] active:scale-95"
+            className="flex items-center gap-2 rounded-xl bg-brand-gold px-5 py-2.5 text-sm font-extrabold text-black shadow-sm transition-all hover:bg-brand-gold active:scale-95"
           >
             <span className="text-base font-black">+</span>
             <span>إضافة ذكرى يدوياً</span>
@@ -1053,7 +1053,7 @@ export default function MemoriesPage() {
                   setViewState("trips");
                   void loadClientTrips(client.id);
                 }}
-                className="rounded-2xl border border-gray-100 bg-white p-6 text-center shadow-sm transition hover:border-[#D4AF37]/40 hover:shadow-md"
+                className="rounded-2xl border border-gray-100 bg-white p-6 text-center shadow-sm transition hover:border-brand-gold/40 hover:shadow-md"
               >
                 <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-[#FFFBF0] text-2xl">
                   👤
@@ -1089,7 +1089,7 @@ export default function MemoriesPage() {
                   setSelectedTrip(trip);
                   setViewState("photos");
                 }}
-                className="rounded-2xl border border-[#D4AF37]/20 bg-gradient-to-br from-[#FFFBF0] to-white p-6 text-center shadow-sm transition hover:border-[#D4AF37]/50 hover:shadow-md"
+                className="rounded-2xl border border-brand-gold/20 bg-gradient-to-br from-[#FFFBF0] to-white p-6 text-center shadow-sm transition hover:border-brand-gold/50 hover:shadow-md"
               >
                 <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-white text-2xl shadow-sm">
                   ✈️
@@ -1173,7 +1173,7 @@ export default function MemoriesPage() {
                         معلق
                       </span>
                     ) : (
-                      <span className="absolute start-3 top-3 rounded-full bg-[#1E2720] px-3 py-1 text-[10px] font-black text-[#D4AF37] shadow">
+                      <span className="absolute start-3 top-3 rounded-full bg-[#1E2720] px-3 py-1 text-[10px] font-black text-brand-gold shadow">
                         معتمد
                       </span>
                     )}
@@ -1209,7 +1209,7 @@ export default function MemoriesPage() {
                           type="button"
                           disabled={approvingKey === photo.key}
                           onClick={() => void handleApprovePending(photo)}
-                          className="w-full rounded-lg bg-[#1E2720] py-2 text-sm font-bold text-[#D4AF37] transition hover:bg-black disabled:opacity-60"
+                          className="w-full rounded-lg bg-[#1E2720] py-2 text-sm font-bold text-brand-gold transition hover:bg-black disabled:opacity-60"
                         >
                           {approvingKey === photo.key ? "جاري الاعتماد…" : "اعتماد الصورة"}
                         </button>
@@ -1269,7 +1269,7 @@ export default function MemoriesPage() {
           onClick={closeModal}
         >
           <div
-            className="w-full max-w-xl rounded-3xl border border-[#D4AF37]/20 bg-white p-8 shadow-2xl"
+            className="w-full max-w-xl rounded-3xl border border-brand-gold/20 bg-white p-8 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-6 border-b border-gray-100 pb-5">
@@ -1373,7 +1373,7 @@ export default function MemoriesPage() {
                 <label
                   className={`flex w-full cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed transition ${
                     selectedFile
-                      ? "border-[#D4AF37]/60 bg-[#D4AF37]/5"
+                      ? "border-brand-gold/60 bg-brand-gold/5"
                       : "border-gray-300 bg-gray-50 hover:bg-gray-100"
                   } ${imagePreview ? "h-auto min-h-[8rem] p-3" : "h-32"}`}
                 >
@@ -1415,7 +1415,7 @@ export default function MemoriesPage() {
                 <button
                   type="submit"
                   disabled={!selectedFile || saving}
-                  className="flex-1 rounded-xl bg-[#1E2720] py-3 text-sm font-bold text-[#D4AF37] transition hover:bg-[#2a362c] disabled:cursor-not-allowed disabled:opacity-50"
+                  className="flex-1 rounded-xl bg-[#1E2720] py-3 text-sm font-bold text-brand-gold transition hover:bg-[#2a362c] disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {saving ? "جاري الحفظ…" : "حفظ"}
                 </button>

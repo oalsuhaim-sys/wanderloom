@@ -80,7 +80,11 @@ export function GroupTripTermsCharterIntro({ variant = 'page' }: CharterBodyProp
       ? `rounded-2xl border p-3 text-[11px] font-semibold leading-relaxed sm:text-xs ${BRAND_GOLD_CALLOUT_CLASS}`
       : `rounded-2xl border p-4 text-xs font-semibold leading-relaxed sm:text-sm ${BRAND_GOLD_CALLOUT_CLASS}`;
 
-  return <p className={className} style={brandGoldCalloutStyle}>{GROUP_TRIP_CHARTER_INTRO}</p>;
+  return (
+    <p className={className} style={{ ...brandGoldCalloutStyle, borderColor: '#C59B27' }}>
+      {GROUP_TRIP_CHARTER_INTRO}
+    </p>
+  );
 }
 
 type MediaConsentProps = {
@@ -114,7 +118,7 @@ export function GroupTripTermsMediaConsent({
             name={inputName}
             checked={mediaConsent}
             onChange={() => onMediaConsentChange(true)}
-            style={{ accentColor: '#C5A059' }}
+            style={{ accentColor: '#D4AF37' }}
             className="h-4 w-4"
           />
           <span>أوافق (Opt-in)</span>
@@ -125,7 +129,7 @@ export function GroupTripTermsMediaConsent({
             name={inputName}
             checked={!mediaConsent}
             onChange={() => onMediaConsentChange(false)}
-            style={{ accentColor: '#C5A059' }}
+            style={{ accentColor: '#D4AF37' }}
             className="h-4 w-4"
           />
           <span>لا أوافق (Opt-out)</span>

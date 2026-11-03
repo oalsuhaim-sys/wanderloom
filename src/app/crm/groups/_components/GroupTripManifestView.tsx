@@ -355,7 +355,7 @@ export default function GroupTripManifestView({ tripId }: Props) {
             <ArrowRight className="h-3.5 w-3.5" aria-hidden />
             العودة لرحلات القروبات
           </Link>
-          <p className="text-xs font-bold tracking-wide text-[#C5A059]">كشف الرحلة الشامل</p>
+          <p className="text-xs font-bold tracking-wide text-brand-gold">كشف الرحلة الشامل</p>
           <h1 className="mt-1 text-2xl font-extrabold text-[#1A3B2A] sm:text-3xl">
             {trip.titleAr}
           </h1>
@@ -367,7 +367,7 @@ export default function GroupTripManifestView({ tripId }: Props) {
           <div className="mt-3 flex flex-wrap items-center gap-2 text-xs font-bold text-slate-600">
             {trip.datesAr ? (
               <span className="inline-flex items-center gap-1 rounded-full bg-white px-3 py-1 ring-1 ring-slate-200">
-                <CalendarDays className="h-3.5 w-3.5 text-[#C5A059]" aria-hidden />
+                <CalendarDays className="h-3.5 w-3.5 text-brand-gold" aria-hidden />
                 {trip.datesAr}
               </span>
             ) : null}
@@ -444,7 +444,7 @@ export default function GroupTripManifestView({ tripId }: Props) {
         <div className="h-2.5 w-full rounded-full bg-slate-100">
           <div
             className={`h-2.5 rounded-full transition-all ${
-              fillPct >= 100 ? 'bg-red-500' : 'bg-[#C5A059]'
+              fillPct >= 100 ? 'bg-red-500' : 'bg-brand-gold'
             }`}
             style={{ width: `${totalMaxCapacity > 0 ? fillPct : 0}%` }}
           />
@@ -453,7 +453,7 @@ export default function GroupTripManifestView({ tripId }: Props) {
 
       {/* Smart search & payment filters */}
       <section
-        className="rounded-2xl border border-[#C5A059]/25 bg-white p-4 shadow-sm ring-1 ring-[#C5A059]/10"
+        className="rounded-2xl border border-brand-gold/25 bg-white p-4 shadow-sm ring-1 ring-brand-gold/10"
         aria-label="محرك بحث وفلاتر ذكية"
       >
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -495,7 +495,7 @@ export default function GroupTripManifestView({ tripId }: Props) {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="ابحث بالاسم، الجوال، أو رقم العميل…"
-              className="w-full rounded-xl border border-slate-200 bg-slate-50/80 py-2.5 pr-10 pl-3 text-sm font-semibold text-[#1A3B2A] outline-none transition focus:border-[#C5A059]/50 focus:bg-white focus:ring-2 focus:ring-[#C5A059]/20"
+              className="w-full rounded-xl border border-slate-200 bg-slate-50/80 py-2.5 pr-10 pl-3 text-sm font-semibold text-[#1A3B2A] outline-none transition focus:border-brand-gold/50 focus:bg-white focus:ring-2 focus:ring-brand-gold/20"
             />
           </label>
           <label className="shrink-0 sm:w-52">
@@ -503,7 +503,7 @@ export default function GroupTripManifestView({ tripId }: Props) {
             <select
               value={paymentFilter}
               onChange={(e) => setPaymentFilter(e.target.value as PaymentFilter)}
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-bold text-[#1A3B2A] outline-none focus:border-[#C5A059]/50 focus:ring-2 focus:ring-[#C5A059]/20"
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-bold text-[#1A3B2A] outline-none focus:border-brand-gold/50 focus:ring-2 focus:ring-brand-gold/20"
             >
               <option value="all">كل حالات السداد</option>
               {GROUP_PAYMENT_STATUSES.map((s) => (
@@ -770,7 +770,7 @@ function PendingRow({ member }: { member: TripManifestMember }) {
     <li className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition-all hover:shadow-md sm:flex-row sm:items-center sm:justify-between dark:border-[#2D3F3A] dark:bg-[#1A2421]">
       <div className="flex min-w-0 items-center gap-3">
         <div
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-slate-900 text-xs font-bold text-white dark:bg-[#D4AF37] dark:text-slate-900"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-slate-900 text-xs font-bold text-white dark:bg-brand-gold dark:text-slate-900"
           aria-hidden
         >
           {memberInitials(member.clientName)}
@@ -933,7 +933,7 @@ function PaymentUpdateModal({
       onClick={onClose}
     >
       <div
-        className="w-[95%] max-h-[90vh] max-w-md overflow-y-auto rounded-2xl border border-[#C5A059]/30 bg-white p-5 shadow-xl"
+        className="w-[95%] max-h-[90vh] max-w-md overflow-y-auto rounded-2xl border border-brand-gold/30 bg-white p-5 shadow-xl"
         dir="rtl"
         onClick={(e) => e.stopPropagation()}
       >
@@ -966,7 +966,7 @@ function PaymentUpdateModal({
           <select
             value={status}
             onChange={(e) => setStatus(e.target.value as GroupPaymentStatus)}
-            className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm font-semibold text-[#1A3B2A] outline-none focus:border-[#C5A059]/50"
+            className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm font-semibold text-[#1A3B2A] outline-none focus:border-brand-gold/50"
           >
             {GROUP_PAYMENT_STATUSES.map((s) => (
               <option key={s} value={s}>

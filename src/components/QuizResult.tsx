@@ -35,7 +35,7 @@ export function QuizResult({
   return (
     <div className="mx-auto w-full max-w-2xl">
       <article className="rounded-2xl border border-gray-100 bg-white p-8 text-center shadow-sm md:p-12">
-        <p className="text-sm font-bold tracking-wide text-[#9C7A3C]">{kicker}</p>
+        <p className="text-sm font-bold tracking-wide text-public-gold">{kicker}</p>
 
         <h2 className="mt-3 text-4xl font-black leading-tight text-[#1C2E3A] sm:text-5xl md:text-6xl">
           {countryName}
@@ -54,7 +54,7 @@ export function QuizResult({
             {vibeTags.map((tag) => (
               <span
                 key={tag}
-                className="rounded-full border border-[#9C7A3C]/20 bg-[#fffaf1] px-4 py-1.5 text-xs font-bold text-[#1C2E3A]"
+                className="rounded-full border border-public-gold/20 bg-[#fffaf1] px-4 py-1.5 text-xs font-bold text-[#1C2E3A]"
               >
                 {tag}
               </span>
@@ -65,7 +65,7 @@ export function QuizResult({
         <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
           <Link
             href={leadHref}
-            className="inline-flex w-auto items-center justify-center rounded-full bg-[#9C7A3C] px-8 py-3 text-sm font-bold text-[#F4EFE6] shadow-sm transition-all hover:bg-[#826533]"
+            className="inline-flex w-auto items-center justify-center rounded-full bg-public-gold px-8 py-3 text-sm font-bold text-[#1A3B2A] shadow-sm transition-all hover:bg-[#B8860B]"
           >
             {registerLabel}
           </Link>

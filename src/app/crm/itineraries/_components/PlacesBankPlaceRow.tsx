@@ -34,8 +34,8 @@ function PlacesBankPlaceRowInner({ place, index, activeDayLabel, onAddPlace }: P
           {...dragProvided.draggableProps}
           className={`${WL_CARD} transition-all ${
             dragSnapshot.isDragging
-              ? 'border-[#D4AF37] shadow-lg'
-              : 'hover:border-[#D4AF37]/50'
+              ? 'border-brand-gold shadow-lg'
+              : 'hover:border-brand-gold/50'
           }`}
         >
           <div className="flex items-start justify-between gap-2">
@@ -74,7 +74,7 @@ function PlacesBankPlaceRowInner({ place, index, activeDayLabel, onAddPlace }: P
                 </>
               ) : null}
             </div>
-            <span className="shrink-0 text-sm font-bold text-[#D4AF37]">⭐ {place.rating || '4.5'}</span>
+            <span className="shrink-0 text-sm font-bold text-brand-gold">⭐ {place.rating || '4.5'}</span>
           </div>
           <button
             type="button"

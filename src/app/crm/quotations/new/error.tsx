@@ -20,13 +20,13 @@ export default function NewQuotationError({ error, reset }: Props) {
       dir="rtl"
       className="flex min-h-[60vh] flex-col items-center justify-center gap-4 px-6 text-center text-white"
     >
-      <AlertCircle className="h-10 w-10 text-[#D4AF37]" aria-hidden />
+      <AlertCircle className="h-10 w-10 text-brand-gold" aria-hidden />
       <p className="max-w-md text-base font-bold">تعذّر تحميل صفحة عرض السعر</p>
       <p className="max-w-md break-words font-mono text-xs text-slate-400">{detail}</p>
       <button
         type="button"
         onClick={() => reset()}
-        className="inline-flex items-center gap-2 rounded-lg border border-[#D4AF37]/40 bg-[#D4AF37]/10 px-6 py-2.5 text-sm font-bold text-[#D4AF37]"
+        className="inline-flex items-center gap-2 rounded-lg border border-brand-gold/40 bg-brand-gold/10 px-6 py-2.5 text-sm font-bold text-brand-gold"
       >
         <RefreshCw className="h-4 w-4" aria-hidden />
         إعادة المحاولة

@@ -33,10 +33,10 @@ export default function VipPackingListCard() {
       : 0;
 
   return (
-    <div className="rounded-2xl border border-[#D4AF37]/30 bg-[#2A362C] p-5 shadow-md">
+    <div className="rounded-2xl border border-brand-gold/30 bg-[#2A362C] p-5 shadow-md">
       <div className="mb-4 flex items-start justify-between gap-3">
         <div>
-          <h2 className="flex items-center gap-2 text-base font-black text-[#D4AF37]">
+          <h2 className="flex items-center gap-2 text-base font-black text-brand-gold">
             <Luggage className="h-5 w-5" aria-hidden />
             قائمة الحقيبة
           </h2>
@@ -54,7 +54,7 @@ export default function VipPackingListCard() {
 
       <div className="mb-4 h-1.5 overflow-hidden rounded-full bg-white/10">
         <div
-          className="h-full rounded-full bg-[#D4AF37] transition-all duration-300"
+          className="h-full rounded-full bg-brand-gold transition-all duration-300"
           style={{ width: `${progress}%` }}
           role="progressbar"
           aria-valuenow={progress}
@@ -73,14 +73,14 @@ export default function VipPackingListCard() {
                 onClick={() => toggle(item.id)}
                 className={`flex w-full items-start gap-3 rounded-xl border px-3 py-2.5 text-start transition ${
                   isChecked
-                    ? 'border-[#D4AF37]/50 bg-[#D4AF37]/10'
-                    : 'border-white/10 bg-white/5 hover:border-[#D4AF37]/30'
+                    ? 'border-brand-gold/50 bg-brand-gold/10'
+                    : 'border-white/10 bg-white/5 hover:border-brand-gold/30'
                 }`}
               >
                 <span
                   className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border ${
                     isChecked
-                      ? 'border-[#D4AF37] bg-[#D4AF37] text-[#1E2720]'
+                      ? 'border-brand-gold bg-brand-gold text-[#1E2720]'
                       : 'border-white/30 bg-transparent'
                   }`}
                   aria-hidden

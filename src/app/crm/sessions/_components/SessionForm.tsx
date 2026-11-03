@@ -6,6 +6,9 @@ import { Loader2 } from 'lucide-react';
 import { createSession, updateSession } from '@/app/crm/services/sessions';
 import type { Session, SessionInsert } from '@/types/session-tables';
 import { CRM_BTN_PRIMARY, CRM_INPUT, CRM_TEXTAREA } from '@/lib/crm-luxury-ui';
+import { toSessionTimeInput } from '@/lib/session-time';
+
+const DEFAULT_SESSION_TIME = '20:00';
 
 type SessionFormProps = {
   mode?: 'create' | 'edit';
@@ -17,6 +20,9 @@ type SessionFormProps = {
 export function SessionForm({ mode = 'create', initialSession = null, onSaved, onCancelEdit }: SessionFormProps) {
   const [title, setTitle] = useState(initialSession?.title ?? '');
   const [date, setDate] = useState(initialSession?.date ?? '');
+  const [sessionTime, setSessionTime] = useState(
+    () => toSessionTimeInput(initialSession?.time) || (mode === 'create' ? DEFAULT_SESSION_TIME : ''),
+  );
   const [sessionType, setSessionType] = useState<'online' | 'inperson'>(
     String(initialSession?.session_type ?? 'online').toLowerCase().includes('person') ? 'inperson' : 'online'
   );
@@ -31,6 +37,10 @@ export function SessionForm({ mode = 'create', initialSession = null, onSaved, o
   useEffect(() => {
     setTitle(initialSession?.title ?? '');
     setDate(initialSession?.date ?? '');
+    setSessionTime(
+      toSessionTimeInput(initialSession?.time) ||
+        (mode === 'create' && !initialSession ? DEFAULT_SESSION_TIME : ''),
+    );
     setSessionType(String(initialSession?.session_type ?? 'online').toLowerCase().includes('person') ? 'inperson' : 'online');
     const p = Number(initialSession?.price ?? 0);
     setPrice(p);
@@ -39,14 +49,14 @@ export function SessionForm({ mode = 'create', initialSession = null, onSaved, o
     setDescription(initialSession?.description ?? '');
     setLocationUrl(initialSession?.location_url ?? '');
     setMessage(null);
-  }, [initialSession]);
+  }, [initialSession, mode]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setMessage(null);
 
-    if (!title.trim() || !date) {
-      setMessage({ type: 'err', text: 'عنوان الجلسة والتاريخ مطلوبان.' });
+    if (!title.trim() || !date || !sessionTime) {
+      setMessage({ type: 'err', text: 'عنوان الجلسة والتاريخ والوقت مطلوبة.' });
       return;
     }
     if (spots < 1) {
@@ -58,6 +68,7 @@ export function SessionForm({ mode = 'create', initialSession = null, onSaved, o
     const payload: SessionInsert = {
       title: title.trim(),
       date: date.slice(0, 10),
+      time: sessionTime,
       session_type: sessionType,
       price: priceFree ? 0 : Math.max(0, Number(price) || 0),
       spots: Math.floor(spots),
@@ -81,6 +92,7 @@ export function SessionForm({ mode = 'create', initialSession = null, onSaved, o
     if (mode === 'edit') return;
     setTitle('');
     setDate('');
+    setSessionTime(DEFAULT_SESSION_TIME);
     setSessionType('online');
     setPriceFree(true);
     setPrice(0);
@@ -120,6 +132,17 @@ export function SessionForm({ mode = 'create', initialSession = null, onSaved, o
             className={CRM_INPUT}
             value={date}
             onChange={(e) => setDate(e.target.value)}
+          />
+        </div>
+
+        <div className="lg:col-span-2">
+          <label className="mb-1 block text-xs font-semibold text-slate-500">وقت الجلسة *</label>
+          <input
+            type="time"
+            step="600"
+            className={CRM_INPUT}
+            value={sessionTime}
+            onChange={(e) => setSessionTime(e.target.value)}
           />
         </div>
 
@@ -192,6 +215,7 @@ export function SessionForm({ mode = 'create', initialSession = null, onSaved, o
             className={CRM_TEXTAREA}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
+            onKeyDown={(e) => e.stopPropagation()}
             placeholder="وصف مختصر للجلسة…"
           />
         </div>

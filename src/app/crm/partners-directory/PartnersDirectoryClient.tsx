@@ -103,7 +103,7 @@ function statusPillClass(status: string | null) {
   if (value === "rejected") {
     return "bg-rose-50 text-rose-600 border-rose-100 dark:bg-rose-900/20 dark:text-rose-400 dark:border-rose-900/30";
   }
-  return "bg-amber-50 text-amber-700 border-amber-100 dark:bg-[#D4AF37]/10 dark:text-[#D4AF37] dark:border-[#D4AF37]/30";
+  return "bg-amber-50 text-amber-700 border-amber-100 dark:bg-brand-gold/10 dark:text-brand-gold dark:border-brand-gold/30";
 }
 
 function statusLabel(status: string | null) {
@@ -157,7 +157,7 @@ async function copyLeaderCalendarLink(leaderId: string) {
 }
 
 const FILTER_ACTIVE =
-  "rounded-xl border border-transparent bg-slate-900 px-4 py-2 text-sm font-medium text-white shadow-sm dark:border-[#D4AF37]/50 dark:bg-[#D4AF37]/20 dark:text-[#D4AF37]";
+  "rounded-xl border border-transparent bg-slate-900 px-4 py-2 text-sm font-medium text-white shadow-sm dark:border-brand-gold/50 dark:bg-brand-gold/20 dark:text-brand-gold";
 
 const FILTER_INACTIVE =
   "rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-50 dark:border-[#2D3F3A] dark:bg-[#1A2421] dark:text-slate-400";
@@ -458,7 +458,7 @@ export default function PartnersDirectoryClient() {
             Partners Network
           </p>
           <h1 className="mt-1 flex items-center gap-2 text-2xl font-semibold text-white sm:text-3xl">
-            <Handshake className="h-7 w-7 shrink-0 text-[#D4AF37]" aria-hidden />
+            <Handshake className="h-7 w-7 shrink-0 text-brand-gold" aria-hidden />
             شبكة الشركاء
           </h1>
           <p className="mt-2 text-sm text-white/70">
@@ -487,7 +487,7 @@ export default function PartnersDirectoryClient() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="بحث في الدليل…"
-              className="h-11 w-full rounded-lg border border-white/20 bg-white/10 py-2.5 pl-4 pr-10 text-sm text-white outline-none transition placeholder:text-white/45 focus:ring-2 focus:ring-[#D4AF37]/40"
+              className="h-11 w-full rounded-lg border border-white/20 bg-white/10 py-2.5 pl-4 pr-10 text-sm text-white outline-none transition placeholder:text-white/45 focus:ring-2 focus:ring-brand-gold/40"
             />
           </label>
         </div>
@@ -520,7 +520,7 @@ export default function PartnersDirectoryClient() {
               title="عرض البطاقات"
               className={
                 viewMode === "cards"
-                  ? "flex items-center justify-center rounded-md bg-white px-3 py-1.5 text-slate-900 shadow-sm transition-all dark:bg-[#22302C] dark:text-[#D4AF37]"
+                  ? "flex items-center justify-center rounded-md bg-white px-3 py-1.5 text-slate-900 shadow-sm transition-all dark:bg-[#22302C] dark:text-brand-gold"
                   : "flex items-center justify-center px-3 py-1.5 text-slate-500 transition-all hover:text-slate-700 dark:text-slate-400"
               }
             >
@@ -534,7 +534,7 @@ export default function PartnersDirectoryClient() {
               title="عرض الجدول"
               className={
                 viewMode === "table"
-                  ? "flex items-center justify-center rounded-md bg-white px-3 py-1.5 text-slate-900 shadow-sm transition-all dark:bg-[#22302C] dark:text-[#D4AF37]"
+                  ? "flex items-center justify-center rounded-md bg-white px-3 py-1.5 text-slate-900 shadow-sm transition-all dark:bg-[#22302C] dark:text-brand-gold"
                   : "flex items-center justify-center px-3 py-1.5 text-slate-500 transition-all hover:text-slate-700 dark:text-slate-400"
               }
             >
@@ -560,7 +560,7 @@ export default function PartnersDirectoryClient() {
 
       {loading ? (
         <div className="flex justify-center p-12">
-          <Loader2 className="h-8 w-8 animate-spin text-slate-400 dark:text-[#D4AF37]" />
+          <Loader2 className="h-8 w-8 animate-spin text-slate-400 dark:text-brand-gold" />
         </div>
       ) : cardModels.length === 0 ? (
         <EmptyState
@@ -571,7 +571,7 @@ export default function PartnersDirectoryClient() {
               <button
                 type="button"
                 onClick={openAddInfluencer}
-                className="mt-4 inline-flex cursor-pointer items-center gap-2 rounded-xl bg-[#D4AF37] px-5 py-2.5 text-sm font-bold text-slate-950 shadow-md transition-all hover:bg-[#c29f2f]"
+                className="mt-4 inline-flex cursor-pointer items-center gap-2 rounded-xl bg-brand-gold px-5 py-2.5 text-sm font-bold text-slate-950 shadow-md transition-all hover:bg-[#c29f2f]"
               >
                 <span aria-hidden>+</span>
                 إضافة مؤثر جديد
@@ -648,7 +648,7 @@ function PartnerCard({
 
       <div className="relative mb-4 h-20 w-20">
         <div
-          className="flex h-full w-full items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-xl font-bold text-slate-700 shadow-sm dark:border-[#D4AF37]/30 dark:bg-[#1A2421] dark:text-[#D4AF37]"
+          className="flex h-full w-full items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-xl font-bold text-slate-700 shadow-sm dark:border-brand-gold/30 dark:bg-[#1A2421] dark:text-brand-gold"
           aria-hidden
         >
           {partnerInitials(name)}
@@ -658,7 +658,7 @@ function PartnerCard({
       <h2 className="mb-1 max-w-full truncate text-lg font-bold text-slate-900 dark:text-white">
         {name}
       </h2>
-      <p className="mb-1 flex items-center justify-center gap-1.5 text-sm font-medium text-slate-500 dark:text-[#D4AF37]/80">
+      <p className="mb-1 flex items-center justify-center gap-1.5 text-sm font-medium text-slate-500 dark:text-brand-gold/80">
         {category?.trim() || roleBadge}
       </p>
 
@@ -734,7 +734,7 @@ function PartnerCard({
       <div className="mt-auto flex w-full flex-col gap-2">
         <Link
           href={href}
-          className="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white py-2.5 text-sm font-semibold text-slate-900 transition-all duration-200 hover:bg-slate-900 hover:text-white dark:border-[#D4AF37]/50 dark:bg-transparent dark:text-[#D4AF37] dark:hover:bg-[#D4AF37]/10"
+          className="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white py-2.5 text-sm font-semibold text-slate-900 transition-all duration-200 hover:bg-slate-900 hover:text-white dark:border-brand-gold/50 dark:bg-transparent dark:text-brand-gold dark:hover:bg-brand-gold/10"
         >
           <UserRound className="h-3.5 w-3.5" aria-hidden />
           إدارة الملف
@@ -745,7 +745,7 @@ function PartnerCard({
             type="button"
             onClick={() => void handleCopyCalendarLink()}
             disabled={copyingLink}
-            className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-900 hover:text-white disabled:opacity-60 dark:border-[#2D3F3A] dark:bg-[#1A2421] dark:text-slate-300 dark:hover:border-[#D4AF37]/40 dark:hover:text-[#D4AF37]"
+            className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-900 hover:text-white disabled:opacity-60 dark:border-[#2D3F3A] dark:bg-[#1A2421] dark:text-slate-300 dark:hover:border-brand-gold/40 dark:hover:text-brand-gold"
           >
             {copyingLink ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
@@ -860,7 +860,7 @@ function PartnersDenseTable({ rows }: { rows: PartnerCardModel[] }) {
                     ) : null}
                     <Link
                       href={row.href}
-                      className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-800 transition hover:bg-slate-900 hover:text-white dark:border-[#D4AF37]/40 dark:text-[#D4AF37]"
+                      className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-800 transition hover:bg-slate-900 hover:text-white dark:border-brand-gold/40 dark:text-brand-gold"
                     >
                       الملف
                     </Link>

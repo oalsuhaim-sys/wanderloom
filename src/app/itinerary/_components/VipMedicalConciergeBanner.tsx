@@ -49,7 +49,7 @@ export default function VipMedicalConciergeBanner({ services }: Props) {
             href={zoomUrl}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-[#D4AF37] px-4 py-3 text-sm font-black text-[#1E2720]"
+            className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-brand-gold px-4 py-3 text-sm font-black text-[#1E2720]"
           >
             <Video className="h-4 w-4" aria-hidden />
             دخول اجتماع الاستشارة

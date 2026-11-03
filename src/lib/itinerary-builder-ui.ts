@@ -28,11 +28,11 @@ export const WL_HINT = 'text-xs text-slate-500';
 
 /** Form controls */
 export const WL_INPUT =
-  'w-full rounded-xl border border-slate-300 bg-slate-50 px-4 py-2.5 text-sm font-bold text-slate-900 outline-none transition placeholder:text-slate-600 focus:border-transparent focus:bg-white focus:ring-2 focus:ring-[#D4AF37] [color-scheme:light] disabled:cursor-not-allowed disabled:opacity-50';
+  'w-full rounded-xl border border-slate-300 bg-slate-50 px-4 py-2.5 text-sm font-bold text-slate-900 outline-none transition placeholder:text-slate-600 focus:border-transparent focus:bg-white focus:ring-2 focus:ring-brand-gold [color-scheme:light] disabled:cursor-not-allowed disabled:opacity-50';
 
 /** Native <select> — forced dark text (survives inherited white from CRM shells) */
 export const WL_SELECT =
-  'w-full cursor-pointer rounded-xl border border-slate-300 bg-slate-50 p-3 text-sm font-extrabold text-slate-900 outline-none transition-all [color-scheme:light] focus:bg-white focus:ring-2 focus:ring-[#D4AF37] disabled:cursor-not-allowed disabled:opacity-50';
+  'w-full cursor-pointer rounded-xl border border-slate-300 bg-slate-50 p-3 text-sm font-extrabold text-slate-900 outline-none transition-all [color-scheme:light] focus:bg-white focus:ring-2 focus:ring-brand-gold disabled:cursor-not-allowed disabled:opacity-50';
 
 export const WL_OPTION = 'bg-white font-bold text-slate-900';
 
@@ -40,7 +40,7 @@ export const WL_TEXTAREA = `${WL_INPUT} min-h-[5.5rem] resize-y`;
 
 /** Primary CTA — solid gold, dark text (always readable) */
 export const WL_BTN_PRIMARY =
-  'inline-flex items-center justify-center gap-2 rounded-xl bg-[#D4AF37] px-5 py-2.5 text-sm font-extrabold text-black shadow-sm transition-all hover:bg-[#b8952d] active:scale-95 disabled:cursor-not-allowed disabled:opacity-50';
+  'inline-flex items-center justify-center gap-2 rounded-xl bg-brand-gold px-5 py-2.5 text-sm font-extrabold text-[#1A3B2A] shadow-sm transition-all hover:bg-[#C4A030] active:scale-95 disabled:cursor-not-allowed disabled:opacity-50';
 
 /** Secondary / neutral actions */
 export const WL_BTN_SECONDARY =
@@ -52,15 +52,15 @@ export const WL_BTN_GHOST =
 
 /** Icon buttons — pencil / edit */
 export const WL_ICON_BTN_GOLD =
-  'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[#D4AF37]/40 bg-[#D4AF37]/10 p-2 text-[#b8952d] shadow-sm transition-all hover:bg-[#D4AF37]/20 disabled:cursor-not-allowed disabled:opacity-40';
+  'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-brand-gold/40 bg-brand-gold/10 p-2 text-brand-gold shadow-sm transition-all hover:bg-brand-gold/20 disabled:cursor-not-allowed disabled:opacity-40';
 
 /** Icon buttons — reorder arrows */
 export const WL_ICON_BTN_NEUTRAL =
-  'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-slate-100 p-2 text-sm text-slate-700 shadow-sm transition-all hover:bg-slate-200 hover:text-[#b8952d] disabled:cursor-not-allowed disabled:opacity-35';
+  'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-slate-100 p-2 text-sm text-slate-700 shadow-sm transition-all hover:bg-slate-200 hover:text-brand-gold disabled:cursor-not-allowed disabled:opacity-35';
 
 /** Native date input — light field, gold focus */
 export const WL_DATE_INPUT =
-  'wl-date-input w-full cursor-pointer rounded-xl border border-slate-300 bg-slate-50 px-4 py-2.5 text-sm font-bold text-slate-900 outline-none transition-all [color-scheme:light] focus:border-transparent focus:bg-white focus:ring-2 focus:ring-[#D4AF37] disabled:cursor-not-allowed disabled:opacity-50';
+  'wl-date-input w-full cursor-pointer rounded-xl border border-slate-300 bg-slate-50 px-4 py-2.5 text-sm font-bold text-slate-900 outline-none transition-all [color-scheme:light] focus:border-transparent focus:bg-white focus:ring-2 focus:ring-brand-gold disabled:cursor-not-allowed disabled:opacity-50';
 
 /** Destructive */
 export const WL_BTN_DANGER =
@@ -72,7 +72,7 @@ export const WL_BTN_WHATSAPP =
 
 /** Segmented toggle — active / inactive */
 export const WL_TOGGLE_ACTIVE =
-  'bg-[#D4AF37] text-black font-extrabold shadow-sm';
+  'bg-brand-gold text-[#1A3B2A] font-extrabold shadow-sm';
 
 export const WL_TOGGLE_INACTIVE =
   'border border-slate-200 bg-slate-100 text-slate-700 hover:bg-slate-200';

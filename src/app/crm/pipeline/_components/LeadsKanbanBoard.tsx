@@ -258,11 +258,11 @@ function KanbanCard({
         <article
           ref={provided.innerRef}
           {...provided.draggableProps}
-          className={`relative rounded-xl border p-4 shadow-sm transition-all duration-200 hover:shadow-md hover:border-[#D4AF37]/50 ${
+          className={`relative rounded-xl border p-4 shadow-sm transition-all duration-200 hover:shadow-md hover:border-brand-gold/50 ${
             missingRoute
               ? 'border-rose-300 bg-rose-50/40 ring-1 ring-rose-200 dark:border-rose-800/60 dark:bg-rose-950/30 dark:ring-rose-900/40'
               : 'border-slate-200 bg-white dark:border-[#2D3F3A] dark:bg-[#22302C]'
-          } ${snapshot.isDragging ? 'shadow-lg ring-2 ring-[#D4AF37]/40' : ''}`}
+          } ${snapshot.isDragging ? 'shadow-lg ring-2 ring-brand-gold/40' : ''}`}
           dir="rtl"
         >
           <div
@@ -275,17 +275,17 @@ function KanbanCard({
               <Link
                 href={clientHref}
                 onClick={(e) => e.stopPropagation()}
-                className="mb-1 block truncate text-base font-bold text-slate-900 hover:text-[#D4AF37] dark:text-white"
+                className="mb-1 block truncate text-base font-bold text-slate-900 hover:text-brand-gold dark:text-white"
               >
                 {lead.full_name || 'عميل بدون اسم'}
               </Link>
               <p className="flex items-center gap-1 text-xs font-medium text-slate-600 dark:text-slate-300">
-                <MapPin className="h-3.5 w-3.5 shrink-0 text-[#D4AF37]" />
+                <MapPin className="h-3.5 w-3.5 shrink-0 text-brand-gold" />
                 <span className="line-clamp-2">{destination}</span>
               </p>
             </div>
             <div
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-[10px] font-bold text-slate-600 dark:border-[#2D3F3A] dark:bg-[#1A2421] dark:text-[#D4AF37]"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-[10px] font-bold text-slate-600 dark:border-[#2D3F3A] dark:bg-[#1A2421] dark:text-brand-gold"
               title={
                 lead.expertName ? `الخبير: ${lead.expertName}` : 'لم يُعيَّن خبير بعد'
               }
@@ -324,7 +324,7 @@ function KanbanCard({
               ) : (
                 <Rocket className="h-3.5 w-3.5" aria-hidden />
               )}
-              فتح المسار
+              عرض المسار
             </button>
           ) : null}
 
@@ -618,7 +618,7 @@ export function LeadsKanbanBoard() {
   if (loading) {
     return (
       <div className="flex min-h-[40vh] items-center justify-center gap-2 text-slate-500 dark:text-slate-400">
-        <Loader2 className="h-5 w-5 animate-spin text-[#D4AF37]" />
+        <Loader2 className="h-5 w-5 animate-spin text-brand-gold" />
         <span className="text-sm font-medium">جاري تحميل لوحة الطلبات…</span>
       </div>
     );
@@ -628,7 +628,7 @@ export function LeadsKanbanBoard() {
     <div dir="rtl" className="max-w-full overflow-x-hidden">
       <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-400 dark:text-[#D4AF37]/80">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-400 dark:text-brand-gold/80">
             Pipeline
           </p>
           <h1 className="mt-1 text-2xl font-bold text-slate-900 dark:text-white">

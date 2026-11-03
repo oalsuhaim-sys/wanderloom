@@ -2,7 +2,16 @@
 
 import React, { memo, useEffect, useRef, useState } from 'react';
 import { Draggable, Droppable } from '@hello-pangea/dnd';
-import { ChevronDown, ChevronUp, GripVertical, ImagePlus, Pencil, Sparkles, X } from 'lucide-react';
+import {
+  ChevronDown,
+  ChevronUp,
+  GripVertical,
+  ImagePlus,
+  Pencil,
+  Sparkles,
+  Trash2,
+  X,
+} from 'lucide-react';
 import { toast } from '@/lib/crm-toast';
 
 import SupplierWhatsAppButton from '@/app/crm/itineraries/_components/SupplierWhatsAppButton';
@@ -21,9 +30,9 @@ import {
 
 function DayHotelStartCard({ hotelName }: { hotelName: string }) {
   return (
-    <div className="mb-3 flex items-center justify-between rounded-xl border border-[#D4AF37]/35 bg-[#D4AF37]/10 p-4">
+    <div className="mb-3 flex items-center justify-between rounded-xl border border-brand-gold/35 bg-brand-gold/10 p-4">
       <div>
-        <span className="mb-1 block text-xs font-bold text-[#b8952d]">📍 بداية اليوم (الانطلاق)</span>
+        <span className="mb-1 block text-xs font-bold text-brand-gold">📍 بداية اليوم (الانطلاق)</span>
         <h4 className="text-lg font-extrabold text-slate-900">{hotelName}</h4>
       </div>
       <div className="text-sm font-medium text-slate-500">فندق الإقامة</div>
@@ -211,7 +220,7 @@ function StopImageField({
               commitUrl(pasted);
             }
           }}
-          className="min-w-0 flex-1 rounded border border-gray-200 p-2 text-xs focus:border-[#C5A059] focus:outline-none"
+          className="min-w-0 flex-1 rounded border border-gray-200 p-2 text-xs focus:border-brand-gold focus:outline-none"
         />
         <input
           ref={inputRef}
@@ -228,7 +237,7 @@ function StopImageField({
           type="button"
           disabled={curating || uploading}
           onClick={() => void handleCurateImage()}
-          className="inline-flex items-center gap-1.5 rounded-xl border border-[#D4AF37]/50 bg-[#D4AF37]/15 px-3 py-2 text-xs font-bold text-[#9C7A3C] transition hover:bg-[#D4AF37]/25 disabled:opacity-60"
+          className="inline-flex items-center gap-1.5 rounded-xl border border-brand-gold/50 bg-brand-gold/15 px-3 py-2 text-xs font-bold text-brand-gold transition hover:bg-brand-gold/25 disabled:opacity-60"
           title="جلب صورة فاخرة من Unsplash"
         >
           <Sparkles className="h-3.5 w-3.5" aria-hidden />
@@ -238,7 +247,7 @@ function StopImageField({
           type="button"
           disabled={uploading || curating}
           onClick={() => inputRef.current?.click()}
-          className="inline-flex items-center gap-1.5 rounded-xl border border-[#D4AF37]/40 bg-white px-3 py-2 text-xs font-bold text-[#9C7A3C] transition hover:border-[#D4AF37] hover:bg-[#D4AF37]/10 disabled:opacity-60"
+          className="inline-flex items-center gap-1.5 rounded-xl border border-brand-gold/40 bg-white px-3 py-2 text-xs font-bold text-brand-gold transition hover:border-brand-gold hover:bg-brand-gold/10 disabled:opacity-60"
         >
           <ImagePlus className="h-3.5 w-3.5" aria-hidden />
           {uploading ? 'جاري الرفع…' : 'رفع'}
@@ -262,6 +271,7 @@ export type SimpleItineraryDayCardProps = {
   editingDayId: number | null;
   editDayTitle: string;
   onActiveDayIdChange: (dayId: number) => void;
+  onDeleteDay?: (dayIndex: number) => void;
   onMoveDay?: (dayId: number, direction: 'up' | 'down') => void;
   onStartEditTitle: (day: SimpleItineraryDay, dayIdx: number) => void;
   onEditDayTitleChange: (value: string) => void;
@@ -294,6 +304,7 @@ function SimpleItineraryDayCardInner({
   editingDayId,
   editDayTitle,
   onActiveDayIdChange,
+  onDeleteDay,
   onMoveDay,
   onStartEditTitle,
   onEditDayTitleChange,
@@ -314,9 +325,11 @@ function SimpleItineraryDayCardInner({
     <div className="relative">
       <span className={CRM_TIMELINE_DOT} aria-hidden />
       <div
-        className={`${CRM_TIMELINE_CARD} p-4 sm:p-5 ${isActive ? 'ring-2 ring-[#C5A059]/35' : ''}`}
+        className={`${CRM_TIMELINE_CARD} p-4 sm:p-5 ${isActive ? 'ring-2 ring-brand-gold/35' : ''}`}
         onClick={() => onActiveDayIdChange(day.id)}
         onKeyDown={(e) => {
+          const target = e.target as HTMLElement | null;
+          if (target?.closest('input, textarea, select, [contenteditable="true"]')) return;
           if (e.key === 'Enter' || e.key === ' ') onActiveDayIdChange(day.id);
         }}
         role="button"
@@ -367,6 +380,25 @@ function SimpleItineraryDayCardInner({
               >
                 <Pencil className="h-3.5 w-3.5" aria-hidden />
               </button>
+              {onDeleteDay && daysCount > 1 ? (
+                <button
+                  type="button"
+                  title="حذف اليوم"
+                  aria-label={`حذف ${formatAdminDayLabel(day, dayIdx)}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const label = formatAdminDayLabel(day, dayIdx);
+                    const ok = window.confirm(
+                      `هل أنت متأكد من حذف «${label}»؟ لا يمكن التراجع عن هذا الإجراء.`,
+                    );
+                    if (!ok) return;
+                    onDeleteDay(dayIdx);
+                  }}
+                  className={`${WL_ICON_BTN_NEUTRAL} text-red-500 hover:border-red-300 hover:bg-red-50 hover:text-red-700`}
+                >
+                  <Trash2 className="h-3.5 w-3.5" aria-hidden />
+                </button>
+              ) : null}
             </div>
           )}
 
@@ -400,7 +432,7 @@ function SimpleItineraryDayCardInner({
               </div>
             ) : null}
             {isActive ? (
-              <span className="rounded-md border border-[#D4AF37]/40 bg-[#D4AF37]/15 px-2 py-1 text-xs font-bold text-[#D4AF37]">
+              <span className="rounded-md border border-brand-gold/40 bg-brand-gold/15 px-2 py-1 text-xs font-bold text-brand-gold">
                 اليوم النشط
               </span>
             ) : null}
@@ -456,7 +488,7 @@ function SimpleItineraryDayCardInner({
                 ref={provided.innerRef}
                 {...provided.droppableProps}
                 className={`min-h-[72px] rounded-xl transition-colors ${
-                  snapshot.isDraggingOver ? 'bg-[#C5A059]/10 ring-2 ring-[#C5A059]/30' : ''
+                  snapshot.isDraggingOver ? 'bg-brand-gold/10 ring-2 ring-brand-gold/30' : ''
                 }`}
               >
                 {day.places.length === 0 ? (
@@ -474,8 +506,8 @@ function SimpleItineraryDayCardInner({
                               {...dragProvided.draggableProps}
                               className={`mb-4 flex items-start justify-between gap-3 rounded-2xl border bg-slate-50/80 p-5 shadow-sm ${
                                 dragSnapshot.isDragging
-                                  ? 'border-[#D4AF37] shadow-md'
-                                  : 'border-slate-200/90 hover:border-[#D4AF37]/40'
+                                  ? 'border-brand-gold shadow-md'
+                                  : 'border-slate-200/90 hover:border-brand-gold/40'
                               } transition-colors`}
                             >
                               <div className="flex min-w-0 flex-1 items-start gap-2">
@@ -519,7 +551,7 @@ function SimpleItineraryDayCardInner({
                                       onChange={(e) =>
                                         onUpdateVisitTime(day.id, placeIndex, e.target.value)
                                       }
-                                      className="rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-sm font-bold text-slate-800 outline-none focus:ring-2 focus:ring-[#D4AF37] [color-scheme:light]"
+                                      className="rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-sm font-bold text-slate-800 outline-none focus:ring-2 focus:ring-brand-gold [color-scheme:light]"
                                     />
                                   </div>
                                   <div className="mt-2">
@@ -530,7 +562,12 @@ function SimpleItineraryDayCardInner({
                                       onChange={(e) =>
                                         onUpdatePlaceNotes(day.id, placeIndex, e.target.value)
                                       }
-                                      className="w-full rounded border border-gray-200 p-2 text-xs focus:border-[#C5A059] focus:outline-none"
+                                      onKeyDown={(e) => {
+                                        if (e.key === ' ' || e.code === 'Space') {
+                                          e.stopPropagation();
+                                        }
+                                      }}
+                                      className="w-full rounded border border-gray-200 p-2 text-xs focus:border-brand-gold focus:outline-none"
                                     />
                                   </div>
                                   <StopImageField
@@ -567,7 +604,7 @@ function SimpleItineraryDayCardInner({
                                           }
                                         }}
                                         aria-label={`نقل ${place.name ?? 'المحطة'} إلى يوم آخر`}
-                                        className="rounded border border-gray-200 bg-gray-50 p-1 text-xs text-gray-700 focus:border-[#C5A059] focus:outline-none"
+                                        className="rounded border border-gray-200 bg-gray-50 p-1 text-xs text-gray-700 focus:border-brand-gold focus:outline-none"
                                       >
                                         {allDays.map((d, idx) => (
                                           <option key={d.id} value={d.id}>
@@ -606,7 +643,7 @@ function SimpleItineraryDayCardInner({
 
                         {placeIndex < day.places.length - 1 ? (
                           <div className="flex flex-col items-center gap-1 py-1">
-                            <div className="h-3 w-px border-r-2 border-dashed border-[#D4AF37]/30" />
+                            <div className="h-3 w-px border-r-2 border-dashed border-brand-gold/30" />
                             <div className="flex flex-wrap items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 shadow-sm">
                               {TRANSPORT_MODES.map((mode) => {
                                 const selected = (place.transportToNext ?? 'سيارة') === mode.value;
@@ -625,7 +662,7 @@ function SimpleItineraryDayCardInner({
                                     }
                                     className={`min-w-[2.5rem] rounded-xl border px-2 py-1.5 text-base transition-all ${
                                       selected
-                                        ? 'border-[#D4AF37] bg-[#D4AF37] text-black shadow-sm'
+                                        ? 'border-brand-gold bg-brand-gold text-black shadow-sm'
                                         : 'border-slate-200 bg-slate-100 text-slate-700 hover:bg-slate-200'
                                     }`}
                                   >
@@ -664,7 +701,7 @@ function SimpleItineraryDayCardInner({
                                 />
                               ) : null}
                             </div>
-                            <div className="h-3 w-px border-r-2 border-dashed border-[#D4AF37]/30" />
+                            <div className="h-3 w-px border-r-2 border-dashed border-brand-gold/30" />
                           </div>
                         ) : null}
                       </React.Fragment>

@@ -20,11 +20,11 @@ export default function VipPreTripServicesCard({ services }: VipPreTripServicesC
   return (
     <div className="relative mb-10 mt-4">
       <div className="mb-5 flex items-center gap-3">
-        <div className="h-px flex-1 bg-gradient-to-l from-transparent to-[#D4AF37]/50" />
-        <h3 className="text-lg font-bold tracking-wide text-[#D4AF37]">
+        <div className="h-px flex-1 bg-gradient-to-l from-transparent to-brand-gold/50" />
+        <h3 className="text-lg font-bold tracking-wide text-brand-gold">
           ✨ هدايا وخدمات ما قبل السفر
         </h3>
-        <div className="h-px flex-1 bg-gradient-to-r from-transparent to-[#D4AF37]/50" />
+        <div className="h-px flex-1 bg-gradient-to-r from-transparent to-brand-gold/50" />
       </div>
 
       <div className="space-y-4">
@@ -35,9 +35,9 @@ export default function VipPreTripServicesCard({ services }: VipPreTripServicesC
           return (
             <div
               key={`${service.title}-${i}`}
-              className="relative overflow-hidden rounded-xl border border-[#D4AF37]/30 bg-white p-5 shadow-sm"
+              className="relative overflow-hidden rounded-xl border border-brand-gold/30 bg-white p-5 shadow-sm"
             >
-              <div className="absolute right-0 top-0 h-full w-1.5 bg-[#D4AF37]/80" aria-hidden />
+              <div className="absolute right-0 top-0 h-full w-1.5 bg-brand-gold/80" aria-hidden />
 
               <h4 className="mb-3 text-xl font-bold text-gray-900">{service.title}</h4>
 
@@ -53,7 +53,7 @@ export default function VipPreTripServicesCard({ services }: VipPreTripServicesC
                     <span aria-hidden>📞</span>
                     <a
                       href={`tel:${service.phone.trim().replace(/\s+/g, '')}`}
-                      className="font-semibold transition hover:text-[#D4AF37]"
+                      className="font-semibold transition hover:text-brand-gold"
                       dir="ltr"
                     >
                       {service.phone.trim()}
@@ -67,7 +67,7 @@ export default function VipPreTripServicesCard({ services }: VipPreTripServicesC
                       href={mapHref}
                       target="_blank"
                       rel="noreferrer"
-                      className="font-semibold text-[#D4AF37] transition hover:underline"
+                      className="font-semibold text-brand-gold transition hover:underline"
                     >
                       عرض الموقع على الخريطة
                     </a>

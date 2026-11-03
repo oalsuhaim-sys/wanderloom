@@ -26,7 +26,7 @@ import {
 } from '@/lib/client-teaser-portal';
 
 const PANEL =
-  'rounded-[1.75rem] border border-[#d4af37]/20 bg-gradient-to-b from-[#121816]/95 to-[#0a0d0b]/95 p-6 shadow-[0_24px_80px_rgba(0,0,0,0.45)] backdrop-blur-sm sm:p-8';
+  'rounded-[1.75rem] border border-brand-gold/20 bg-gradient-to-b from-[#121816]/95 to-[#0a0d0b]/95 p-6 shadow-[0_24px_80px_rgba(0,0,0,0.45)] backdrop-blur-sm sm:p-8';
 
 const FADE =
   'animate-[portalFadeIn_0.8s_ease-out_both]';
@@ -67,7 +67,7 @@ export function ClientTeaserPortalView({ data }: ClientTeaserPortalViewProps) {
 
       <div className="mx-auto max-w-3xl px-4 py-10 sm:py-14">
         <header className={`mb-10 text-center ${FADE}`}>
-          <p className="text-[10px] font-black uppercase tracking-[0.45em] text-[#d4af37]/80">
+          <p className="text-[10px] font-black uppercase tracking-[0.45em] text-brand-gold/80">
             Wanderloom · Private Portal
           </p>
           <h1 className="mt-3 text-2xl font-black text-white sm:text-3xl">
@@ -75,7 +75,7 @@ export function ClientTeaserPortalView({ data }: ClientTeaserPortalViewProps) {
           </h1>
           <p className="mt-2 text-sm font-semibold text-white/50">
             بوابتك التشويقية لـ{' '}
-            <span className="text-[#d4af37]">{data.tripTitle}</span>
+            <span className="text-brand-gold">{data.tripTitle}</span>
           </p>
         </header>
 
@@ -112,13 +112,13 @@ export function ClientTeaserPortalView({ data }: ClientTeaserPortalViewProps) {
 
         {!data.paymentDueOnly && !data.onboardingCompleted ? (
           <section
-            className={`${PANEL} ${FADE} mb-6 border-[#d4af37]/30`}
+            className={`${PANEL} ${FADE} mb-6 border-brand-gold/30`}
             style={{ animationDelay: '0.08s' }}
             aria-label="نموذج التعارف"
           >
             <div className="flex items-start gap-3">
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#d4af37]/15 ring-1 ring-[#d4af37]/30">
-                <Dna className="h-5 w-5 text-[#d4af37]" aria-hidden />
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-gold/15 ring-1 ring-brand-gold/30">
+                <Dna className="h-5 w-5 text-brand-gold" aria-hidden />
               </span>
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-black text-white">نموذج التعارف VIP</p>
@@ -128,7 +128,7 @@ export function ClientTeaserPortalView({ data }: ClientTeaserPortalViewProps) {
                 </p>
                 <a
                   href={data.dnaWelcomeUrl}
-                  className="mt-4 inline-flex w-full items-center justify-center rounded-xl bg-[#d4af37] px-4 py-3 text-xs font-black text-[#0a0d0b] shadow-[0_8px_30px_rgba(212,175,55,0.2)] transition hover:brightness-110 sm:w-auto"
+                  className="mt-4 inline-flex w-full items-center justify-center rounded-xl bg-brand-gold px-4 py-3 text-xs font-black text-[#0a0d0b] shadow-[0_8px_30px_rgba(212,175,55,0.2)] transition hover:brightness-110 sm:w-auto"
                 >
                   املأ نموذج التعارف ✨
                 </a>
@@ -145,7 +145,7 @@ export function ClientTeaserPortalView({ data }: ClientTeaserPortalViewProps) {
           style={{ animationDelay: '0.1s' }}
           aria-label="العداد التنازلي"
         >
-          <div className="mb-4 flex items-center justify-center gap-2 text-[#d4af37]/70">
+          <div className="mb-4 flex items-center justify-center gap-2 text-brand-gold/70">
             <Sparkles className="h-4 w-4" aria-hidden />
             <span className="text-[11px] font-black tracking-wide">العداد التنازلي</span>
           </div>
@@ -159,11 +159,11 @@ export function ClientTeaserPortalView({ data }: ClientTeaserPortalViewProps) {
           aria-label="الملخص المالي"
         >
           <div className="mb-4 flex items-center gap-2">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#d4af37]/15 ring-1 ring-[#d4af37]/30">
-              <Wallet className="h-4 w-4 text-[#d4af37]" aria-hidden />
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-gold/15 ring-1 ring-brand-gold/30">
+              <Wallet className="h-4 w-4 text-brand-gold" aria-hidden />
             </span>
             <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.25em] text-[#d4af37]/70">
+              <p className="text-[10px] font-black uppercase tracking-[0.25em] text-brand-gold/70">
                 Financial Snapshot
               </p>
               <h2 className="text-sm font-black text-white">الملخص المالي</h2>
@@ -188,7 +188,7 @@ export function ClientTeaserPortalView({ data }: ClientTeaserPortalViewProps) {
         {/* Teaser cards */}
         <section aria-label="بطاقات التشويق">
           <div className={`mb-4 text-center ${FADE}`} style={{ animationDelay: '0.25s' }}>
-            <p className="text-[10px] font-black uppercase tracking-[0.35em] text-[#d4af37]/70">
+            <p className="text-[10px] font-black uppercase tracking-[0.35em] text-brand-gold/70">
               Teasers
             </p>
             <h2 className="mt-1 text-lg font-black text-white">لمحات قبل الانطلاق</h2>
@@ -201,13 +201,13 @@ export function ClientTeaserPortalView({ data }: ClientTeaserPortalViewProps) {
             {TEASER_CARDS.map((card, index) => (
               <article
                 key={card.id}
-                className={`${PANEL} ${FADE} flex flex-col transition duration-300 hover:-translate-y-1 hover:border-[#d4af37]/40 hover:shadow-[0_20px_50px_rgba(212,175,55,0.12)]`}
+                className={`${PANEL} ${FADE} flex flex-col transition duration-300 hover:-translate-y-1 hover:border-brand-gold/40 hover:shadow-[0_20px_50px_rgba(212,175,55,0.12)]`}
                 style={{ animationDelay: `${0.3 + index * 0.1}s` }}
               >
-                <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-[#d4af37]/25 bg-[#d4af37]/10">
+                <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-brand-gold/25 bg-brand-gold/10">
                   <TeaserIcon name={card.icon} />
                 </div>
-                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#d4af37]/65">
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-brand-gold/65">
                   {card.titleEn}
                 </p>
                 <h3 className="mt-1 text-base font-black text-white">{card.title}</h3>
@@ -219,7 +219,7 @@ export function ClientTeaserPortalView({ data }: ClientTeaserPortalViewProps) {
                     href={data.spotifyUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="mt-5 inline-flex items-center justify-center gap-2 rounded-xl border border-[#d4af37]/35 bg-[#d4af37]/10 px-4 py-2.5 text-xs font-black text-[#d4af37] transition hover:bg-[#d4af37]/20"
+                    className="mt-5 inline-flex items-center justify-center gap-2 rounded-xl border border-brand-gold/35 bg-brand-gold/10 px-4 py-2.5 text-xs font-black text-brand-gold transition hover:bg-brand-gold/20"
                   >
                     <Headphones className="h-3.5 w-3.5" aria-hidden />
                     استمع على Spotify
@@ -237,11 +237,11 @@ export function ClientTeaserPortalView({ data }: ClientTeaserPortalViewProps) {
             aria-label="الملخص المالي"
           >
             <div className="mb-4 flex items-center gap-2">
-              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#d4af37]/15 ring-1 ring-[#d4af37]/30">
-                <Wallet className="h-4 w-4 text-[#d4af37]" aria-hidden />
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-gold/15 ring-1 ring-brand-gold/30">
+                <Wallet className="h-4 w-4 text-brand-gold" aria-hidden />
               </span>
               <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.25em] text-[#d4af37]/70">
+                <p className="text-[10px] font-black uppercase tracking-[0.25em] text-brand-gold/70">
                   Payment Summary
                 </p>
                 <h2 className="text-sm font-black text-white">ملخص الدفعة المطلوبة</h2>
@@ -284,7 +284,7 @@ function GroupMemberStatusBanner({
           ? 'border-rose-400/35 bg-gradient-to-b from-rose-950/50 via-rose-950/20 to-[#121816]/95 text-rose-50'
           : badge.tone === 'amber'
             ? 'border-amber-400/40 bg-gradient-to-b from-amber-950/50 via-amber-950/20 to-[#121816]/95 text-amber-50'
-            : 'border-[#d4af37]/30 bg-gradient-to-b from-[#121816]/95 to-[#0a0d0b]/95 text-white';
+            : 'border-brand-gold/30 bg-gradient-to-b from-[#121816]/95 to-[#0a0d0b]/95 text-white';
 
   const pillClass =
     badge.tone === 'green'
@@ -295,7 +295,7 @@ function GroupMemberStatusBanner({
           ? 'bg-rose-500/20 text-rose-200 ring-rose-400/30'
           : badge.tone === 'amber'
             ? 'bg-amber-500/20 text-amber-200 ring-amber-400/30'
-            : 'bg-[#d4af37]/15 text-[#d4af37] ring-[#d4af37]/30';
+            : 'bg-brand-gold/15 text-brand-gold ring-brand-gold/30';
 
   return (
     <section
@@ -347,12 +347,12 @@ function PendingInvoiceCard({ invoice }: { invoice: ClientTeaserPendingInvoice }
           <p className="text-sm font-black text-amber-50">
             {INVOICE_TYPE_LABEL[invoice.type]}
           </p>
-          <p className="mt-1 text-lg font-black text-[#d4af37]" dir="ltr">
+          <p className="mt-1 text-lg font-black text-brand-gold" dir="ltr">
             {formatInvoiceAmount(invoice.amount)}
           </p>
           <a
             href={invoice.url}
-            className="mt-4 inline-flex w-full items-center justify-center rounded-xl bg-[#d4af37] px-4 py-3.5 text-sm font-black text-[#0a0d0b] shadow-[0_8px_30px_rgba(212,175,55,0.25)] transition hover:brightness-110"
+            className="mt-4 inline-flex w-full items-center justify-center rounded-xl bg-brand-gold px-4 py-3.5 text-sm font-black text-[#0a0d0b] shadow-[0_8px_30px_rgba(212,175,55,0.25)] transition hover:brightness-110"
           >
             اضغط للسداد
           </a>
@@ -372,7 +372,7 @@ function MiniStat({
   tone: 'gold' | 'emerald' | 'amber';
 }) {
   const tones = {
-    gold: 'border-[#d4af37]/25 bg-[#d4af37]/10 text-[#d4af37]',
+    gold: 'border-brand-gold/25 bg-brand-gold/10 text-brand-gold',
     emerald: 'border-emerald-400/20 bg-emerald-500/10 text-emerald-300',
     amber: 'border-amber-400/20 bg-amber-500/10 text-amber-200',
   };
@@ -387,7 +387,7 @@ function MiniStat({
 }
 
 function TeaserIcon({ name }: { name: 'compass' | 'headphones' | 'suitcase' }) {
-  const className = 'h-6 w-6 text-[#d4af37]';
+  const className = 'h-6 w-6 text-brand-gold';
   if (name === 'compass') return <Compass className={className} aria-hidden />;
   if (name === 'headphones') return <Headphones className={className} aria-hidden />;
   return <Luggage className={className} aria-hidden />;

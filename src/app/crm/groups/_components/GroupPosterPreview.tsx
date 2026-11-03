@@ -99,7 +99,7 @@ const DEFAULT_CINEMATIC = DEFAULT_COVER;
 
 const PANEL_LABEL = 'mb-1.5 block text-sm font-extrabold text-slate-800';
 const PANEL_INPUT =
-  'w-full rounded-xl border border-slate-300 bg-slate-50 p-3 text-sm font-bold text-slate-900 outline-none transition focus:bg-white focus:ring-2 focus:ring-[#D4AF37]';
+  'w-full rounded-xl border border-slate-300 bg-slate-50 p-3 text-sm font-bold text-slate-900 outline-none transition focus:bg-white focus:ring-2 focus:ring-brand-gold';
 const PANEL_SELECT = `${PANEL_INPUT} appearance-none pe-9 [color-scheme:light]`;
 const SELECT_CHEVRON_STYLE = {
   backgroundImage:
@@ -377,10 +377,10 @@ export default function GroupPosterPreview({
     <section className="space-y-4 border-t border-slate-200 pt-5" dir="rtl">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="text-[10px] font-black uppercase tracking-[0.28em] text-[#b8952d]">
+          <p className="text-[10px] font-black uppercase tracking-[0.28em] text-brand-gold">
             Marketing Poster
           </p>
-          <h3 className="mt-1 text-sm font-black text-[#D4AF37]">مولّد البوستر التسويقي</h3>
+          <h3 className="mt-1 text-sm font-black text-brand-gold">مولّد البوستر التسويقي</h3>
           <p className="mt-1 text-xs font-semibold text-slate-500">
             غلاف سينمائي تلقائي حسب الوجهة — مع شعار الشريك ومشرف الرحلة.
           </p>
@@ -420,7 +420,7 @@ export default function GroupPosterPreview({
 
           <label className="block min-w-0">
             <span className={`${PANEL_LABEL} flex items-center gap-1.5`}>
-              <UserRound className="h-3.5 w-3.5 text-[#D4AF37]" aria-hidden />
+              <UserRound className="h-3.5 w-3.5 text-brand-gold" aria-hidden />
               مشرف الرحلة
             </span>
             <select
@@ -439,7 +439,7 @@ export default function GroupPosterPreview({
             </select>
             {leadersLoading ? (
               <p className="mt-1.5 inline-flex items-center gap-1.5 text-[11px] font-bold text-slate-500">
-                <Loader2 className="h-3 w-3 animate-spin text-[#D4AF37]" aria-hidden />
+                <Loader2 className="h-3 w-3 animate-spin text-brand-gold" aria-hidden />
                 جاري تحميل المشرفين…
               </p>
             ) : leadersError ? (
@@ -449,7 +449,7 @@ export default function GroupPosterPreview({
 
           <div className="min-w-0">
             <span className={`${PANEL_LABEL} flex items-center gap-1.5`}>
-              <ImagePlus className="h-3.5 w-3.5 text-[#D4AF37]" aria-hidden />
+              <ImagePlus className="h-3.5 w-3.5 text-brand-gold" aria-hidden />
               رفع شعار الشريك (اختياري)
             </span>
             <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3">
@@ -493,12 +493,12 @@ export default function GroupPosterPreview({
                 >
                   {logoUploading ? (
                     <>
-                      <Loader2 className="h-4 w-4 animate-spin text-[#D4AF37]" aria-hidden />
+                      <Loader2 className="h-4 w-4 animate-spin text-brand-gold" aria-hidden />
                       جاري الرفع…
                     </>
                   ) : (
                     <>
-                      <Upload className="h-4 w-4 text-[#D4AF37]" aria-hidden />
+                      <Upload className="h-4 w-4 text-brand-gold" aria-hidden />
                       اختر صورة الشعار
                     </>
                   )}
@@ -514,7 +514,7 @@ export default function GroupPosterPreview({
             className={`flex w-full items-center justify-center gap-2 rounded-xl py-3.5 text-base font-black shadow-md transition-all ${
               !isImageReady || downloading
                 ? 'cursor-not-allowed bg-slate-200 text-slate-500'
-                : 'bg-[#D4AF37] text-black hover:bg-[#b8952d]'
+                : 'bg-brand-gold text-black hover:bg-brand-gold'
             }`}
           >
             {!isImageReady ? (
@@ -614,7 +614,7 @@ export default function GroupPosterPreview({
               </div>
             </div>
 
-            <p className="mb-1 text-xs font-black uppercase tracking-widest text-[#D4AF37] drop-shadow">
+            <p className="mb-1 text-xs font-black uppercase tracking-widest text-brand-gold drop-shadow">
               GROUP JOURNEY
             </p>
             <h1 className="mb-2 text-2xl font-black leading-tight text-white drop-shadow-lg">
@@ -658,7 +658,7 @@ export default function GroupPosterPreview({
 
             <div className="relative z-10">
               <div className="mb-3.5 border-b border-white/15 pb-3.5 text-center">
-                <span className="text-2xl font-black tracking-tight text-[#D4AF37]">
+                <span className="text-2xl font-black tracking-tight text-brand-gold">
                   {priceLabel}
                 </span>
               </div>

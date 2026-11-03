@@ -28,13 +28,13 @@ export default function VipClientFinancialSummary({ budget, budgetSummary }: Pro
 
   return (
     <section
-      className="overflow-hidden rounded-2xl border border-[#D4AF37]/30 bg-white shadow-md"
+      className="overflow-hidden rounded-2xl border border-brand-gold/30 bg-white shadow-md"
       aria-labelledby="vip-financial-summary-title"
     >
-      <div className="border-b border-[#D4AF37]/20 bg-[#1E2720] px-5 py-4">
+      <div className="border-b border-brand-gold/20 bg-[#1E2720] px-5 py-4">
         <h2
           id="vip-financial-summary-title"
-          className="flex items-center gap-2 text-base font-black text-[#D4AF37]"
+          className="flex items-center gap-2 text-base font-black text-brand-gold"
         >
           <Wallet className="h-5 w-5 shrink-0" aria-hidden />
           الملخص المالي
@@ -60,7 +60,7 @@ export default function VipClientFinancialSummary({ budget, budgetSummary }: Pro
                   {formatAmount(totalBudget, currency)}
                 </p>
               </div>
-              <div className="rounded-xl border border-[#D4AF37]/25 bg-[#D4AF37]/8 px-4 py-3.5">
+              <div className="rounded-xl border border-brand-gold/25 bg-brand-gold/8 px-4 py-3.5">
                 <p className="text-[10px] font-black uppercase tracking-wider text-gray-500">
                   المبلغ المدفوع
                 </p>
@@ -73,7 +73,7 @@ export default function VipClientFinancialSummary({ budget, budgetSummary }: Pro
             <div
               className={`rounded-xl border px-4 py-4 ${
                 fullyPaid
-                  ? 'border-emerald-500/35 bg-gradient-to-l from-emerald-50/90 to-[#D4AF37]/10'
+                  ? 'border-emerald-500/35 bg-gradient-to-l from-emerald-50/90 to-brand-gold/10'
                   : 'border-gray-200 bg-white'
               }`}
             >
@@ -113,7 +113,7 @@ export default function VipClientFinancialSummary({ budget, budgetSummary }: Pro
 
         {budgetSummary?.trim() ? (
           <div className="rounded-xl border border-gray-200 bg-[#FAFAFA] px-4 py-3">
-            <p className="mb-1 text-[10px] font-black uppercase tracking-wider text-[#D4AF37]">
+            <p className="mb-1 text-[10px] font-black uppercase tracking-wider text-brand-gold">
               ملاحظات مالية
             </p>
             <p className="whitespace-pre-wrap text-sm leading-relaxed text-gray-600">

@@ -50,13 +50,13 @@ export default function VipClientTabNav({ activeTab, onTabChange }: Props) {
               onClick={() => onTabChange(id)}
               className={`flex flex-1 flex-col items-center gap-1 rounded-2xl px-2 py-2.5 transition sm:flex-row sm:gap-2 sm:px-4 sm:py-3 ${
                 active
-                  ? 'bg-[#1E2720] text-white shadow-md ring-2 ring-[#D4AF37]/50'
-                  : 'bg-white text-gray-600 ring-1 ring-gray-200 hover:ring-[#D4AF37]/40'
+                  ? 'bg-[#1E2720] text-white shadow-md ring-2 ring-brand-gold/50'
+                  : 'bg-white text-gray-600 ring-1 ring-gray-200 hover:ring-brand-gold/40'
               }`}
               aria-current={active ? 'page' : undefined}
             >
               <Icon
-                className={`h-4 w-4 shrink-0 ${active ? 'text-[#D4AF37]' : 'text-gray-400'}`}
+                className={`h-4 w-4 shrink-0 ${active ? 'text-brand-gold' : 'text-gray-400'}`}
                 aria-hidden
               />
               <span className="text-[10px] font-black leading-tight sm:text-xs">{label}</span>

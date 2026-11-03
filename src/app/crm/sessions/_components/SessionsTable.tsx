@@ -5,6 +5,7 @@ import { ExternalLink, MapPin, Pencil, Trash2, Users, Video } from 'lucide-react
 
 import type { Session, SessionRegistration } from '@/types/session-tables';
 import { CRM_BTN_PRIMARY, partnerInitials } from '@/lib/crm-luxury-ui';
+import { formatSessionTimeLabel } from '@/lib/session-time';
 
 type SessionsTableProps = {
   sessions: Session[];
@@ -103,6 +104,7 @@ export function SessionsTable({ sessions, registrations, loading, onEdit, onDele
           const month = d
             ? d.toLocaleDateString('ar-SA', { month: 'short' })
             : String(s.date).slice(5, 7) || '—';
+          const timeLabel = formatSessionTimeLabel(s.time, 'ar');
           const lead = regs[0];
           const joinHref = inPerson
             ? s.location_url || '/portal/sessions'
@@ -122,6 +124,11 @@ export function SessionsTable({ sessions, registrations, loading, onEdit, onDele
                     <span className="mt-1 text-[10px] font-semibold text-slate-500 dark:text-slate-400">
                       {month}
                     </span>
+                    {timeLabel ? (
+                      <span className="mt-1 text-[10px] font-semibold text-slate-500 dark:text-slate-400" dir="ltr">
+                        {timeLabel}
+                      </span>
+                    ) : null}
                   </div>
 
                   <div className="min-w-0 flex-1">
@@ -143,7 +150,7 @@ export function SessionsTable({ sessions, registrations, loading, onEdit, onDele
 
                     {lead ? (
                       <div className="mt-2 flex items-center gap-2">
-                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-900 text-[10px] font-bold text-white dark:bg-[#D4AF37] dark:text-slate-900">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-900 text-[10px] font-bold text-white dark:bg-brand-gold dark:text-slate-900">
                           {partnerInitials(lead.name)}
                         </div>
                         <div className="min-w-0">

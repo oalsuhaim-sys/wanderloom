@@ -16,7 +16,7 @@ export function GroupOnboardingStepNav({
   return (
     <div className="flex items-center justify-between border-b border-slate-100 pb-4">
       <span
-        style={brandGoldBadgeStyle}
+        style={{ ...brandGoldBadgeStyle, borderColor: '#C59B27', color: '#B8860B' }}
         className="rounded-xl border px-3 py-1 text-xs font-extrabold"
       >
         خطوة {currentStep} من 3

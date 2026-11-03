@@ -55,7 +55,7 @@ const cardClass = vipCardClass;
 /** تسميات قراءة فوق خلفية الكرت الداكن (لوحة التحكم) */
 const labelOnDarkClass = 'mb-1 block text-xs font-bold text-slate-800';
 /** تسميات ذهبية — مركز القيادة والميزانية */
-const goldLabelClass = 'mb-1 block text-xs font-bold text-[#D4AF37]';
+const goldLabelClass = 'mb-1 block text-xs font-bold text-brand-gold';
 const commandPanelClass = 'rounded-2xl border border-amber-500/20 bg-[#060b14]/70 p-5 ring-1 ring-amber-400/10';
 /** حقول إدخال واضحة التباين (WCAG-friendly) */
 const contrastInputClass =
@@ -631,7 +631,7 @@ export default function ItineraryBuilderWorkspace({ itineraryId }: ItineraryBuil
               <label
                 className={`path-type-option inline-flex cursor-pointer items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-bold shadow-sm transition ${
                   draft.tripMode === 'Individual'
-                    ? 'active border-[#D4AF37] bg-[#FEF08A] !text-[#0F172A]'
+                    ? 'active border-brand-gold bg-[#FEF08A] !text-[#0F172A]'
                     : 'border-slate-200 bg-white text-gray-900'
                 }`}
               >
@@ -651,7 +651,7 @@ export default function ItineraryBuilderWorkspace({ itineraryId }: ItineraryBuil
               <label
                 className={`path-type-option inline-flex cursor-pointer items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-bold shadow-sm transition ${
                   draft.tripMode === 'Group'
-                    ? 'active border-[#D4AF37] bg-[#FEF08A] !text-[#0F172A]'
+                    ? 'active border-brand-gold bg-[#FEF08A] !text-[#0F172A]'
                     : 'border-slate-200 bg-white text-gray-900'
                 }`}
               >
@@ -770,7 +770,7 @@ export default function ItineraryBuilderWorkspace({ itineraryId }: ItineraryBuil
           <div className="mt-6 space-y-5 border-t border-amber-500/20 pt-6">
             <div>
               <h3 className="mb-3 inline-flex items-center gap-2 text-sm font-black text-slate-900">
-                <Globe className="h-4 w-4 text-[#D4AF37]" />
+                <Globe className="h-4 w-4 text-brand-gold" />
                 مركز القيادة
               </h3>
               <div className={commandPanelClass}>
@@ -806,7 +806,7 @@ export default function ItineraryBuilderWorkspace({ itineraryId }: ItineraryBuil
             </div>
 
             <div className={commandPanelClass}>
-              <h3 className="mb-1 text-sm font-black text-[#D4AF37]">تبويب الرئيسية — للعميل VIP</h3>
+              <h3 className="mb-1 text-sm font-black text-brand-gold">تبويب الرئيسية — للعميل VIP</h3>
               <p className="mb-4 text-[11px] font-semibold text-slate-500">
                 الطقس نصي؛ الميزانية والبوردينق والحقيبة تُبنى تلقائياً من الحقول المنظّمة.
               </p>
@@ -825,7 +825,7 @@ export default function ItineraryBuilderWorkspace({ itineraryId }: ItineraryBuil
             </div>
 
             <div className={commandPanelClass}>
-              <h3 className="mb-1 text-sm font-black text-[#D4AF37]">بطاقة الصعود — flight_details</h3>
+              <h3 className="mb-1 text-sm font-black text-brand-gold">بطاقة الصعود — flight_details</h3>
               <p className="mb-4 text-[11px] font-semibold text-slate-500">
                 تظهر كتذكرة صعود للعميل عند إدخال رقم الرحلة.
               </p>
@@ -1147,7 +1147,7 @@ export default function ItineraryBuilderWorkspace({ itineraryId }: ItineraryBuil
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h2 className="inline-flex items-center gap-2 text-lg font-black text-slate-800">
-                <CalendarDays className="h-5 w-5 text-[#D4AF37]" />
+                <CalendarDays className="h-5 w-5 text-brand-gold" />
                 بناء الأيام — Wanderlog
               </h2>
               <p className="mt-1 text-xs font-medium text-slate-500">
@@ -1157,7 +1157,7 @@ export default function ItineraryBuilderWorkspace({ itineraryId }: ItineraryBuil
             <button
               type="button"
               onClick={addDay}
-              className="inline-flex items-center gap-1 rounded-xl border border-[#D4AF37]/40 bg-[#D4AF37]/15 px-3 py-2 text-xs font-black text-[#D4AF37] hover:bg-[#D4AF37]/25"
+              className="inline-flex items-center gap-1 rounded-xl border border-brand-gold/40 bg-brand-gold/15 px-3 py-2 text-xs font-black text-brand-gold hover:bg-brand-gold/25"
             >
               <Plus className="h-3.5 w-3.5" />
               إضافة يوم
@@ -1166,7 +1166,7 @@ export default function ItineraryBuilderWorkspace({ itineraryId }: ItineraryBuil
 
           {loadingItinerary ? (
             <div className="flex justify-center py-16">
-              <Loader2 className="h-8 w-8 animate-spin text-[#D4AF37]" />
+              <Loader2 className="h-8 w-8 animate-spin text-brand-gold" />
             </div>
           ) : fetchError ? (
             <p className="rounded-xl bg-red-500/10 px-4 py-3 text-sm font-bold text-red-200">{fetchError}</p>

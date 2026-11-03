@@ -95,7 +95,7 @@ export default function UpdatePasswordForm() {
       <div className="rounded-[2rem] border border-[#1e3f20]/10 bg-white p-8 shadow-lg">
         {checking ? (
           <div className="flex justify-center py-10">
-            <Loader2 className="h-8 w-8 animate-spin text-[#cda04c]" />
+            <Loader2 className="h-8 w-8 animate-spin text-brand-gold" />
           </div>
         ) : !ready ? (
           <div className="space-y-4 text-right">
@@ -104,7 +104,7 @@ export default function UpdatePasswordForm() {
             </p>
             <Link
               href="/forgot-password"
-              className="block text-center text-sm font-black text-[#cda04c]"
+              className="block text-center text-sm font-black text-brand-gold"
             >
               طلب رابط جديد
             </Link>
@@ -119,7 +119,7 @@ export default function UpdatePasswordForm() {
 
             <label className="block">
               <span className="mb-2 flex items-center gap-2 text-xs font-black text-gray-600">
-                <Lock className="h-3.5 w-3.5 text-[#cda04c]" />
+                <Lock className="h-3.5 w-3.5 text-brand-gold" />
                 كلمة المرور الجديدة
               </span>
               <input
@@ -127,14 +127,14 @@ export default function UpdatePasswordForm() {
                 autoComplete="new-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full rounded-2xl border border-[#1e3f20]/15 bg-[#FDFBF7] px-4 py-3.5 text-sm outline-none focus:ring-2 focus:ring-[#cda04c]/30"
+                className="w-full rounded-2xl border border-[#1e3f20]/15 bg-[#FDFBF7] px-4 py-3.5 text-sm outline-none focus:ring-2 focus:ring-brand-gold/30"
                 placeholder="••••••••"
               />
             </label>
 
             <label className="block">
               <span className="mb-2 flex items-center gap-2 text-xs font-black text-gray-600">
-                <Lock className="h-3.5 w-3.5 text-[#cda04c]" />
+                <Lock className="h-3.5 w-3.5 text-brand-gold" />
                 تأكيد كلمة المرور
               </span>
               <input
@@ -142,7 +142,7 @@ export default function UpdatePasswordForm() {
                 autoComplete="new-password"
                 value={confirm}
                 onChange={(e) => setConfirm(e.target.value)}
-                className="w-full rounded-2xl border border-[#1e3f20]/15 bg-[#FDFBF7] px-4 py-3.5 text-sm outline-none focus:ring-2 focus:ring-[#cda04c]/30"
+                className="w-full rounded-2xl border border-[#1e3f20]/15 bg-[#FDFBF7] px-4 py-3.5 text-sm outline-none focus:ring-2 focus:ring-brand-gold/30"
                 placeholder="••••••••"
               />
             </label>
@@ -150,7 +150,7 @@ export default function UpdatePasswordForm() {
             <button
               type="submit"
               disabled={loading}
-              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#cda04c] py-4 text-sm font-black text-white disabled:opacity-50"
+              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-brand-gold py-4 text-sm font-black text-[#1A3B2A] disabled:opacity-50"
             >
               {loading ? (
                 <>

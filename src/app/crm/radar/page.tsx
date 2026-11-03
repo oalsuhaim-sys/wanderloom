@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
 
@@ -17,16 +17,47 @@ import {
   canAccessRadarAppointments,
   canAccessRadarInbox,
 } from '@/lib/crm-permissions';
+import {
+  fetchTodaysFollowupsByClientIds,
+  followupIdsLooselyMatch,
+  formatFollowupDateTime,
+  isFollowupFromToday,
+  readTodayFollowupStatuses,
+  type ClientFollowup,
+} from '@/lib/client-followups';
+import { getClientAccessToken } from '@/lib/crm-session-token';
+import { supabase } from '@/lib/supabase';
 
 import GroupOperationsFulfillment from './_components/GroupOperationsFulfillment';
 import { GroupOnboardingInbox } from './_components/GroupOnboardingInbox';
 import { NewLeadsInbox } from './_components/NewLeadsInbox';
+import OnTripFollowUpModal from './_components/OnTripFollowUpModal';
 import { RADAR_SECTION_INITIAL_LIMIT, ShowAllToggle } from './_components/ShowAllToggle';
 import { isExpiredClientMeeting } from '@/lib/crm-leads';
 import { useRadarDashboard } from './useRadarDashboard';
 
 function todayIsoLocal(): string {
   return new Date().toLocaleDateString('en-CA');
+}
+
+function travelerIdToken(value: unknown): string {
+  if (value == null) return '';
+  const text = String(value).trim();
+  if (!text || text === 'undefined' || text === 'null' || text === 'NaN') return '';
+  return text;
+}
+
+/** معرف العميل الحقيقي client.id — لا يُستخدم معرف المسار */
+function pickTravelerClientId(traveler: {
+  clientId?: unknown;
+  client_id?: unknown;
+  id_client?: unknown;
+}): string {
+  return (
+    travelerIdToken(traveler.clientId) ||
+    travelerIdToken(traveler.client_id) ||
+    travelerIdToken(traveler.id_client)
+  );
 }
 
 function todayLabelArabic(): string {
@@ -43,10 +74,11 @@ function todayLabelArabic(): string {
 }
 
 export default function RadarPage() {
-  const { profileAccess } = useCrmEmployee();
+  const { employee, profileAccess } = useCrmEmployee();
   const showInbox = canAccessRadarInbox(profileAccess);
   const showAppointments = canAccessRadarAppointments(profileAccess);
   const showGroupOps = canAccessGroupOperations(profileAccess);
+  const agentName = employee?.full_name?.trim() || 'موظف CRM';
 
   const {
     data,
@@ -61,12 +93,83 @@ export default function RadarPage() {
   const [showAllTravelers, setShowAllTravelers] = useState(false);
   const [showAllPassports, setShowAllPassports] = useState(false);
   const [showAllLazySuppliers, setShowAllLazySuppliers] = useState(false);
+  const [todayFollowups, setTodayFollowups] = useState<Record<string, ClientFollowup>>({});
+  const [followUpTarget, setFollowUpTarget] = useState<{
+    clientId: string;
+    client_id: string;
+    travelerId: string;
+    clientName: string;
+  } | null>(null);
 
   useEffect(() => {
     return subscribeCrmRealtimeRefresh(() => {
       void fetchRadar();
     });
   }, [fetchRadar]);
+
+  const transitClientIds = useMemo(
+    () =>
+      (data?.inTransit ?? [])
+        .map((vip) => pickTravelerClientId(vip))
+        .filter((id) => Boolean(id)),
+    [data?.inTransit],
+  );
+
+  const loadTodayFollowups = useCallback(async () => {
+    if (!transitClientIds.length) {
+      setTodayFollowups({});
+      return;
+    }
+    const merged: Record<string, ClientFollowup> = {
+      ...readTodayFollowupStatuses(transitClientIds),
+    };
+    const remember = (id: string, row: ClientFollowup) => {
+      if (!isFollowupFromToday(row.createdAt)) return;
+      const current = merged[id];
+      if (!current || row.createdAt > current.createdAt) merged[id] = row;
+    };
+    if (supabase) {
+      const remote = await fetchTodaysFollowupsByClientIds(supabase, transitClientIds);
+      for (const [id, row] of Object.entries(remote)) remember(id, row);
+    }
+    const token = await getClientAccessToken().catch(() => '');
+    await Promise.all(
+      transitClientIds.map(async (id) => {
+        try {
+          const res = await fetch(`/api/admin/followups?clientId=${encodeURIComponent(id)}`, {
+            headers: {
+              Accept: 'application/json',
+              ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            },
+            cache: 'no-store',
+          });
+          const json = (await res.json().catch(() => ({}))) as { followups?: ClientFollowup[] };
+          for (const row of json.followups ?? []) remember(id, row);
+        } catch {
+          /* تبقى نسخة التخزين المحلي */
+        }
+      }),
+    );
+    setTodayFollowups(merged);
+  }, [transitClientIds]);
+
+  useEffect(() => {
+    void loadTodayFollowups();
+  }, [loadTodayFollowups]);
+
+  useEffect(() => {
+    const refresh = () => {
+      void loadTodayFollowups();
+    };
+    window.addEventListener('focus', refresh);
+    window.addEventListener('followup-updated', refresh);
+    document.addEventListener('visibilitychange', refresh);
+    return () => {
+      window.removeEventListener('focus', refresh);
+      window.removeEventListener('followup-updated', refresh);
+      document.removeEventListener('visibilitychange', refresh);
+    };
+  }, [loadTodayFollowups]);
 
   if (showFullPageSpinner) {
     return (
@@ -289,7 +392,7 @@ export default function RadarPage() {
                   onClick={() => setLeadsPanelTab('inbox')}
                   className={`flex items-center gap-2 rounded-full px-6 py-3 text-xs font-bold shadow-sm transition-all ${
                     leadsPanelTab === 'inbox'
-                      ? 'bg-[#C59B4B] text-white'
+                      ? 'bg-brand-gold text-[#1A3B2A]'
                       : 'border border-slate-200 bg-white text-slate-700'
                   }`}
                 >
@@ -303,7 +406,7 @@ export default function RadarPage() {
                   onClick={() => setLeadsPanelTab('meetings')}
                   className={`flex items-center gap-2 rounded-full px-6 py-3 text-xs font-bold shadow-sm transition-all ${
                     leadsPanelTab === 'meetings'
-                      ? 'bg-[#C59B4B] text-white'
+                      ? 'bg-brand-gold text-[#1A3B2A]'
                       : 'border border-slate-200 bg-white text-slate-700'
                   }`}
                 >
@@ -317,7 +420,7 @@ export default function RadarPage() {
                   onClick={() => setLeadsPanelTab('interests')}
                   className={`flex items-center gap-2 rounded-full px-6 py-3 text-xs font-bold shadow-sm transition-all ${
                     leadsPanelTab === 'interests'
-                      ? 'bg-[#C59B4B] text-white'
+                      ? 'bg-brand-gold text-[#1A3B2A]'
                       : 'border border-slate-200 bg-white text-slate-700'
                   }`}
                 >
@@ -351,6 +454,17 @@ export default function RadarPage() {
               }
               onRefresh={fetchRadar}
               onShowMeetings={() => setLeadsPanelTab('meetings')}
+              onRequestDeleted={(leadId) => {
+                setData((prev) => {
+                  if (!prev) return prev;
+                  return {
+                    ...prev,
+                    newLeads: prev.newLeads.filter((lead) => lead.id !== leadId),
+                    meetingLeads: prev.meetingLeads.filter((lead) => lead.id !== leadId),
+                    interestLeads: prev.interestLeads.filter((lead) => lead.id !== leadId),
+                  };
+                });
+              }}
               onMovedToMeeting={(leadId) => {
                 setLeadsPanelTab('meetings');
                 setData((prev) => {
@@ -413,45 +527,97 @@ export default function RadarPage() {
         ) : (
           <>
             <div className="grid grid-cols-1 gap-3 md:grid-cols-3 lg:grid-cols-4">
-              {visibleTravelers.map((vip) => (
-                <div
-                  key={vip.id}
-                  className="group flex flex-col justify-between rounded-xl border border-slate-200/80 bg-white p-3.5 shadow-sm transition-all duration-200 hover:border-amber-400/60 hover:shadow-md"
-                >
-                  <div className="mb-1.5 flex items-center justify-between gap-2">
-                    <h4 className="truncate text-sm font-extrabold text-slate-900">
-                      {vip.clientName}
-                    </h4>
-                    <span className="relative flex h-2 w-2 flex-shrink-0">
-                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-                      <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
-                    </span>
-                  </div>
-
-                  <div className="mb-2 flex items-center justify-between gap-2 text-xs font-semibold text-slate-500">
-                    <span className="flex min-w-0 items-center gap-1 truncate font-bold text-slate-700">
-                      <span className="text-amber-600">📍</span>
-                      <span className="truncate">{vip.destination}</span>
-                    </span>
-                    <span className="flex-shrink-0 rounded-md border border-amber-200/60 bg-amber-50 px-2 py-0.5 text-[11px] font-extrabold text-amber-800">
-                      اليوم {vip.dayNumber || 1}
-                    </span>
-                  </div>
-
-                  {vip.clientId ? (
-                    <div className="flex justify-end border-t border-slate-100 pt-2">
-                      <Link
-                        href={`/crm/clients/${encodeURIComponent(vip.clientId)}`}
-                        className="flex items-center gap-1 text-xs font-bold text-amber-600 transition-all group-hover:translate-x-[-2px] hover:text-amber-700"
-                        dir="rtl"
-                      >
-                        <span>فتح الملف</span>
-                        <span className="text-[10px]">←</span>
-                      </Link>
+              {visibleTravelers.map((vip) => {
+                const linkedClientId =
+                  travelerIdToken(vip.clientId) ||
+                  travelerIdToken(vip.client_id) ||
+                  travelerIdToken(vip.id_client);
+                const passedClientId = linkedClientId || travelerIdToken(vip.id);
+                const followup = passedClientId
+                  ? todayFollowups[passedClientId] ??
+                    Object.entries(todayFollowups).find(
+                      ([key, row]) =>
+                        followupIdsLooselyMatch(key, passedClientId) ||
+                        followupIdsLooselyMatch(row.clientId, passedClientId),
+                    )?.[1]
+                  : undefined;
+                const contactedToday = Boolean(followup);
+                return (
+                  <div
+                    key={vip.id}
+                    className="group flex flex-col justify-between rounded-xl border border-slate-200/80 bg-white p-3.5 shadow-sm transition-all duration-200 hover:border-amber-400/60 hover:shadow-md"
+                  >
+                    <div className="mb-1.5 flex items-center justify-between gap-2">
+                      <h4 className="truncate text-sm font-extrabold text-slate-900">
+                        {vip.clientName}
+                      </h4>
+                      <span className="relative flex h-2 w-2 flex-shrink-0">
+                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                        <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+                      </span>
                     </div>
-                  ) : null}
-                </div>
-              ))}
+
+                    <div className="mb-2 flex items-center justify-between gap-2 text-xs font-semibold text-slate-500">
+                      <span className="flex min-w-0 items-center gap-1 truncate font-bold text-slate-700">
+                        <span className="text-amber-600">📍</span>
+                        <span className="truncate">{vip.destination}</span>
+                      </span>
+                      <span className="flex-shrink-0 rounded-md border border-amber-200/60 bg-amber-50 px-2 py-0.5 text-[11px] font-extrabold text-amber-800">
+                        اليوم {vip.dayNumber || 1}
+                      </span>
+                    </div>
+
+                    {passedClientId ? (
+                      <div className="mb-2">
+                        {contactedToday && followup ? (
+                          <span className="inline-flex w-full items-center justify-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50 px-2 py-1.5 text-[11px] font-extrabold text-emerald-800">
+                            تم التواصل ({formatFollowupDateTime(followup.createdAt)})
+                          </span>
+                        ) : (
+                          <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-[11px] font-bold text-slate-700 transition hover:border-emerald-300 hover:bg-emerald-50/60">
+                            <input
+                              type="checkbox"
+                              className="h-3.5 w-3.5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                              checked={false}
+                              onChange={() => {
+                                const clientRecordId = pickTravelerClientId(vip);
+                                console.info('[المسافرون الآن] client.id', {
+                                  'client.id': clientRecordId,
+                                  itineraryId: vip.id,
+                                });
+                                if (!clientRecordId) {
+                                  toast.error('حدّد العميل أولاً قبل تسجيل المتابعة.');
+                                  return;
+                                }
+                                setFollowUpTarget({
+                                  clientId: clientRecordId,
+                                  client_id: clientRecordId,
+                                  travelerId: travelerIdToken(vip.id),
+                                  clientName: vip.clientName,
+                                });
+                              }}
+                            />
+                            <span>تم التواصل اليوم</span>
+                          </label>
+                        )}
+                      </div>
+                    ) : null}
+
+                    {linkedClientId ? (
+                      <div className="flex justify-end border-t border-slate-100 pt-2">
+                        <Link
+                          href={`/crm/clients/${encodeURIComponent(linkedClientId)}`}
+                          className="flex items-center gap-1 text-xs font-bold text-amber-600 transition-all group-hover:translate-x-[-2px] hover:text-amber-700"
+                          dir="rtl"
+                        >
+                          <span>فتح الملف</span>
+                          <span className="text-[10px]">←</span>
+                        </Link>
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              })}
             </div>
             <ShowAllToggle
               showAll={showAllTravelers}
@@ -568,6 +734,30 @@ export default function RadarPage() {
           <p className="mt-2 text-sm text-slate-500">لا تنبيهات تشغيلية عاجلة في الوقت الحالي.</p>
         </div>
       ) : null}
+
+      <OnTripFollowUpModal
+        open={Boolean(followUpTarget)}
+        clientId={followUpTarget?.clientId}
+        travelerId={followUpTarget?.travelerId}
+        client={
+          followUpTarget
+            ? {
+                id: followUpTarget.clientId,
+                client_id: followUpTarget.client_id,
+                name: followUpTarget.clientName,
+              }
+            : null
+        }
+        clientName={followUpTarget?.clientName ?? ''}
+        agentName={agentName}
+        agentEmployeeId={employee?.id ?? null}
+        onClose={() => setFollowUpTarget(null)}
+        onSaved={(followup) => {
+          const id = followUpTarget?.clientId || followup.clientId;
+          if (!id) return;
+          setTodayFollowups((prev) => ({ ...prev, [id]: followup }));
+        }}
+      />
     </div>
   );
 }

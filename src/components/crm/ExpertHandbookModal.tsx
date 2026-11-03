@@ -36,8 +36,8 @@ export function ExpertHandbookModal({
         onClick={onClose}
         aria-label="إغلاق"
       />
-      <div className="relative flex max-h-[92dvh] w-full max-w-3xl flex-col overflow-hidden rounded-t-2xl border border-[#D4AF37]/25 bg-[#FDFBF7] shadow-[0_32px_80px_rgba(0,0,0,0.45)] dark:bg-[#1A2421] sm:max-h-[90vh] sm:rounded-[1.75rem]">
-        <div className="flex items-start justify-between gap-3 border-b border-[#D4AF37]/15 px-4 py-4 sm:px-6">
+      <div className="relative flex max-h-[92dvh] w-full max-w-3xl flex-col overflow-hidden rounded-t-2xl border border-brand-gold/25 bg-[#FDFBF7] shadow-[0_32px_80px_rgba(0,0,0,0.45)] dark:bg-[#1A2421] sm:max-h-[90vh] sm:rounded-[1.75rem]">
+        <div className="flex items-start justify-between gap-3 border-b border-brand-gold/15 px-4 py-4 sm:px-6">
           <div id="expert-handbook-modal-title">
             <ExpertHandbookHeader compact />
           </div>
@@ -53,11 +53,11 @@ export function ExpertHandbookModal({
         <div className="overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
           <ExpertHandbookPanel initialTab={initialTab} compact />
         </div>
-        <div className="border-t border-[#D4AF37]/15 px-4 py-3 sm:px-6">
+        <div className="border-t border-brand-gold/15 px-4 py-3 sm:px-6">
           <button
             type="button"
             onClick={onClose}
-            className="w-full rounded-xl bg-[#D4AF37] py-3 text-sm font-black text-[#1A3B2A] shadow-sm transition hover:bg-[#c4a030]"
+            className="w-full rounded-xl bg-brand-gold py-3 text-sm font-black text-[#1A3B2A] shadow-sm transition hover:bg-[#c4a030]"
           >
             فهمت — العودة للعمل
           </button>

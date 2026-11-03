@@ -20,8 +20,8 @@ export default function EditItineraryError({ error, reset }: Props) {
       dir="rtl"
       className="flex min-h-screen flex-col items-center justify-center gap-4 bg-[#FAFAFA] px-6 text-center text-[#1E2720]"
     >
-      <div className="flex h-14 w-14 items-center justify-center rounded-full border border-[#D4AF37]/35 bg-[#2A362C]/10">
-        <AlertCircle className="h-7 w-7 text-[#D4AF37]" aria-hidden />
+      <div className="flex h-14 w-14 items-center justify-center rounded-full border border-brand-gold/35 bg-[#2A362C]/10">
+        <AlertCircle className="h-7 w-7 text-brand-gold" aria-hidden />
       </div>
       <p className="max-w-md text-base font-bold text-gray-800">
         تعذّر تحميل محرّر المسار. حاول مرة أخرى.
@@ -30,7 +30,7 @@ export default function EditItineraryError({ error, reset }: Props) {
       <button
         type="button"
         onClick={() => reset()}
-        className="inline-flex items-center gap-2 rounded-lg bg-[#1A2520] px-6 py-2.5 text-sm font-bold text-[#D4AF37]"
+        className="inline-flex items-center gap-2 rounded-lg bg-[#1A2520] px-6 py-2.5 text-sm font-bold text-brand-gold"
       >
         <RefreshCw className="h-4 w-4" aria-hidden />
         إعادة المحاولة

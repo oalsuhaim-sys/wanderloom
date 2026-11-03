@@ -9,7 +9,7 @@ import {
 } from '@/lib/clientsTravelDna'
 
 const FIELD =
-  'w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#D4AF37]/50 focus:ring-2 focus:ring-[#D4AF37]/30 dark:border-[#2D3F3A] dark:bg-[#1A2421] dark:text-gray-100 dark:placeholder:text-slate-500 dark:focus:border-[#D4AF37]/50'
+  'w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-brand-gold/50 focus:ring-2 focus:ring-brand-gold/30 dark:border-[#2D3F3A] dark:bg-[#1A2421] dark:text-gray-100 dark:placeholder:text-slate-500 dark:focus:border-brand-gold/50'
 
 type ClientDnaAdvancedFieldsProps = {
   value: ClientDnaAdvancedFields
@@ -39,7 +39,7 @@ export default function ClientDnaAdvancedFieldsEditor({
       dir="rtl"
       className="space-y-4 rounded-xl border border-slate-200 bg-slate-100 p-4 text-slate-900 dark:border-[#2D3F3A] dark:bg-[#22302C] dark:text-white"
     >
-      <p className="flex items-center gap-2 text-sm font-bold text-[#D4AF37]">
+      <p className="flex items-center gap-2 text-sm font-bold text-brand-gold">
         <span className="inline-block select-none fill-none" aria-hidden>
           🧬
         </span>
@@ -69,8 +69,8 @@ export default function ClientDnaAdvancedFieldsEditor({
                 }
                 className={`rounded-full border px-2.5 py-1 text-[11px] font-bold transition ${
                   active
-                    ? 'border-[#D4AF37]/60 bg-[#D4AF37]/20 text-slate-900 dark:text-[#D4AF37]'
-                    : 'border-slate-200 bg-white text-slate-600 hover:border-[#D4AF37]/50 dark:border-[#2D3F3A] dark:bg-[#1A2421] dark:text-slate-300'
+                    ? 'border-brand-gold/60 bg-brand-gold/20 text-slate-900 dark:text-brand-gold'
+                    : 'border-slate-200 bg-white text-slate-600 hover:border-brand-gold/50 dark:border-[#2D3F3A] dark:bg-[#1A2421] dark:text-slate-300'
                 }`}
               >
                 {tag}

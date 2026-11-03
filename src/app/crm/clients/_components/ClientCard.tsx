@@ -59,7 +59,7 @@ export function resolveClientCardStatusBadge(
     if (status === 'مهتم' || normalized === 'مهتم' || normalized === 'interested') {
       badgeLabel = 'مهتم'
       badgeStyle =
-        'border-amber-300 bg-amber-100 text-amber-800 dark:border-[#D4AF37]/45 dark:bg-[#D4AF37]/20 dark:text-[#D4AF37]'
+        'border-amber-300 bg-amber-100 text-amber-800 dark:border-brand-gold/45 dark:bg-brand-gold/20 dark:text-brand-gold'
     }
   }
 
@@ -94,27 +94,30 @@ export default function ClientCard({
   onDelete,
   onSalesStageUpdated,
 }: ClientCardProps) {
+  if (!client) return null
+
   const tier = clientDisplayTierBadge(client)
   const clv = resolveClientLifetimeValue(client)
-  const displayName = client.name?.trim() || '—'
-  // Age from birth_date (preferred), fallback to persisted clients.age
+  const displayName = client?.name?.trim() || '—'
   const displayAge = resolveClientDisplayAge(client)
   const dna = resolveClientDnaDisplay(client)
-  const interestTags = parseDnaInterests(dna.dna_interests)
-  const activity = dna.dna_activity_level?.trim()
+  const interestTags = parseDnaInterests(dna?.dna_interests)
+  const activity = dna?.dna_activity_level?.trim()
   const dnaChips = parseTravelDnaChips({
-    travel_dna: client.travel_dna,
-    dna_interests: client.dna_interests,
-    dna_activity_level: client.dna_activity_level,
-    food_allergies: client.food_allergies,
-    dietary: client.dietary,
-    tags: client.tags,
+    travel_dna: client?.travel_dna,
+    dna_interests: client?.dna_interests,
+    dna_activity_level: client?.dna_activity_level,
+    food_allergies: client?.food_allergies,
+    dietary: client?.dietary,
+    tags: client?.tags,
   })
-  const engagement = client.engagement_status
-  const wa = client.phone_wa?.trim() ? whatsAppHref(client.phone_wa) : null
+  const engagement = client?.engagement_status
+  const phone = client?.phone_wa?.trim() || ''
+  const email = client?.email?.trim() || ''
+  const wa = phone ? whatsAppHref(phone) : null
   const totalTrips = Math.max(
     0,
-    Math.floor(Number(client.total_trips || 0)),
+    Math.floor(Number(client?.total_trips || 0)),
     Math.floor(Number(trips) || 0),
   )
   const statusBadge = resolveClientCardStatusBadge(client, trips)
@@ -133,7 +136,7 @@ export default function ClientCard({
 
       <div className="relative mb-4">
         <div
-          className="flex h-20 w-20 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-xl font-bold text-slate-700 dark:border-[#D4AF37]/30 dark:bg-[#1A2421] dark:text-[#D4AF37]"
+          className="flex h-20 w-20 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-xl font-bold text-slate-700 dark:border-brand-gold/30 dark:bg-[#1A2421] dark:text-brand-gold"
           aria-hidden
         >
           {partnerInitials(displayName)}
@@ -163,30 +166,30 @@ export default function ClientCard({
       </div>
 
       <div className="mt-1 flex flex-col items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
-        {client.phone_wa ? (
+        {phone ? (
           <a
-            href={`tel:${client.phone_wa.replace(/\s+/g, '')}`}
+            href={`tel:${phone.replace(/\s+/g, '')}`}
             dir="ltr"
-            className="inline-flex items-center gap-1.5 transition hover:text-slate-800 dark:hover:text-[#D4AF37]"
+            className="inline-flex items-center gap-1.5 transition hover:text-slate-800 dark:hover:text-brand-gold"
             onClick={(e) => e.stopPropagation()}
           >
             <Phone className="h-3 w-3 shrink-0" aria-hidden />
-            {client.phone_wa}
+            {phone}
           </a>
         ) : null}
-        {client.email ? (
+        {email ? (
           <a
-            href={`mailto:${client.email}`}
+            href={`mailto:${email}`}
             dir="ltr"
-            title={client.email}
-            className="inline-flex max-w-full items-center gap-1.5 truncate transition hover:text-slate-800 dark:hover:text-[#D4AF37]"
+            title={email}
+            className="inline-flex max-w-full items-center gap-1.5 truncate transition hover:text-slate-800 dark:hover:text-brand-gold"
             onClick={(e) => e.stopPropagation()}
           >
             <Mail className="h-3 w-3 shrink-0" aria-hidden />
-            {client.email}
+            {email}
           </a>
         ) : null}
-        {!client.phone_wa && !client.email ? <span>{noContactLabel}</span> : null}
+        {!phone && !email ? <span>{noContactLabel}</span> : null}
       </div>
 
       <div className="mt-3 mb-3 flex flex-wrap items-center justify-center gap-2">
@@ -198,32 +201,32 @@ export default function ClientCard({
           {formatSarClv(clv)}
         </span>
         <span className={`inline-flex items-center gap-1 ${tier.className}`}>
-          {client.client_tier === 'vip' ||
-          client.client_tier === 'vvip' ||
-          tier.label.includes('VIP') ? (
+          {client?.client_tier === 'vip' ||
+          client?.client_tier === 'vvip' ||
+          tier?.label?.includes('VIP') ? (
             <Crown className="h-3 w-3" aria-hidden />
           ) : null}
-          {tier.label}
+          {tier?.label}
         </span>
         <span className="rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-[10px] font-medium text-slate-600 dark:border-[#2D3F3A] dark:bg-[#1A2421] dark:text-slate-300">
           {`${totalTrips || 0} رحلات`}
         </span>
         <div onClick={(e) => e.stopPropagation()}>
           <ClientSalesStageControl
-            clientId={client.id}
-            value={client.sales_stage ?? ''}
+            clientId={String(client?.id ?? '')}
+            value={client?.sales_stage ?? ''}
             compact
             className="min-w-0"
-            onUpdated={(stage) => onSalesStageUpdated(client.id, stage)}
+            onUpdated={(stage) => onSalesStageUpdated(String(client?.id ?? ''), stage)}
           />
         </div>
       </div>
 
-      {client.used_code?.trim() ? (
+      {client?.used_code?.trim() ? (
         <div className="mb-3 w-full text-right" onClick={(e) => e.stopPropagation()}>
           <ClientReferralBadge
             clientName={displayName}
-            referralCodeUsed={client.used_code.trim()}
+            referralCodeUsed={String(client?.used_code ?? '').trim()}
           />
         </div>
       ) : null}
@@ -269,7 +272,7 @@ export default function ClientCard({
         <button
           type="button"
           onClick={() => onOpenProfile(client)}
-          className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white py-2.5 text-sm font-semibold text-slate-900 transition-all hover:bg-slate-900 hover:text-white dark:border-[#D4AF37]/50 dark:bg-transparent dark:text-[#D4AF37] dark:hover:bg-[#D4AF37]/10"
+          className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white py-2.5 text-sm font-semibold text-slate-900 transition-all hover:bg-slate-900 hover:text-white dark:border-brand-gold/50 dark:bg-transparent dark:text-brand-gold dark:hover:bg-brand-gold/10"
         >
           {manageProfileLabel}
         </button>
@@ -287,10 +290,10 @@ export default function ClientCard({
         ) : (
           <ClientPaymentWhatsAppButton
             clientId={client.id}
-            clientName={client.name ?? '—'}
-            phone={client.phone_wa}
-            targetTrip={client.target_trip}
-            salesStage={client.sales_stage}
+            clientName={client?.name ?? '—'}
+            phone={phone}
+            targetTrip={client?.target_trip}
+            salesStage={client?.sales_stage}
             compact
             className="!h-11 !w-11 shrink-0 !rounded-full"
           />
@@ -304,22 +307,22 @@ export default function ClientCard({
         <button
           type="button"
           onClick={() => onEdit(client)}
-          disabled={deletingId === client.id}
+          disabled={deletingId === client?.id}
           title={editLabel}
-          aria-label={`${editLabel} ${client.name ?? ''}`}
-          className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 disabled:opacity-50 dark:hover:bg-[#1A2421] dark:hover:text-[#D4AF37]"
+          aria-label={`${editLabel} ${client?.name ?? ''}`}
+          className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 disabled:opacity-50 dark:hover:bg-[#1A2421] dark:hover:text-brand-gold"
         >
           <Pencil className="h-4 w-4" aria-hidden />
         </button>
         <button
           type="button"
           onClick={() => onDelete(client)}
-          disabled={deletingId === client.id}
+          disabled={deletingId === client?.id}
           title={deleteLabel}
-          aria-label={`${deleteLabel} ${client.name ?? ''}`}
+          aria-label={`${deleteLabel} ${client?.name ?? ''}`}
           className="rounded-lg p-2 text-slate-400 transition hover:bg-rose-50 hover:text-rose-600 disabled:opacity-50 dark:hover:bg-rose-950/30 dark:hover:text-rose-400"
         >
-          {deletingId === client.id ? (
+          {deletingId === client?.id ? (
             <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
           ) : (
             <Trash2 className="h-4 w-4" aria-hidden />

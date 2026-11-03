@@ -22,7 +22,7 @@ export function ProposalAdminClientCompare({ compact = false }: { compact?: bool
   return (
     <div className="mt-4 space-y-3" dir="rtl">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="rounded-full border border-[#D4AF37]/40 bg-[#D4AF37]/15 px-2.5 py-0.5 text-[10px] font-black text-[#5C4A22]">
+        <span className="rounded-full border border-brand-gold/40 bg-brand-gold/15 px-2.5 py-0.5 text-[10px] font-black text-[#5C4A22]">
           مقارنة تفاعلية
         </span>
         <h4 className="text-sm font-black text-[#1C2E3A] dark:text-[#F4EFE6]">
@@ -36,7 +36,7 @@ export function ProposalAdminClientCompare({ compact = false }: { compact?: bool
         {/* Admin mock */}
         <div className="overflow-hidden rounded-xl border border-slate-300/80 bg-[#1A2421] text-[#F4EFE6] shadow-sm">
           <div className="flex items-center justify-between gap-2 border-b border-white/10 bg-[#22302C] px-3 py-2">
-            <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-[#D4AF37]">
+            <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-brand-gold">
               <Lock className="h-3 w-3" aria-hidden />
               شاشة الخبير (CRM)
             </span>
@@ -56,17 +56,17 @@ export function ProposalAdminClientCompare({ compact = false }: { compact?: bool
         </div>
 
         {/* Client mock */}
-        <div className="overflow-hidden rounded-xl border border-[#D4AF37]/35 bg-gradient-to-b from-[#FDFBF7] to-white shadow-sm dark:from-[#1E2A26] dark:to-[#22302C]">
-          <div className="flex items-center justify-between gap-2 border-b border-[#D4AF37]/20 bg-[#D4AF37]/10 px-3 py-2">
-            <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-[#9C7A3C]">
+        <div className="overflow-hidden rounded-xl border border-brand-gold/35 bg-gradient-to-b from-[#FDFBF7] to-white shadow-sm dark:from-[#1E2A26] dark:to-[#22302C]">
+          <div className="flex items-center justify-between gap-2 border-b border-brand-gold/20 bg-brand-gold/10 px-3 py-2">
+            <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-brand-gold">
               <Eye className="h-3 w-3" aria-hidden />
               واجهة العميل (/proposal)
             </span>
-            <BadgeDollarSign className="h-3.5 w-3.5 text-[#D4AF37]" aria-hidden />
+            <BadgeDollarSign className="h-3.5 w-3.5 text-brand-gold" aria-hidden />
           </div>
           <div className="space-y-3 p-3">
-            <div className="rounded-xl border border-[#D4AF37]/25 bg-white/80 p-3 dark:bg-[#1A2421]/70">
-              <p className="text-[10px] font-black text-[#9C7A3C]">باقة Wanderloom الفاخرة</p>
+            <div className="rounded-xl border border-brand-gold/25 bg-white/80 p-3 dark:bg-[#1A2421]/70">
+              <p className="text-[10px] font-black text-brand-gold">باقة Wanderloom الفاخرة</p>
               <p className="mt-1 text-lg font-black text-[#1C2E3A] dark:text-[#F4EFE6]">
                 ١٨٬٥٠٠{' '}
                 <span className="text-sm font-bold text-slate-500">ر.س</span>
@@ -79,7 +79,7 @@ export function ProposalAdminClientCompare({ compact = false }: { compact?: bool
               {['إقامة بوتيك', 'إيقاع حسي يومي', 'تجارب خاصة', 'دعم خبير'].map((chip) => (
                 <span
                   key={chip}
-                  className="rounded-full border border-[#D4AF37]/35 bg-[#D4AF37]/10 px-2 py-0.5 text-[10px] font-bold text-[#5C4A22] dark:text-[#E8D5A3]"
+                  className="rounded-full border border-brand-gold/35 bg-brand-gold/10 px-2 py-0.5 text-[10px] font-bold text-[#5C4A22] dark:text-[#E8D5A3]"
                 >
                   {chip}
                 </span>
@@ -151,7 +151,7 @@ export function ItineraryStepByStepGuide({ compact = false }: { compact?: boolea
   return (
     <div className="mt-4 space-y-4" dir="rtl">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="rounded-full border border-[#D4AF37]/40 bg-[#D4AF37]/15 px-2.5 py-0.5 text-[10px] font-black text-[#5C4A22]">
+        <span className="rounded-full border border-brand-gold/40 bg-brand-gold/15 px-2.5 py-0.5 text-[10px] font-black text-[#5C4A22]">
           دليل الحقول خطوة بخطوة
         </span>
         <h4 className="text-sm font-black text-[#1C2E3A] dark:text-[#F4EFE6]">
@@ -182,7 +182,7 @@ export function ItineraryStepByStepGuide({ compact = false }: { compact?: boolea
                 key={beat.ar}
                 className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white/80 px-2.5 py-1.5 text-[11px] font-bold text-slate-700 dark:border-[#2D3F3A] dark:bg-[#1A2421] dark:text-slate-200"
               >
-                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-[#D4AF37] text-[10px] font-black text-[#1A3B2A]">
+                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-brand-gold text-[10px] font-black text-[#1A3B2A]">
                   {i + 1}
                 </span>
                 <span>
@@ -227,7 +227,7 @@ export function ItineraryStepByStepGuide({ compact = false }: { compact?: boolea
           body="بعد تعديل محطة أو يوم: احفظ عبر زر الحفظ / تطبيق التعديل على المسار ليدفع التغييرات إلى المسار المحفوظ. بعدها فقط يصبح الرابط السحري للعميل محدّثاً."
         >
           <div className="mt-2 flex flex-wrap items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 rounded-xl bg-[#D4AF37] px-3 py-2 text-[11px] font-black text-[#1A3B2A] shadow-sm">
+            <span className="inline-flex items-center gap-1.5 rounded-xl bg-brand-gold px-3 py-2 text-[11px] font-black text-[#1A3B2A] shadow-sm">
               <Save className="h-3.5 w-3.5" aria-hidden />
               تطبيق التعديل على المسار
             </span>
@@ -239,15 +239,15 @@ export function ItineraryStepByStepGuide({ compact = false }: { compact?: boolea
       {/* Mini admin vs client itinerary preview */}
       <div className={`grid gap-3 ${compact ? 'grid-cols-1' : 'lg:grid-cols-2'}`}>
         <div className="rounded-xl border border-slate-300 bg-[#1A2421] p-3 text-[#F4EFE6]">
-          <p className="text-[10px] font-black text-[#D4AF37]">معاينة خبير — محرر اليوم</p>
+          <p className="text-[10px] font-black text-brand-gold">معاينة خبير — محرر اليوم</p>
           <ul className="mt-2 space-y-1 text-[10px] font-medium text-slate-300">
             <li>07:30 · الصحوة · فئة h · search_keyword داخلي</li>
             <li>08:30 · الإفطار · تكلفة مورد (مخفي)</li>
             <li>… حتى العشاء 20:30</li>
           </ul>
         </div>
-        <div className="rounded-xl border border-[#D4AF37]/30 bg-[#FDFBF7] p-3 dark:bg-[#22302C]">
-          <p className="text-[10px] font-black text-[#9C7A3C]">معاينة عميل — الخط الزمني الحسي</p>
+        <div className="rounded-xl border border-brand-gold/30 bg-[#FDFBF7] p-3 dark:bg-[#22302C]">
+          <p className="text-[10px] font-black text-brand-gold">معاينة عميل — الخط الزمني الحسي</p>
           <ul className="mt-2 space-y-1 text-[10px] font-medium text-slate-600 dark:text-slate-300">
             <li>صحوة هادئة في إقامة بوتيك</li>
             <li>إفطار محلي · شارع مميز · قهوة مختصة</li>
@@ -262,36 +262,36 @@ export function ItineraryStepByStepGuide({ compact = false }: { compact?: boolea
 /** Save & generate client link walkthrough mock. */
 export function SaveAndClientLinkSteps() {
   return (
-    <div className="mt-3 space-y-2 rounded-xl border border-[#D4AF37]/25 bg-[#D4AF37]/5 p-3">
+    <div className="mt-3 space-y-2 rounded-xl border border-brand-gold/25 bg-brand-gold/5 p-3">
       <p className="text-[11px] font-black text-[#5C4A22] dark:text-[#E8D5A3]">
         خطوات «حفظ وإنشاء رابط العميل»
       </p>
       <ol className="space-y-2 text-[11px] font-medium leading-relaxed text-slate-600 dark:text-slate-300">
         <li className="flex gap-2">
-          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#D4AF37] text-[10px] font-black text-[#1A3B2A]">
+          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand-gold text-[10px] font-black text-[#1A3B2A]">
             1
           </span>
           أكمل صفوف التسعير والبروشور واربط العميل — ثم اضغط حفظ العرض.
         </li>
         <li className="flex gap-2">
-          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#D4AF37] text-[10px] font-black text-[#1A3B2A]">
+          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand-gold text-[10px] font-black text-[#1A3B2A]">
             2
           </span>
           بعد نجاح الحفظ يظهر زر «🔗 نسخ رابط العميل» — انسخه فقط (لا لقطة شاشة من CRM).
         </li>
         <li className="flex gap-2">
-          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#D4AF37] text-[10px] font-black text-[#1A3B2A]">
+          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand-gold text-[10px] font-black text-[#1A3B2A]">
             3
           </span>
           أرسل عبر واتساب بصياغة شخصية + الرابط الفاخر (/proposal أو /quote).
         </li>
       </ol>
       <div className="flex flex-wrap gap-2 pt-1">
-        <span className="inline-flex items-center gap-1 rounded-lg border border-[#C9A84C]/50 bg-[#D4AF37] px-2.5 py-1.5 text-[10px] font-black text-[#1C4532]">
+        <span className="inline-flex items-center gap-1 rounded-lg border border-brand-gold/50 bg-brand-gold px-2.5 py-1.5 text-[10px] font-black text-[#1C4532]">
           <Save className="h-3 w-3" aria-hidden />
           حفظ العرض
         </span>
-        <span className="inline-flex items-center gap-1 rounded-lg border border-[#C9A84C]/50 bg-gradient-to-l from-[#FEFDF9] to-[#FFF8E7] px-2.5 py-1.5 text-[10px] font-black text-[#1C4532]">
+        <span className="inline-flex items-center gap-1 rounded-lg border border-brand-gold/50 bg-gradient-to-l from-[#FEFDF9] to-[#FFF8E7] px-2.5 py-1.5 text-[10px] font-black text-[#1C4532]">
           <Link2 className="h-3 w-3" aria-hidden />
           نسخ رابط العميل
         </span>
@@ -314,7 +314,7 @@ function StepCard({
   return (
     <li className="rounded-xl border border-slate-200/80 bg-white/80 p-3 dark:border-[#2D3F3A] dark:bg-[#1A2421]/50 sm:p-4">
       <div className="flex items-start gap-2">
-        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#1C2E3A] text-xs font-black text-[#D4AF37]">
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#1C2E3A] text-xs font-black text-brand-gold">
           {n}
         </span>
         <div className="min-w-0 flex-1">
@@ -336,7 +336,7 @@ function MockChip({
 }) {
   return (
     <span className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-[10px] font-bold text-slate-600 dark:border-[#2D3F3A] dark:bg-[#22302C] dark:text-slate-300">
-      <Icon className="h-3 w-3 text-[#D4AF37]" aria-hidden />
+      <Icon className="h-3 w-3 text-brand-gold" aria-hidden />
       {label}
     </span>
   );

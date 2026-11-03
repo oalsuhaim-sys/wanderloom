@@ -14,6 +14,7 @@ export type GroupTripRow = {
   excludes_ar?: string | null;
   excludes_en?: string | null;
   sort_order?: number | null;
+  /** Site visibility for public listings — false hides the trip from visitors. */
   is_active?: boolean | null;
   max_seats?: number | null;
   booked_seats?: number | null;

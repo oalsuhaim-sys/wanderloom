@@ -37,9 +37,9 @@ type PostTripDashboardProps = {
 };
 
 const PANEL_LIGHT =
-  'rounded-2xl border border-[#D4AF37]/25 bg-white p-5 shadow-sm';
+  'rounded-2xl border border-brand-gold/25 bg-white p-5 shadow-sm';
 const PANEL_DARK =
-  'rounded-2xl border border-[#d4af37]/30 bg-[#1E2720]/55 p-5 shadow-[0_0_15px_rgba(212,175,55,0.2)] backdrop-blur-md';
+  'rounded-2xl border border-brand-gold/30 bg-[#1E2720]/55 p-5 shadow-[0_0_15px_rgba(212,175,55,0.2)] backdrop-blur-md';
 
 function PlaceholderCard({
   variant,
@@ -59,12 +59,12 @@ function PlaceholderCard({
         <span
           className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
             isDark
-              ? 'bg-[#d4af37]/15 ring-1 ring-[#d4af37]/30'
+              ? 'bg-brand-gold/15 ring-1 ring-brand-gold/30'
               : 'bg-[#1E2720]/5 ring-1 ring-[#1E2720]/10'
           }`}
         >
           <Icon
-            className={`h-5 w-5 ${isDark ? 'text-[#d4af37]' : 'text-[#1E2720]'}`}
+            className={`h-5 w-5 ${isDark ? 'text-brand-gold' : 'text-[#1E2720]'}`}
             aria-hidden
           />
         </span>
@@ -98,18 +98,18 @@ function PastTripCard({
   return (
     <Link
       href={trip.viewUrl}
-      className={`group block ${isDark ? PANEL_DARK : PANEL_LIGHT} transition hover:border-[#D4AF37]/45`}
+      className={`group block ${isDark ? PANEL_DARK : PANEL_LIGHT} transition hover:border-brand-gold/45`}
     >
       <div className="flex items-center gap-3">
         <span
           className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
             isDark
-              ? 'bg-[#d4af37]/15 ring-1 ring-[#d4af37]/30'
+              ? 'bg-brand-gold/15 ring-1 ring-brand-gold/30'
               : 'bg-[#1E2720]/5 ring-1 ring-[#1E2720]/10'
           }`}
         >
           <MapPin
-            className={`h-5 w-5 ${isDark ? 'text-[#d4af37]' : 'text-[#1E2720]'}`}
+            className={`h-5 w-5 ${isDark ? 'text-brand-gold' : 'text-[#1E2720]'}`}
             aria-hidden
           />
         </span>
@@ -137,7 +137,7 @@ function PastTripCard({
         </div>
         <ChevronLeft
           className={`h-4 w-4 shrink-0 opacity-40 transition group-hover:opacity-100 ${
-            isDark ? 'text-[#d4af37]' : 'text-[#1E2720]'
+            isDark ? 'text-brand-gold' : 'text-[#1E2720]'
           }`}
           aria-hidden
         />
@@ -278,21 +278,21 @@ export default function PostTripDashboard({
       <section
         className={`relative overflow-hidden rounded-2xl p-6 text-center sm:p-8 ${
           isDark
-            ? 'border border-[#d4af37]/35 bg-gradient-to-br from-[#2A362C] via-[#1E2720] to-[#141a17] shadow-[0_0_22px_rgba(212,175,55,0.25)]'
-            : 'border border-[#D4AF37]/30 bg-gradient-to-br from-[#FFFBF0] via-white to-[#FDFBF7] shadow-md'
+            ? 'border border-brand-gold/35 bg-gradient-to-br from-[#2A362C] via-[#1E2720] to-[#141a17] shadow-[0_0_22px_rgba(212,175,55,0.25)]'
+            : 'border border-brand-gold/30 bg-gradient-to-br from-[#FFFBF0] via-white to-[#FDFBF7] shadow-md'
         }`}
       >
         <div
-          className="pointer-events-none absolute -left-10 -top-10 h-32 w-32 rounded-full bg-[#D4AF37]/15 blur-3xl"
+          className="pointer-events-none absolute -left-10 -top-10 h-32 w-32 rounded-full bg-brand-gold/15 blur-3xl"
           aria-hidden
         />
         <Sparkles
-          className={`mx-auto mb-3 h-7 w-7 ${isDark ? 'text-[#d4af37]' : 'text-[#D4AF37]'}`}
+          className={`mx-auto mb-3 h-7 w-7 ${isDark ? 'text-brand-gold' : 'text-brand-gold'}`}
           aria-hidden
         />
         <p
           className={`text-[10px] font-black uppercase tracking-[0.35em] ${
-            isDark ? 'text-[#d4af37]/75' : 'text-[#D4AF37]/80'
+            isDark ? 'text-brand-gold/75' : 'text-brand-gold/80'
           }`}
         >
           {showPostTripWelcome ? 'Welcome Back' : 'Wanderloom VIP'}
@@ -308,14 +308,14 @@ export default function PostTripDashboard({
           {showPostTripWelcome ? (
             <>
               نتمنى أن تكون رحلتك إلى{' '}
-              <span className={isDark ? 'text-[#d4af37]' : 'text-[#1E2720]'}>
+              <span className={isDark ? 'text-brand-gold' : 'text-[#1E2720]'}>
                 {trip.destination}
               </span>{' '}
               قد ملأت قلبك بذكريات جميلة. بوابتك الآن للملف الشخصي والمكافآت.
             </>
           ) : (
             <>
-              رحباً <span className={isDark ? 'text-[#d4af37]' : 'text-[#1E2720]'}>{trip.customerName}</span>
+              رحباً <span className={isDark ? 'text-brand-gold' : 'text-[#1E2720]'}>{trip.customerName}</span>
               — تابع محفظتك ومكافآتك، وارجع لمسار رحلتك متى شئت.
             </>
           )}
@@ -333,19 +333,19 @@ export default function PostTripDashboard({
           <span
             className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
               isDark
-                ? 'bg-[#d4af37]/15 ring-1 ring-[#d4af37]/30'
+                ? 'bg-brand-gold/15 ring-1 ring-brand-gold/30'
                 : 'bg-[#1E2720]/5 ring-1 ring-[#1E2720]/10'
             }`}
           >
             <User
-              className={`h-5 w-5 ${isDark ? 'text-[#d4af37]' : 'text-[#1E2720]'}`}
+              className={`h-5 w-5 ${isDark ? 'text-brand-gold' : 'text-[#1E2720]'}`}
               aria-hidden
             />
           </span>
           <div className="min-w-0 flex-1">
             <p
               className={`text-[10px] font-black uppercase tracking-[0.25em] ${
-                isDark ? 'text-[#d4af37]/70' : 'text-[#D4AF37]'
+                isDark ? 'text-brand-gold/70' : 'text-brand-gold'
               }`}
             >
               ملفك الشخصي
@@ -379,7 +379,7 @@ export default function PostTripDashboard({
         <h3
           id="post-trip-wallet-title"
           className={`flex items-center gap-2 text-sm font-black ${
-            isDark ? 'text-[#d4af37]' : 'text-[#1E2720]'
+            isDark ? 'text-brand-gold' : 'text-[#1E2720]'
           }`}
         >
           <Wallet className="h-4 w-4 shrink-0" aria-hidden />
@@ -401,7 +401,7 @@ export default function PostTripDashboard({
         <h3
           id="post-trip-history-title"
           className={`flex items-center gap-2 text-sm font-black ${
-            isDark ? 'text-[#d4af37]' : 'text-[#1E2720]'
+            isDark ? 'text-brand-gold' : 'text-[#1E2720]'
           }`}
         >
           <History className="h-4 w-4 shrink-0" aria-hidden />

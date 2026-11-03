@@ -36,21 +36,30 @@ function buildStatsFromRows(rows: VipClientProfile[]): Pick<
   return { tripCounts, profitTotals }
 }
 
-async function prefetchClientDirectory(): Promise<ClientDirectoryPayload | null> {
+async function prefetchClientDirectory(): Promise<ClientDirectoryPayload> {
+  const empty: ClientDirectoryPayload = { rows: [], tripCounts: {}, profitTotals: {} }
   try {
     createSupabaseAdminClient()
     const result = await fetchClientDirectoryAction(null, {
       skipBackfill: true,
     })
     if (!result.ok) {
-      console.warn('[crm/clients RSC] prefetch failed:', result.error)
-      return null
+      console.error('Error fetching clients:', result.error)
+      const message = String(result.error ?? '')
+      if (/fetch failed|network|ECONN|ENOTFOUND|Failed to fetch|getaddrinfo|socket/i.test(message)) {
+        throw new Error(message || 'تعذر الاتصال بقاعدة العملاء.')
+      }
+      return empty
     }
-    const rows = uniqueClientsById(result.rows)
+    const rows = uniqueClientsById(result.rows ?? [])
     return { rows, ...buildStatsFromRows(rows) }
   } catch (err) {
-    console.warn('[crm/clients RSC] prefetch exception:', err)
-    return null
+    console.error('Error fetching clients:', err)
+    const message = err instanceof Error ? err.message : String(err ?? '')
+    if (/fetch failed|network|ECONN|ENOTFOUND|Failed to fetch|getaddrinfo|socket/i.test(message)) {
+      throw err
+    }
+    return empty
   }
 }
 

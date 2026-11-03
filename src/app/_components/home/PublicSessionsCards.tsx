@@ -9,6 +9,7 @@ import { registerSessionAction } from '@/app/actions/registerSession';
 import { WhatsAppInput } from '@/components/WhatsAppInput';
 import { requireValidPhone, WHATSAPP_INCOMPLETE_ERROR } from '@/lib/phoneUtils';
 import { useLanguage } from '@/context/LanguageContext';
+import { formatSessionTimeLabel } from '@/lib/session-time';
 import type { Session } from '@/types/session-tables';
 
 import { requestScrollToTripForm } from './ScrollToLeadOnMount';
@@ -214,7 +215,7 @@ export function PublicSessionsCards({
   if (initialLoading) {
     return (
       <div className="flex min-h-[200px] flex-col items-center justify-center gap-3 rounded-[2rem] border border-[#1C2E3A]/10 bg-white py-16">
-        <Loader2 className="h-9 w-9 animate-spin text-[#9C7A3C]" aria-hidden />
+        <Loader2 className="h-9 w-9 animate-spin text-public-gold" aria-hidden />
         <p className="text-sm font-bold text-gray-600">{ev.loading}</p>
       </div>
     );
@@ -234,7 +235,7 @@ export function PublicSessionsCards({
         <p className="text-base font-black leading-relaxed text-[#1C2E3A] sm:text-lg">{ev.emptyTitle}</p>
         <p className="mt-4 text-sm font-bold text-gray-600">
           {ev.emptyLeadPrefix}{' '}
-          <Link href="/#lead" className="font-black text-[#9C7A3C] underline underline-offset-4">
+          <Link href="/#lead" className="font-black text-public-gold underline underline-offset-4">
             {ev.emptyLeadLink}
           </Link>{' '}
           {ev.emptyLeadSuffix}
@@ -255,13 +256,14 @@ export function PublicSessionsCards({
         {displaySessions.map((session) => {
           const left = spotsLeft(session);
           const full = left < 1;
+          const timeLabel = formatSessionTimeLabel(session.time, locale);
           return (
             <article
               key={String(session.id ?? `${session.title}-${session.date}`)}
-              className="wl-lift-card group flex flex-col overflow-hidden rounded-3xl border border-[#1C2E3A]/10 bg-white/80 p-6 shadow-sm backdrop-blur-sm transition-all duration-300 hover:border-[#9C7A3C]/40 hover:shadow-xl"
+              className="wl-lift-card group flex flex-col overflow-hidden rounded-3xl border border-[#1C2E3A]/10 bg-white/80 p-6 shadow-sm backdrop-blur-sm transition-all duration-300 hover:border-public-gold/40 hover:shadow-xl"
             >
               <div className="wl-card-media overflow-hidden rounded-2xl bg-gradient-to-br from-[#F4EFE6] via-white to-[#F4EFE6]/60 px-5 py-5">
-                <div className="wl-card-media-icon flex h-12 w-12 items-center justify-center rounded-2xl bg-[#1C2E3A] text-[#9C7A3C] transition-transform duration-500 group-hover:scale-105">
+                <div className="wl-card-media-icon flex h-12 w-12 items-center justify-center rounded-2xl bg-[#1C2E3A] text-public-gold transition-transform duration-500 group-hover:scale-105">
                   <Ticket className="h-5 w-5" aria-hidden />
                 </div>
               </div>
@@ -269,10 +271,11 @@ export function PublicSessionsCards({
                 <h3 className="text-lg font-semibold leading-snug text-[#1C2E3A] sm:text-xl">
                   {session.title}
                 </h3>
-                <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs font-medium tracking-wide text-[#9C7A3C]">
+                <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs font-medium tracking-wide text-public-gold">
                   <span className="inline-flex items-center gap-1.5">
                     <CalendarClock className="h-3.5 w-3.5" aria-hidden />
                     {formatSessionDate(String(session.date), locale)}
+                    {timeLabel ? ` · ${timeLabel}` : ''}
                   </span>
                   <span className="inline-flex items-center gap-1.5">
                     <Ticket className="h-3.5 w-3.5" aria-hidden />
@@ -311,7 +314,7 @@ export function PublicSessionsCards({
                       href={session.location_url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-[#9C7A3C]/35 py-2.5 text-xs font-medium tracking-wide text-[#9C7A3C] transition-colors duration-300 hover:border-[#9C7A3C] hover:bg-[#9C7A3C]/5"
+                      className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-public-gold/35 py-2.5 text-xs font-medium tracking-wide text-public-gold transition-colors duration-300 hover:border-public-gold hover:bg-public-gold/5"
                     >
                       <MapPin className="h-4 w-4" aria-hidden />
                       {ev.location}
@@ -333,13 +336,13 @@ export function PublicSessionsCards({
           onClick={() => !submitting && setOpenFor(null)}
         >
           <div
-            className="max-h-[92dvh] w-[95%] max-w-md overflow-y-auto rounded-t-3xl border border-[#9C7A3C]/25 bg-white p-4 shadow-2xl sm:max-h-[90vh] sm:w-full sm:rounded-3xl sm:p-6 md:w-3/4 md:max-w-lg lg:w-1/2 lg:max-w-xl"
+            className="max-h-[92dvh] w-[95%] max-w-md overflow-y-auto rounded-t-3xl border border-public-gold/25 bg-white p-4 shadow-2xl sm:max-h-[90vh] sm:w-full sm:rounded-3xl sm:p-6 md:w-3/4 md:max-w-lg lg:w-1/2 lg:max-w-xl"
             onClick={(e) => e.stopPropagation()}
             dir={dir}
           >
             <div className="flex items-start justify-between gap-2">
               <div>
-                <h3 id="session-register-title" className="text-sm font-black text-[#9C7A3C]">
+                <h3 id="session-register-title" className="text-sm font-black text-public-gold">
                   {ev.modalTitle}
                 </h3>
                 <p className="mt-1 text-xs font-bold text-gray-500">{openFor.title}</p>
@@ -359,7 +362,7 @@ export function PublicSessionsCards({
               <div>
                 <label className="mb-1 block text-xs font-black text-gray-700">{ev.nameLabel}</label>
                 <input
-                  className="w-full rounded-xl border border-gray-200 bg-[#F4EFE6] px-3 py-2.5 text-sm font-bold text-[#1C2E3A] outline-none ring-[#9C7A3C] placeholder:text-gray-400 focus:ring-2"
+                  className="w-full rounded-xl border border-gray-200 bg-[#F4EFE6] px-3 py-2.5 text-sm font-bold text-[#1C2E3A] outline-none ring-public-gold placeholder:text-gray-400 focus:ring-2"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder={ev.namePlaceholder}
@@ -378,7 +381,7 @@ export function PublicSessionsCards({
                 <div
                   className={`rounded-xl border px-3 py-2 text-xs font-black ${
                     formMsg.type === 'ok'
-                      ? 'border-[#9C7A3C]/40 bg-[#1C2E3A] text-[#F4EFE6]'
+                      ? 'border-public-gold/40 bg-[#1C2E3A] text-[#F4EFE6]'
                       : 'border-red-400/40 bg-red-950/50 text-red-100'
                   }`}
                 >
@@ -389,7 +392,7 @@ export function PublicSessionsCards({
               <button
                 type="submit"
                 disabled={submitting || spotsLeft(openFor) < 1 || !isPhoneValid}
-                className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#9C7A3C] py-3 text-sm font-black text-[#F4EFE6] transition hover:bg-[#9C7A3C] disabled:opacity-60"
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-public-gold py-3 text-sm font-black text-[#1A3B2A] transition hover:bg-[#B8860B] disabled:opacity-60"
               >
                 {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                 {ev.submit}
@@ -399,7 +402,7 @@ export function PublicSessionsCards({
                 <button
                   type="button"
                   onClick={goToTripForm}
-                  className="font-black text-[#9C7A3C] underline underline-offset-2"
+                  className="font-black text-public-gold underline underline-offset-2"
                 >
                   {ev.modalFooterLink}
                 </button>

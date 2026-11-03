@@ -131,7 +131,7 @@ export default function MarketingOperationsClient() {
         <header className="mb-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-[#2D3F3A] dark:bg-[#22302C] sm:mb-8 sm:p-6">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
-              <p className="inline-flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400 dark:text-[#D4AF37]/80">
+              <p className="inline-flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400 dark:text-brand-gold/80">
                 <Megaphone className="h-3.5 w-3.5" aria-hidden />
                 Marketing
               </p>
@@ -168,7 +168,7 @@ export default function MarketingOperationsClient() {
 
         {loading ? (
           <div className="flex min-h-[280px] flex-col items-center justify-center gap-4 rounded-2xl border border-slate-200 bg-white p-12 shadow-sm dark:border-[#2D3F3A] dark:bg-[#22302C]">
-            <Loader2 className="h-10 w-10 animate-spin text-[#D4AF37]" aria-hidden />
+            <Loader2 className="h-10 w-10 animate-spin text-brand-gold" aria-hidden />
             <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">جاري التحميل…</p>
           </div>
         ) : (
@@ -198,7 +198,7 @@ export default function MarketingOperationsClient() {
             <section aria-label="الحملات ومواعيد النشر">
               <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
                 <div className="flex items-center gap-2">
-                  <CalendarDays className="h-5 w-5 text-slate-400 dark:text-[#D4AF37]/80" aria-hidden />
+                  <CalendarDays className="h-5 w-5 text-slate-400 dark:text-brand-gold/80" aria-hidden />
                   <div>
                     <h2 className="text-xl font-bold text-slate-900 dark:text-white">الحملات</h2>
                     <p className="mt-0.5 text-xs font-medium text-slate-500">
@@ -219,7 +219,7 @@ export default function MarketingOperationsClient() {
 
               {calendarItems.length === 0 ? (
                 <div className="rounded-2xl border border-dashed border-slate-200 bg-white px-6 py-12 text-center dark:border-[#2D3F3A] dark:bg-[#22302C]">
-                  <CalendarDays className="mx-auto mb-3 h-10 w-10 text-slate-300 dark:text-[#D4AF37]/50" aria-hidden />
+                  <CalendarDays className="mx-auto mb-3 h-10 w-10 text-slate-300 dark:text-brand-gold/50" aria-hidden />
                   <p className="text-sm font-semibold text-slate-600 dark:text-slate-300">
                     لا توجد مواعيد نشر بعد
                   </p>
@@ -234,7 +234,7 @@ export default function MarketingOperationsClient() {
                         className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg sm:flex-row sm:items-center sm:justify-between dark:border-[#2D3F3A] dark:bg-[#22302C]"
                       >
                         <div className="min-w-0">
-                          <p className="text-xs font-semibold text-slate-400 dark:text-[#D4AF37]/80">
+                          <p className="text-xs font-semibold text-slate-400 dark:text-brand-gold/80">
                             {slot.date ?? '—'}
                           </p>
                           <h4 className="mt-1 truncate text-base font-bold text-slate-900 dark:text-white">
@@ -291,7 +291,7 @@ export default function MarketingOperationsClient() {
 
             <section aria-label="الملفات">
               <div className="mb-5 flex items-center gap-2">
-                <FolderOpen className="h-5 w-5 text-slate-400 dark:text-[#D4AF37]/80" aria-hidden />
+                <FolderOpen className="h-5 w-5 text-slate-400 dark:text-brand-gold/80" aria-hidden />
                 <h2 className="text-xl font-bold text-slate-900 dark:text-white">مكتبة الأصول</h2>
               </div>
               <MarketingFilesLibrary onFilesCountChange={setFilesCount} />

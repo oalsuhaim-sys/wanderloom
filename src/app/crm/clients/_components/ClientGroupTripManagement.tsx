@@ -286,7 +286,7 @@ export default function ClientGroupTripManagement({
           </div>
 
           {canShowAssignUi && showAssign ? (
-            <div className="mt-4 space-y-3 rounded-xl border border-[#D4AF37]/35 bg-[#FEFDF9] p-4">
+            <div className="mt-4 space-y-3 rounded-xl border border-brand-gold/35 bg-[#FEFDF9] p-4">
               <label className="block text-xs font-black text-slate-700">
                 اختر الرحلة الجماعية
                 <select
@@ -318,7 +318,7 @@ export default function ClientGroupTripManagement({
                 type="button"
                 disabled={busy !== null || !selectedTripId}
                 onClick={() => void onAssign()}
-                className="w-full rounded-xl bg-gradient-to-l from-[#D4AF37] to-[#B8941F] py-2.5 text-sm font-black text-[#0D0F0E] disabled:opacity-60"
+                className="w-full rounded-xl bg-gradient-to-l from-brand-gold to-[#B8941F] py-2.5 text-sm font-black text-[#0D0F0E] disabled:opacity-60"
               >
                 {busy === 'assign' ? (
                   <span className="inline-flex items-center justify-center gap-2">

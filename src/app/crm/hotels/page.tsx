@@ -92,11 +92,11 @@ function hotelWhatsAppDigits(h: HotelRow): string {
 
 /** حقول النماذج — ثيم فاخر ثنائي (فاتح/داكن) */
 const CRM_FORM_FIELD =
-  'w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-300 focus:ring-2 focus:ring-slate-200 dark:border-[#2D3F3A] dark:bg-[#1A2421] dark:text-gray-100 dark:focus:border-[#D4AF37]/40 dark:focus:ring-[#D4AF37]/15';
+  'w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-300 focus:ring-2 focus:ring-slate-200 dark:border-[#2D3F3A] dark:bg-[#1A2421] dark:text-gray-100 dark:focus:border-brand-gold/40 dark:focus:ring-brand-gold/15';
 const CRM_FORM_FIELD_LTR = `${CRM_FORM_FIELD} text-left`;
 
 const BTN_PRIMARY =
-  'inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50 dark:border dark:border-[#D4AF37]/50 dark:bg-[#D4AF37]/20 dark:text-[#D4AF37] dark:hover:bg-[#D4AF37]/30';
+  'inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50 dark:border dark:border-brand-gold/50 dark:bg-brand-gold/20 dark:text-brand-gold dark:hover:bg-brand-gold/30';
 
 const BTN_SECONDARY =
   'inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 dark:border-[#2D3F3A] dark:bg-[#1A2421] dark:text-gray-300';
@@ -105,7 +105,7 @@ const CARD =
   'rounded-xl border border-slate-200 bg-white shadow-sm dark:border-[#2D3F3A] dark:bg-[#22302C]';
 
 const CATEGORY_BADGE =
-  'inline-flex bg-amber-50 text-amber-700 border border-amber-200/60 px-2.5 py-0.5 rounded-full text-xs font-medium dark:bg-[#D4AF37]/10 dark:text-[#D4AF37] dark:border-[#D4AF37]/30';
+  'inline-flex bg-amber-50 text-amber-700 border border-amber-200/60 px-2.5 py-0.5 rounded-full text-xs font-medium dark:bg-brand-gold/10 dark:text-brand-gold dark:border-brand-gold/30';
 
 const FILTER_BAR =
   'rounded-xl border border-slate-200/80 bg-white p-3 shadow-sm dark:border-[#2D3F3A] dark:bg-[#22302C]';
@@ -118,7 +118,7 @@ const BTN_WA =
 const BTN_LINK =
   'p-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 text-xs flex items-center gap-1 font-medium transition dark:bg-[#1A2421] dark:text-slate-300 dark:hover:bg-[#2D3F3A]';
 const BTN_ICON =
-  'p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition dark:hover:bg-[#1A2421] dark:hover:text-[#D4AF37]';
+  'p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition dark:hover:bg-[#1A2421] dark:hover:text-brand-gold';
 
 export default function HotelsCRMPage() {
   const { countries, citiesByCountry } = usePlacesBankDestinations();
@@ -347,14 +347,14 @@ export default function HotelsCRMPage() {
         <button
           type="button"
           onClick={() => window.history.back()}
-          className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 transition hover:text-slate-800 dark:text-gray-400 dark:hover:text-[#D4AF37]"
+          className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 transition hover:text-slate-800 dark:text-gray-400 dark:hover:text-brand-gold"
         >
           <ArrowRight className="h-3.5 w-3.5" aria-hidden /> رجوع
         </button>
 
-        <header className="flex flex-col gap-4 rounded-2xl bg-slate-900 p-4 text-white shadow-sm sm:flex-row sm:items-center sm:justify-between sm:p-6 dark:border dark:border-[#D4AF37]/30 dark:!bg-[#22302C] dark:text-[#D4AF37]">
+        <header className="flex flex-col gap-4 rounded-2xl bg-slate-900 p-4 text-white shadow-sm sm:flex-row sm:items-center sm:justify-between sm:p-6 dark:border dark:border-brand-gold/30 dark:!bg-[#22302C] dark:text-brand-gold">
           <div className="space-y-1.5">
-            <p className="inline-flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-white/50 dark:text-[#D4AF37]/80">
+            <p className="inline-flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-white/50 dark:text-brand-gold/80">
               <Hotel className="h-3.5 w-3.5" aria-hidden />
               Hotels Bank
             </p>
@@ -370,7 +370,7 @@ export default function HotelsCRMPage() {
           <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
             <Link
               href="/crm"
-              className={`${BTN_SECONDARY} w-full border-white/20 !bg-white/10 !text-white hover:!bg-white/20 sm:w-auto dark:!border-[#D4AF37]/30 dark:!bg-[#1A2421] dark:!text-[#D4AF37]`}
+              className={`${BTN_SECONDARY} w-full border-white/20 !bg-white/10 !text-white hover:!bg-white/20 sm:w-auto dark:!border-brand-gold/30 dark:!bg-[#1A2421] dark:!text-brand-gold`}
             >
               لوحة التحكم
             </Link>
@@ -452,7 +452,7 @@ export default function HotelsCRMPage() {
               <button
                 type="button"
                 onClick={() => setAdding(false)}
-                className="rounded-lg p-1.5 text-slate-500 transition hover:bg-slate-100 dark:hover:bg-[#1A2421] dark:hover:text-[#D4AF37]"
+                className="rounded-lg p-1.5 text-slate-500 transition hover:bg-slate-100 dark:hover:bg-[#1A2421] dark:hover:text-brand-gold"
                 aria-label="إغلاق"
               >
                 <X className="h-4 w-4" aria-hidden />
@@ -463,12 +463,12 @@ export default function HotelsCRMPage() {
                 value={newRow.name}
                 onChange={(e) => setNewRow({ ...newRow, name: e.target.value })}
                 placeholder="اسم الفندق *"
-                className="rounded-2xl border border-slate-200 bg-[#F8F5EE]/50 p-3 font-bold outline-none focus:border-[#C59B4B]"
+                className="rounded-2xl border border-slate-200 bg-[#F8F5EE]/50 p-3 font-bold outline-none focus:border-brand-gold"
               />
               <select
                 value={newRow.country}
                 onChange={(e) => setNewRow({ ...newRow, country: e.target.value, city: '' })}
-                className="rounded-2xl border border-slate-200 bg-[#F8F5EE]/50 p-3 font-bold outline-none focus:border-[#C59B4B]"
+                className="rounded-2xl border border-slate-200 bg-[#F8F5EE]/50 p-3 font-bold outline-none focus:border-brand-gold"
                 required
               >
                 <option value="">الدولة * (بنك الأماكن)</option>
@@ -481,7 +481,7 @@ export default function HotelsCRMPage() {
               <select
                 value={newRow.city}
                 onChange={(e) => setNewRow({ ...newRow, city: e.target.value })}
-                className="rounded-2xl border border-slate-200 bg-[#F8F5EE]/50 p-3 font-bold outline-none focus:border-[#C59B4B] disabled:opacity-60"
+                className="rounded-2xl border border-slate-200 bg-[#F8F5EE]/50 p-3 font-bold outline-none focus:border-brand-gold disabled:opacity-60"
                 disabled={!newRow.country}
                 required
               >
@@ -495,7 +495,7 @@ export default function HotelsCRMPage() {
               <select
                 value={newRow.category}
                 onChange={(e) => setNewRow({ ...newRow, category: e.target.value as HotelCategory })}
-                className="rounded-2xl border border-slate-200 bg-[#F8F5EE]/50 p-3 font-bold outline-none focus:border-[#C59B4B]"
+                className="rounded-2xl border border-slate-200 bg-[#F8F5EE]/50 p-3 font-bold outline-none focus:border-brand-gold"
               >
                 {CATEGORY_OPTIONS.map((o) => (
                   <option key={o.value} value={o.value} title={o.hint}>
@@ -508,13 +508,13 @@ export default function HotelsCRMPage() {
                 onChange={(e) => setNewRow({ ...newRow, booking_url: e.target.value })}
                 placeholder="رابط خرائط جوجل (Google Maps URL)"
                 dir="ltr"
-                className="rounded-2xl border border-slate-200 bg-[#F8F5EE]/50 p-3 outline-none focus:border-[#C59B4B] md:col-span-2"
+                className="rounded-2xl border border-slate-200 bg-[#F8F5EE]/50 p-3 outline-none focus:border-brand-gold md:col-span-2"
               />
               <input
                 value={newRow.manager_name}
                 onChange={(e) => setNewRow({ ...newRow, manager_name: e.target.value })}
                 placeholder="اسم المسؤول"
-                className="rounded-2xl border border-slate-200 bg-[#F8F5EE]/50 p-3 outline-none focus:border-[#C59B4B]"
+                className="rounded-2xl border border-slate-200 bg-[#F8F5EE]/50 p-3 outline-none focus:border-brand-gold"
               />
               <input
                 type="text"
@@ -524,7 +524,7 @@ export default function HotelsCRMPage() {
                 onChange={(e) => setNewRow({ ...newRow, email: e.target.value.trim() })}
                 placeholder="(Email) البريد الإلكتروني"
                 dir="ltr"
-                className="rounded-2xl border border-slate-200 bg-[#F8F5EE]/50 p-3 text-right font-mono outline-none focus:border-[#C59B4B]"
+                className="rounded-2xl border border-slate-200 bg-[#F8F5EE]/50 p-3 text-right font-mono outline-none focus:border-brand-gold"
               />
               <input
                 type="tel"
@@ -532,14 +532,14 @@ export default function HotelsCRMPage() {
                 onChange={(e) => setNewRow({ ...newRow, contact_number: e.target.value })}
                 placeholder="رقم التواصل / واتساب"
                 dir="ltr"
-                className="rounded-2xl border border-slate-200 bg-[#F8F5EE]/50 p-3 outline-none focus:border-[#C59B4B]"
+                className="rounded-2xl border border-slate-200 bg-[#F8F5EE]/50 p-3 outline-none focus:border-brand-gold"
               />
               <textarea
                 value={newRow.notes}
                 onChange={(e) => setNewRow({ ...newRow, notes: e.target.value })}
                 placeholder="ملاحظاتك عن الفندق..."
                 rows={2}
-                className="resize-y rounded-2xl border border-slate-200 bg-[#F8F5EE]/50 p-3 outline-none focus:border-[#C59B4B] md:col-span-3"
+                className="resize-y rounded-2xl border border-slate-200 bg-[#F8F5EE]/50 p-3 outline-none focus:border-brand-gold md:col-span-3"
               />
             </div>
             <button
@@ -719,7 +719,7 @@ export default function HotelsCRMPage() {
                                 {h.email?.trim() ? (
                                   <a
                                     href={`mailto:${h.email.trim()}`}
-                                    className="flex items-center gap-1 font-mono text-xs text-slate-700 transition-colors hover:text-amber-600 dark:text-slate-300 dark:hover:text-[#D4AF37]"
+                                    className="flex items-center gap-1 font-mono text-xs text-slate-700 transition-colors hover:text-amber-600 dark:text-slate-300 dark:hover:text-brand-gold"
                                     dir="ltr"
                                   >
                                     <Mail className="h-3 w-3 shrink-0 text-slate-400" aria-hidden />

@@ -25,14 +25,14 @@ function QuizOptionCard({
       aria-pressed={checked}
       className={`wl-quiz-option flex w-full cursor-pointer items-center justify-between rounded-2xl border p-5 text-start transition-all duration-300 ${
         checked
-          ? 'border-[#9C7A3C] bg-[#1C2E3A] font-medium text-[#F4EFE6] shadow-md'
-          : 'border-[#1C2E3A]/10 bg-white/80 font-medium text-[#1C2E3A] hover:border-[#9C7A3C]/50'
+          ? 'border-public-gold bg-[#1C2E3A] font-medium text-[#F4EFE6] shadow-md'
+          : 'border-[#1C2E3A]/10 bg-white/80 font-medium text-[#1C2E3A] hover:border-public-gold/50'
       }`}
     >
       <span className="flex-1 leading-relaxed">{label}</span>
       <span
         className={`ms-4 h-2.5 w-2.5 shrink-0 rounded-full transition-all duration-300 ${
-          checked ? 'bg-[#9C7A3C] shadow-[0_0_0_4px_rgba(156,122,60,0.18)]' : 'bg-[#1C2E3A]/15'
+          checked ? 'bg-public-gold shadow-[0_0_0_4px_rgba(184,134,11,0.22)]' : 'bg-[#1C2E3A]/15'
         }`}
         aria-hidden
       />
@@ -141,7 +141,7 @@ export default function WanderloomQuiz() {
   return (
     <div className="isolate w-full bg-[#F4EFE6]" dir={dir}>
       <div className="mx-auto max-w-2xl px-2 text-center sm:px-0">
-        <p className="inline-flex items-center gap-2 rounded-full border border-[#9C7A3C]/30 bg-[#9C7A3C]/10 px-4 py-1.5 text-[11px] font-black tracking-wide text-[#9C7A3C] sm:text-xs">
+        <p className="inline-flex items-center gap-2 rounded-full border border-public-gold/30 bg-public-gold/10 px-4 py-1.5 text-[11px] font-black tracking-wide text-public-gold sm:text-xs">
           <Sparkles className="h-3.5 w-3.5" aria-hidden />
           {q.kicker}
         </p>
@@ -160,7 +160,7 @@ export default function WanderloomQuiz() {
                   key={index}
                   className={`flex h-9 w-9 items-center justify-center rounded-full text-xs font-black transition-colors ${
                     active
-                      ? 'border border-[#9C7A3C] bg-[#1C2E3A] text-[#F4EFE6]'
+                      ? 'border border-public-gold bg-[#1C2E3A] text-[#F4EFE6]'
                       : done
                         ? 'border-2 border-[#1C2E3A] text-[#1C2E3A]'
                         : 'border border-gray-200 text-gray-400'
@@ -174,9 +174,9 @@ export default function WanderloomQuiz() {
           </div>
         ) : null}
 
-        <div className="mb-8 h-1 overflow-hidden rounded-full bg-[#9C7A3C]/15">
+        <div className="mb-8 h-1 overflow-hidden rounded-full bg-public-gold/15">
           <div
-            className="h-full rounded-full bg-gradient-to-l from-[#9C7A3C] to-[#9C7A3C] transition-all duration-500"
+            className="h-full rounded-full bg-gradient-to-l from-public-gold to-public-gold transition-all duration-500"
             style={{ width: `${progress}%` }}
           />
         </div>
@@ -188,7 +188,7 @@ export default function WanderloomQuiz() {
                 <button
                   type="button"
                   onClick={handleBack}
-                  className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[#1C2E3A]/10 bg-white/90 px-3 py-1.5 text-xs font-medium text-[#1C2E3A] shadow-sm transition hover:border-[#9C7A3C] hover:text-[#9C7A3C]"
+                  className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[#1C2E3A]/10 bg-white/90 px-3 py-1.5 text-xs font-medium text-[#1C2E3A] shadow-sm transition hover:border-public-gold hover:text-public-gold"
                 >
                   <ChevronRight className="h-4 w-4" aria-hidden />
                   رجوع
@@ -201,7 +201,7 @@ export default function WanderloomQuiz() {
             </div>
 
             <div className="space-y-3 text-center">
-              <p className="text-[11px] font-medium tracking-[0.25em] text-[#9C7A3C]">
+              <p className="text-[11px] font-medium tracking-[0.25em] text-public-gold">
                 {q.questionLabel
                   .replace('{current}', String(step + 1))
                   .replace('{total}', String(totalSteps))}
@@ -256,7 +256,7 @@ export default function WanderloomQuiz() {
               >
                 <div className="mb-6 flex items-start justify-between gap-4">
                   <div className="text-start">
-                    <p className="text-[10px] font-black tracking-[0.3em] text-[#9C7A3C]">
+                    <p className="text-[10px] font-black tracking-[0.3em] text-public-gold">
                       {resultDestination.name}
                     </p>
                     <h3
@@ -291,7 +291,7 @@ export default function WanderloomQuiz() {
                         <span className="text-2xl" aria-hidden>
                           {item.icon}
                         </span>
-                        <span className="inline-flex rounded-full border border-[#9C7A3C]/35 bg-[#9C7A3C]/10 px-3 py-1 text-sm font-black text-[#1C2E3A]">
+                        <span className="inline-flex rounded-full border border-public-gold/35 bg-public-gold/10 px-3 py-1 text-sm font-black text-[#1C2E3A]">
                           {q.persuasionBasedOn} {item.userAnswer}
                         </span>
                       </div>

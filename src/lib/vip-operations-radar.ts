@@ -638,7 +638,7 @@ function buildBirthdayCards(
       kind: 'birthday' as const,
       title: 'عيد ميلاد العميل 🎂',
       tagLabel: 'عيد ميلاد',
-      tagClassName: 'border-[#D4AF37]/40 bg-[#FEFDF9] text-[#1E2720]',
+      tagClassName: 'border-brand-gold/40 bg-[#FEFDF9] text-[#1E2720]',
       icon: '🎂',
       clientName: client.name,
       clientVipTier: tierMap.get(String(client.id)) ?? 'gold',

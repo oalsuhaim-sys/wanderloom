@@ -28,13 +28,13 @@ import { PLACE_CATEGORY_OPTIONS } from '@/lib/places-bank';
 import { getVipPlaceCategoryMeta } from '@/lib/vip-place-category';
 
 const cellInputClass =
-  'w-full min-w-[4rem] border-0 bg-transparent px-2 py-2 text-xs font-bold text-[#1A3B2A] outline-none focus:bg-[#C5A059]/10 focus:ring-1 focus:ring-inset focus:ring-[#C5A059]/40';
+  'w-full min-w-[4rem] border-0 bg-transparent px-2 py-2 text-xs font-bold text-[#1A3B2A] outline-none focus:bg-brand-gold/10 focus:ring-1 focus:ring-inset focus:ring-brand-gold/40';
 const thClass =
   'bg-[#1A3B2A]/5 px-2 py-3 text-start text-xs font-semibold text-[#1A3B2A] border-b border-gray-200';
 const cardClass =
   'rounded-2xl border border-gray-100 bg-white p-4 shadow-sm sm:p-5';
 const fieldClass =
-  'w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-[#1A3B2A] outline-none focus:border-[#C5A059] focus:ring-2 focus:ring-[#C5A059]/30';
+  'w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-[#1A3B2A] outline-none focus:border-brand-gold focus:ring-2 focus:ring-brand-gold/30';
 
 type InteractiveBrochureEditorProps = {
   itineraryDays: QuotationItineraryDay[];
@@ -72,7 +72,7 @@ function TableSection({
         <button
           type="button"
           onClick={onAdd}
-          className="inline-flex items-center gap-1 rounded-lg border border-[#C9A84C]/40 bg-[#FEFDF9] px-3 py-1.5 text-[10px] font-black text-[#1C4532] hover:bg-amber-50"
+          className="inline-flex items-center gap-1 rounded-lg border border-brand-gold/40 bg-[#FEFDF9] px-3 py-1.5 text-[10px] font-black text-[#1C4532] hover:bg-amber-50"
         >
           <Plus size={12} aria-hidden />
           أضف صف جديد
@@ -220,9 +220,9 @@ function StopEditorCard({
               type="button"
               disabled={curating}
               onClick={() => void handleCurateImage()}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-[#C9A84C]/50 bg-[#FEFDF9] px-3 py-2 text-[10px] font-black text-[#1C4532] hover:bg-amber-50 disabled:opacity-60"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-brand-gold/50 bg-[#FEFDF9] px-3 py-2 text-[10px] font-black text-[#1C4532] hover:bg-amber-50 disabled:opacity-60"
             >
-              <Sparkles className="h-3.5 w-3.5 text-[#C9A84C]" aria-hidden />
+              <Sparkles className="h-3.5 w-3.5 text-brand-gold" aria-hidden />
               {curating ? 'جاري الجلب…' : 'جلب صورة تلقائياً ✨'}
             </button>
           </div>
@@ -346,7 +346,7 @@ export function InteractiveBrochureEditor({
 
   return (
     <div className="mb-5" dir="rtl">
-      <div className="mb-4 rounded-xl border border-[#C5A059]/30 bg-[#FEFDF9] px-4 py-3">
+      <div className="mb-4 rounded-xl border border-brand-gold/30 bg-[#FEFDF9] px-4 py-3">
         <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#8A6B2A]">
           كتيّب العرض التفاعلي · إدخال بيانات فقط
         </p>
@@ -359,7 +359,7 @@ export function InteractiveBrochureEditor({
       <section className={`${cardClass} mb-5`}>
         <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="flex items-center gap-2 text-sm font-black text-[#1C4532] sm:text-base">
-            <CalendarRange size={18} className="text-[#C9A84C]" aria-hidden />
+            <CalendarRange size={18} className="text-brand-gold" aria-hidden />
             أيام الرحلة · المحطات المفصّلة
           </h2>
           <button
@@ -370,7 +370,7 @@ export function InteractiveBrochureEditor({
                 createEmptyItineraryDay(prev.length + 1),
               ])
             }
-            className="inline-flex items-center gap-1 rounded-lg border border-[#C9A84C]/40 bg-[#FEFDF9] px-3 py-1.5 text-[10px] font-black text-[#1C4532] hover:bg-amber-50"
+            className="inline-flex items-center gap-1 rounded-lg border border-brand-gold/40 bg-[#FEFDF9] px-3 py-1.5 text-[10px] font-black text-[#1C4532] hover:bg-amber-50"
           >
             <Plus size={12} aria-hidden />
             إضافة يوم
@@ -468,7 +468,7 @@ export function InteractiveBrochureEditor({
                 <button
                   type="button"
                   onClick={() => addStop(index)}
-                  className="inline-flex items-center gap-1 rounded-lg border border-[#C9A84C]/40 bg-white px-2.5 py-1 text-[10px] font-black text-[#1C4532] hover:bg-amber-50"
+                  className="inline-flex items-center gap-1 rounded-lg border border-brand-gold/40 bg-white px-2.5 py-1 text-[10px] font-black text-[#1C4532] hover:bg-amber-50"
                 >
                   <Plus size={12} aria-hidden />
                   إضافة محطة
@@ -498,7 +498,7 @@ export function InteractiveBrochureEditor({
 
       <TableSection
         title="خيارات الفنادق"
-        icon={<Hotel size={18} className="text-[#C9A84C]" aria-hidden />}
+        icon={<Hotel size={18} className="text-brand-gold" aria-hidden />}
         onAdd={() => setHotelOptions((prev) => [...prev, createEmptyHotelOption()])}
       >
         <table className="w-full min-w-[720px] border-collapse text-sm">
@@ -612,7 +612,7 @@ export function InteractiveBrochureEditor({
 
       <TableSection
         title="خيارات المواصلات"
-        icon={<Bus size={18} className="text-[#C9A84C]" aria-hidden />}
+        icon={<Bus size={18} className="text-brand-gold" aria-hidden />}
         onAdd={() => setTransportOptions((prev) => [...prev, createEmptyTransportOption()])}
       >
         <table className="w-full min-w-[620px] border-collapse text-sm">
@@ -699,7 +699,7 @@ export function InteractiveBrochureEditor({
 
       <TableSection
         title="خيارات الفعاليات"
-        icon={<Ticket size={18} className="text-[#C9A84C]" aria-hidden />}
+        icon={<Ticket size={18} className="text-brand-gold" aria-hidden />}
         onAdd={() =>
           setActivityOptions((prev) => [...prev, createEmptyActivityOption()])
         }
@@ -776,7 +776,7 @@ export function InteractiveBrochureEditor({
 
       <TableSection
         title="تكاليف إضافية (تأشيرة · طيران · أخرى)"
-        icon={<Wallet size={18} className="text-[#C9A84C]" aria-hidden />}
+        icon={<Wallet size={18} className="text-brand-gold" aria-hidden />}
         onAdd={() => setCostBreakdown((prev) => [...prev, createEmptyCostLine()])}
       >
         <table className="w-full min-w-[420px] border-collapse text-sm">

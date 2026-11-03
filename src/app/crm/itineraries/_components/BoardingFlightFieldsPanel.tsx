@@ -8,12 +8,12 @@ import { normalizeSingleArrivalCity } from '@/lib/vip-flight-voucher';
 
 const labelClass = 'mb-2 block text-xs font-semibold text-slate-700';
 const inputClass =
-  'w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-900 outline-none transition focus:border-[#D4AF37] placeholder:text-slate-600 [color-scheme:light]';
+  'w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-900 outline-none transition focus:border-brand-gold placeholder:text-slate-600 [color-scheme:light]';
 const darkTimeSelectClass =
-  'w-full cursor-pointer appearance-none rounded-xl border border-slate-200 bg-slate-50 bg-[length:1rem] bg-[position:left_0.65rem_center] bg-no-repeat px-4 py-2.5 ps-9 text-sm font-semibold text-slate-900 outline-none transition focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37]/40 [color-scheme:light]';
+  'w-full cursor-pointer appearance-none rounded-xl border border-slate-200 bg-slate-50 bg-[length:1rem] bg-[position:left_0.65rem_center] bg-no-repeat px-4 py-2.5 ps-9 text-sm font-semibold text-slate-900 outline-none transition focus:border-brand-gold focus:ring-1 focus:ring-brand-gold/40 [color-scheme:light]';
 
 const sectionTitleClass =
-  'mb-4 text-[11px] font-black uppercase tracking-[0.14em] text-[#D4AF37]';
+  'mb-4 text-[11px] font-black uppercase tracking-[0.14em] text-brand-gold';
 
 export type BoardingFlightFieldsValue = {
   originCity: string;
@@ -55,7 +55,7 @@ export default function BoardingFlightFieldsPanel({
     <div className="w-full max-w-full overflow-hidden rounded-2xl border border-slate-200 bg-white p-6">
       <div className="mb-6 flex items-start gap-3">
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-50 border border-slate-200">
-          <Plane className="h-5 w-5 text-[#D4AF37]" aria-hidden />
+          <Plane className="h-5 w-5 text-brand-gold" aria-hidden />
         </div>
         <div>
           <h3 className="text-lg font-extrabold text-slate-900">{title}</h3>

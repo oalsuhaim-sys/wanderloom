@@ -40,7 +40,7 @@ export function ExpertAssignmentsPanel({
       <div className="flex items-center justify-between gap-3">
         <div>
           <h3 className="inline-flex items-center gap-2 text-lg font-bold text-slate-800 dark:text-gray-100">
-            <FolderKanban className="h-4 w-4 text-slate-400 dark:text-[#D4AF37]" />
+            <FolderKanban className="h-4 w-4 text-slate-400 dark:text-brand-gold" />
             المهام المسندة للخبير
           </h3>
           {!compact ? (
@@ -49,7 +49,7 @@ export function ExpertAssignmentsPanel({
             </p>
           ) : null}
         </div>
-        <span className="rounded-md border border-slate-200 bg-white px-2.5 py-1 text-[10px] font-bold text-slate-700 dark:border-[#D4AF37]/30 dark:bg-[#1A2421] dark:text-[#D4AF37]">
+        <span className="rounded-md border border-slate-200 bg-white px-2.5 py-1 text-[10px] font-bold text-slate-700 dark:border-brand-gold/30 dark:bg-[#1A2421] dark:text-brand-gold">
           {itineraries.length + quotations.length}
         </span>
       </div>
@@ -58,7 +58,7 @@ export function ExpertAssignmentsPanel({
         <section className={sectionClass}>
           <div className="mb-3 flex items-center justify-between">
             <h4 className="inline-flex items-center gap-2 text-xs font-bold text-slate-800 dark:text-gray-100">
-              <Plane className="h-4 w-4 text-slate-500 dark:text-[#D4AF37]" />
+              <Plane className="h-4 w-4 text-slate-500 dark:text-brand-gold" />
               المسارات
             </h4>
             <span className="text-xs font-medium text-slate-500">
@@ -71,7 +71,7 @@ export function ExpertAssignmentsPanel({
                 <li key={itinerary.id}>
                   <Link
                     href={`/crm/itineraries/${encodeURIComponent(itinerary.id)}/edit`}
-                    className="block rounded-xl border border-slate-100 bg-white px-3 py-3 transition hover:border-slate-300 hover:bg-slate-50 dark:border-[#2D3F3A] dark:bg-[#22302C] dark:hover:border-[#D4AF37]/40"
+                    className="block rounded-xl border border-slate-100 bg-white px-3 py-3 transition hover:border-slate-300 hover:bg-slate-50 dark:border-[#2D3F3A] dark:bg-[#22302C] dark:hover:border-brand-gold/40"
                   >
                     <p className="truncate text-sm font-bold text-slate-800 dark:text-white">
                       {itinerary.title}
@@ -97,7 +97,7 @@ export function ExpertAssignmentsPanel({
         <section className={sectionClass}>
           <div className="mb-3 flex items-center justify-between">
             <h4 className="inline-flex items-center gap-2 text-xs font-bold text-slate-800 dark:text-gray-100">
-              <FileText className="h-4 w-4 text-slate-500 dark:text-[#D4AF37]" />
+              <FileText className="h-4 w-4 text-slate-500 dark:text-brand-gold" />
               عروض الأسعار
             </h4>
             <span className="text-xs font-medium text-slate-500">
@@ -110,7 +110,7 @@ export function ExpertAssignmentsPanel({
                 <li key={quotation.id}>
                   <Link
                     href={`/crm/quotations/edit/${encodeURIComponent(quotation.id)}`}
-                    className="block rounded-xl border border-slate-100 bg-white px-3 py-3 transition hover:border-slate-300 hover:bg-slate-50 dark:border-[#2D3F3A] dark:bg-[#22302C] dark:hover:border-[#D4AF37]/40"
+                    className="block rounded-xl border border-slate-100 bg-white px-3 py-3 transition hover:border-slate-300 hover:bg-slate-50 dark:border-[#2D3F3A] dark:bg-[#22302C] dark:hover:border-brand-gold/40"
                   >
                     <p className="truncate text-sm font-bold text-slate-800 dark:text-white">
                       {quotation.title}

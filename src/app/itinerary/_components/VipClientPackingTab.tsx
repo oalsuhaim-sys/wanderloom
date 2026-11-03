@@ -55,15 +55,15 @@ export default function VipClientPackingTab({ trip, profileUnlocked = false }: P
       {profileUnlocked ? (
         <VipClientWalletLedger clientId={trip.clientId} />
       ) : (
-        <div className="rounded-2xl border border-[#D4AF37]/20 bg-[#FAFAFA] px-4 py-5 text-center text-sm font-semibold text-gray-600">
+        <div className="rounded-2xl border border-brand-gold/20 bg-[#FAFAFA] px-4 py-5 text-center text-sm font-semibold text-gray-600">
           المحفظة والعهدة محمية — افتح «الملف الشخصي» وأدخل رمزك الخاص للوصول.
         </div>
       )}
 
-      <div className="rounded-2xl border border-[#D4AF37]/30 bg-white p-5 shadow-md">
+      <div className="rounded-2xl border border-brand-gold/30 bg-white p-5 shadow-md">
         <div className="mb-4 flex items-start justify-between gap-3">
           <div>
-            <h2 className="flex items-center gap-2 text-base font-black text-[#D4AF37]">
+            <h2 className="flex items-center gap-2 text-base font-black text-brand-gold">
               <Luggage className="h-5 w-5" aria-hidden />
               قائمة الحقيبة
             </h2>
@@ -81,7 +81,7 @@ export default function VipClientPackingTab({ trip, profileUnlocked = false }: P
 
         <div className="mb-4 h-1.5 overflow-hidden rounded-full bg-gray-200">
           <div
-            className="h-full rounded-full bg-[#D4AF37] transition-all duration-300"
+            className="h-full rounded-full bg-brand-gold transition-all duration-300"
             style={{ width: `${progress}%` }}
             role="progressbar"
             aria-valuenow={progress}
@@ -100,15 +100,15 @@ export default function VipClientPackingTab({ trip, profileUnlocked = false }: P
                   onClick={() => toggle(item.id)}
                   className={`flex w-full items-start gap-3 rounded-xl border px-4 py-3.5 text-start transition ${
                     isChecked
-                      ? 'border-[#D4AF37]/50 bg-[#D4AF37]/10'
-                      : 'border-gray-200 bg-[#FAFAFA] hover:border-[#D4AF37]/35'
+                      ? 'border-brand-gold/50 bg-brand-gold/10'
+                      : 'border-gray-200 bg-[#FAFAFA] hover:border-brand-gold/35'
                   }`}
                   aria-pressed={isChecked}
                 >
                   <span
                     className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md border-2 transition ${
                       isChecked
-                        ? 'border-[#D4AF37] bg-[#D4AF37] text-[#1E2720]'
+                        ? 'border-brand-gold bg-brand-gold text-[#1E2720]'
                         : 'border-gray-300 bg-white'
                     }`}
                     aria-hidden
@@ -138,7 +138,7 @@ export default function VipClientPackingTab({ trip, profileUnlocked = false }: P
 
       {packingSummary ? (
         <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-          <h3 className="mb-2 text-xs font-black uppercase tracking-wider text-[#D4AF37]">
+          <h3 className="mb-2 text-xs font-black uppercase tracking-wider text-brand-gold">
             ملاحظات الكونسيرج
           </h3>
           <p className="whitespace-pre-wrap text-sm leading-relaxed text-gray-600">

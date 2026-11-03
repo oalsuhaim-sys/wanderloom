@@ -55,15 +55,15 @@ import type { PlaceBankRow } from '@/types/place';
 const PAGE = 'min-h-screen bg-[#FAFAFA] p-4 text-[#1E2720] flex flex-col gap-4 sm:p-6 sm:gap-6';
 const CARD = 'rounded-xl border border-gray-200 bg-white shadow-sm';
 const INPUT =
-  'w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-gray-900 placeholder:text-slate-500 outline-none focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37]/40';
+  'w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-gray-900 placeholder:text-slate-500 outline-none focus:border-brand-gold focus:ring-1 focus:ring-brand-gold/40';
 const LABEL = 'mb-1 block text-xs font-bold text-[#1E2720]';
 const SELECT =
-  'w-full cursor-pointer rounded-xl border border-slate-300 bg-slate-50 p-3 text-sm font-extrabold text-slate-900 outline-none transition-all [color-scheme:light] focus:bg-white focus:ring-2 focus:ring-[#D4AF37] disabled:cursor-not-allowed disabled:opacity-50';
+  'w-full cursor-pointer rounded-xl border border-slate-300 bg-slate-50 p-3 text-sm font-extrabold text-slate-900 outline-none transition-all [color-scheme:light] focus:bg-white focus:ring-2 focus:ring-brand-gold disabled:cursor-not-allowed disabled:opacity-50';
 const OPTION = 'bg-white font-bold text-slate-900';
 const BTN_GOLD =
-  'rounded-md bg-[#D4AF37] font-bold text-black hover:bg-yellow-500 disabled:opacity-50';
+  'rounded-md bg-brand-gold font-bold text-black hover:bg-yellow-500 disabled:opacity-50';
 const BTN_GHOST =
-  'rounded-md border border-gray-300 bg-white text-xs font-bold text-[#1E2720] hover:border-[#D4AF37]';
+  'rounded-md border border-gray-300 bg-white text-xs font-bold text-[#1E2720] hover:border-brand-gold';
 const HEADING = 'text-2xl font-bold text-[#1E2720]';
 const HEADING_GOLD = 'text-lg font-bold text-[#1E2720]';
 
@@ -491,7 +491,7 @@ export default function ItineraryVipLightDualPane() {
           <Link href="/crm/itineraries" className={`px-3 py-2 ${BTN_GHOST}`}>
             المسارات
           </Link>
-          <span className="text-lg font-bold text-[#D4AF37]">إنشاء مسار جديد</span>
+          <span className="text-lg font-bold text-brand-gold">إنشاء مسار جديد</span>
           <input
             className={`${INPUT} w-40`}
             placeholder="عنوان الرحلة"
@@ -536,7 +536,7 @@ export default function ItineraryVipLightDualPane() {
       ) : null}
 
       {/* TOP SECTION: Flight & Hotel */}
-      <section className={`p-6 border-[#D4AF37] ${CARD}`}>
+      <section className={`p-6 border-brand-gold ${CARD}`}>
         <h2 className={`${HEADING} mb-4`}>بيانات الطيران والحجوزات</h2>
         <p className="mb-4 text-sm font-bold text-slate-700">الطيران</p>
         <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-8">
@@ -769,7 +769,7 @@ export default function ItineraryVipLightDualPane() {
               </p>
             ) : null}
             {proximityOn ? (
-              <div className="mt-3 flex items-center justify-between gap-2 rounded-md border border-[#D4AF37] bg-[#D4AF37]/15 px-3 py-2">
+              <div className="mt-3 flex items-center justify-between gap-2 rounded-md border border-brand-gold bg-brand-gold/15 px-3 py-2">
                 <span className="text-sm font-bold text-[#1E2720]">
                   📍 الأماكن القريبة (نطاق {PROXIMITY_RADIUS_KM} كم)
                   {proximityOrigin?.placeName ? (
@@ -839,7 +839,7 @@ export default function ItineraryVipLightDualPane() {
           <div className="flex-1 overflow-y-auto p-4">
             {placesLoading ? (
               <div className="flex justify-center py-12">
-                <Loader2 className="h-8 w-8 animate-spin text-[#D4AF37]" />
+                <Loader2 className="h-8 w-8 animate-spin text-brand-gold" />
               </div>
             ) : placesError ? (
               <p className="text-center text-sm font-bold text-red-700">{placesError}</p>
@@ -862,7 +862,7 @@ export default function ItineraryVipLightDualPane() {
                       <div className="flex justify-between gap-2">
                         <p className="text-sm font-bold text-[#1E2720]">{p.name}</p>
                         {dist != null ? (
-                          <span className="shrink-0 rounded-full border border-[#D4AF37] bg-[#D4AF37]/20 px-2 py-0.5 text-[10px] font-bold text-[#D4AF37]">
+                          <span className="shrink-0 rounded-full border border-brand-gold bg-brand-gold/20 px-2 py-0.5 text-[10px] font-bold text-brand-gold">
                             {formatDistanceKmAr(dist)}
                           </span>
                         ) : null}
@@ -933,7 +933,7 @@ export default function ItineraryVipLightDualPane() {
                 key={day.id}
                 className={`group relative inline-flex items-center rounded-md ${
                   day.id === activeDayId
-                    ? 'bg-[#D4AF37] text-black'
+                    ? 'bg-brand-gold text-black'
                     : BTN_GHOST
                 }`}
               >
@@ -957,7 +957,7 @@ export default function ItineraryVipLightDualPane() {
                       if (!ok) return;
                       handleDeleteDay(i);
                     }}
-                    className={`mr-1 rounded p-0.5 opacity-0 transition group-hover:opacity-100 focus:opacity-100 ${
+                    className={`mr-1 rounded p-0.5 transition ${
                       day.id === activeDayId
                         ? 'text-black/60 hover:bg-black/10 hover:text-red-700'
                         : 'text-slate-400 hover:bg-red-50 hover:text-red-600'
@@ -1025,7 +1025,7 @@ export default function ItineraryVipLightDualPane() {
                   <article
                     key={act.id}
                     className={`rounded-xl border bg-white p-4 ${
-                      isOrigin ? 'border-[#D4AF37] ring-2 ring-[#D4AF37]/40' : 'border-gray-200'
+                      isOrigin ? 'border-brand-gold ring-2 ring-brand-gold/40' : 'border-gray-200'
                     }`}
                   >
                     <div className="flex gap-3">
@@ -1078,7 +1078,7 @@ export default function ItineraryVipLightDualPane() {
                             disabled={nearbyDisabled}
                             onClick={() => void handleNearbySearch(act)}
                             className={`mt-2 px-3 py-1.5 text-xs ${BTN_GOLD} ${
-                              isOrigin ? 'ring-2 ring-[#D4AF37]/60' : ''
+                              isOrigin ? 'ring-2 ring-brand-gold/60' : ''
                             } disabled:cursor-not-allowed disabled:opacity-40`}
                           >
                             📍 أماكن قريبة

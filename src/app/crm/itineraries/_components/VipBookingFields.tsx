@@ -9,7 +9,7 @@ import {
 import { WL_DATE_INPUT } from '@/lib/itinerary-builder-ui';
 
 export const VIP_TIME_SELECT_CLASS =
-  'w-full cursor-pointer appearance-none rounded-lg border border-[#D4AF37]/60 bg-[#FFFBF0] bg-[length:1rem] bg-[position:left_0.65rem_center] bg-no-repeat px-3 py-2.5 ps-9 text-sm font-semibold text-[#1E2720] outline-none transition focus:border-[#1E2720] focus:ring-2 focus:ring-[#D4AF37]/40';
+  'w-full cursor-pointer appearance-none rounded-lg border border-brand-gold/60 bg-[#FFFBF0] bg-[length:1rem] bg-[position:left_0.65rem_center] bg-no-repeat px-3 py-2.5 ps-9 text-sm font-semibold text-[#1E2720] outline-none transition focus:border-[#1E2720] focus:ring-2 focus:ring-brand-gold/40';
 
 export const VIP_DATE_INPUT_CLASS = WL_DATE_INPUT;
 

@@ -38,13 +38,13 @@ export function CrmShell({ children }: CrmShellProps) {
         <button
           type="button"
           onClick={() => setSidebarOpen(true)}
-          className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition-colors duration-200 hover:bg-slate-100 hover:text-slate-900 dark:border-[#2D3F3A] dark:bg-[#2A3834] dark:text-gray-300 dark:hover:border-[#D4AF37]/30 dark:hover:text-[#D4AF37]"
+          className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition-colors duration-200 hover:bg-slate-100 hover:text-slate-900 dark:border-[#2D3F3A] dark:bg-[#2A3834] dark:text-gray-300 dark:hover:border-brand-gold/30 dark:hover:text-brand-gold"
           aria-expanded={sidebarOpen}
           aria-label="فتح القائمة"
         >
           <Menu className="h-5 w-5" aria-hidden />
         </button>
-        <span className="text-sm font-semibold tracking-tight text-slate-900 dark:text-[#D4AF37]">
+        <span className="text-sm font-semibold tracking-tight text-slate-900 dark:text-brand-gold">
           Wanderloom CRM
         </span>
         <CrmThemeToggle compact />
@@ -142,7 +142,7 @@ export function CrmModalCloseButton({
     <button
       type="button"
       onClick={onClick}
-      className="inline-flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition hover:bg-slate-50 dark:border-[#2D3F3A] dark:bg-[#2A3834] dark:text-gray-400 dark:hover:border-[#D4AF37]/30 dark:hover:text-[#D4AF37]"
+      className="inline-flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition hover:bg-slate-50 dark:border-[#2D3F3A] dark:bg-[#2A3834] dark:text-gray-400 dark:hover:border-brand-gold/30 dark:hover:text-brand-gold"
       aria-label={label}
     >
       <X className="h-4 w-4" aria-hidden />

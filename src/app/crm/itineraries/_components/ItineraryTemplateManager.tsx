@@ -43,7 +43,7 @@ export function ItineraryTemplateManager({
       dir="rtl"
     >
       <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-        <span className="text-[10px] font-bold uppercase tracking-wider text-[#C59B4B]">
+        <span className="text-[10px] font-bold uppercase tracking-wider text-brand-gold">
           TEMPLATE ENGINE
         </span>
         <h2 className="text-base font-bold text-[#111827]">إدارة القوالب الجاهزة</h2>
@@ -89,7 +89,7 @@ export function ItineraryTemplateManager({
                           );
                         }
                       }}
-                      className="h-4 w-4 rounded accent-[#C59B4B]"
+                      className="h-4 w-4 rounded accent-brand-gold"
                     />
                   </label>
                 );
@@ -100,7 +100,7 @@ export function ItineraryTemplateManager({
           <button
             type="button"
             onClick={handleApplyTemplates}
-            className="w-full rounded-xl bg-[#C59B4B] py-3 text-center text-xs font-bold text-slate-900 shadow-sm transition-all hover:bg-[#B2883A]"
+            className="w-full rounded-xl bg-brand-gold py-3 text-center text-xs font-bold text-slate-900 shadow-sm transition-all hover:bg-[#B2883A]"
           >
             استدعي القوالب إلى المسار
           </button>
@@ -116,7 +116,7 @@ export function ItineraryTemplateManager({
               type="checkbox"
               checked={appendToCurrent}
               onChange={(e) => setAppendToCurrent(e.target.checked)}
-              className="mt-0.5 h-4 w-4 rounded accent-[#C59B4B]"
+              className="mt-0.5 h-4 w-4 rounded accent-brand-gold"
             />
             <div>
               <span>إضافة على المسار الحالي كأيام إضافية</span>
@@ -133,7 +133,7 @@ export function ItineraryTemplateManager({
               type="checkbox"
               checked={clearDayTitles}
               onChange={(e) => setClearDayTitles(e.target.checked)}
-              className="mt-0.5 h-4 w-4 rounded accent-[#C59B4B]"
+              className="mt-0.5 h-4 w-4 rounded accent-brand-gold"
             />
             <div>
               <span>تفريغ عناوين الأيام المستدعاة</span>

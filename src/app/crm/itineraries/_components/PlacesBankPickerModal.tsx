@@ -142,7 +142,7 @@ export default function PlacesBankPickerModal({
       aria-modal="true"
       aria-labelledby="places-bank-title"
     >
-      <div className="flex max-h-[min(90vh,720px)] w-[95%] max-w-2xl flex-col overflow-hidden rounded-2xl border border-[#D4AF37]/30 bg-[#F9F9F6] shadow-2xl">
+      <div className="flex max-h-[min(90vh,720px)] w-[95%] max-w-2xl flex-col overflow-hidden rounded-2xl border border-brand-gold/30 bg-[#F9F9F6] shadow-2xl">
         <header className="flex items-center justify-between border-b border-[#1E2720]/10 px-4 py-3">
           <div>
             <h2 id="places-bank-title" className="text-base font-black text-[#1E2720]">
@@ -169,7 +169,7 @@ export default function PlacesBankPickerModal({
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="ابحث بالاسم..."
-              className="w-full rounded-xl border border-slate-300 bg-slate-50 p-3 pe-9 ps-3 font-bold text-slate-900 placeholder:text-slate-500 outline-none focus:border-[#D4AF37] focus:bg-white"
+              className="w-full rounded-xl border border-slate-300 bg-slate-50 p-3 pe-9 ps-3 font-bold text-slate-900 placeholder:text-slate-500 outline-none focus:border-brand-gold focus:bg-white"
             />
           </div>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
@@ -179,7 +179,7 @@ export default function PlacesBankPickerModal({
                 setFilterCountry(e.target.value);
                 setFilterCity('');
               }}
-              className="w-full cursor-pointer rounded-xl border border-slate-300 bg-slate-50 p-3 text-sm font-extrabold text-slate-900 outline-none transition-all focus:bg-white focus:ring-2 focus:ring-[#D4AF37]"
+              className="w-full cursor-pointer rounded-xl border border-slate-300 bg-slate-50 p-3 text-sm font-extrabold text-slate-900 outline-none transition-all focus:bg-white focus:ring-2 focus:ring-brand-gold"
             >
               <option value="" className="bg-white font-bold text-slate-900">
                 كل الدول
@@ -194,7 +194,7 @@ export default function PlacesBankPickerModal({
               value={filterCity}
               onChange={(e) => setFilterCity(e.target.value)}
               disabled={!filterCountry}
-              className="w-full cursor-pointer rounded-xl border border-slate-300 bg-slate-50 p-3 text-sm font-extrabold text-slate-900 outline-none transition-all focus:bg-white focus:ring-2 focus:ring-[#D4AF37] disabled:opacity-50"
+              className="w-full cursor-pointer rounded-xl border border-slate-300 bg-slate-50 p-3 text-sm font-extrabold text-slate-900 outline-none transition-all focus:bg-white focus:ring-2 focus:ring-brand-gold disabled:opacity-50"
             >
               <option value="" className="bg-white font-bold text-slate-900">
                 كل المدن
@@ -208,7 +208,7 @@ export default function PlacesBankPickerModal({
             <select
               value={filterCat}
               onChange={(e) => setFilterCat(e.target.value)}
-              className="w-full cursor-pointer rounded-xl border border-slate-300 bg-slate-50 p-3 text-sm font-extrabold text-slate-900 outline-none transition-all focus:bg-white focus:ring-2 focus:ring-[#D4AF37]"
+              className="w-full cursor-pointer rounded-xl border border-slate-300 bg-slate-50 p-3 text-sm font-extrabold text-slate-900 outline-none transition-all focus:bg-white focus:ring-2 focus:ring-brand-gold"
             >
               <option value="" className="bg-white font-bold text-slate-900">
                 كل الفئات
@@ -225,7 +225,7 @@ export default function PlacesBankPickerModal({
         <div className="min-h-0 flex-1 overflow-y-auto px-2 py-2">
           {loading ? (
             <div className="flex justify-center py-16">
-              <Loader2 className="h-8 w-8 animate-spin text-[#D4AF37]" />
+              <Loader2 className="h-8 w-8 animate-spin text-brand-gold" />
             </div>
           ) : error ? (
             <p className="py-8 text-center text-sm font-bold text-red-600">{error}</p>
@@ -241,9 +241,9 @@ export default function PlacesBankPickerModal({
                       onSelect(p);
                       onClose();
                     }}
-                    className="flex w-full items-start gap-3 rounded-xl border border-transparent px-3 py-2.5 text-right transition hover:border-[#D4AF37]/40 hover:bg-white"
+                    className="flex w-full items-start gap-3 rounded-xl border border-transparent px-3 py-2.5 text-right transition hover:border-brand-gold/40 hover:bg-white"
                   >
-                    <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[#D4AF37]" />
+                    <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-brand-gold" />
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center justify-end gap-2">
                         {p.branch_name ? (

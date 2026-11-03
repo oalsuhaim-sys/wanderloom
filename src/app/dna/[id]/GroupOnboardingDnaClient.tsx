@@ -36,7 +36,7 @@ type Props = {
 };
 
 const INPUT =
-  'w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-bold text-[#111] outline-none focus:border-[#cda04c] focus:ring-2 focus:ring-[#cda04c]/20';
+  'w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-bold text-[#111] outline-none focus:border-brand-gold focus:ring-2 focus:ring-brand-gold/20';
 
 function toggle(list: string[], item: string) {
   return list.includes(item) ? list.filter((x) => x !== item) : [...list, item];
@@ -191,7 +191,7 @@ export function GroupOnboardingDnaClient({
 
         <header className="mb-8 text-center">
           <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-[#1e3f20]/15 bg-white px-4 py-1.5 text-xs font-black text-[#1e3f20]">
-            <Sparkles className="h-3.5 w-3.5 text-[#cda04c]" aria-hidden />
+            <Sparkles className="h-3.5 w-3.5 text-brand-gold" aria-hidden />
             ملف DNA — رحلة جماعية
           </div>
           <h1 className="text-2xl font-black text-[#1e3f20]">مرحباً {contactName || leadName}</h1>
@@ -205,7 +205,7 @@ export function GroupOnboardingDnaClient({
           className="space-y-6 rounded-2xl border border-[#1e3f20]/10 bg-white p-6 shadow-sm sm:p-8"
         >
           <fieldset>
-            <legend className="mb-3 text-sm font-black text-[#cda04c]">اهتماماتك</legend>
+            <legend className="mb-3 text-sm font-black text-brand-gold">اهتماماتك</legend>
             <div className="flex flex-wrap gap-2">
               {interestOptions.map((opt) => {
                 const selected = interests.includes(opt);
@@ -216,8 +216,8 @@ export function GroupOnboardingDnaClient({
                     onClick={() => setInterests((prev) => toggle(prev, opt))}
                     className={`rounded-full px-3 py-1.5 text-xs font-bold transition ${
                       selected
-                        ? 'bg-[#1e3f20] text-[#cda04c]'
-                        : 'border border-gray-200 bg-gray-50 text-gray-700 hover:border-[#cda04c]/40'
+                        ? 'bg-[#1e3f20] text-brand-gold'
+                        : 'border border-gray-200 bg-gray-50 text-gray-700 hover:border-brand-gold/40'
                     }`}
                   >
                     {opt}
@@ -228,7 +228,7 @@ export function GroupOnboardingDnaClient({
           </fieldset>
 
           <label className="block">
-            <span className="mb-2 block text-sm font-black text-[#cda04c]">إيقاع اليوم المفضل</span>
+            <span className="mb-2 block text-sm font-black text-brand-gold">إيقاع اليوم المفضل</span>
             <select
               value={dailyPace}
               onChange={(e) => setDailyPace(e.target.value)}
@@ -242,7 +242,7 @@ export function GroupOnboardingDnaClient({
           </label>
 
           <label className="block">
-            <span className="mb-2 block text-sm font-black text-[#cda04c]">تفضيلات غذائية</span>
+            <span className="mb-2 block text-sm font-black text-brand-gold">تفضيلات غذائية</span>
             <input
               type="text"
               value={foodPrefs.join('، ')}
@@ -260,7 +260,7 @@ export function GroupOnboardingDnaClient({
           </label>
 
           <label className="block">
-            <span className="mb-2 block text-sm font-black text-[#cda04c]">ملاحظات إضافية</span>
+            <span className="mb-2 block text-sm font-black text-brand-gold">ملاحظات إضافية</span>
             <textarea
               rows={3}
               value={notes}
@@ -279,7 +279,7 @@ export function GroupOnboardingDnaClient({
           <button
             type="submit"
             disabled={pending}
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#1e3f20] py-3.5 text-sm font-black text-[#cda04c] transition hover:bg-[#163018] disabled:opacity-60"
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#1e3f20] py-3.5 text-sm font-black text-brand-gold transition hover:bg-[#163018] disabled:opacity-60"
           >
             {pending ? <Loader2 className="h-5 w-5 animate-spin" aria-hidden /> : null}
             {isGroupFlow ? 'التالي — تأكيد الحجز' : 'حفظ الملف'}

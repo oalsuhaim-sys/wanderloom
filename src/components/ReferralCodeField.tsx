@@ -80,7 +80,7 @@ export function ReferralCodeField({
           }}
           autoComplete="off"
           spellCheck={false}
-          className={`w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-right font-mono text-sm font-bold uppercase text-slate-800 outline-none placeholder:font-sans placeholder:font-normal placeholder:normal-case placeholder:text-slate-400 focus:border-[#C5A059] focus:ring-1 focus:ring-[#C5A059]/40 ${inputClassName}`}
+          className={`w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-right font-mono text-sm font-bold uppercase text-slate-800 outline-none placeholder:font-sans placeholder:font-normal placeholder:normal-case placeholder:text-slate-400 focus:border-brand-gold focus:ring-1 focus:ring-brand-gold/40 ${inputClassName}`}
           dir="rtl"
         />
         <span className="pointer-events-none absolute left-3 text-sm text-slate-400">

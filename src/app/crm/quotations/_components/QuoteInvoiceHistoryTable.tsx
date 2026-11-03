@@ -85,7 +85,7 @@ export function QuoteInvoiceHistoryTable({
             <h2 className="text-sm font-black text-[#1C4532]">سجل الفواتير</h2>
           </div>
         </div>
-        {loading ? <Loader2 className="h-4 w-4 animate-spin text-[#C9A84C]" aria-hidden /> : null}
+        {loading ? <Loader2 className="h-4 w-4 animate-spin text-brand-gold" aria-hidden /> : null}
       </div>
 
       {error ? (
@@ -143,7 +143,7 @@ export function QuoteInvoiceHistoryTable({
                           href={url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[10px] font-bold text-slate-600 transition hover:border-[#C9A84C]/50 hover:text-[#1C4532]"
+                          className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[10px] font-bold text-slate-600 transition hover:border-brand-gold/50 hover:text-[#1C4532]"
                         >
                           <ExternalLink className="h-3 w-3" aria-hidden />
                           عرض
@@ -151,7 +151,7 @@ export function QuoteInvoiceHistoryTable({
                         <button
                           type="button"
                           onClick={() => void copyLink(invoice)}
-                          className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[10px] font-bold text-slate-600 transition hover:border-[#C9A84C]/50 hover:text-[#1C4532]"
+                          className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[10px] font-bold text-slate-600 transition hover:border-brand-gold/50 hover:text-[#1C4532]"
                         >
                           {isCopied ? (
                             <Check className="h-3 w-3 text-emerald-600" aria-hidden />

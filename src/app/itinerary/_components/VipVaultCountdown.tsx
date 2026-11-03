@@ -16,7 +16,7 @@ type VipVaultCountdownProps = {
 
 function CountdownUnit({ value, label }: { value: number; label: string }) {
   return (
-    <div className="flex min-w-[4.5rem] flex-col items-center rounded-2xl border border-[#D4AF37]/35 bg-white px-3 py-4 shadow-sm sm:min-w-[5.5rem] sm:px-4">
+    <div className="flex min-w-[4.5rem] flex-col items-center rounded-2xl border border-brand-gold/35 bg-white px-3 py-4 shadow-sm sm:min-w-[5.5rem] sm:px-4">
       <span
         className="text-3xl font-black tabular-nums text-[#1E2720] sm:text-4xl"
         dir="ltr"
@@ -49,11 +49,11 @@ export default function VipVaultCountdown({ startDate, destination }: VipVaultCo
 
   return (
     <section
-      className="relative overflow-hidden rounded-3xl border border-[#D4AF37]/30 bg-gradient-to-b from-white via-[#FAFAFA] to-[#F5F3EE] px-6 py-10 text-center shadow-[0_12px_40px_rgba(30,39,32,0.08)]"
+      className="relative overflow-hidden rounded-3xl border border-brand-gold/30 bg-gradient-to-b from-white via-[#FAFAFA] to-[#F5F3EE] px-6 py-10 text-center shadow-[0_12px_40px_rgba(30,39,32,0.08)]"
       aria-labelledby="vip-vault-heading"
     >
       <div
-        className="pointer-events-none absolute -left-8 -top-8 h-32 w-32 rounded-full bg-[#D4AF37]/10 blur-2xl"
+        className="pointer-events-none absolute -left-8 -top-8 h-32 w-32 rounded-full bg-brand-gold/10 blur-2xl"
         aria-hidden
       />
       <div
@@ -61,11 +61,11 @@ export default function VipVaultCountdown({ startDate, destination }: VipVaultCo
         aria-hidden
       />
 
-      <div className="relative mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-full border-2 border-[#D4AF37]/50 bg-[#D4AF37]/10">
-        <KeyRound className="h-7 w-7 text-[#D4AF37]" aria-hidden />
+      <div className="relative mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-full border-2 border-brand-gold/50 bg-brand-gold/10">
+        <KeyRound className="h-7 w-7 text-brand-gold" aria-hidden />
       </div>
 
-      <p className="relative text-[10px] font-black uppercase tracking-[0.28em] text-[#D4AF37]">
+      <p className="relative text-[10px] font-black uppercase tracking-[0.28em] text-brand-gold">
         VIP Vault
       </p>
       <h2 id="vip-vault-heading" className="relative mt-2 text-xl font-black leading-snug text-[#1E2720] sm:text-2xl">
@@ -78,7 +78,7 @@ export default function VipVaultCountdown({ startDate, destination }: VipVaultCo
 
       {destination ? (
         <p className="relative mt-4 inline-flex items-center gap-1.5 rounded-full border border-[#1E2720]/10 bg-white px-4 py-1.5 text-xs font-bold text-[#1E2720]/70">
-          <Sparkles className="h-3.5 w-3.5 text-[#D4AF37]" aria-hidden />
+          <Sparkles className="h-3.5 w-3.5 text-brand-gold" aria-hidden />
           {destination}
         </p>
       ) : null}
@@ -93,12 +93,12 @@ export default function VipVaultCountdown({ startDate, destination }: VipVaultCo
           </div>
         </div>
       ) : (
-        <p className="relative mt-6 text-sm font-semibold text-[#D4AF37]">
+        <p className="relative mt-6 text-sm font-semibold text-brand-gold">
           سيُعلَن موعد الفتح قريباً — تواصل مع الكونسيرج عند الحاجة.
         </p>
       )}
 
-      <div className="relative mx-auto mt-8 h-px max-w-xs bg-gradient-to-r from-transparent via-[#D4AF37] to-transparent" />
+      <div className="relative mx-auto mt-8 h-px max-w-xs bg-gradient-to-r from-transparent via-brand-gold to-transparent" />
       <p className="relative mt-4 text-[11px] font-medium text-[#1E2720]/40">
         تبويب الحجوزات متاح دائماً لوثائق المطار والفنادق الرسمية
       </p>

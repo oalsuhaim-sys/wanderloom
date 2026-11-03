@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import type { ReactNode } from 'react';
+import type { ReactNode, Ref } from 'react';
 import { Suspense, useEffect, useRef, useState, useTransition } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Loader2, Send } from 'lucide-react';
@@ -19,14 +19,14 @@ import { requireValidPhone, WHATSAPP_INCOMPLETE_ERROR } from '@/lib/phoneUtils';
 import { getTripCountryById } from '@/lib/trip-destination-data';
 
 const INPUT_CLASS =
-  'h-10 w-full rounded-lg border border-gray-200/90 bg-white/50 px-3 text-sm font-bold text-[#1C2E3A] outline-none transition placeholder:text-gray-400 focus:border-[#9C7A3C]/70 focus:ring-2 focus:ring-[#9C7A3C]/25';
+  'h-10 w-full rounded-lg border border-gray-200/90 bg-white/50 px-3 text-sm font-bold text-[#1C2E3A] outline-none transition placeholder:text-gray-400 focus:border-public-gold/70 focus:ring-2 focus:ring-public-gold/25';
 
 const DATE_INPUT_CLASS = `${INPUT_CLASS} [color-scheme:light] cursor-pointer [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-50 hover:[&::-webkit-calendar-picker-indicator]:opacity-100`;
 
 const TEXTAREA_CLASS =
-  'w-full resize-y rounded-lg border border-gray-200/90 bg-white/50 px-3 py-2.5 text-sm font-bold leading-relaxed text-[#1C2E3A] outline-none transition placeholder:text-gray-400 focus:border-[#9C7A3C]/70 focus:ring-2 focus:ring-[#9C7A3C]/25';
+  'w-full resize-y rounded-lg border border-gray-200/90 bg-white/50 px-3 py-2.5 text-sm font-bold leading-relaxed text-[#1C2E3A] outline-none transition placeholder:text-gray-400 focus:border-public-gold/70 focus:ring-2 focus:ring-public-gold/25';
 
-const FIELD_LABEL = 'mb-1.5 block text-right text-xs font-black tracking-wide text-[#9C7A3C]';
+const FIELD_LABEL = 'mb-1.5 block text-right text-xs font-black tracking-wide text-public-gold';
 
 const PILL_ROW = 'flex flex-wrap gap-3 justify-start dir-rtl';
 
@@ -36,23 +36,141 @@ const PILL_BASE =
   'inline-flex cursor-pointer select-none items-center justify-center rounded-full px-4 py-1.5 text-sm font-bold transition-all duration-200';
 
 const PILL_OFF =
-  'border border-gray-300/90 bg-transparent text-[#1C2E3A] hover:border-[#9C7A3C]/45 hover:bg-[#f4f0e6]/40';
+  'border border-gray-300/90 bg-transparent text-[#1C2E3A] hover:border-public-gold/45 hover:bg-[#f4f0e6]/40';
 
-const PILL_ON = 'border border-[#9C7A3C] bg-[#1C2E3A] text-[#F4EFE6] shadow-sm';
+const PILL_ON = 'border border-public-gold bg-[#1C2E3A] text-[#F4EFE6] shadow-sm';
+
+const TRIP_DESIGN_DRAFT_KEY = 'wanderloom.tripDesign.draft.v1';
+
+type TripDesignDraft = {
+  full_name: string;
+  phone_wa: string;
+  birth_date: string;
+  source: string;
+  referral_code: string;
+  selectedCountries: string[];
+  selectedCities: string[];
+  isOtherCountry: boolean;
+  customCountry: string;
+  customCities: Record<string, string>;
+  activeCustomCityFor: string | null;
+  interestOther: boolean;
+  interestOtherText: string;
+  foodOther: boolean;
+  foodOtherText: string;
+  lodgingOther: boolean;
+  lodgingOtherText: string;
+  interests: string[];
+  food_prefs: string[];
+  lodging_prefs: string[];
+  travel_start_date: string;
+  travel_days: string;
+  travelers_count: string;
+  budget_range: string;
+  pace: string;
+  walking: string;
+  day_start: string;
+  dream_feeling: string;
+  visited: Record<string, string>;
+};
+
+function readTripDesignDraft(): TripDesignDraft | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = window.localStorage.getItem(TRIP_DESIGN_DRAFT_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<TripDesignDraft>;
+    if (!parsed || typeof parsed !== 'object') return null;
+    return parsed as TripDesignDraft;
+  } catch {
+    return null;
+  }
+}
+
+function clearTripDesignDraft() {
+  try {
+    window.localStorage.removeItem(TRIP_DESIGN_DRAFT_KEY);
+  } catch {
+    /* private mode */
+  }
+}
+
+function applyDraftToForm(form: HTMLFormElement, draft: TripDesignDraft) {
+  const setValue = (name: string, value: string) => {
+    const el = form.elements.namedItem(name);
+    if (
+      el instanceof HTMLInputElement ||
+      el instanceof HTMLTextAreaElement ||
+      el instanceof HTMLSelectElement
+    ) {
+      el.value = value;
+    }
+  };
+
+  setValue('source', draft.source ?? '');
+  setValue('travel_start_date', draft.travel_start_date ?? '');
+  setValue('travel_days', draft.travel_days || '10');
+  setValue('travelers_count', draft.travelers_count || '2');
+  setValue('budget_range', draft.budget_range ?? '');
+  setValue('dream_feeling', draft.dream_feeling ?? '');
+
+  const check = (name: string, selected: string[]) => {
+    form.querySelectorAll<HTMLInputElement>(`input[name="${name}"]`).forEach((el) => {
+      el.checked = selected.includes(el.value);
+    });
+  };
+  check('interests', draft.interests ?? []);
+  check('food_prefs', draft.food_prefs ?? []);
+  check('lodging_prefs', draft.lodging_prefs ?? []);
+
+  for (const [name, value] of Object.entries(draft.visited ?? {})) {
+    const el = form.querySelector<HTMLInputElement>(
+      `input[name="${CSS.escape(name)}"][value="${CSS.escape(value)}"]`,
+    );
+    if (el) el.checked = true;
+  }
+
+  if (draft.pace) {
+    const pace = form.querySelector<HTMLInputElement>(
+      `input[name="pace"][value="${CSS.escape(draft.pace)}"]`,
+    );
+    if (pace) pace.checked = true;
+  }
+  if (draft.walking) {
+    const walking = form.querySelector<HTMLInputElement>(
+      `input[name="walking"][value="${CSS.escape(draft.walking)}"]`,
+    );
+    if (walking) walking.checked = true;
+  }
+  if (draft.day_start) {
+    const dayStart = form.querySelector<HTMLInputElement>(
+      `input[name="day_start"][value="${CSS.escape(draft.day_start)}"]`,
+    );
+    if (dayStart) dayStart.checked = true;
+  }
+}
 
 function SectionCard({
   n,
   title,
   subtitle,
   children,
+  anchorRef,
+  id,
 }: {
   n: number;
   title: string;
   subtitle?: string;
   children: ReactNode;
+  anchorRef?: Ref<HTMLFieldSetElement>;
+  id?: string;
 }) {
   return (
-    <fieldset className="rounded-2xl border border-gray-100/90 bg-white p-4 shadow-sm sm:p-6">
+    <fieldset
+      ref={anchorRef}
+      id={id}
+      className="scroll-mt-28 rounded-2xl border border-gray-100/90 bg-white p-4 shadow-sm sm:p-6"
+    >
       <legend className="sr-only">{title}</legend>
       <div className="mb-5 flex items-start gap-3 border-b border-gray-100 pb-4">
         <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-[#1C2E3A]/30 bg-[#f4f0e6]/50 text-xs font-black text-[#1C2E3A]">
@@ -123,7 +241,7 @@ function CheckboxPill({
     <label className="cursor-pointer">
       <input type="checkbox" name={name} value={value} className="peer sr-only" />
       <span
-        className={`${PILL_BASE} ${PILL_OFF} peer-checked:border-[#9C7A3C] peer-checked:bg-[#1C2E3A] peer-checked:text-[#F4EFE6] peer-checked:shadow-sm`}
+        className={`${PILL_BASE} ${PILL_OFF} peer-checked:border-public-gold peer-checked:bg-[#1C2E3A] peer-checked:text-[#F4EFE6] peer-checked:shadow-sm`}
       >
         {label}
       </span>
@@ -152,7 +270,7 @@ function RadioPill({
         className="peer sr-only"
       />
       <span
-        className={`${PILL_BASE} ${PILL_OFF} peer-checked:border-[#9C7A3C] peer-checked:bg-[#1C2E3A] peer-checked:text-[#F4EFE6] peer-checked:shadow-sm`}
+        className={`${PILL_BASE} ${PILL_OFF} peer-checked:border-public-gold peer-checked:bg-[#1C2E3A] peer-checked:text-[#F4EFE6] peer-checked:shadow-sm`}
       >
         {label}
       </span>
@@ -229,7 +347,7 @@ export function TripDesignForm() {
     <Suspense
       fallback={
         <div className="mx-auto flex min-h-[200px] max-w-3xl items-center justify-center rounded-2xl border border-gray-100 bg-white p-8">
-          <Loader2 className="h-8 w-8 animate-spin text-[#9C7A3C]" aria-hidden />
+          <Loader2 className="h-8 w-8 animate-spin text-public-gold" aria-hidden />
         </div>
       }
     >
@@ -278,19 +396,173 @@ function TripDesignFormInner() {
   const [lodgingOtherText, setLodgingOtherText] = useState('');
   const [referralCode, setReferralCode] = useState('');
   const [formData, setFormData] = useState({ birth_date: '' });
+  const [fullName, setFullName] = useState('');
   const [fullPhone, setFullPhone] = useState('');
   const [isPhoneValid, setIsPhoneValid] = useState(false);
+  const [draftHydrated, setDraftHydrated] = useState(false);
+  const [draftTick, setDraftTick] = useState(0);
+  const formRef = useRef<HTMLFormElement>(null);
+  const section2Ref = useRef<HTMLFieldSetElement>(null);
+  const contactWasReadyRef = useRef(false);
+  const suppressDraftRef = useRef(false);
+  const pendingDomDraftRef = useRef<TripDesignDraft | null>(null);
+  const hydratedOnceRef = useRef(false);
+  const restoredBirthRef = useRef<string | null>(null);
 
   useEffect(() => {
-    const fromUrl = normalizeAffiliateRef(searchParams.get('ref'));
+    const fromUrl = normalizeAffiliateRef(
+      searchParams.get('ref') || searchParams.get('referral') || searchParams.get('code'),
+    );
     if (fromUrl) {
-      persistAffiliateRef(fromUrl);
-      setReferralCode(fromUrl);
+      const upper = fromUrl.toUpperCase();
+      persistAffiliateRef(upper);
+      setReferralCode(upper);
       return;
     }
     const stored = readPersistedAffiliateRef();
-    if (stored) setReferralCode(stored);
+    if (stored) setReferralCode(stored.toUpperCase());
   }, [searchParams]);
+
+  useEffect(() => {
+    if (hydratedOnceRef.current) return;
+    hydratedOnceRef.current = true;
+    const draft = readTripDesignDraft();
+    if (draft) {
+      const phone = String(draft.phone_wa ?? '');
+      const birth = String(draft.birth_date ?? '').slice(0, 10);
+      const name = String(draft.full_name ?? '');
+      restoredBirthRef.current = /^\d{4}-\d{2}-\d{2}$/.test(birth) ? birth : null;
+      setFullName(name);
+      setFullPhone(phone);
+      setIsPhoneValid(requireValidPhone(phone).isValid);
+      setFormData({ birth_date: birth });
+      if (!searchParams.get('ref') && !searchParams.get('referral') && !searchParams.get('code')) {
+        const savedRef = normalizeAffiliateRef(draft.referral_code);
+        if (savedRef) setReferralCode(savedRef.toUpperCase());
+      }
+      setSelectedCountries(Array.isArray(draft.selectedCountries) ? draft.selectedCountries : []);
+      setSelectedCities(Array.isArray(draft.selectedCities) ? draft.selectedCities : []);
+      setIsOtherCountry(Boolean(draft.isOtherCountry));
+      setCustomCountry(String(draft.customCountry ?? ''));
+      setCustomCities(draft.customCities && typeof draft.customCities === 'object' ? draft.customCities : {});
+      setActiveCustomCityFor(draft.activeCustomCityFor ?? null);
+      setInterestOther(Boolean(draft.interestOther));
+      setInterestOtherText(String(draft.interestOtherText ?? ''));
+      setFoodOther(Boolean(draft.foodOther));
+      setFoodOtherText(String(draft.foodOtherText ?? ''));
+      setLodgingOther(Boolean(draft.lodgingOther));
+      setLodgingOtherText(String(draft.lodgingOtherText ?? ''));
+      const nameOk = name.trim().length > 0;
+      const birthOk = /^\d{4}-\d{2}-\d{2}$/.test(birth);
+      if (nameOk && requireValidPhone(phone).isValid && birthOk) {
+        contactWasReadyRef.current = true;
+      }
+      pendingDomDraftRef.current = draft;
+    }
+    setDraftHydrated(true);
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (!draftHydrated || !pendingDomDraftRef.current || !formRef.current) return;
+    applyDraftToForm(formRef.current, pendingDomDraftRef.current);
+    pendingDomDraftRef.current = null;
+  }, [draftHydrated, selectedCountries, isOtherCountry]);
+
+  useEffect(() => {
+    if (!draftHydrated) return;
+    if (suppressDraftRef.current) {
+      suppressDraftRef.current = false;
+      return;
+    }
+    const handle = window.setTimeout(() => {
+      const form = formRef.current;
+      const fd = form ? new FormData(form) : null;
+      const read = (name: string) => (fd ? String(fd.get(name) ?? '') : '');
+      const readAll = (name: string) =>
+        fd ? fd.getAll(name).filter((v): v is string => typeof v === 'string') : [];
+      const visited: Record<string, string> = {};
+      if (fd) {
+        for (const [key, value] of fd.entries()) {
+          if (key.startsWith('visited_before_') && typeof value === 'string') visited[key] = value;
+        }
+      }
+      const birthDate =
+        formData.birth_date ||
+        (document.activeElement instanceof HTMLInputElement &&
+        document.activeElement.name === 'birth_date'
+          ? ''
+          : restoredBirthRef.current || '');
+      const payload: TripDesignDraft = {
+        full_name: fullName,
+        phone_wa: fullPhone,
+        birth_date: birthDate,
+        source: read('source'),
+        referral_code: referralCode,
+        selectedCountries,
+        selectedCities,
+        isOtherCountry,
+        customCountry,
+        customCities,
+        activeCustomCityFor,
+        interestOther,
+        interestOtherText,
+        foodOther,
+        foodOtherText,
+        lodgingOther,
+        lodgingOtherText,
+        interests: readAll('interests'),
+        food_prefs: readAll('food_prefs'),
+        lodging_prefs: readAll('lodging_prefs'),
+        travel_start_date: read('travel_start_date'),
+        travel_days: read('travel_days'),
+        travelers_count: read('travelers_count'),
+        budget_range: read('budget_range'),
+        pace: read('pace'),
+        walking: read('walking'),
+        day_start: read('day_start'),
+        dream_feeling: read('dream_feeling'),
+        visited,
+      };
+      try {
+        window.localStorage.setItem(TRIP_DESIGN_DRAFT_KEY, JSON.stringify(payload));
+      } catch {
+        /* quota / private mode */
+      }
+    }, 180);
+    return () => window.clearTimeout(handle);
+  }, [
+    draftHydrated,
+    draftTick,
+    fullName,
+    fullPhone,
+    formData.birth_date,
+    referralCode,
+    selectedCountries,
+    selectedCities,
+    isOtherCountry,
+    customCountry,
+    customCities,
+    activeCustomCityFor,
+    interestOther,
+    interestOtherText,
+    foodOther,
+    foodOtherText,
+    lodgingOther,
+    lodgingOtherText,
+  ]);
+
+  const contactReady =
+    fullName.trim().length > 0 &&
+    isPhoneValid &&
+    /^\d{4}-\d{2}-\d{2}$/.test(formData.birth_date);
+
+  useEffect(() => {
+    if (!draftHydrated) return;
+    if (contactReady && !contactWasReadyRef.current) {
+      section2Ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    contactWasReadyRef.current = contactReady;
+  }, [draftHydrated, contactReady]);
 
   function setCountry(id: string, on: boolean) {
     setSelectedCountries((prev) => toggleListItem(prev, id, on));
@@ -434,8 +706,16 @@ function TripDesignFormInner() {
       fd.append('lodging_prefs', 'other');
       if (lodgingOtherText.trim()) fd.set('lodging_prefs_other', lodgingOtherText.trim());
     }
-    const ref = normalizeAffiliateRef(referralCode) || normalizeAffiliateRef(fd.get('ref_code') as string) || normalizeAffiliateRef(fd.get('referral_code') as string);
-    if (ref) fd.set('ref_code', ref);
+    const ref = (
+      normalizeAffiliateRef(referralCode) ||
+      normalizeAffiliateRef(fd.get('ref_code') as string) ||
+      normalizeAffiliateRef(fd.get('referral_code') as string)
+    )?.toUpperCase();
+    if (ref) {
+      fd.set('ref_code', ref);
+      fd.set('referral_code', ref);
+      persistAffiliateRef(ref);
+    }
     setState(null);
     startTransition(() => {
       void (async () => {
@@ -443,7 +723,12 @@ function TripDesignFormInner() {
           const res = await submitCustomerLead(fd);
           setState(res);
           if (res.ok) {
+            suppressDraftRef.current = true;
+            clearTripDesignDraft();
             form.reset();
+            setFullName('');
+            setFullPhone('');
+            setIsPhoneValid(false);
             setFormData({ birth_date: '' });
             setSelectedCountries([]);
             setSelectedCities([]);
@@ -482,7 +767,14 @@ function TripDesignFormInner() {
   const showCityPicker = effectiveCountries.length > 0;
 
   return (
-    <form onSubmit={onSubmit} className="mx-auto max-w-3xl space-y-6 bg-[#F4EFE6]" dir={dir}>
+    <form
+      ref={formRef}
+      onSubmit={onSubmit}
+      onInput={() => setDraftTick((n) => n + 1)}
+      onChange={() => setDraftTick((n) => n + 1)}
+      className="mx-auto max-w-3xl space-y-6 bg-[#F4EFE6]"
+      dir={dir}
+    >
       {selectedCountries.map((id) => (
         <input key={id} type="hidden" name="dest_countries" value={id} />
       ))}
@@ -499,6 +791,8 @@ function TripDesignFormInner() {
             autoComplete="name"
             className={INPUT_CLASS}
             placeholder={f.fullNamePlaceholder}
+            value={fullName}
+            onChange={(e) => setFullName(e.target.value)}
           />
         </div>
         <WhatsAppInput
@@ -518,9 +812,19 @@ function TripDesignFormInner() {
             type="date"
             className={`${INPUT_CLASS} cursor-pointer`}
             value={formData.birth_date}
-            onChange={(e) =>
-              setFormData((prev) => ({ ...prev, birth_date: e.target.value }))
-            }
+            onFocus={() => {
+              restoredBirthRef.current = null;
+            }}
+            onChange={(e) => {
+              const next = e.target.value;
+              const restored = restoredBirthRef.current;
+              if (!next && restored && document.activeElement !== e.currentTarget) {
+                setFormData({ birth_date: restored });
+                return;
+              }
+              restoredBirthRef.current = null;
+              setFormData((prev) => ({ ...prev, birth_date: next }));
+            }}
             onClick={(e) => {
               try {
                 e.currentTarget.showPicker?.();
@@ -553,7 +857,13 @@ function TripDesignFormInner() {
         />
       </SectionCard>
 
-      <SectionCard n={2} title={f.section2Title} subtitle={f.section2Subtitle}>
+      <SectionCard
+        n={2}
+        title={f.section2Title}
+        subtitle={f.section2Subtitle}
+        anchorRef={section2Ref}
+        id="trip-design-destination"
+      >
         <div className={QUESTION_BLOCK}>
           <p className="text-right text-xs font-black text-[#1C2E3A]">{f.countriesLabel}</p>
           <div className={PILL_ROW}>
@@ -806,8 +1116,19 @@ function TripDesignFormInner() {
       ) : null}
 
       {state?.ok && state.message ? (
-        <div className="rounded-lg border border-[#1C2E3A]/20 bg-[#F4EFE6] px-4 py-3 text-sm font-bold text-[#1C2E3A]">
-          {state.message}
+        <div className="space-y-3 rounded-lg border border-[#1C2E3A]/20 bg-[#F4EFE6] px-4 py-3 text-sm font-bold text-[#1C2E3A]">
+          <p>{state.message}</p>
+          {state.dnaUrl ? (
+            <p className="text-xs font-bold leading-relaxed">
+              رابط ملف DNA الخاص بك جاهز:
+              <a
+                href={state.dnaUrl}
+                className="mt-1 block break-all font-mono text-[#1C2E3A] underline decoration-public-gold underline-offset-4"
+              >
+                {state.dnaUrl}
+              </a>
+            </p>
+          ) : null}
         </div>
       ) : null}
 

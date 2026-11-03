@@ -31,15 +31,15 @@ export default function ItineraryReferralShareCard({
 
   return (
     <section
-      className="mb-4 rounded-2xl border border-[#D4AF37]/25 bg-gradient-to-br from-[#FFFBF0] to-white p-4 shadow-sm"
+      className="mb-4 rounded-2xl border border-brand-gold/25 bg-gradient-to-br from-[#FFFBF0] to-white p-4 shadow-sm"
       aria-label="كود الإحالة"
     >
       <div className="flex items-start gap-3">
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#D4AF37]/15">
-          <Gift className="h-4 w-4 text-[#D4AF37]" aria-hidden />
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-gold/15">
+          <Gift className="h-4 w-4 text-brand-gold" aria-hidden />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#D4AF37]">
+          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-brand-gold">
             شارك بحرية
           </p>
           <h3 className="mt-0.5 text-sm font-black text-[#1E2720]">كود الإحالة الخاص بك</h3>
@@ -49,7 +49,7 @@ export default function ItineraryReferralShareCard({
           {code ? (
             <div className="mt-3 flex items-center gap-2">
               <code
-                className="min-w-0 flex-1 rounded-xl border border-[#D4AF37]/30 bg-white px-3 py-2 text-center font-mono text-sm font-black tracking-wider text-[#1E2720]"
+                className="min-w-0 flex-1 rounded-xl border border-brand-gold/30 bg-white px-3 py-2 text-center font-mono text-sm font-black tracking-wider text-[#1E2720]"
                 dir="ltr"
               >
                 {code}
@@ -57,7 +57,7 @@ export default function ItineraryReferralShareCard({
               <button
                 type="button"
                 onClick={() => void handleCopy()}
-                className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#D4AF37]/35 bg-[#1E2720] text-[#D4AF37] transition hover:bg-black"
+                className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-brand-gold/35 bg-[#1E2720] text-brand-gold transition hover:bg-black"
                 aria-label={copied ? 'تم النسخ' : 'نسخ كود الإحالة'}
               >
                 {copied ? (
@@ -68,7 +68,7 @@ export default function ItineraryReferralShareCard({
               </button>
             </div>
           ) : (
-            <p className="mt-3 rounded-xl border border-dashed border-[#D4AF37]/35 bg-white/80 px-3 py-3 text-center text-xs font-bold text-[#1E2720]/55">
+            <p className="mt-3 rounded-xl border border-dashed border-brand-gold/35 bg-white/80 px-3 py-3 text-center text-xs font-bold text-[#1E2720]/55">
               لا يوجد كود إحالة
             </p>
           )}

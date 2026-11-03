@@ -27,7 +27,7 @@ export const EDIT_CATEGORY_OPTIONS = [
 ] as const;
 
 const PILL_ACTIVE =
-  'bg-slate-900 text-white dark:bg-[#D4AF37]/20 dark:text-[#D4AF37] border-transparent shadow-sm';
+  'bg-slate-900 text-white dark:bg-brand-gold/20 dark:text-brand-gold border-transparent shadow-sm';
 const PILL_INACTIVE =
   'bg-white dark:bg-[#1A2421] text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-[#2D3F3A] hover:bg-slate-50 dark:hover:bg-[#22302C] transition-all';
 
@@ -49,7 +49,7 @@ export default function MarketingContentFilterBar({
       aria-label="تصفية المحتوى التسويقي"
     >
       <div>
-        <p className="mb-3 text-sm font-semibold text-slate-500 dark:text-[#D4AF37]">
+        <p className="mb-3 text-sm font-semibold text-slate-500 dark:text-brand-gold">
           نوع الوسائط
         </p>
         <div className="flex flex-wrap gap-2 overflow-x-auto pb-1">
@@ -72,7 +72,7 @@ export default function MarketingContentFilterBar({
       </div>
 
       <div>
-        <p className="mb-3 text-sm font-semibold text-slate-500 dark:text-[#D4AF37]">
+        <p className="mb-3 text-sm font-semibold text-slate-500 dark:text-brand-gold">
           تصنيف المحتوى
         </p>
         <div className="flex flex-wrap gap-2 overflow-x-auto pb-1">

@@ -387,7 +387,7 @@ export function QuotationsListClient({ initialRows, initialError }: QuotationsLi
     return (
       <div className="flex min-h-[70vh] items-center justify-center bg-[#F9FAFB] dark:bg-[#1A2421]">
         <div className="text-center text-sm font-medium text-slate-500 dark:text-slate-400">
-          <Loader2 className="mx-auto mb-2 h-6 w-6 animate-spin text-slate-400 dark:text-[#D4AF37]" aria-hidden />
+          <Loader2 className="mx-auto mb-2 h-6 w-6 animate-spin text-slate-400 dark:text-brand-gold" aria-hidden />
           جارٍ تحميل عروض الأسعار...
         </div>
       </div>
@@ -399,7 +399,7 @@ export function QuotationsListClient({ initialRows, initialError }: QuotationsLi
       <div className="mx-auto max-w-6xl">
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-xs font-medium uppercase tracking-wider text-slate-400 dark:text-[#D4AF37]/80">
+          <p className="text-xs font-medium uppercase tracking-wider text-slate-400 dark:text-brand-gold/80">
             Finance · Sales
           </p>
           <h1 className="mt-1 text-2xl font-semibold text-slate-900 dark:text-gray-100">عروض الأسعار</h1>
@@ -419,7 +419,7 @@ export function QuotationsListClient({ initialRows, initialError }: QuotationsLi
           {canEditItinerary ? (
             <Link
               href="/crm/quotations/new"
-              className="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-slate-800 active:scale-[0.98] sm:w-auto dark:border dark:border-[#D4AF37]/50 dark:bg-[#D4AF37]/20 dark:text-[#D4AF37]"
+              className="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-slate-800 active:scale-[0.98] sm:w-auto dark:border dark:border-brand-gold/50 dark:bg-brand-gold/20 dark:text-brand-gold"
             >
               <Plus size={16} aria-hidden />
               إنشاء عرض سعر جديد
@@ -479,7 +479,7 @@ export function QuotationsListClient({ initialRows, initialError }: QuotationsLi
                     startDate: lead.travel_date,
                     clientName: lead.full_name,
                   })}
-                  className="inline-flex items-center gap-1 rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-slate-800 active:scale-95 dark:border dark:border-[#D4AF37]/50 dark:bg-[#D4AF37]/20 dark:text-[#D4AF37]"
+                  className="inline-flex items-center gap-1 rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-slate-800 active:scale-95 dark:border dark:border-brand-gold/50 dark:bg-brand-gold/20 dark:text-brand-gold"
                 >
                   <FileText size={12} aria-hidden />
                   فتح عرض سعر
@@ -493,18 +493,18 @@ export function QuotationsListClient({ initialRows, initialError }: QuotationsLi
       <div className="mb-6 rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-[#2D3F3A] dark:bg-[#22302C] sm:p-6">
         <div className="flex flex-col items-stretch justify-between gap-3 sm:flex-row sm:items-center">
           <label className="flex min-w-0 flex-1 items-center gap-2">
-            <Search size={16} className="shrink-0 text-slate-400 dark:text-[#D4AF37]" aria-hidden />
+            <Search size={16} className="shrink-0 text-slate-400 dark:text-brand-gold" aria-hidden />
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="بحث بالعنوان أو العميل أو الوجهة..."
-              className="min-h-[44px] w-full rounded-lg border border-slate-200 bg-white p-3 text-sm font-medium text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-200 dark:border-[#2D3F3A] dark:bg-[#1A2421] dark:text-gray-100 dark:focus:border-[#D4AF37]/40 dark:focus:ring-[#D4AF37]/15"
+              className="min-h-[44px] w-full rounded-lg border border-slate-200 bg-white p-3 text-sm font-medium text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-200 dark:border-[#2D3F3A] dark:bg-[#1A2421] dark:text-gray-100 dark:focus:border-brand-gold/40 dark:focus:ring-brand-gold/15"
             />
           </label>
           <select
             value={status}
             onChange={(e) => setStatus(e.target.value as 'all' | QuotationStatus)}
-            className="min-h-[44px] w-full rounded-lg border border-slate-200 bg-white p-3 text-sm font-medium text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-200 sm:w-auto sm:min-w-[12rem] dark:border-[#2D3F3A] dark:bg-[#1A2421] dark:text-gray-100 dark:focus:border-[#D4AF37]/40 dark:focus:ring-[#D4AF37]/15"
+            className="min-h-[44px] w-full rounded-lg border border-slate-200 bg-white p-3 text-sm font-medium text-slate-900 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-200 sm:w-auto sm:min-w-[12rem] dark:border-[#2D3F3A] dark:bg-[#1A2421] dark:text-gray-100 dark:focus:border-brand-gold/40 dark:focus:ring-brand-gold/15"
           >
             {STATUS_FILTER.map((s) => (
               <option key={s.value} value={s.value}>
@@ -558,7 +558,7 @@ export function QuotationsListClient({ initialRows, initialError }: QuotationsLi
                       className="border-t border-slate-100 transition-colors hover:bg-slate-50/60 dark:border-[#2D3F3A] dark:hover:bg-[#1A2421]/40"
                     >
                       <td className="px-4 py-3">
-                        <p className="font-mono text-sm font-bold text-slate-500 dark:text-[#D4AF37]">
+                        <p className="font-mono text-sm font-bold text-slate-500 dark:text-brand-gold">
                           {quoteId
                             ? /^\d+$/.test(quoteId)
                               ? `#QT-${quoteId}`
@@ -759,7 +759,7 @@ export function QuotationsListClient({ initialRows, initialError }: QuotationsLi
                             <Link
                               href={buildQuotationEditPath(editId)}
                               title={`تعديل العرض #${editId}`}
-                              className="inline-flex items-center justify-center gap-1 rounded-lg bg-slate-900 px-3 py-1.5 text-sm font-medium text-white transition-all hover:bg-slate-800 dark:border dark:border-[#D4AF37]/50 dark:bg-[#D4AF37]/20 dark:text-[#D4AF37]"
+                              className="inline-flex items-center justify-center gap-1 rounded-lg bg-slate-900 px-3 py-1.5 text-sm font-medium text-white transition-all hover:bg-slate-800 dark:border dark:border-brand-gold/50 dark:bg-brand-gold/20 dark:text-brand-gold"
                             >
                               <Pencil size={14} aria-hidden />
                               تعديل
@@ -805,7 +805,7 @@ export function QuotationsListClient({ initialRows, initialError }: QuotationsLi
 
       {rows.length === 0 && !error ? (
         <div className="mt-6 rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center shadow-sm dark:border-[#2D3F3A] dark:bg-[#22302C]">
-          <FileText className="mx-auto mb-3 h-10 w-10 text-slate-300 dark:text-[#D4AF37]/50" aria-hidden />
+          <FileText className="mx-auto mb-3 h-10 w-10 text-slate-300 dark:text-brand-gold/50" aria-hidden />
           <p className="text-sm font-semibold text-slate-900 dark:text-gray-100">ابدأ بأول عرض سعر</p>
           <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
             عروض الأسعار منفصلة عن المسارات المؤكدة — للمبيعات والاعتماد قبل التنفيذ.

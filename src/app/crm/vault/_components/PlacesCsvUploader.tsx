@@ -636,14 +636,14 @@ export default function PlacesCsvUploader({ onImported }: Props) {
 
             <div className="mb-4">
               <label className="mb-1.5 flex items-center gap-1.5 text-xs font-black text-[#1C4532]">
-                <MapPin className="h-3.5 w-3.5 text-[#C9A84C]" />
+                <MapPin className="h-3.5 w-3.5 text-brand-gold" />
                 الوجهة / المدينة <span className="text-rose-600">*</span>
               </label>
               <select
                 value={selectedDestinationId}
                 disabled={importing || destLoading}
                 onChange={(e) => handleDestinationChange(e.target.value)}
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-bold text-slate-900 outline-none focus:border-[#C9A84C] focus:ring-1 focus:ring-[#C9A84C]/40 disabled:opacity-50"
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-bold text-slate-900 outline-none focus:border-brand-gold focus:ring-1 focus:ring-brand-gold/40 disabled:opacity-50"
               >
                 <option value="">
                   {destLoading
@@ -668,7 +668,7 @@ export default function PlacesCsvUploader({ onImported }: Props) {
               )}
             </div>
 
-            <div className="mb-4 rounded-xl border border-dashed border-[#C9A84C]/45 bg-[#FFFBF0] p-4 text-[11px] font-bold leading-relaxed text-[#5C4A1F]">
+            <div className="mb-4 rounded-xl border border-dashed border-brand-gold/45 bg-[#FFFBF0] p-4 text-[11px] font-bold leading-relaxed text-[#5C4A1F]">
               <p className="mb-2 font-black text-[#1C4532]">
                 صيغة CSV المدعومة (نادرة الحقول):
               </p>
@@ -693,11 +693,11 @@ export default function PlacesCsvUploader({ onImported }: Props) {
             <label
               className={`mb-4 flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed px-4 py-8 transition ${
                 selectedDestination
-                  ? 'cursor-pointer border-slate-200 bg-slate-50 hover:border-[#C9A84C]/60 hover:bg-[#FFFBF0]/50'
+                  ? 'cursor-pointer border-slate-200 bg-slate-50 hover:border-brand-gold/60 hover:bg-[#FFFBF0]/50'
                   : 'cursor-not-allowed border-slate-100 bg-slate-50/60 opacity-60'
               }`}
             >
-              <Upload className="h-8 w-8 text-[#C9A84C]" />
+              <Upload className="h-8 w-8 text-brand-gold" />
               <span className="text-sm font-black text-[#1C4532]">
                 اختر ملف CSV
               </span>

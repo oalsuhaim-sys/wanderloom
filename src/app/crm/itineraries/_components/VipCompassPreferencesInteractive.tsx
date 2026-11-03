@@ -6,7 +6,7 @@ import {
 } from '@/lib/vip-builder-day-insights';
 
 const SELECT =
-  'rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-xs font-semibold text-gray-900 focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37]';
+  'rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-xs font-semibold text-gray-900 focus:border-brand-gold focus:ring-1 focus:ring-brand-gold';
 
 type Props = {
   prefs: ClientProfilePrefs;
@@ -27,12 +27,12 @@ export default function VipCompassPreferencesInteractive({
   const badges = compassBadgesFromPrefs(prefs);
 
   return (
-    <div className="mb-5 rounded-xl border border-[#D4AF37]/35 bg-gradient-to-l from-[#FAFAFA] via-white to-[#FAFAFA] px-4 py-3 shadow-sm">
+    <div className="mb-5 rounded-xl border border-brand-gold/35 bg-gradient-to-l from-[#FAFAFA] via-white to-[#FAFAFA] px-4 py-3 shadow-sm">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <p className="text-xs font-black tracking-wide text-[#1E2720]">
           🎯 بوصلة تفضيلات الـ VIP
         </p>
-        <span className="rounded-full border border-[#D4AF37]/40 bg-[#D4AF37]/10 px-2 py-0.5 text-[10px] font-bold text-[#1E2720]">
+        <span className="rounded-full border border-brand-gold/40 bg-brand-gold/10 px-2 py-0.5 text-[10px] font-bold text-[#1E2720]">
           حدّ اليوم: {maxHours} س
         </span>
       </div>
@@ -102,7 +102,7 @@ export default function VipCompassPreferencesInteractive({
         {extraBadges.map((badge) => (
           <span
             key={badge}
-            className="inline-flex items-center rounded-full border border-[#D4AF37]/30 bg-[#D4AF37]/8 px-3 py-1.5 text-xs font-bold text-[#1E2720] shadow-sm"
+            className="inline-flex items-center rounded-full border border-brand-gold/30 bg-brand-gold/8 px-3 py-1.5 text-xs font-bold text-[#1E2720] shadow-sm"
           >
             {badge}
           </span>

@@ -22,7 +22,7 @@ export default function CrmUnauthorizedPage() {
       {home !== '/crm/unauthorized' ? (
         <Link
           href={home}
-          className="mt-6 rounded-2xl bg-gradient-to-l from-[#cda04c] to-[#b3893d] px-5 py-2.5 text-sm font-black text-[#1e3f20] shadow-md"
+          className="mt-6 rounded-2xl bg-gradient-to-l from-brand-gold to-[#C4A030] px-5 py-2.5 text-sm font-black text-[#1e3f20] shadow-md"
         >
           العودة للوحة المسموح بها
         </Link>

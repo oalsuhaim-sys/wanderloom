@@ -48,7 +48,7 @@ export default function CalendarTab() {
     <section dir="rtl" className="space-y-4" aria-labelledby="calendar-tab-heading">
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-[#2D3F3A] dark:bg-[#22302C] sm:p-6">
         <div>
-          <p className="text-xs font-semibold tracking-wide text-slate-400 dark:text-[#D4AF37]/80">
+          <p className="text-xs font-semibold tracking-wide text-slate-400 dark:text-brand-gold/80">
             Weekly Schedule
           </p>
           <h2

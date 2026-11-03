@@ -8,7 +8,7 @@
  *   primary  #1A3B2A  Forest Green
  *   dark     #0B1912  Midnight Green (dark bg)
  *   surface  #12261B  Dark cards
- *   gold     #C5A059  Wanderloom Gold
+ *   gold     #D4AF37  Wanderloom Gold (زر توليد المسار بـ AI)
  *   charcoal #0A0F0C
  *   offwhite #F9F9F6
  */
@@ -24,7 +24,7 @@ const config = {
           primary: '#1A3B2A',
           dark: '#0B1912',
           surface: '#12261B',
-          gold: '#C5A059',
+          gold: '#D4AF37',
           charcoal: '#0A0F0C',
           offwhite: '#F9F9F6',
           muted: '#8FA396',
@@ -33,8 +33,8 @@ const config = {
           50: '#FDFBF7',
           100: '#F7F0E1',
           200: '#E8D2A7',
-          500: '#C5A059',
-          600: '#B38E46',
+          500: '#D4AF37',
+          600: '#C4A030',
           700: '#8C6D23',
           900: '#4A3910',
         },

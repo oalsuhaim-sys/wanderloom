@@ -1,5 +1,5 @@
-/** Flight departure/arrival slots — 30-minute steps, 00:00 … 23:30 */
-export const FLIGHT_TIME_SLOT_INTERVAL_MINUTES = 30;
+/** Flight departure/arrival slots — 10-minute steps (:00, :10, :20, :30, :40, :50), 00:00 … 23:50 */
+export const FLIGHT_TIME_SLOT_INTERVAL_MINUTES = 10;
 
 export function buildFlightTimeSlots(intervalMinutes = FLIGHT_TIME_SLOT_INTERVAL_MINUTES): string[] {
   const slots: string[] = [];

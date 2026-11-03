@@ -294,7 +294,7 @@ function strField(obj: Record<string, unknown>, keys: string[]): string {
 }
 
 const EDIT_HEADER_FIELD =
-  'w-full rounded-lg border border-gray-200 bg-gray-50 p-3 outline-none focus:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37]/50 text-gray-900';
+  'w-full rounded-lg border border-gray-200 bg-gray-50 p-3 outline-none focus:border-brand-gold focus:ring-2 focus:ring-brand-gold/50 text-gray-900';
 
 function normalizeBuilderDays(parsed: unknown): SimpleItineraryDay[] | null {
   if (!Array.isArray(parsed) || parsed.length === 0) return null;
@@ -1468,7 +1468,7 @@ export default function EditItineraryPage() {
         className="itinerary-builder-page flex min-h-screen flex-col items-center justify-center gap-3 bg-[#f8fafc] text-slate-800"
         dir="rtl"
       >
-        <Loader2 className="h-10 w-10 animate-spin text-[#D4AF37]" aria-hidden />
+        <Loader2 className="h-10 w-10 animate-spin text-brand-gold" aria-hidden />
         <p className="text-sm font-bold text-slate-600">جاري تحميل المسار...</p>
       </div>
     );
@@ -1509,12 +1509,12 @@ export default function EditItineraryPage() {
         <div>
           <Link
             href="/crm/itineraries"
-            className="mb-2 flex items-center gap-1 text-sm font-medium text-slate-600 transition-colors hover:text-[#D4AF37]"
+            className="mb-2 flex items-center gap-1 text-sm font-medium text-slate-600 transition-colors hover:text-brand-gold"
           >
             <ArrowRight className="h-4 w-4" aria-hidden />
             ← العودة إلى المسارات
           </Link>
-          <h1 className="text-2xl font-extrabold tracking-wide text-[#D4AF37] sm:text-3xl">
+          <h1 className="text-2xl font-extrabold tracking-wide text-brand-gold sm:text-3xl">
             مساحة بناء المسار الذكي
           </h1>
           <div className="mt-2">
@@ -1527,7 +1527,7 @@ export default function EditItineraryPage() {
             onClick={() => setAiGenerateOpen(true)}
             disabled={saving || duplicating || readOnly}
             title="توليد المسار من DNA العميل عبر Claude"
-            className="inline-flex items-center gap-2 rounded-xl border border-[#D4AF37]/50 bg-[#D4AF37] px-4 py-2.5 text-sm font-black text-[#1A3B2A] shadow-md transition hover:bg-[#c4a030] disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-xl border border-brand-gold/50 bg-brand-gold px-4 py-2.5 text-sm font-black text-[#1A3B2A] shadow-md transition hover:bg-[#c4a030] disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Sparkles className="h-4 w-4" aria-hidden />
             توليد المسار بـ AI
@@ -1537,12 +1537,12 @@ export default function EditItineraryPage() {
             onClick={() => void handleDuplicate()}
             disabled={duplicating || saving || !id}
             title="نسخ كإصدار جديد (V2)"
-            className={`${WL_BTN_SECONDARY} border-[#D4AF37]/40 shadow-md`}
+            className={`${WL_BTN_SECONDARY} border-brand-gold/40 shadow-md`}
           >
             {duplicating ? (
-              <Loader2 className="h-4 w-4 animate-spin text-[#D4AF37]" aria-hidden />
+              <Loader2 className="h-4 w-4 animate-spin text-brand-gold" aria-hidden />
             ) : (
-              <CopyPlus className="h-4 w-4 text-[#D4AF37]" aria-hidden />
+              <CopyPlus className="h-4 w-4 text-brand-gold" aria-hidden />
             )}
             {duplicating ? 'جاري الاستنساخ...' : 'نسخ كإصدار جديد'}
           </button>
@@ -1605,7 +1605,7 @@ export default function EditItineraryPage() {
                 </span>
               ) : null}
               {clientLinkSaving ? (
-                <p className="mt-1 text-[11px] font-bold text-[#D4AF37]">جاري ربط العميل…</p>
+                <p className="mt-1 text-[11px] font-bold text-brand-gold">جاري ربط العميل…</p>
               ) : null}
               {clientLinkWarning ? (
                 <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-2 py-1.5 text-[11px] font-bold text-amber-900">
@@ -1614,7 +1614,7 @@ export default function EditItineraryPage() {
               ) : null}
 
               <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-5 text-slate-800 shadow-sm">
-                <p className="flex items-center gap-2 text-sm font-bold text-[#D4AF37]">
+                <p className="flex items-center gap-2 text-sm font-bold text-brand-gold">
                   <Camera className="h-4 w-4 shrink-0" aria-hidden />
                   رفع ذكرى من الإدارة
                 </p>
@@ -1634,7 +1634,7 @@ export default function EditItineraryPage() {
                     </>
                   ) : (
                     <>
-                      <Camera className="h-4 w-4 text-[#D4AF37]" aria-hidden />
+                      <Camera className="h-4 w-4 text-brand-gold" aria-hidden />
                       رفع صورة للعميل
                     </>
                   )}
@@ -1735,7 +1735,7 @@ export default function EditItineraryPage() {
         </div>
       </div>
 
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#D4AF37]/25 bg-[#FEFDF9] px-5 py-3 shadow-sm">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-brand-gold/25 bg-[#FEFDF9] px-5 py-3 shadow-sm">
         <div>
           <span className="block text-sm font-bold text-gray-700">رمز فتح المسار</span>
           <span className="mt-0.5 block text-[11px] font-semibold text-gray-500">
@@ -1743,7 +1743,7 @@ export default function EditItineraryPage() {
           </span>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <div className="inline-flex w-fit max-w-full items-center gap-2 rounded-full border border-[#D4AF37]/60 bg-white px-4 py-1.5">
+          <div className="inline-flex w-fit max-w-full items-center gap-2 rounded-full border border-brand-gold/60 bg-white px-4 py-1.5">
             <input
               type="text"
               value={accessCode}
@@ -1751,14 +1751,14 @@ export default function EditItineraryPage() {
               placeholder="---"
               dir="ltr"
               size={Math.max(accessCode.length || 3, 7)}
-              className="min-w-[5ch] border-0 bg-transparent p-0 text-sm font-bold tracking-wider text-[#D4AF37] outline-none placeholder:text-[#D4AF37]/40"
+              className="min-w-[5ch] border-0 bg-transparent p-0 text-sm font-bold tracking-wider text-brand-gold outline-none placeholder:text-brand-gold/40"
             />
           </div>
           <button
             type="button"
             onClick={() => void handleCopyShareLink()}
             disabled={!id}
-            className="inline-flex items-center gap-2 rounded-full border-2 border-[#D4AF37]/50 bg-white px-4 py-2 text-xs font-black text-[#1E2720] shadow-sm transition hover:bg-[#FFFBF0] disabled:cursor-not-allowed disabled:opacity-45"
+            className="inline-flex items-center gap-2 rounded-full border-2 border-brand-gold/50 bg-white px-4 py-2 text-xs font-black text-[#1E2720] shadow-sm transition hover:bg-[#FFFBF0] disabled:cursor-not-allowed disabled:opacity-45"
           >
             <Copy className="h-4 w-4 shrink-0" aria-hidden />
             نسخ الرابط
@@ -1814,7 +1814,7 @@ export default function EditItineraryPage() {
             type="button"
             onClick={() => void handleSaveAsTemplate()}
             disabled={templateBusy || readOnly}
-            className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#C59B4B]/40 bg-[#F8F5EE] px-4 py-2.5 text-sm font-bold text-[#8C6D2D] transition-all hover:bg-[#F2E8D7] disabled:opacity-60"
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-brand-gold/40 bg-[#F8F5EE] px-4 py-2.5 text-sm font-bold text-[#8C6D2D] transition-all hover:bg-[#F2E8D7] disabled:opacity-60"
           >
             <Copy className="h-4 w-4" aria-hidden />
             {templateBusy ? 'جاري الحفظ…' : readOnly ? 'قراءة فقط' : 'حفظ كقالب'}
@@ -1915,7 +1915,7 @@ export default function EditItineraryPage() {
         />
 
         <div className="w-full max-w-full overflow-hidden rounded-2xl border border-slate-200 bg-white p-6 shadow-xl">
-          <h4 className="mb-4 flex items-center gap-2 text-base font-bold text-[#D4AF37]">
+          <h4 className="mb-4 flex items-center gap-2 text-base font-bold text-brand-gold">
             🏨 الفنادق والإقامة
           </h4>
           <ItineraryHotelsEditor
@@ -1947,7 +1947,7 @@ export default function EditItineraryPage() {
         description="ارفع تذاكر الطيران والقسائم الفندقية — تُحفظ روابط الملفات في المسار للفريق الداخلي."
       />
 
-      <section className="mb-6 rounded-xl border border-[#D4AF37]/30 bg-gradient-to-br from-[#FFFBF0] to-white p-5 shadow-sm">
+      <section className="mb-6 rounded-xl border border-brand-gold/30 bg-gradient-to-br from-[#FFFBF0] to-white p-5 shadow-sm">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <h3 className="flex items-center gap-2 text-lg font-bold text-[#1E2720]">
             <span>✨</span> خدمات الكونسيرج ما قبل السفر (VIP)
@@ -1955,7 +1955,7 @@ export default function EditItineraryPage() {
           <button
             type="button"
             onClick={() => setPreTripServices((prev) => [...prev, emptyPreTripService()])}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-[#D4AF37]/40 bg-slate-100 px-3 py-2 text-xs font-bold text-[#D4AF37] transition hover:bg-slate-200"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-brand-gold/40 bg-slate-100 px-3 py-2 text-xs font-bold text-brand-gold transition hover:bg-slate-200"
           >
             <Plus className="h-4 w-4" aria-hidden />
             إضافة خدمة
@@ -1976,7 +1976,7 @@ export default function EditItineraryPage() {
                 className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
               >
                 <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                  <span className="text-xs font-black uppercase tracking-wide text-[#D4AF37]">
+                  <span className="text-xs font-black uppercase tracking-wide text-brand-gold">
                     خدمة #{index + 1}
                   </span>
                   <button
@@ -2005,7 +2005,7 @@ export default function EditItineraryPage() {
                         )
                       }
                       placeholder="مثال: حجز صالون تجميل VIP"
-                      className="rounded-lg border border-gray-300 px-3 py-2.5 text-sm text-gray-900 outline-none focus:border-[#D4AF37]"
+                      className="rounded-lg border border-gray-300 px-3 py-2.5 text-sm text-gray-900 outline-none focus:border-brand-gold"
                     />
                   </label>
                   <label className="flex flex-col gap-1.5">
@@ -2020,7 +2020,7 @@ export default function EditItineraryPage() {
                           ),
                         )
                       }
-                      className="rounded-lg border border-gray-300 px-3 py-2.5 text-sm text-gray-900 outline-none focus:border-[#D4AF37] [color-scheme:light]"
+                      className="rounded-lg border border-gray-300 px-3 py-2.5 text-sm text-gray-900 outline-none focus:border-brand-gold [color-scheme:light]"
                     />
                   </label>
                   <label className="flex flex-col gap-1.5">
@@ -2037,7 +2037,7 @@ export default function EditItineraryPage() {
                       }
                       placeholder="+966 5X XXX XXXX"
                       dir="ltr"
-                      className="rounded-lg border border-gray-300 px-3 py-2.5 text-sm text-gray-900 outline-none focus:border-[#D4AF37]"
+                      className="rounded-lg border border-gray-300 px-3 py-2.5 text-sm text-gray-900 outline-none focus:border-brand-gold"
                     />
                   </label>
                   <label className="flex flex-col gap-1.5 md:col-span-2">
@@ -2054,7 +2054,7 @@ export default function EditItineraryPage() {
                       }
                       placeholder="https://maps.google.com/..."
                       dir="ltr"
-                      className="rounded-lg border border-gray-300 px-3 py-2.5 text-sm text-gray-900 outline-none focus:border-[#D4AF37]"
+                      className="rounded-lg border border-gray-300 px-3 py-2.5 text-sm text-gray-900 outline-none focus:border-brand-gold"
                     />
                   </label>
                   <label className="flex flex-col gap-1.5 md:col-span-2">
@@ -2070,7 +2070,7 @@ export default function EditItineraryPage() {
                       }
                       rows={2}
                       placeholder="مثال: شعر ومناكير — مدفوع بالكامل من Wanderloom"
-                      className="resize-y rounded-lg border border-gray-300 px-3 py-2.5 text-sm text-gray-900 outline-none focus:border-[#D4AF37]"
+                      className="resize-y rounded-lg border border-gray-300 px-3 py-2.5 text-sm text-gray-900 outline-none focus:border-brand-gold"
                     />
                   </label>
                 </div>
@@ -2102,7 +2102,7 @@ export default function EditItineraryPage() {
               placeholder="ابحث بالاسم أو الحي..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full rounded-xl border border-slate-300 bg-slate-50 p-3 font-bold text-slate-900 placeholder:text-slate-500 focus:border-[#D4AF37] focus:bg-white outline-none"
+              className="w-full rounded-xl border border-slate-300 bg-slate-50 p-3 font-bold text-slate-900 placeholder:text-slate-500 focus:border-brand-gold focus:bg-white outline-none"
             />
 
             <div className="flex gap-2">
@@ -2237,7 +2237,7 @@ export default function EditItineraryPage() {
       </div>
       </DragDropContext>
 
-      <section className="mb-6 rounded-xl border border-[#D4AF37]/35 bg-gradient-to-br from-[#FEFDF9] to-white p-5 shadow-sm">
+      <section className="mb-6 rounded-xl border border-brand-gold/35 bg-gradient-to-br from-[#FEFDF9] to-white p-5 shadow-sm">
         <h3 className="mb-2 text-lg font-bold text-[#1E2720]">إدارة الموردين والطلبات الخاصة</h3>
         <p className="mb-4 text-sm text-gray-500">
           دورة العمل: بانتظار رد المورد ⏳ → تم التأكيد 🔴 → تم الدفع 🟢 — تظهر في الرادار الحي

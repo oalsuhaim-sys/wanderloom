@@ -120,20 +120,20 @@ export default function MarketingFilesLibrary({ onFilesCountChange }: Props = {}
     >
       <div className="mb-5 flex items-start justify-between gap-3">
         <div>
-          <p className="flex items-center gap-2 text-xs font-semibold text-slate-400 dark:text-[#D4AF37]/80">
+          <p className="flex items-center gap-2 text-xs font-semibold text-slate-400 dark:text-brand-gold/80">
             <FolderOpen className="h-4 w-4" aria-hidden />
             Marketing Assets
           </p>
           <h2 className="mt-1 text-xl font-bold text-slate-900 dark:text-white">مكتبة ملفات التسويق</h2>
           <p className="mt-1 text-xs font-medium text-slate-500">Excel · PDF · صور · مستندات</p>
         </div>
-        <CloudUpload className="h-8 w-8 shrink-0 text-slate-300 dark:text-[#D4AF37]/70" aria-hidden />
+        <CloudUpload className="h-8 w-8 shrink-0 text-slate-300 dark:text-brand-gold/70" aria-hidden />
       </div>
 
       <div
         className={`mb-6 rounded-2xl border-2 border-dashed px-4 py-8 text-center transition ${
           dragOver
-            ? 'border-[#D4AF37] bg-[#D4AF37]/10'
+            ? 'border-brand-gold bg-brand-gold/10'
             : 'border-slate-200 bg-slate-50 hover:border-slate-300 dark:border-[#2D3F3A] dark:bg-[#1A2421]'
         }`}
         onDragOver={(e) => {
@@ -147,7 +147,7 @@ export default function MarketingFilesLibrary({ onFilesCountChange }: Props = {}
           void handleUpload(e.dataTransfer.files);
         }}
       >
-        <CloudUpload className="mx-auto mb-3 h-10 w-10 text-slate-400 dark:text-[#D4AF37]" aria-hidden />
+        <CloudUpload className="mx-auto mb-3 h-10 w-10 text-slate-400 dark:text-brand-gold" aria-hidden />
         <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">اسحب الملف هنا أو</p>
         <button
           type="button"
@@ -178,7 +178,7 @@ export default function MarketingFilesLibrary({ onFilesCountChange }: Props = {}
 
       {loading ? (
         <div className="flex items-center justify-center gap-2 py-8 text-sm font-medium text-slate-500">
-          <Loader2 className="h-5 w-5 animate-spin text-[#D4AF37]" aria-hidden />
+          <Loader2 className="h-5 w-5 animate-spin text-brand-gold" aria-hidden />
           جاري تحميل الملفات…
         </div>
       ) : files.length === 0 ? (
@@ -196,7 +196,7 @@ export default function MarketingFilesLibrary({ onFilesCountChange }: Props = {}
                 className="group relative flex cursor-pointer flex-col items-center justify-center rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-sm transition-transform hover:-translate-y-1 dark:border-[#2D3F3A] dark:bg-[#1A2421]"
               >
                 <Icon
-                  className="mb-3 h-12 w-12 text-slate-400 dark:text-[#D4AF37]/80"
+                  className="mb-3 h-12 w-12 text-slate-400 dark:text-brand-gold/80"
                   aria-hidden
                 />
                 <p className="line-clamp-2 w-full text-sm font-semibold text-slate-900 dark:text-white" title={file.name}>

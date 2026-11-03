@@ -20,7 +20,7 @@ export function ExpertHandbookHelpLink({ tab, className = '' }: Props) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className={`inline-flex items-center gap-1.5 text-xs font-bold text-[#9C7A3C] transition hover:text-[#D4AF37] ${className}`}
+        className={`inline-flex items-center gap-1.5 text-xs font-bold text-brand-gold transition hover:text-brand-gold ${className}`}
       >
         <Lightbulb className="h-3.5 w-3.5 shrink-0" aria-hidden />
         تحتاج مساعدة؟ اقرأ دليل الخبير 💡

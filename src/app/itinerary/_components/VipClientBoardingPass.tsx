@@ -31,8 +31,8 @@ function FlightTicketBody({ fd }: { fd: Record<string, unknown> }) {
     'وجهة غير محددة';
 
   return (
-    <div className="mt-4 overflow-hidden rounded-xl border border-[#D4AF37]/30 bg-[#FAFAFA]">
-      <div className="grid grid-cols-3 border-b border-dashed border-[#D4AF37]/40 bg-white px-3 py-2 text-center sm:px-4">
+    <div className="mt-4 overflow-hidden rounded-xl border border-brand-gold/30 bg-[#FAFAFA]">
+      <div className="grid grid-cols-3 border-b border-dashed border-brand-gold/40 bg-white px-3 py-2 text-center sm:px-4">
         <div>
           <p className="text-[8px] font-bold uppercase tracking-wider text-[#1E2720]/40">من</p>
           <p className="text-sm font-black text-[#1E2720] sm:text-base" dir="ltr">
@@ -40,8 +40,8 @@ function FlightTicketBody({ fd }: { fd: Record<string, unknown> }) {
           </p>
         </div>
         <div className="flex flex-col items-center justify-center">
-          <Plane className="h-4 w-4 rotate-[-25deg] text-[#D4AF37]" aria-hidden />
-          <p className="mt-0.5 font-mono text-xs font-black text-[#D4AF37]" dir="ltr">
+          <Plane className="h-4 w-4 rotate-[-25deg] text-brand-gold" aria-hidden />
+          <p className="mt-0.5 font-mono text-xs font-black text-brand-gold" dir="ltr">
             {f.flightNumber}
           </p>
         </div>
@@ -53,7 +53,7 @@ function FlightTicketBody({ fd }: { fd: Record<string, unknown> }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-px bg-[#D4AF37]/15 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-px bg-brand-gold/15 sm:grid-cols-4">
         <div className="bg-white px-3 py-3 text-center">
           <p className="flex items-center justify-center gap-1 text-[8px] font-bold uppercase text-[#1E2720]/40">
             <Clock className="h-3 w-3" aria-hidden />
@@ -74,7 +74,7 @@ function FlightTicketBody({ fd }: { fd: Record<string, unknown> }) {
         </div>
         <div className="bg-white px-3 py-3 text-center">
           <p className="text-[8px] font-bold uppercase text-[#1E2720]/40">المقعد</p>
-          <p className="mt-1 text-sm font-black text-[#D4AF37]" dir="ltr">
+          <p className="mt-1 text-sm font-black text-brand-gold" dir="ltr">
             {f.seat}
           </p>
         </div>
@@ -106,13 +106,13 @@ export default function VipClientBoardingPass({ trip, dateRange }: Props) {
       />
 
       <div className="relative mx-auto max-w-lg px-4 pb-5 pt-5 sm:max-w-xl sm:px-6 sm:pb-6 sm:pt-6">
-        <div className="overflow-hidden rounded-[1.25rem] border-2 border-[#D4AF37]/45 bg-white shadow-[0_16px_48px_rgba(30,39,32,0.1)] ring-1 ring-[#1E2720]/5">
+        <div className="overflow-hidden rounded-[1.25rem] border-2 border-brand-gold/45 bg-white shadow-[0_16px_48px_rgba(30,39,32,0.1)] ring-1 ring-[#1E2720]/5">
           {/* perforation strip */}
-          <div className="flex items-center justify-between border-b border-dashed border-[#D4AF37]/55 bg-[#1E2720] px-4 py-2.5 sm:px-5">
-            <span className="text-[9px] font-black uppercase tracking-[0.32em] text-[#D4AF37]">
+          <div className="flex items-center justify-between border-b border-dashed border-brand-gold/55 bg-[#1E2720] px-4 py-2.5 sm:px-5">
+            <span className="text-[9px] font-black uppercase tracking-[0.32em] text-brand-gold">
               Wanderloom VIP
             </span>
-            <span className="rounded border border-[#D4AF37]/50 px-2 py-0.5 font-mono text-[9px] font-bold text-[#FAFAFA]/90">
+            <span className="rounded border border-brand-gold/50 px-2 py-0.5 font-mono text-[9px] font-bold text-[#FAFAFA]/90">
               BOARDING PASS
             </span>
           </div>
@@ -141,7 +141,7 @@ export default function VipClientBoardingPass({ trip, dateRange }: Props) {
               </div>
               <div className="shrink-0 text-end">
                 <p className="text-[9px] font-bold uppercase text-[#1E2720]/45">Trip</p>
-                <p className="max-w-[8rem] truncate text-xs font-bold text-[#D4AF37] sm:max-w-none">
+                <p className="max-w-[8rem] truncate text-xs font-bold text-brand-gold sm:max-w-none">
                   VIP
                 </p>
               </div>
@@ -152,7 +152,7 @@ export default function VipClientBoardingPass({ trip, dateRange }: Props) {
             </h1>
             {dateRange ? (
               <p className="mt-2 inline-flex items-center gap-2 rounded-full border border-[#1E2720]/8 bg-[#FAFAFA] px-3 py-1 text-xs font-semibold text-[#1E2720]/65">
-                <Calendar className="h-3.5 w-3.5 shrink-0 text-[#D4AF37]" aria-hidden />
+                <Calendar className="h-3.5 w-3.5 shrink-0 text-brand-gold" aria-hidden />
                 <span dir="ltr">{dateRange}</span>
               </p>
             ) : null}
@@ -162,8 +162,8 @@ export default function VipClientBoardingPass({ trip, dateRange }: Props) {
 
           <VipBoardingBarcode seed={barcodeCaption} caption={barcodeCaption} />
 
-          <div className="flex border-t border-dashed border-[#D4AF37]/45 bg-[#FAFAFA]">
-            <div className="flex flex-1 items-center justify-center border-e border-dashed border-[#D4AF37]/35 py-2.5 text-[9px] font-bold tracking-widest text-[#1E2720]/35">
+          <div className="flex border-t border-dashed border-brand-gold/45 bg-[#FAFAFA]">
+            <div className="flex flex-1 items-center justify-center border-e border-dashed border-brand-gold/35 py-2.5 text-[9px] font-bold tracking-widest text-[#1E2720]/35">
               ★ CONFIDENTIAL
             </div>
             <div className="flex flex-[2] items-center justify-center py-2.5 font-mono text-[10px] tracking-[0.2em] text-[#1E2720]/40">

@@ -24,7 +24,7 @@ function GroupOnboardingConfirmContent() {
         dir="rtl"
         className="flex min-h-dvh items-center justify-center bg-[#FDFBF7] px-4 text-sm font-bold text-gray-500"
       >
-        <Loader2 className="me-2 h-5 w-5 animate-spin text-[#C5A059]" aria-hidden />
+        <Loader2 className="me-2 h-5 w-5 animate-spin text-public-gold" aria-hidden />
         جاري التحميل…
       </main>
     );
@@ -65,7 +65,7 @@ export default function GroupOnboardingConfirmPage() {
     <Suspense
       fallback={
         <div className="flex min-h-dvh items-center justify-center bg-[#FDFBF7] text-sm font-bold text-gray-500">
-          <Loader2 className="me-2 h-5 w-5 animate-spin text-[#C5A059]" aria-hidden />
+          <Loader2 className="me-2 h-5 w-5 animate-spin text-public-gold" aria-hidden />
           جاري التحميل…
         </div>
       }

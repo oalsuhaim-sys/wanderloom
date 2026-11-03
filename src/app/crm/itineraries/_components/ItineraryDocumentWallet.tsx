@@ -92,8 +92,8 @@ export default function ItineraryDocumentWallet({
 
   return (
     <section className="mb-6 w-full max-w-full overflow-hidden rounded-2xl border border-slate-200 bg-white p-6 text-slate-800 shadow-sm">
-      <h3 className="mb-2 flex items-center gap-2 text-lg font-bold text-[#D4AF37]">
-        <FileText className="h-5 w-5 text-[#D4AF37]" aria-hidden />
+      <h3 className="mb-2 flex items-center gap-2 text-lg font-bold text-brand-gold">
+        <FileText className="h-5 w-5 text-brand-gold" aria-hidden />
         محفظة المستندات (PDF)
       </h3>
       <p className="mb-4 text-sm text-slate-500">{description}</p>
@@ -109,7 +109,7 @@ export default function ItineraryDocumentWallet({
             openFilePicker();
           }
         }}
-        className={`relative mb-4 flex min-h-[8.5rem] cursor-pointer flex-col items-center justify-center gap-2 overflow-hidden rounded-xl border-2 border-dashed border-[#D4AF37]/40 bg-slate-50 px-6 py-8 transition hover:border-[#D4AF37]/70 hover:bg-slate-50 ${
+        className={`relative mb-4 flex min-h-[8.5rem] cursor-pointer flex-col items-center justify-center gap-2 overflow-hidden rounded-xl border-2 border-dashed border-brand-gold/40 bg-slate-50 px-6 py-8 transition hover:border-brand-gold/70 hover:bg-slate-50 ${
           isUploading ? 'opacity-60' : ''
         }`}
       >
@@ -125,9 +125,9 @@ export default function ItineraryDocumentWallet({
 
         <div className="pointer-events-none relative z-10 flex flex-col items-center gap-2">
           {isUploading ? (
-            <Loader2 className="h-8 w-8 animate-spin text-[#D4AF37]" aria-hidden />
+            <Loader2 className="h-8 w-8 animate-spin text-brand-gold" aria-hidden />
           ) : (
-            <Upload className="h-8 w-8 text-[#D4AF37]" aria-hidden />
+            <Upload className="h-8 w-8 text-brand-gold" aria-hidden />
           )}
           <span className="text-sm font-bold text-slate-100">
             {isUploading ? 'جاري الرفع…' : 'اضغط لرفع PDF أو صورة'}

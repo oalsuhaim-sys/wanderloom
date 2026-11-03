@@ -17,7 +17,7 @@ export default function ExpertDnaRedirectPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-[#0B0D0C]">
-      <Loader2 className="h-8 w-8 animate-spin text-[#D4AF37]" />
+      <Loader2 className="h-8 w-8 animate-spin text-brand-gold" />
     </div>
   );
 }

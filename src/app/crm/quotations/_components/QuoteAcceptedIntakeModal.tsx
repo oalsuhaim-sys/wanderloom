@@ -69,12 +69,12 @@ export function QuoteAcceptedIntakeModal({ payload, onClose }: QuoteAcceptedInta
       onClick={onClose}
     >
       <div
-        className="flex max-h-[90vh] w-[95%] max-w-lg flex-col overflow-hidden rounded-t-3xl border border-[#cda04c]/35 bg-gradient-to-b from-[#0a1410] to-[#0f1e16] shadow-2xl sm:rounded-3xl"
+        className="flex max-h-[90vh] w-[95%] max-w-lg flex-col overflow-hidden rounded-t-3xl border border-brand-gold/35 bg-gradient-to-b from-[#0a1410] to-[#0f1e16] shadow-2xl sm:rounded-3xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-start justify-between gap-3 border-b border-[#cda04c]/20 px-5 py-4">
+        <div className="flex items-start justify-between gap-3 border-b border-brand-gold/20 px-5 py-4">
           <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.35em] text-[#cda04c]/80">
+            <p className="text-[10px] font-black uppercase tracking-[0.35em] text-brand-gold/80">
               قبول عرض السعر
             </p>
             <h2 className="mt-1 text-lg font-black text-white">أرسل دعوة DNA للعميل</h2>
@@ -101,7 +101,7 @@ export function QuoteAcceptedIntakeModal({ payload, onClose }: QuoteAcceptedInta
             value={tripType}
             onChange={setTripType}
             disabled={sending}
-            className="rounded-2xl border border-white/10 bg-white/5 p-3 [&_p]:text-white/70 [&_button]:border-white/15 [&_button]:bg-white/5 [&_button]:text-white/80 [&_button[aria-pressed=true]]:border-[#cda04c] [&_button[aria-pressed=true]]:bg-[#cda04c]/20 [&_button[aria-pressed=true]]:text-[#f5e6c0]"
+            className="rounded-2xl border border-white/10 bg-white/5 p-3 [&_p]:text-white/70 [&_button]:border-white/15 [&_button]:bg-white/5 [&_button]:text-white/80 [&_button[aria-pressed=true]]:border-brand-gold [&_button[aria-pressed=true]]:bg-brand-gold/20 [&_button[aria-pressed=true]]:text-[#f5e6c0]"
           />
 
           <p className="text-[10px] font-bold text-white/45" dir="ltr">
@@ -114,7 +114,7 @@ export function QuoteAcceptedIntakeModal({ payload, onClose }: QuoteAcceptedInta
               onClick={() => void copyText(invite.dnaUrl, 'dna')}
               className="inline-flex items-center gap-1.5 rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-[11px] font-black text-white/85"
             >
-              <Dna className="h-3.5 w-3.5 text-[#cda04c]" />
+              <Dna className="h-3.5 w-3.5 text-brand-gold" />
               {copied === 'dna' ? 'تم النسخ ✓' : 'نسخ رابط DNA'}
             </button>
             <button
@@ -122,7 +122,7 @@ export function QuoteAcceptedIntakeModal({ payload, onClose }: QuoteAcceptedInta
               onClick={() => void copyText(payload.bookingUrl, 'calendar')}
               className="inline-flex items-center gap-1.5 rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-[11px] font-black text-white/85"
             >
-              <CalendarDays className="h-3.5 w-3.5 text-[#cda04c]" />
+              <CalendarDays className="h-3.5 w-3.5 text-brand-gold" />
               {copied === 'calendar' ? 'تم النسخ ✓' : 'نسخ رابط التقويم'}
             </button>
             <button
@@ -130,7 +130,7 @@ export function QuoteAcceptedIntakeModal({ payload, onClose }: QuoteAcceptedInta
               onClick={() => void copyText(invite.whatsAppMessage, 'message')}
               className="inline-flex items-center gap-1.5 rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-[11px] font-black text-white/85"
             >
-              <Copy className="h-3.5 w-3.5 text-[#cda04c]" />
+              <Copy className="h-3.5 w-3.5 text-brand-gold" />
               {copied === 'message' ? 'تم النسخ ✓' : 'نسخ الرسالة'}
             </button>
           </div>
@@ -140,7 +140,7 @@ export function QuoteAcceptedIntakeModal({ payload, onClose }: QuoteAcceptedInta
           </pre>
         </div>
 
-        <div className="border-t border-[#cda04c]/20 p-5">
+        <div className="border-t border-brand-gold/20 p-5">
           <button
             type="button"
             disabled={sending}

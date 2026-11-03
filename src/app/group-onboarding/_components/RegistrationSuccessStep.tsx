@@ -72,7 +72,7 @@ export function RegistrationSuccessStep({
         {!isWaitlisted && checkoutPath ? (
           <Link
             href={checkoutPath}
-            style={brandGoldButtonStyle}
+            style={{ ...brandGoldButtonStyle, backgroundColor: '#C59B27' }}
             className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl py-3.5 text-xs font-extrabold shadow-sm transition-all hover:opacity-90"
           >
             <span>💳 الدفع الآن وتأكيد المقعد فوراً</span>

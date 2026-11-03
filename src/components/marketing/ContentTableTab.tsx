@@ -58,7 +58,7 @@ export default function ContentTableTab({ items }: ContentTableTabProps) {
   return (
     <section dir="rtl" className="space-y-4" aria-labelledby="content-table-heading">
       <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-[#2D3F3A] dark:bg-[#22302C] sm:p-6">
-        <p className="text-xs font-semibold tracking-wide text-slate-400 dark:text-[#D4AF37]/80">
+        <p className="text-xs font-semibold tracking-wide text-slate-400 dark:text-brand-gold/80">
           خط إنتاج المحتوى
         </p>
         <h2
@@ -172,7 +172,7 @@ export default function ContentTableTab({ items }: ContentTableTabProps) {
                   <button
                     type="button"
                     onClick={() => setSelectedScript(null)}
-                    className="rounded-lg bg-slate-900 px-4 py-2 text-xs font-medium text-white transition hover:bg-slate-800 dark:bg-[#D4AF37] dark:text-slate-950 dark:hover:bg-[#B8952B]"
+                    className="rounded-lg bg-slate-900 px-4 py-2 text-xs font-medium text-white transition hover:bg-slate-800 dark:bg-brand-gold dark:text-slate-950 dark:hover:bg-brand-gold"
                   >
                     إغلاق
                   </button>

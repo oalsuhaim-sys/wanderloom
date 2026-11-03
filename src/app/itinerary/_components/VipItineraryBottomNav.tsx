@@ -18,7 +18,7 @@ type VipItineraryBottomNavProps = {
 export default function VipItineraryBottomNav({ activeTab, onTabChange }: VipItineraryBottomNavProps) {
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-[#d4af37]/25 bg-[#00152e]/95 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur-md"
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-brand-gold/25 bg-[#00152e]/95 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur-md"
       aria-label="\u062a\u0646\u0642\u0644 \u0627\u0644\u0631\u062d\u0644\u0629"
     >
       <div className="mx-auto grid max-w-lg grid-cols-3 gap-1 px-2 sm:max-w-xl">
@@ -31,8 +31,8 @@ export default function VipItineraryBottomNav({ activeTab, onTabChange }: VipIti
               onClick={() => onTabChange(id)}
               className={`flex flex-col items-center justify-center gap-1 rounded-xl px-1 py-2 transition ${
                 active
-                  ? 'text-[#d4af37]'
-                  : 'text-white/50 hover:bg-[#d4af37]/10 hover:text-white/80'
+                  ? 'text-brand-gold'
+                  : 'text-white/50 hover:bg-brand-gold/10 hover:text-white/80'
               }`}
               aria-current={active ? 'page' : undefined}
             >

@@ -76,12 +76,12 @@ function TimelineCard({
       <div className="flex w-9 shrink-0 flex-col items-center pt-1">
         <span
           className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold ${
-            isOrigin ? 'bg-[#D4AF37] text-[#1E2720] ring-2 ring-[#1E2720]' : 'bg-slate-100 text-[#D4AF37]'
+            isOrigin ? 'bg-brand-gold text-[#1E2720] ring-2 ring-[#1E2720]' : 'bg-slate-100 text-brand-gold'
           }`}
         >
           {index + 1}
         </span>
-        <div className="mt-1 w-0.5 flex-1 bg-[#D4AF37]" />
+        <div className="mt-1 w-0.5 flex-1 bg-brand-gold" />
       </div>
 
       <article
@@ -89,8 +89,8 @@ function TimelineCard({
           isDragging
             ? 'border-[#1E2720] shadow-md'
             : isOrigin
-              ? 'border-[#1E2720] ring-2 ring-[#D4AF37]'
-              : 'border-[#D4AF37]'
+              ? 'border-[#1E2720] ring-2 ring-brand-gold'
+              : 'border-brand-gold'
         }`}
       >
         <div className="flex gap-3">
@@ -103,11 +103,11 @@ function TimelineCard({
               <img
                 src={img}
                 alt=""
-                className="h-14 w-14 shrink-0 rounded-lg border border-[#D4AF37] object-cover"
+                className="h-14 w-14 shrink-0 rounded-lg border border-brand-gold object-cover"
               />
             ) : (
-              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg border border-[#D4AF37] bg-[#FAFAFA]">
-                <MapPin className="h-5 w-5 text-[#D4AF37]" />
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg border border-brand-gold bg-[#FAFAFA]">
+                <MapPin className="h-5 w-5 text-brand-gold" />
               </div>
             )
           ) : null}
@@ -164,7 +164,12 @@ function TimelineCard({
                   placeholder="ملاحظات المحطة (اختياري)..."
                   value={act.note || ''}
                   onChange={(e) => onUpdate(day.id, act.id, { note: e.target.value })}
-                  className="w-full rounded border border-gray-200 p-2 text-xs focus:border-[#C5A059] focus:outline-none"
+                  onKeyDown={(e) => {
+                    if (e.key === ' ' || e.code === 'Space') {
+                      e.stopPropagation();
+                    }
+                  }}
+                  className="w-full rounded border border-gray-200 p-2 text-xs focus:border-brand-gold focus:outline-none"
                 />
               </div>
             ) : null}
@@ -184,8 +189,8 @@ function TimelineCard({
                 }}
                 className={`mt-2 w-full rounded-lg border px-2 py-2 text-[11px] font-bold transition ${
                   isOrigin
-                    ? 'border-[#1E2720] bg-[#D4AF37] text-[#1E2720]'
-                    : 'border-[#D4AF37] bg-[#FAFAFA] text-[#1E2720] hover:bg-[#D4AF37]/15 disabled:opacity-40'
+                    ? 'border-[#1E2720] bg-brand-gold text-[#1E2720]'
+                    : 'border-brand-gold bg-[#FAFAFA] text-[#1E2720] hover:bg-brand-gold/15 disabled:opacity-40'
                 }`}
               >
                 📍 أماكن قريبة
@@ -193,7 +198,7 @@ function TimelineCard({
             ) : null}
 
             {index > 0 && act.kind !== 'transport' ? (
-              <div className="mt-3 rounded-lg border border-[#D4AF37] bg-[#FAFAFA] p-2.5">
+              <div className="mt-3 rounded-lg border border-brand-gold bg-[#FAFAFA] p-2.5">
                 <p className="mb-2 text-[10px] font-bold text-[#1E2720]">الانتقال</p>
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                   <label>
@@ -293,6 +298,25 @@ export default function ItineraryDaysBuilder({
     });
   };
 
+  const deleteDay = (dayIndex: number) => {
+    if (days.length <= 1) return;
+    if (dayIndex < 0 || dayIndex >= days.length) return;
+    const removedId = days[dayIndex]!.id;
+    const next = days
+      .filter((_, i) => i !== dayIndex)
+      .map((day, index) => {
+        const title = String(day.title ?? '').trim();
+        const isAuto = !title || title === 'اليوم الأول' || /^اليوم\s+\d+$/.test(title);
+        if (!isAuto) return day;
+        return { ...day, title: index === 0 ? 'اليوم الأول' : `اليوم ${index + 1}` };
+      });
+    onDaysChange(next);
+    if (activeDayId === removedId || !next.some((d) => d.id === activeDayId)) {
+      const fallbackIndex = Math.max(0, dayIndex - 1);
+      onActiveDayIdChange(next[fallbackIndex]?.id ?? next[0]?.id ?? '');
+    }
+  };
+
   const update = (dayId: string, id: string, patch: Partial<Act>) => {
     patchDay(dayId, (day) => {
       const acts = dayToActivities(day).map((a) => (a.id === id ? { ...a, ...patch } : a));
@@ -329,19 +353,45 @@ export default function ItineraryDaysBuilder({
         </div>
         <div className="mt-2 flex flex-wrap gap-1.5">
           {days.map((day, i) => (
-            <button
+            <div
               key={day.id}
-              type="button"
-              onClick={() => onActiveDayIdChange(day.id)}
-              className={`rounded-lg px-3 py-1.5 text-xs font-bold ${
+              className={`inline-flex items-center rounded-lg ${
                 day.id === activeDayId
-                  ? 'bg-[#D4AF37] text-[#1E2720]'
-                  : 'border border-[#D4AF37] bg-white text-[#1E2720] hover:bg-[#D4AF37]/15'
+                  ? 'bg-brand-gold text-[#1E2720]'
+                  : 'border border-brand-gold bg-white text-[#1E2720] hover:bg-brand-gold/15'
               }`}
             >
-              اليوم {i + 1}
-              {day.city ? ` · ${day.city}` : ''}
-            </button>
+              <button
+                type="button"
+                onClick={() => onActiveDayIdChange(day.id)}
+                className="rounded-lg px-3 py-1.5 text-xs font-bold"
+              >
+                اليوم {i + 1}
+                {day.city ? ` · ${day.city}` : ''}
+              </button>
+              {days.length > 1 ? (
+                <button
+                  type="button"
+                  title="حذف اليوم"
+                  aria-label={`حذف اليوم ${i + 1}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const ok = window.confirm(
+                      `هل أنت متأكد من حذف «اليوم ${i + 1}»؟ لا يمكن التراجع عن هذا الإجراء.`,
+                    );
+                    if (!ok) return;
+                    deleteDay(i);
+                  }}
+                  className={`mr-1 rounded p-1 transition ${
+                    day.id === activeDayId
+                      ? 'text-[#1E2720]/70 hover:bg-black/10 hover:text-red-700'
+                      : 'text-slate-400 hover:bg-red-50 hover:text-red-600'
+                  }`}
+                >
+                  <Trash2 className="h-3.5 w-3.5" aria-hidden />
+                </button>
+              ) : null}
+            </div>
           ))}
         </div>
         {activeDay ? (
@@ -377,7 +427,7 @@ export default function ItineraryDaysBuilder({
                   <div
                     ref={provided.innerRef}
                     {...provided.droppableProps}
-                    className={`min-h-[240px] rounded-lg p-1 ${snap.isDraggingOver ? 'bg-[#D4AF37]/10' : ''}`}
+                    className={`min-h-[240px] rounded-lg p-1 ${snap.isDraggingOver ? 'bg-brand-gold/10' : ''}`}
                   >
                     {acts.length === 0 ? (
                       <p className="py-24 text-center text-sm font-semibold text-slate-600">
@@ -420,8 +470,8 @@ export default function ItineraryDaysBuilder({
                     {...provided.droppableProps}
                     className={`mt-2 rounded-lg border border-dashed px-2 py-2 ${
                       snap.isDraggingOver
-                        ? 'border-[#1E2720] bg-[#D4AF37]/15'
-                        : 'border-[#D4AF37]/50'
+                        ? 'border-[#1E2720] bg-brand-gold/15'
+                        : 'border-brand-gold/50'
                     }`}
                   >
                     <p className="text-[10px] font-bold text-slate-600">

@@ -6,6 +6,7 @@ import { CalendarClock, Loader2, MapPin, Tag, Ticket, Users, X } from 'lucide-re
 
 import { registerSessionAction } from '@/app/actions/registerSession';
 import { WHATSAPP_INCOMPLETE_ERROR } from '@/lib/phoneUtils';
+import { formatSessionTimeLabel } from '@/lib/session-time';
 import { WhatsAppInput } from '@/components/WhatsAppInput';
 import type { Session } from '@/types/session-tables';
 import { ar } from '@/messages/ar';
@@ -151,8 +152,8 @@ export function AvailableSessionsCards({
 
   if (loading) {
     return (
-      <div className="flex min-h-[240px] flex-col items-center justify-center gap-3 rounded-2xl border border-[#C9A84C]/25 bg-white/5 text-sm font-bold text-white/80 shadow-[0_10px_40px_rgba(0,0,0,.35)]">
-        <Loader2 className="h-8 w-8 animate-spin text-[#C9A84C]" />
+      <div className="flex min-h-[240px] flex-col items-center justify-center gap-3 rounded-2xl border border-brand-gold/25 bg-white/5 text-sm font-bold text-white/80 shadow-[0_10px_40px_rgba(0,0,0,.35)]">
+        <Loader2 className="h-8 w-8 animate-spin text-brand-gold" />
         {s.loading}
       </div>
     );
@@ -170,7 +171,7 @@ export function AvailableSessionsCards({
 
   if (sorted.length === 0) {
     return (
-      <div className="rounded-2xl border border-[#C9A84C]/20 bg-white/5 px-4 py-12 text-center text-sm font-bold text-white/70">
+      <div className="rounded-2xl border border-brand-gold/20 bg-white/5 px-4 py-12 text-center text-sm font-bold text-white/70">
         {s.emptyShort}
       </div>
     );
@@ -182,6 +183,7 @@ export function AvailableSessionsCards({
         {sorted.map((s) => {
           const left = spotsLeft(s);
           const full = left < 1;
+          const timeLabel = formatSessionTimeLabel(s.time, 'ar');
           return (
             <article
               key={String(s.id ?? `${s.title}-${s.date}`)}
@@ -197,19 +199,20 @@ export function AvailableSessionsCards({
               <div className="mt-3 space-y-2 text-xs font-bold text-white/55">
                 <div className="flex flex-wrap gap-2">
                   <span className="inline-flex items-center gap-1 rounded-full border border-white/15 bg-white/5 px-2 py-1 text-[11px] text-white/85">
-                    <CalendarClock className="h-3.5 w-3.5 text-[#C9A84C]" />
+                    <CalendarClock className="h-3.5 w-3.5 text-brand-gold" />
                     {formatSessionDate(String(s.date))}
+                    {timeLabel ? ` · ${timeLabel}` : ''}
                   </span>
                   <span className="inline-flex items-center gap-1 rounded-full border border-white/15 bg-white/5 px-2 py-1 text-[11px] text-white/85">
-                    <Tag className="h-3.5 w-3.5 text-[#C9A84C]" />
+                    <Tag className="h-3.5 w-3.5 text-brand-gold" />
                     {sessionTypeLabel(String(s.session_type))}
                   </span>
-                  <span className="inline-flex items-center gap-1 rounded-full border border-[#C9A84C]/35 bg-[#C9A84C]/10 px-2 py-1 text-[11px] text-[#E8C96A]">
+                  <span className="inline-flex items-center gap-1 rounded-full border border-brand-gold/35 bg-brand-gold/10 px-2 py-1 text-[11px] text-[#E8C96A]">
                     <Ticket className="h-3.5 w-3.5" />
                     {priceLabel(Number(s.price) || 0)}
                   </span>
                   <span className="inline-flex items-center gap-1 rounded-full border border-white/15 bg-white/5 px-2 py-1 text-[11px] text-white/85">
-                    <Users className="h-3.5 w-3.5 text-[#C9A84C]" />
+                    <Users className="h-3.5 w-3.5 text-brand-gold" />
                     {full ? (s.full ?? 'مكتمل') : formatSeatsRemaining(left)}
                   </span>
                 </div>
@@ -227,7 +230,7 @@ export function AvailableSessionsCards({
                   setIsPhoneValid(false);
                   setFormMsg(null);
                 }}
-                className="mt-4 w-full rounded-xl bg-gradient-to-l from-[#8A6B2A] to-[#C9A84C] py-2.5 text-sm font-black text-[#1C4532] shadow-lg shadow-black/20 disabled:cursor-not-allowed disabled:opacity-50"
+                className="mt-4 w-full rounded-xl bg-gradient-to-l from-[#8A6B2A] to-brand-gold py-2.5 text-sm font-black text-[#1C4532] shadow-lg shadow-black/20 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {full ? (s.full ?? 'مكتمل') : (s.register ?? 'سجّل الآن')}
               </button>
@@ -236,7 +239,7 @@ export function AvailableSessionsCards({
                   href={s.location_url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-[#C9A84C]/35 bg-[#C9A84C]/10 py-2 text-xs font-black text-[#E8C96A] hover:bg-[#C9A84C]/15"
+                  className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-brand-gold/35 bg-brand-gold/10 py-2 text-xs font-black text-[#E8C96A] hover:bg-brand-gold/15"
                 >
                   <MapPin className="h-4 w-4" />
                   {s.mapLocationCta}
@@ -262,7 +265,7 @@ export function AvailableSessionsCards({
           >
             <div className="flex items-start justify-between gap-2">
               <div>
-                <h3 id="register-title" className="text-sm font-black text-[#C9A84C]">
+                <h3 id="register-title" className="text-sm font-black text-brand-gold">
                   {s.modalTitle}
                 </h3>
                 <p className="mt-1 text-xs font-bold text-white/50">{openFor.title}</p>
@@ -282,7 +285,7 @@ export function AvailableSessionsCards({
               <div>
                 <label className="mb-1 block text-xs font-black text-white/80">{s.nameLabel}</label>
                 <input
-                  className="w-full rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-sm font-bold text-white outline-none ring-[#C9A84C] placeholder:text-white/30 focus:ring-2"
+                  className="w-full rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-sm font-bold text-white outline-none ring-brand-gold placeholder:text-white/30 focus:ring-2"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder={s.namePlaceholder}
@@ -312,7 +315,7 @@ export function AvailableSessionsCards({
               <button
                 type="submit"
                 disabled={submitting || spotsLeft(openFor) < 1 || !isPhoneValid}
-                className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-l from-[#8A6B2A] to-[#C9A84C] py-3 text-sm font-black text-[#1C4532] disabled:opacity-60"
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-l from-[#8A6B2A] to-brand-gold py-3 text-sm font-black text-[#1C4532] disabled:opacity-60"
               >
                 {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                 {s.submit}
@@ -322,7 +325,7 @@ export function AvailableSessionsCards({
                 <button
                   type="button"
                   onClick={goToTripForm}
-                  className="font-black text-[#C9A84C] underline underline-offset-2"
+                  className="font-black text-brand-gold underline underline-offset-2"
                 >
                   {s.modalFooterLink}
                 </button>

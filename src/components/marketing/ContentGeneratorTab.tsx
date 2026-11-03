@@ -82,7 +82,7 @@ function BeatCard({
         </span>
       </div>
       <p className="mb-2 text-xs font-medium text-slate-500 dark:text-slate-400">
-        <span className="font-semibold text-slate-700 dark:text-[#D4AF37]">الإخراج: </span>
+        <span className="font-semibold text-slate-700 dark:text-brand-gold">الإخراج: </span>
         {direction}
       </p>
       <blockquote className="rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm leading-relaxed text-slate-800 dark:border-[#2D3F3A] dark:bg-[#22302C] dark:text-slate-100">
@@ -113,7 +113,7 @@ function GeneratorResultView({ result }: { result: WanderloomGeneratorResult }) 
   return (
     <div className="space-y-5" dir="rtl">
       <header className="rounded-2xl border border-slate-200 bg-gradient-to-l from-[#F4EFE6] to-white p-5 dark:border-[#2D3F3A] dark:from-[#1A2421] dark:to-[#22302C] sm:p-6">
-        <p className="text-xs font-semibold tracking-wide text-[#9C7A3C]">النتيجة المباشرة</p>
+        <p className="text-xs font-semibold tracking-wide text-brand-gold">النتيجة المباشرة</p>
         <h2 className="mt-1 text-xl font-bold text-slate-900 dark:text-white">{result.idea_name}</h2>
         <p className="mt-2 text-xs text-slate-500 dark:text-slate-400" dir="ltr">
           `{result.id}` · {result.format} · {result.platform} · {result.destination} ·{' '}
@@ -148,7 +148,7 @@ function GeneratorResultView({ result }: { result: WanderloomGeneratorResult }) 
         </div>
 
         <div className="mt-4 rounded-xl border border-dashed border-slate-200 p-4 dark:border-[#2D3F3A]">
-          <p className="mb-2 text-xs font-bold text-slate-700 dark:text-[#D4AF37]">
+          <p className="mb-2 text-xs font-bold text-slate-700 dark:text-brand-gold">
             خطّافات بديلة للافتتاحية
           </p>
           <ul className="space-y-2">
@@ -421,7 +421,7 @@ export default function ContentGeneratorTab({
     <div className="space-y-6" dir="rtl">
       <section className={PANEL} aria-labelledby="content-generator-heading">
         <div className="mb-6">
-          <p className="text-xs font-semibold tracking-wide text-slate-400 dark:text-[#D4AF37]/80">
+          <p className="text-xs font-semibold tracking-wide text-slate-400 dark:text-brand-gold/80">
             Claude Prototype · Generator
           </p>
           <h2

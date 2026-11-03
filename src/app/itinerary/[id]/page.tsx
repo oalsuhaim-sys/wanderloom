@@ -25,6 +25,7 @@ import VipPreTripServicesCard from '../_components/VipPreTripServicesCard';
 import VipVaultCountdown from '../_components/VipVaultCountdown';
 import VipLiveWeatherWidget from '../_components/VipLiveWeatherWidget';
 import VipPwaInstallButton from '../_components/VipPwaInstallButton';
+import ItineraryScreenShield from '../_components/ItineraryScreenShield';
 import VipItineraryPinGate from '../_components/VipItineraryPinGate';
 import ClientPortalSignOutButton from '../_components/ClientPortalSignOutButton';
 import { useVipSessionIdleLock } from '@/lib/use-vip-session-idle-lock';
@@ -141,17 +142,20 @@ async function enrichTripWithClientPublicFields(
   }
 
   // Soft fallback via browser supabase (may be blocked by RLS)
-  if (!referral) {
+  let customerPhone = trip.customerPhone?.trim() || null;
+
+  if (!referral || !customerPhone) {
     const { data, error } = await supabase
       .from('clients')
-      .select('ref_code')
+      .select('ref_code, phone_wa')
       .eq('id', resolvedClientId)
       .maybeSingle();
 
     if (error) {
       console.warn('[vip-itinerary] clients referral lookup:', error.message);
     } else {
-      referral = String(data?.ref_code ?? '').trim() || null;
+      if (!referral) referral = String(data?.ref_code ?? '').trim() || null;
+      if (!customerPhone) customerPhone = String(data?.phone_wa ?? '').trim() || null;
     }
   }
 
@@ -159,6 +163,7 @@ async function enrichTripWithClientPublicFields(
     ...trip,
     clientId: resolvedClientId,
     referralCode: referral,
+    customerPhone,
   });
 }
 
@@ -476,22 +481,22 @@ function VipErrorPanel({
   return (
     <div className="mx-auto flex max-w-md flex-col items-center gap-5 px-6 text-center">
       <div
-        className="flex h-14 w-14 items-center justify-center rounded-full border border-[#D4AF37]/35 bg-[#2A362C]/60 shadow-[0_0_20px_rgba(212,175,55,0.15)]"
+        className="flex h-14 w-14 items-center justify-center rounded-full border border-brand-gold/35 bg-[#2A362C]/60 shadow-[0_0_20px_rgba(212,175,55,0.15)]"
         aria-hidden
       >
-        <AlertCircle className="h-7 w-7 text-[#D4AF37]" />
+        <AlertCircle className="h-7 w-7 text-brand-gold" />
       </div>
-      <div className="w-full rounded-2xl border border-[#D4AF37]/25 bg-[#2A362C]/50 px-6 py-5 text-start backdrop-blur-md">
+      <div className="w-full rounded-2xl border border-brand-gold/25 bg-[#2A362C]/50 px-6 py-5 text-start backdrop-blur-md">
         <p className="text-sm font-semibold leading-relaxed text-white/90">
           تعذر تحميل المسار. التفاصيل التقنية:
         </p>
-        <p className="mt-2 break-words font-mono text-xs leading-relaxed text-[#D4AF37]/90">{message}</p>
+        <p className="mt-2 break-words font-mono text-xs leading-relaxed text-brand-gold/90">{message}</p>
       </div>
       {onRetry ? (
         <button
           type="button"
           onClick={onRetry}
-          className="inline-flex items-center gap-2 rounded-full border border-[#D4AF37]/45 bg-[#D4AF37]/10 px-5 py-2.5 text-sm font-bold text-[#D4AF37] transition hover:bg-[#D4AF37]/20"
+          className="inline-flex items-center gap-2 rounded-full border border-brand-gold/45 bg-brand-gold/10 px-5 py-2.5 text-sm font-bold text-brand-gold transition hover:bg-brand-gold/20"
         >
           <RefreshCw className="h-4 w-4" aria-hidden />
           إعادة المحاولة
@@ -582,7 +587,7 @@ function ClientView({
           <button
             type="button"
             onClick={onCloseProfilePortal}
-            className="mb-4 inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-xs font-bold text-gray-700 shadow-sm transition hover:border-[#D4AF37]/40"
+            className="mb-4 inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-xs font-bold text-gray-700 shadow-sm transition hover:border-brand-gold/40"
           >
             العودة للمسار
           </button>
@@ -643,8 +648,8 @@ function ClientView({
 
       <div className="border-b border-gray-200 bg-[#F9F9F6]">
         <div className="my-8 flex justify-center gap-4 px-4">
-          <div className="inline-flex items-center gap-2 rounded-full bg-[#1E2720] px-6 py-2.5 font-bold text-white shadow-md ring-2 ring-[#D4AF37]/50">
-            <Map className="h-4 w-4 shrink-0 text-[#D4AF37]" strokeWidth={2} aria-hidden />
+          <div className="inline-flex items-center gap-2 rounded-full bg-[#1E2720] px-6 py-2.5 font-bold text-white shadow-md ring-2 ring-brand-gold/50">
+            <Map className="h-4 w-4 shrink-0 text-brand-gold" strokeWidth={2} aria-hidden />
             مسار الرحلة
           </div>
         </div>
@@ -718,7 +723,7 @@ function ClientView({
                   }
                 />
               ) : (
-                <p className="rounded-2xl border border-[#C5A059]/20 bg-white py-12 text-center text-sm text-gray-500 shadow-sm">
+                <p className="rounded-2xl border border-brand-gold/20 bg-white py-12 text-center text-sm text-gray-500 shadow-sm">
                   لا توجد أيام مُنسّقة بعد في هذا المسار.
                 </p>
               )}
@@ -1012,37 +1017,43 @@ export default function VipItineraryPage() {
 
   if (loading) {
     return (
-      <Shell className="flex flex-col items-center justify-center text-[#D4AF37]">
-        <Loader2 className="mb-4 h-10 w-10 animate-spin" aria-hidden />
-        <p className="text-sm font-semibold tracking-wide">جاري تحميل مسار رحلتك…</p>
-      </Shell>
+      <ItineraryScreenShield clientName={trip?.customerName} clientPhone={trip?.customerPhone}>
+        <Shell className="flex flex-col items-center justify-center text-brand-gold">
+          <Loader2 className="mb-4 h-10 w-10 animate-spin" aria-hidden />
+          <p className="text-sm font-semibold tracking-wide">جاري تحميل مسار رحلتك…</p>
+        </Shell>
+      </ItineraryScreenShield>
     );
   }
 
   if (fetchError || !trip) {
     return (
-      <Shell className="flex flex-col items-center justify-center px-6">
-        <VipErrorPanel
-          message={fetchError || 'لم يتم العثور على المسار.'}
-          onRetry={() => void loadTrip()}
-        />
-      </Shell>
+      <ItineraryScreenShield clientName={trip?.customerName} clientPhone={trip?.customerPhone}>
+        <Shell className="flex flex-col items-center justify-center px-6">
+          <VipErrorPanel
+            message={fetchError || 'لم يتم العثور على المسار.'}
+            onRetry={() => void loadTrip()}
+          />
+        </Shell>
+      </ItineraryScreenShield>
     );
   }
 
   if (!authenticated && trip.hasPin && passcode) {
     return (
-      <Shell>
-        <VipItineraryPinGate
-          pinInput={pinInput}
-          onPinChange={setPinInput}
-          pinError={pinError}
-          onSubmit={handlePinSubmit}
-          exiting={pinExiting}
-          unlocking={unlocking}
-          sessionExpired={sessionExpired}
-        />
-      </Shell>
+      <ItineraryScreenShield clientName={trip?.customerName} clientPhone={trip?.customerPhone}>
+        <Shell>
+          <VipItineraryPinGate
+            pinInput={pinInput}
+            onPinChange={setPinInput}
+            pinError={pinError}
+            onSubmit={handlePinSubmit}
+            exiting={pinExiting}
+            unlocking={unlocking}
+            sessionExpired={sessionExpired}
+          />
+        </Shell>
+      </ItineraryScreenShield>
     );
   }
 
@@ -1072,12 +1083,13 @@ export default function VipItineraryPage() {
   };
 
   return (
+    <ItineraryScreenShield clientName={trip?.customerName} clientPhone={trip?.customerPhone}>
     <Shell>
       <div className="print:hidden">
         <div className="relative z-50 flex items-center justify-between gap-3 border-b border-[#1E2720]/8 bg-[#FAFAFA] px-4 py-3">
           <a
             href="/"
-            className="inline-flex items-center gap-2 text-sm font-bold text-[#1E2720] transition-colors hover:text-[#D4AF37]"
+            className="inline-flex items-center gap-2 text-sm font-bold text-[#1E2720] transition-colors hover:text-brand-gold"
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
               <path d="M15 18l-6-6 6-6" />
@@ -1090,7 +1102,7 @@ export default function VipItineraryPage() {
               <button
                 type="button"
                 onClick={handleOpenProfile}
-                className="inline-flex items-center gap-2 rounded-full border border-[#D4AF37]/40 bg-[#1E2720] px-4 py-2 text-xs font-black text-[#D4AF37] shadow-sm transition hover:bg-black"
+                className="inline-flex items-center gap-2 rounded-full border border-brand-gold/40 bg-[#1E2720] px-4 py-2 text-xs font-black text-brand-gold shadow-sm transition hover:bg-black"
               >
                 <User className="h-3.5 w-3.5 shrink-0" aria-hidden />
                 الملف الشخصي
@@ -1132,5 +1144,6 @@ export default function VipItineraryPage() {
 
         <VipLuxuryBookingVoucherPrint trip={trip} dateRange={dateRange} />
     </Shell>
+    </ItineraryScreenShield>
   );
 }

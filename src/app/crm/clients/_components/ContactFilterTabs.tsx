@@ -37,8 +37,8 @@ export default function ContactFilterTabs({
             onClick={() => onChange(tab.id)}
             className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-all duration-200 ${
               active
-                ? 'bg-slate-900 text-white shadow-sm dark:border dark:border-[#D4AF37]/50 dark:bg-[#D4AF37]/20 dark:text-[#D4AF37]'
-                : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50 dark:bg-[#22302C] dark:text-gray-300 dark:ring-[#2D3F3A] dark:hover:border-[#D4AF37]/30'
+                ? 'bg-slate-900 text-white shadow-sm dark:border dark:border-brand-gold/50 dark:bg-brand-gold/20 dark:text-brand-gold'
+                : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50 dark:bg-[#22302C] dark:text-gray-300 dark:ring-[#2D3F3A] dark:hover:border-brand-gold/30'
             }`}
           >
             <span>{label}</span>
@@ -46,7 +46,7 @@ export default function ContactFilterTabs({
               <span
                 className={`min-w-[1.25rem] rounded-full px-2 py-0.5 text-center text-xs font-medium ${
                   active
-                    ? 'bg-white/15 text-white dark:bg-[#D4AF37]/15 dark:text-[#D4AF37]'
+                    ? 'bg-white/15 text-white dark:bg-brand-gold/15 dark:text-brand-gold'
                     : 'bg-slate-50 text-slate-500 dark:bg-[#1A2421] dark:text-slate-400'
                 }`}
               >

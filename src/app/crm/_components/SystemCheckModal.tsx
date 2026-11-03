@@ -13,7 +13,7 @@ import {
 import { getClientAccessToken } from '@/lib/crm-session-token';
 
 const FOREST = '#1A3B2A';
-const GOLD = '#C5A059';
+const GOLD = '#D4AF37';
 
 type LogStatus = 'loading' | 'success' | 'error' | 'info';
 

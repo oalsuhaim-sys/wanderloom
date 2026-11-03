@@ -20,7 +20,7 @@ import { supabase } from '@/lib/supabase';
 
 const labelClass = 'mb-2 block text-xs font-semibold text-slate-700';
 const inputClass =
-  'w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-900 outline-none transition focus:border-[#D4AF37] placeholder:text-slate-600 [color-scheme:light]';
+  'w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-900 outline-none transition focus:border-brand-gold placeholder:text-slate-600 [color-scheme:light]';
 
 type Props = {
   hotels: ItineraryHotelEntry[];
@@ -98,7 +98,7 @@ export default function ItineraryHotelsEditor({
             className="mb-6 rounded-2xl border border-slate-200 bg-slate-50 p-6 shadow-xl"
           >
             <div className="mb-3 flex items-center justify-between gap-2">
-              <span className="flex items-center gap-2 text-base font-bold text-[#D4AF37]">
+              <span className="flex items-center gap-2 text-base font-bold text-brand-gold">
                 فندق {index + 1}
               </span>
               {hotels.length > 1 ? (
@@ -186,7 +186,7 @@ export default function ItineraryHotelsEditor({
       <button
         type="button"
         onClick={addHotel}
-        className="self-start rounded-xl border border-dashed border-[#D4AF37]/50 bg-white px-4 py-2.5 text-sm font-bold text-[#D4AF37] transition hover:border-[#D4AF37] hover:bg-slate-50"
+        className="self-start rounded-xl border border-dashed border-brand-gold/50 bg-white px-4 py-2.5 text-sm font-bold text-brand-gold transition hover:border-brand-gold hover:bg-slate-50"
       >
         + إضافة فندق آخر
       </button>

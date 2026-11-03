@@ -5,7 +5,7 @@ import { useMemo } from 'react';
 import { usePlacesBankDestinations } from '@/hooks/usePlacesBankDestinations';
 
 const CHIP_ACTIVE =
-  'border-slate-900 bg-slate-900 text-white dark:border-[#D4AF37]/50 dark:bg-[#D4AF37]/20 dark:text-[#D4AF37]';
+  'border-slate-900 bg-slate-900 text-white dark:border-brand-gold/50 dark:bg-brand-gold/20 dark:text-brand-gold';
 const CHIP_IDLE =
   'border-slate-200 bg-white text-slate-600 hover:border-slate-300 dark:border-[#2D3F3A] dark:bg-[#1A2421] dark:text-slate-300';
 

@@ -80,7 +80,7 @@ export function WhatsAppInput({
         <select
           value={selectedCountry.code}
           onChange={(e) => handleCountryChange(e.target.value)}
-          className="h-12 shrink-0 cursor-pointer rounded-2xl border border-slate-300 bg-white/90 px-3 text-xs font-bold text-slate-800 outline-none transition-all focus:border-[#C59B4B]"
+          className="h-12 shrink-0 cursor-pointer rounded-2xl border border-slate-300 bg-white/90 px-3 text-xs font-bold text-slate-800 outline-none transition-all focus:border-brand-gold"
           aria-label="مفتاح الدولة"
         >
           {WHATSAPP_COUNTRIES.map((c) => (
@@ -101,7 +101,7 @@ export function WhatsAppInput({
           className={`h-12 w-full rounded-2xl border bg-white/90 px-4 font-mono text-xs font-bold text-[#111827] shadow-sm outline-none transition-all ${
             error
               ? 'border-red-500 bg-red-50/20 focus:border-red-500'
-              : 'border-slate-300 focus:border-[#C59B4B]'
+              : 'border-slate-300 focus:border-brand-gold'
           }`}
         />
       </div>

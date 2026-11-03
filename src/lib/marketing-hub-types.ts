@@ -70,7 +70,7 @@ export const DEFAULT_BRAND_IDENTITY: Omit<BrandIdentity, 'id'> = {
   scarfPromptRule:
     'featuring a prominent custom luxury branded silk scarf integrated elegantly into the shot, quiet luxury aesthetic, highly detailed, cinematic lighting',
   designRules:
-    'الخلفية: #FDFBF7 · النص: #111111 · Royal Olive: #1e3f20 · Gold: #cda04c · خط Tajawal · أسلوب Quiet Luxury — مساحات بيضاء، ظلال ناعمة، بدون ازدحام بصري.',
+    'الخلفية: #FDFBF7 · النص: #111111 · Royal Olive: #1e3f20 · Gold: #D4AF37 · خط Tajawal · أسلوب Quiet Luxury — مساحات بيضاء، ظلال ناعمة، بدون ازدحام بصري.',
 };
 
 export type MarketingAiPromptRow = {

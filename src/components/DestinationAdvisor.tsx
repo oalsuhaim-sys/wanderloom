@@ -38,7 +38,7 @@ function AdvisorImage({
       <div
         className={`flex h-full w-full flex-col items-center justify-center gap-3 bg-gradient-to-br from-[#f4f0e6] via-[#F2F7F4] to-[#f9f6f0] p-6 text-center ${className ?? ''}`}
       >
-        <Compass className="h-10 w-10 text-[#9C7A3C]/70" strokeWidth={1.5} aria-hidden />
+        <Compass className="h-10 w-10 text-public-gold/70" strokeWidth={1.5} aria-hidden />
         <p className="text-sm font-black text-[#1C2E3A]">وجهة واندرلوم</p>
         <p className="text-[11px] font-bold text-gray-500">Wanderloom Destination</p>
       </div>
@@ -107,7 +107,7 @@ export default function DestinationAdvisor() {
     <div className="relative mx-auto flex w-full max-w-5xl flex-col items-center bg-transparent px-4">
       <div className="relative z-10 flex w-full flex-col items-center">
       <div className="mb-10 w-full text-center">
-        <p className="inline-flex items-center gap-2 rounded-full border border-[#9C7A3C]/30 bg-[#9C7A3C]/10 px-4 py-1.5 text-[11px] font-black tracking-wide text-[#9C7A3C]">
+        <p className="inline-flex items-center gap-2 rounded-full border border-public-gold/30 bg-public-gold/10 px-4 py-1.5 text-[11px] font-black tracking-wide text-public-gold">
           <Sparkles className="h-3.5 w-3.5" aria-hidden />
           مستشار الوجهة · Wanderloom
         </p>
@@ -125,7 +125,7 @@ export default function DestinationAdvisor() {
           <button
             type="button"
             onClick={goBack}
-            className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-bold text-[#1C2E3A] shadow-sm transition hover:border-[#9C7A3C]/50 hover:bg-[#f4efe6]"
+            className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-bold text-[#1C2E3A] shadow-sm transition hover:border-public-gold/50 hover:bg-[#f4efe6]"
           >
             <ChevronRight className="h-4 w-4" aria-hidden />
             رجوع
@@ -137,7 +137,7 @@ export default function DestinationAdvisor() {
         <div className="flex flex-1 items-center justify-center gap-2 text-xs font-black text-[#1C2E3A]">
           <span
             className={`flex h-7 w-7 items-center justify-center rounded-full border-2 ${
-              step >= 1 ? 'border-[#9C7A3C] bg-[#1C2E3A] text-[#F4EFE6]' : 'border-gray-200 bg-white text-gray-400'
+              step >= 1 ? 'border-public-gold bg-[#1C2E3A] text-[#F4EFE6]' : 'border-gray-200 bg-white text-gray-400'
             }`}
           >
             1
@@ -146,7 +146,7 @@ export default function DestinationAdvisor() {
           <span className="text-gray-300">→</span>
           <span
             className={`flex h-7 w-7 items-center justify-center rounded-full border-2 ${
-              step >= 2 ? 'border-[#9C7A3C] bg-[#1C2E3A] text-[#F4EFE6]' : 'border-gray-200 bg-white text-gray-400'
+              step >= 2 ? 'border-public-gold bg-[#1C2E3A] text-[#F4EFE6]' : 'border-gray-200 bg-white text-gray-400'
             }`}
           >
             2
@@ -155,7 +155,7 @@ export default function DestinationAdvisor() {
           <span className="text-gray-300">→</span>
           <span
             className={`flex h-7 w-7 items-center justify-center rounded-full border-2 ${
-              step >= 3 ? 'border-[#9C7A3C] bg-[#9C7A3C] text-[#F4EFE6]' : 'border-gray-200 bg-white text-gray-400'
+              step >= 3 ? 'border-public-gold bg-public-gold text-[#1A3B2A]' : 'border-gray-200 bg-white text-gray-400'
             }`}
           >
             3
@@ -185,8 +185,8 @@ export default function DestinationAdvisor() {
                     onClick={() => selectCountry(id)}
                     className={`wl-dest-tag inline-flex cursor-pointer select-none rounded-full border px-5 py-2.5 text-sm transition-all duration-300 ${
                       isSelected
-                        ? 'border-[#9C7A3C] bg-[#1C2E3A] font-medium text-[#F4EFE6] shadow-md'
-                        : 'border-[#1C2E3A]/10 bg-white/90 font-medium text-[#1C2E3A] shadow-sm hover:border-[#9C7A3C] hover:text-[#9C7A3C]'
+                        ? 'border-public-gold bg-[#1C2E3A] font-medium text-[#F4EFE6] shadow-md'
+                        : 'border-[#1C2E3A]/10 bg-white/90 font-medium text-[#1C2E3A] shadow-sm hover:border-public-gold hover:text-public-gold'
                     }`}
                   >
                     {label}
@@ -212,7 +212,7 @@ export default function DestinationAdvisor() {
                     key={key}
                     type="button"
                     onClick={() => selectSeason(key)}
-                    className="wl-lift-card group flex flex-col rounded-2xl border border-gray-200 bg-white p-5 text-start shadow-sm transition-all duration-500 hover:-translate-y-2 hover:border-[#9C7A3C]/50 hover:shadow-[0_20px_40px_rgba(0,0,0,0.06)]"
+                    className="wl-lift-card group flex flex-col rounded-2xl border border-gray-200 bg-white p-5 text-start shadow-sm transition-all duration-500 hover:-translate-y-2 hover:border-public-gold/50 hover:shadow-[0_20px_40px_rgba(0,0,0,0.06)]"
                   >
                     <div className="mb-3 flex items-center justify-between gap-2">
                       <span className="text-lg font-black text-[#1C2E3A]">{SEASON_LABELS[key]}</span>
@@ -226,7 +226,7 @@ export default function DestinationAdvisor() {
                         {isRec ? 'موصى به' : 'بحذر'}
                       </span>
                     </div>
-                    <p className="mb-2 text-xs font-bold text-[#9C7A3C]">{s.name}</p>
+                    <p className="mb-2 text-xs font-bold text-public-gold">{s.name}</p>
                     <div className="flex flex-wrap gap-1.5">
                       {s.months.map((m) => (
                         <span
@@ -254,8 +254,8 @@ export default function DestinationAdvisor() {
                     {countryLabel} · {seasonData.name}
                   </h3>
                   {seasonData.status === 'recommended' ? (
-                    <span className="inline-flex items-center gap-1 rounded-full border border-[#9C7A3C]/40 bg-gradient-to-l from-[#1C2E3A]/10 to-[#9C7A3C]/15 px-3 py-1 text-[10px] font-black text-[#1C2E3A]">
-                      <CheckCircle2 className="h-3.5 w-3.5 text-[#9C7A3C]" />
+                    <span className="inline-flex items-center gap-1 rounded-full border border-public-gold/40 bg-gradient-to-l from-[#1C2E3A]/10 to-public-gold/15 px-3 py-1 text-[10px] font-black text-[#1C2E3A]">
+                      <CheckCircle2 className="h-3.5 w-3.5 text-public-gold" />
                       موسم موصى به
                     </span>
                   ) : (
@@ -267,7 +267,7 @@ export default function DestinationAdvisor() {
                 </div>
 
                 <div className="mb-5 flex items-center gap-2 rounded-xl border border-[#1C2E3A]/10 bg-white px-4 py-3">
-                  <Thermometer className="h-5 w-5 text-[#9C7A3C]" aria-hidden />
+                  <Thermometer className="h-5 w-5 text-public-gold" aria-hidden />
                   <div>
                     <p className="text-[10px] font-black uppercase tracking-wider text-gray-500">
                       متوسط الحرارة
@@ -280,8 +280,8 @@ export default function DestinationAdvisor() {
 
                 {seasonData.status === 'recommended' ? (
                   <>
-                    <div className="mt-6 rounded-xl border border-[#9C7A3C]/25 bg-[#F4EFE6] p-4">
-                      <p className="mb-2 flex items-center gap-2 text-xs font-black text-[#9C7A3C]">
+                    <div className="mt-6 rounded-xl border border-public-gold/25 bg-[#F4EFE6] p-4">
+                      <p className="mb-2 flex items-center gap-2 text-xs font-black text-public-gold">
                         <Sparkles className="h-3.5 w-3.5" />
                         فعاليات حصرية
                       </p>
@@ -297,7 +297,7 @@ export default function DestinationAdvisor() {
                             key={act}
                             className="flex items-start gap-2 text-sm font-bold text-gray-700"
                           >
-                            <Calendar className="mt-0.5 h-4 w-4 shrink-0 text-[#9C7A3C]" />
+                            <Calendar className="mt-0.5 h-4 w-4 shrink-0 text-public-gold" />
                             {act}
                           </li>
                         ))}

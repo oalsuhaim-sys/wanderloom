@@ -130,7 +130,7 @@ export function GroupTripTermsAgreement({ draft, backHref, onWaitlisted, onBooke
             type="button"
             onClick={handleFinalSubmit}
             disabled={pending}
-            style={brandGoldButtonStyle}
+            style={{ ...brandGoldButtonStyle, backgroundColor: '#C59B27' }}
             className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl px-8 py-3.5 text-xs font-extrabold shadow-sm transition-all hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {pending ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : null}

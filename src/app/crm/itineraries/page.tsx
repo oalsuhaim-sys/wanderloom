@@ -59,7 +59,7 @@ const STATUS_FILTER = [
 const BTN_SECONDARY =
   'flex min-h-[40px] items-center justify-center gap-1.5 rounded-xl border border-slate-200/80 bg-slate-100 px-3 py-2 text-xs font-bold text-slate-700 shadow-sm transition-all hover:bg-slate-200 active:bg-slate-300 disabled:cursor-not-allowed disabled:opacity-50'
 const BTN_PRIMARY =
-  'flex min-h-[40px] items-center justify-center gap-1.5 rounded-xl bg-[#D4AF37] px-3 py-2 text-xs font-bold text-black shadow-sm transition-all hover:bg-[#B8952B] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50'
+  'flex min-h-[40px] items-center justify-center gap-1.5 rounded-xl bg-brand-gold px-3 py-2 text-xs font-bold text-black shadow-sm transition-all hover:bg-brand-gold active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50'
 const BTN_DELETE =
   'flex min-h-[40px] items-center justify-center gap-1.5 rounded-xl border border-rose-100 bg-rose-50 px-3 py-2 text-xs font-bold text-rose-600 shadow-sm transition-all hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-50'
 
@@ -433,7 +433,7 @@ export default function CRMItinerariesPage() {
         className="flex min-h-[70vh] items-center justify-center bg-[#F9FAFB] dark:bg-slate-50"
       >
         <div className="text-center text-sm font-semibold text-slate-500">
-          <Loader2 className="mx-auto mb-3 h-6 w-6 animate-spin text-[#D4AF37]" aria-hidden />
+          <Loader2 className="mx-auto mb-3 h-6 w-6 animate-spin text-brand-gold" aria-hidden />
           جارٍ تحميل المسارات...
         </div>
       </div>
@@ -448,9 +448,9 @@ export default function CRMItinerariesPage() {
         <div
           role="status"
           aria-live="polite"
-          className="fixed bottom-6 left-1/2 z-[200] w-[min(100%,22rem)] -translate-x-1/2 rounded-2xl border border-slate-200 bg-slate-900 px-5 py-4 text-center shadow-2xl dark:border-[#D4AF37]/40 dark:bg-slate-50"
+          className="fixed bottom-6 left-1/2 z-[200] w-[min(100%,22rem)] -translate-x-1/2 rounded-2xl border border-slate-200 bg-slate-900 px-5 py-4 text-center shadow-2xl dark:border-brand-gold/40 dark:bg-slate-50"
         >
-          <p className="text-sm font-semibold leading-relaxed text-white dark:text-[#D4AF37]">
+          <p className="text-sm font-semibold leading-relaxed text-white dark:text-brand-gold">
             {magicToast}
           </p>
         </div>
@@ -476,7 +476,7 @@ export default function CRMItinerariesPage() {
                 {lead.client_id != null ? (
                   <Link
                     href={`/crm/itineraries/builder?clientId=${lead.client_id}`}
-                    className="mt-2 inline-flex text-[10px] font-semibold text-slate-700 underline dark:text-[#D4AF37]"
+                    className="mt-2 inline-flex text-[10px] font-semibold text-slate-700 underline dark:text-brand-gold"
                   >
                     بناء مسار للعميل
                   </Link>
@@ -489,7 +489,7 @@ export default function CRMItinerariesPage() {
 
       <header className="mb-6 flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
         <div className="min-w-0">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-500 dark:text-[#D4AF37]/80">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-500 dark:text-brand-gold/80">
             Routes
           </p>
           <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-800">المسارات</h1>
@@ -503,7 +503,7 @@ export default function CRMItinerariesPage() {
             onClick={() => setShowAchievementsModal(true)}
             className={BTN_SECONDARY + ' px-4'}
           >
-            <Award className="h-4 w-4 text-[#b8952d]" aria-hidden />
+            <Award className="h-4 w-4 text-brand-gold" aria-hidden />
             دليل ميزات النظام
           </button>
           <Link href="/crm/itineraries/builder" className={BTN_PRIMARY + ' no-underline px-4'}>
@@ -521,7 +521,7 @@ export default function CRMItinerariesPage() {
       <div className="mb-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-200 dark:bg-slate-50">
         <div className={CRM_FILTER_BAR}>
           <div className="flex min-w-0 flex-1 items-center gap-2.5">
-            <Search className="h-4 w-4 shrink-0 text-slate-500 dark:text-[#D4AF37]/80" aria-hidden />
+            <Search className="h-4 w-4 shrink-0 text-slate-500 dark:text-brand-gold/80" aria-hidden />
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
@@ -578,7 +578,7 @@ export default function CRMItinerariesPage() {
               >
                 <div className="flex h-32 items-end rounded-t-xl bg-gradient-to-r from-slate-800 to-slate-900 p-4 dark:from-[#1A2421] dark:to-[#22302C]">
                   <div className="flex items-center gap-2 text-slate-800">
-                    <Route className="h-5 w-5 text-[#D4AF37]" aria-hidden />
+                    <Route className="h-5 w-5 text-brand-gold" aria-hidden />
                     <span className={`rounded-full px-3 py-1 text-xs font-medium ${crmStatusBadgeClass(st)}`}>
                       {st || 'active'}
                     </span>

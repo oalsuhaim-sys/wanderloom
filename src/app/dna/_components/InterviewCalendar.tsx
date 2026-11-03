@@ -486,7 +486,7 @@ export function InterviewCalendar({
       dir="rtl"
     >
       <div className="px-2 pb-3 pt-3 text-center sm:px-4 sm:pb-4 sm:pt-2 md:px-0">
-        <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-[#D4AF37]/15 text-[#1e3f20]">
+        <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-brand-gold/15 text-[#1e3f20]">
           <Calendar className="h-6 w-6" aria-hidden />
         </div>
         <h2 className="text-lg font-black text-[#1e3f20] sm:text-xl">اختر موعد المقابلة</h2>
@@ -519,7 +519,7 @@ export function InterviewCalendar({
           type="button"
           disabled={pending}
           onClick={handleConfirmBooked}
-          className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#1e3f20] py-3.5 text-sm font-black text-[#cda04c] transition hover:bg-[#163018] disabled:opacity-60"
+          className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#1e3f20] py-3.5 text-sm font-black text-brand-gold transition hover:bg-[#163018] disabled:opacity-60"
         >
           {pending ? <Loader2 className="h-5 w-5 animate-spin" aria-hidden /> : null}
           ✅ لقد قمت بحجز الموعد

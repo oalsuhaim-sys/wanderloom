@@ -7,10 +7,10 @@ export const VIP = {
 } as const;
 
 export const VIP_BTN_GOLD =
-  'inline-flex items-center justify-center gap-2 rounded-xl bg-[#D4AF37] px-5 py-2.5 text-sm font-extrabold text-black shadow-sm transition hover:bg-[#b8952d] disabled:opacity-50';
+  'inline-flex items-center justify-center gap-2 rounded-xl bg-brand-gold px-5 py-2.5 text-sm font-extrabold text-black shadow-sm transition hover:bg-brand-gold disabled:opacity-50';
 
 export const VIP_BTN_OLIVE =
-  'inline-flex items-center justify-center gap-2 rounded-xl bg-[#D4AF37] px-5 py-2.5 text-sm font-extrabold text-black shadow-sm transition hover:bg-[#b8952d] disabled:opacity-50';
+  'inline-flex items-center justify-center gap-2 rounded-xl bg-brand-gold px-5 py-2.5 text-sm font-extrabold text-black shadow-sm transition hover:bg-brand-gold disabled:opacity-50';
 
 export const VIP_BTN_GHOST =
   'inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-slate-100 px-4 py-2.5 text-xs font-bold text-slate-700 transition hover:bg-slate-200';
@@ -27,10 +27,10 @@ export const VIP_CARD =
   'rounded-2xl border border-slate-200/90 bg-white shadow-sm';
 
 export const VIP_INPUT =
-  'w-full rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-sm font-bold text-slate-900 placeholder:text-slate-500 outline-none transition focus:border-[#D4AF37] focus:bg-white focus:ring-2 focus:ring-[#D4AF37]/40';
+  'w-full rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-sm font-bold text-slate-900 placeholder:text-slate-500 outline-none transition focus:border-brand-gold focus:bg-white focus:ring-2 focus:ring-brand-gold/40';
 
 export const VIP_SELECT =
-  'w-full cursor-pointer rounded-xl border border-slate-300 bg-slate-50 p-3 text-sm font-extrabold text-slate-900 outline-none transition-all [color-scheme:light] focus:bg-white focus:ring-2 focus:ring-[#D4AF37] disabled:cursor-not-allowed disabled:opacity-50';
+  'w-full cursor-pointer rounded-xl border border-slate-300 bg-slate-50 p-3 text-sm font-extrabold text-slate-900 outline-none transition-all [color-scheme:light] focus:bg-white focus:ring-2 focus:ring-brand-gold disabled:cursor-not-allowed disabled:opacity-50';
 
 export const VIP_OPTION = 'bg-white font-bold text-slate-900';
 

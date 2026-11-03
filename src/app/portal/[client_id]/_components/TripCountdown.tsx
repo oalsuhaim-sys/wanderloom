@@ -27,7 +27,7 @@ export function TripCountdown({ startDate }: TripCountdownProps) {
 
   if (!startDate) {
     return (
-      <p className="text-center text-lg font-black leading-relaxed text-[#d4af37] sm:text-2xl">
+      <p className="text-center text-lg font-black leading-relaxed text-brand-gold sm:text-2xl">
         تاريخ الرحلة يُعلن قريباً… جهّز روحك للمفاجأة ✨
       </p>
     );
@@ -35,7 +35,7 @@ export function TripCountdown({ startDate }: TripCountdownProps) {
 
   if (parts.started) {
     return (
-      <p className="text-center text-2xl font-black leading-relaxed text-[#d4af37] sm:text-3xl">
+      <p className="text-center text-2xl font-black leading-relaxed text-brand-gold sm:text-3xl">
         {formatCountdownArabic(parts)}
       </p>
     );
@@ -51,12 +51,12 @@ export function TripCountdown({ startDate }: TripCountdownProps) {
       </p>
       <div className="mt-5 flex items-center justify-center gap-3 sm:gap-5">
         <TimeBlock value={parts.days} label="أيام" />
-        <span className="text-2xl font-black text-[#d4af37]/50">:</span>
+        <span className="text-2xl font-black text-brand-gold/50">:</span>
         <TimeBlock value={parts.hours} label="ساعات" />
-        <span className="text-2xl font-black text-[#d4af37]/50">:</span>
+        <span className="text-2xl font-black text-brand-gold/50">:</span>
         <TimeBlock value={parts.minutes} label="دقائق" />
       </div>
-      <p className="mt-5 text-sm font-bold text-[#d4af37]/80 sm:text-base">
+      <p className="mt-5 text-sm font-bold text-brand-gold/80 sm:text-base">
         {formatCountdownArabic(parts)}
       </p>
     </div>
@@ -65,8 +65,8 @@ export function TripCountdown({ startDate }: TripCountdownProps) {
 
 function TimeBlock({ value, label }: { value: number; label: string }) {
   return (
-    <div className="min-w-[4.5rem] rounded-2xl border border-[#d4af37]/25 bg-black/30 px-3 py-4 sm:min-w-[5.5rem] sm:px-4">
-      <p className="text-3xl font-black tabular-nums text-[#d4af37] sm:text-4xl" dir="ltr">
+    <div className="min-w-[4.5rem] rounded-2xl border border-brand-gold/25 bg-black/30 px-3 py-4 sm:min-w-[5.5rem] sm:px-4">
+      <p className="text-3xl font-black tabular-nums text-brand-gold sm:text-4xl" dir="ltr">
         {String(value).padStart(2, '0')}
       </p>
       <p className="mt-1 text-[10px] font-bold text-white/45">{label}</p>

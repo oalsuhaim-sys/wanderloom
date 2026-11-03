@@ -34,7 +34,7 @@ function NewQuotationFallback({ label = 'جاري تحميل الشاشة…' }:
   return (
     <div
       dir="rtl"
-      className="mx-auto flex min-h-[50vh] max-w-4xl items-center justify-center gap-2 px-4 pb-10 font-black text-[#D4AF37]"
+      className="mx-auto flex min-h-[50vh] max-w-4xl items-center justify-center gap-2 px-4 pb-10 font-black text-brand-gold"
     >
       <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
       {label}
@@ -64,13 +64,13 @@ class QuoteBuilderErrorBoundary extends Component<
           dir="rtl"
           className="mx-auto flex min-h-[50vh] max-w-lg flex-col items-center justify-center gap-4 px-6 text-center text-white"
         >
-          <AlertCircle className="h-10 w-10 text-[#D4AF37]" aria-hidden />
+          <AlertCircle className="h-10 w-10 text-brand-gold" aria-hidden />
           <p className="text-base font-bold">تعذّر تحميل نموذج عرض السعر</p>
           <p className="break-words font-mono text-xs text-slate-400">{detail}</p>
           <button
             type="button"
             onClick={() => this.setState({ error: null })}
-            className="inline-flex items-center gap-2 rounded-lg border border-[#D4AF37]/40 bg-[#D4AF37]/10 px-5 py-2.5 text-sm font-bold text-[#D4AF37]"
+            className="inline-flex items-center gap-2 rounded-lg border border-brand-gold/40 bg-brand-gold/10 px-5 py-2.5 text-sm font-bold text-brand-gold"
           >
             <RefreshCw className="h-4 w-4" aria-hidden />
             إعادة المحاولة

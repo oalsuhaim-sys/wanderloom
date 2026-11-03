@@ -70,7 +70,7 @@ export default function ClientFinancialHub({ clientId, refreshKey = 0 }: ClientF
   if (loading) {
     return (
       <section className={`${PANEL} flex items-center justify-center gap-2 py-8`}>
-        <Loader2 className="h-5 w-5 animate-spin text-slate-400 dark:text-[#D4AF37]" aria-hidden />
+        <Loader2 className="h-5 w-5 animate-spin text-slate-400 dark:text-brand-gold" aria-hidden />
         <span className="text-sm font-medium text-slate-500 dark:text-gray-400">جارٍ تحميل الملخص المالي…</span>
       </section>
     );
@@ -89,11 +89,11 @@ export default function ClientFinancialHub({ clientId, refreshKey = 0 }: ClientF
       <div className={PANEL}>
         <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
           <div>
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-slate-400 dark:text-[#D4AF37]/70">
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-slate-400 dark:text-brand-gold/70">
               Unified Client Ledger
             </p>
             <h2 className="mt-1 flex items-center gap-2 text-base font-semibold text-slate-900 dark:text-gray-100">
-              <Wallet className="h-5 w-5 text-slate-400 dark:text-[#D4AF37]" aria-hidden />
+              <Wallet className="h-5 w-5 text-slate-400 dark:text-brand-gold" aria-hidden />
               الملخص المالي الموحّد
             </h2>
           </div>
@@ -116,7 +116,7 @@ export default function ClientFinancialHub({ clientId, refreshKey = 0 }: ClientF
       {data.quotations.length > 0 ? (
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-[#2D3F3A] dark:!bg-[#22302C]">
           <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-gray-100">
-            <FileText className="h-4 w-4 text-slate-400 dark:text-[#D4AF37]" aria-hidden />
+            <FileText className="h-4 w-4 text-slate-400 dark:text-brand-gold" aria-hidden />
             عروض الأسعار
           </h3>
           <div className="space-y-3">
@@ -132,7 +132,7 @@ export default function ClientFinancialHub({ clientId, refreshKey = 0 }: ClientF
                   </div>
                   <Link
                     href={q.editUrl}
-                    className="text-[10px] font-medium text-slate-600 hover:underline dark:text-[#D4AF37]"
+                    className="text-[10px] font-medium text-slate-600 hover:underline dark:text-brand-gold"
                   >
                     تعديل العرض
                   </Link>
@@ -152,7 +152,7 @@ export default function ClientFinancialHub({ clientId, refreshKey = 0 }: ClientF
                   </div>
                   <div>
                     <p className="text-slate-400">متبقي</p>
-                    <p className="mt-0.5 text-amber-700 dark:text-[#D4AF37]" dir="ltr">
+                    <p className="mt-0.5 text-amber-700 dark:text-brand-gold" dir="ltr">
                       {formatInvoiceAmount(q.remainingAmount)}
                     </p>
                   </div>
@@ -166,7 +166,7 @@ export default function ClientFinancialHub({ clientId, refreshKey = 0 }: ClientF
       {data.invoices.length > 0 ? (
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-[#2D3F3A] dark:!bg-[#22302C]">
           <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-gray-100">
-            <Receipt className="h-4 w-4 text-slate-400 dark:text-[#D4AF37]" aria-hidden />
+            <Receipt className="h-4 w-4 text-slate-400 dark:text-brand-gold" aria-hidden />
             سجل الفواتير
           </h3>
           <div className="overflow-x-auto">
@@ -247,7 +247,7 @@ export default function ClientFinancialHub({ clientId, refreshKey = 0 }: ClientF
       {data.itineraries.length > 0 ? (
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-[#2D3F3A] dark:!bg-[#22302C]">
           <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-gray-100">
-            <Map className="h-4 w-4 text-slate-400 dark:text-[#D4AF37]" aria-hidden />
+            <Map className="h-4 w-4 text-slate-400 dark:text-brand-gold" aria-hidden />
             المسارات المرتبطة
           </h3>
           <ul className="space-y-2">
@@ -265,7 +265,7 @@ export default function ClientFinancialHub({ clientId, refreshKey = 0 }: ClientF
                 <Link
                   href={it.viewUrl}
                   target="_blank"
-                  className="text-[10px] font-medium text-slate-600 hover:underline dark:text-[#D4AF37]"
+                  className="text-[10px] font-medium text-slate-600 hover:underline dark:text-brand-gold"
                 >
                   فتح المسار
                 </Link>
@@ -288,9 +288,9 @@ function MiniStat({
   tone: 'gold' | 'emerald' | 'amber';
 }) {
   const tones = {
-    gold: 'border-[#D4AF37]/30 bg-[#D4AF37]/10 text-[#8a6f1a] dark:text-[#D4AF37]',
+    gold: 'border-brand-gold/30 bg-brand-gold/10 text-[#8a6f1a] dark:text-brand-gold',
     emerald: 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-800/40 dark:bg-emerald-950/30 dark:text-emerald-300',
-    amber: 'border-amber-200 bg-amber-50 text-amber-800 dark:border-[#D4AF37]/25 dark:bg-[#D4AF37]/10 dark:text-[#D4AF37]',
+    amber: 'border-amber-200 bg-amber-50 text-amber-800 dark:border-brand-gold/25 dark:bg-brand-gold/10 dark:text-brand-gold',
   };
   return (
     <div className={`rounded-xl border px-4 py-3 ${tones[tone]}`}>

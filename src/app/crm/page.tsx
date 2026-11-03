@@ -29,9 +29,9 @@ import { supabase } from '@/lib/supabase';
 const CARD =
   'bg-white dark:bg-[#22302C] rounded-xl shadow-sm border border-slate-200 dark:border-[#2D3F3A] hover:shadow-md transition-shadow';
 const ICON_WELL =
-  'flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-700 dark:bg-[#1A2421] dark:text-[#D4AF37]';
+  'flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-700 dark:bg-[#1A2421] dark:text-brand-gold';
 const TH =
-  'bg-slate-50 px-5 py-3 text-right text-sm font-semibold text-slate-600 border-b border-slate-200 dark:bg-[#1A2421] dark:text-[#D4AF37] dark:border-[#2D3F3A]';
+  'bg-slate-50 px-5 py-3 text-right text-sm font-semibold text-slate-600 border-b border-slate-200 dark:bg-[#1A2421] dark:text-brand-gold dark:border-[#2D3F3A]';
 
 /** أقسام أسفل الصفحة — تُحمّل عند الحاجة فقط لتخفيف حجم الشحنة الأولى */
 const DashboardPendingActions = dynamic(
@@ -101,12 +101,12 @@ function statusBadge(status: string | null | undefined): { label: string; classN
     draft: {
       label: 'مسودة',
       className:
-        'bg-amber-50 text-amber-800 px-3 py-1 rounded-full text-xs font-medium dark:bg-[#D4AF37]/10 dark:text-[#D4AF37]',
+        'bg-amber-50 text-amber-800 px-3 py-1 rounded-full text-xs font-medium dark:bg-brand-gold/10 dark:text-brand-gold',
     },
     sent: {
       label: 'مُرسل',
       className:
-        'bg-amber-50 text-amber-800 px-3 py-1 rounded-full text-xs font-medium dark:bg-[#D4AF37]/10 dark:text-[#D4AF37]',
+        'bg-amber-50 text-amber-800 px-3 py-1 rounded-full text-xs font-medium dark:bg-brand-gold/10 dark:text-brand-gold',
     },
     active: {
       label: 'نشطة',
@@ -394,10 +394,10 @@ export default function CRMHomeDashboardPage() {
       dir="rtl"
       data-wl-dashboard="navy-olive-v1"
     >
-      <header className="relative overflow-hidden rounded-2xl border border-transparent bg-slate-900 p-6 text-white shadow-sm sm:p-8 dark:border dark:border-[#D4AF37]/30 dark:!bg-[#22302C] dark:text-[#D4AF37]">
+      <header className="relative overflow-hidden rounded-2xl border border-transparent bg-slate-900 p-6 text-white shadow-sm sm:p-8 dark:border dark:border-brand-gold/30 dark:!bg-[#22302C] dark:text-brand-gold">
         <div className="relative flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
           <div className="text-right">
-            <p className="text-[11px] font-medium uppercase tracking-[0.28em] text-white/50 dark:text-[#D4AF37]/80">
+            <p className="text-[11px] font-medium uppercase tracking-[0.28em] text-white/50 dark:text-brand-gold/80">
               Wanderloom CRM
             </p>
             <h1 className="mt-2 text-2xl font-semibold leading-tight text-white sm:text-3xl dark:text-gray-100">
@@ -407,7 +407,7 @@ export default function CRMHomeDashboardPage() {
               {displayName ? (
                 <>
                   يسعدنا أن نراك،{' '}
-                  <span className="text-white dark:text-[#D4AF37]">{displayName}</span>. لمحة حقيقية من
+                  <span className="text-white dark:text-brand-gold">{displayName}</span>. لمحة حقيقية من
                   قاعدة البيانات — محدَّثة عند فتح هذه الصفحة.
                 </>
               ) : empLoading ? (
@@ -422,15 +422,15 @@ export default function CRMHomeDashboardPage() {
               <button
                 type="button"
                 onClick={() => setSystemCheckOpen(true)}
-                className="group flex items-center justify-center gap-2 rounded-xl !bg-white px-5 py-3 text-sm font-semibold !text-slate-900 transition hover:!bg-slate-50 dark:!border dark:!border-[#D4AF37]/50 dark:!bg-[#D4AF37]/20 dark:!text-[#D4AF37] dark:hover:!bg-[#D4AF37]/30"
+                className="group flex items-center justify-center gap-2 rounded-xl !bg-white px-5 py-3 text-sm font-semibold !text-slate-900 transition hover:!bg-slate-50 dark:!border dark:!border-brand-gold/50 dark:!bg-brand-gold/20 dark:!text-brand-gold dark:hover:!bg-brand-gold/30"
               >
                 <ShieldCheck className="h-5 w-5 transition group-hover:scale-105" aria-hidden />
                 فحص شامل للنظام
               </button>
             ) : null}
-            <div className="rounded-xl border border-white/15 bg-white/10 px-4 py-3 text-right backdrop-blur-sm dark:border-[#D4AF37]/20 dark:bg-[#1A2421]/50">
-              <span className="flex items-center justify-end gap-2 text-[11px] font-medium uppercase tracking-wider text-white/65 dark:text-[#D4AF37]/80">
-                <CalendarDays className="h-4 w-4 shrink-0 text-[#D4AF37]" aria-hidden />
+            <div className="rounded-xl border border-white/15 bg-white/10 px-4 py-3 text-right backdrop-blur-sm dark:border-brand-gold/20 dark:bg-[#1A2421]/50">
+              <span className="flex items-center justify-end gap-2 text-[11px] font-medium uppercase tracking-wider text-white/65 dark:text-brand-gold/80">
+                <CalendarDays className="h-4 w-4 shrink-0 text-brand-gold" aria-hidden />
                 اليوم
               </span>
               <p className="mt-1 text-sm font-medium leading-relaxed text-white dark:text-gray-100">
@@ -484,7 +484,7 @@ export default function CRMHomeDashboardPage() {
 
       <section className="mt-8 text-right" aria-label="الوصول السريع" dir="rtl">
         <h2 className="mb-4 flex flex-wrap items-center justify-start gap-2 text-lg font-semibold text-slate-900 dark:text-gray-100">
-          <Sparkles className="h-5 w-5 text-[#D4AF37]" aria-hidden />
+          <Sparkles className="h-5 w-5 text-brand-gold" aria-hidden />
           الوصول السريع
         </h2>
         <div
@@ -510,7 +510,7 @@ export default function CRMHomeDashboardPage() {
                 <span className="mt-1.5 text-sm font-medium leading-relaxed text-slate-500 dark:text-slate-400">
                   {a.desc}
                 </span>
-                <span className="mt-3 text-xs font-medium text-slate-400 opacity-0 transition group-hover:opacity-100 dark:text-[#D4AF37]">
+                <span className="mt-3 text-xs font-medium text-slate-400 opacity-0 transition group-hover:opacity-100 dark:text-brand-gold">
                   انتقال الآن ◂
                 </span>
               </Link>
@@ -547,7 +547,7 @@ export default function CRMHomeDashboardPage() {
           </div>
           <Link
             href="/crm/itineraries"
-            className="self-end text-xs font-semibold text-slate-600 underline decoration-slate-300 underline-offset-4 transition hover:text-slate-900 dark:text-[#D4AF37] dark:decoration-[#D4AF37]/40 sm:self-auto"
+            className="self-end text-xs font-semibold text-slate-600 underline decoration-slate-300 underline-offset-4 transition hover:text-slate-900 dark:text-brand-gold dark:decoration-brand-gold/40 sm:self-auto"
           >
             كل المسارات ←
           </Link>
@@ -556,7 +556,7 @@ export default function CRMHomeDashboardPage() {
         <div className="w-full overflow-x-auto rounded-xl border border-slate-200 dark:border-[#2D3F3A]">
           {loading ? (
             <div className="flex min-h-[200px] items-center justify-center gap-3 px-6 py-12 text-slate-600 dark:text-gray-300" dir="rtl">
-              <Loader2 className="h-7 w-7 animate-spin text-[#D4AF37]" aria-hidden />
+              <Loader2 className="h-7 w-7 animate-spin text-brand-gold" aria-hidden />
               <span className="text-sm font-medium">جاري تحميل الرادار...</span>
             </div>
           ) : radarRows.length === 0 ? (
@@ -601,7 +601,7 @@ export default function CRMHomeDashboardPage() {
                             {expertNames[String(row.expert_id)]}
                           </span>
                         ) : (
-                          <span className="inline-flex rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-800 dark:bg-[#D4AF37]/10 dark:text-[#D4AF37]">
+                          <span className="inline-flex rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-800 dark:bg-brand-gold/10 dark:text-brand-gold">
                             بانتظار التعيين
                           </span>
                         )}

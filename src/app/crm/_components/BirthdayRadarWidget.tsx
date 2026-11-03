@@ -64,13 +64,13 @@ export function BirthdayRadarWidget({ withinDays = 7, className = '' }: Props) {
 
   return (
     <section
-      className={`overflow-hidden rounded-2xl border border-[#D4AF37]/30 bg-gradient-to-b from-[#FFF8E7] to-white shadow-sm dark:from-[#2A3220] dark:to-[#22302C] dark:border-[#D4AF37]/25 ${className}`}
+      className={`overflow-hidden rounded-2xl border border-brand-gold/30 bg-gradient-to-b from-[#FFF8E7] to-white shadow-sm dark:from-[#2A3220] dark:to-[#22302C] dark:border-brand-gold/25 ${className}`}
       dir="rtl"
       aria-labelledby="birthday-radar-title"
     >
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#D4AF37]/20 px-4 py-3 sm:px-5">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-brand-gold/20 px-4 py-3 sm:px-5">
         <div className="flex items-center gap-2">
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#D4AF37]/20 text-[#9C7A3C]">
+          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-gold/20 text-brand-gold">
             <Cake className="h-4.5 w-4.5" aria-hidden />
           </span>
           <div>
@@ -89,7 +89,7 @@ export function BirthdayRadarWidget({ withinDays = 7, className = '' }: Props) {
           type="button"
           onClick={() => void load()}
           disabled={loading}
-          className="inline-flex items-center gap-1.5 rounded-xl border border-[#D4AF37]/40 bg-white px-3 py-1.5 text-xs font-bold text-[#5C4A22] transition hover:bg-[#FFF8E7] disabled:opacity-50 dark:bg-[#1A2421] dark:text-[#E8D5A3]"
+          className="inline-flex items-center gap-1.5 rounded-xl border border-brand-gold/40 bg-white px-3 py-1.5 text-xs font-bold text-[#5C4A22] transition hover:bg-[#FFF8E7] disabled:opacity-50 dark:bg-[#1A2421] dark:text-[#E8D5A3]"
         >
           {loading ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
@@ -107,11 +107,11 @@ export function BirthdayRadarWidget({ withinDays = 7, className = '' }: Props) {
           </p>
         ) : loading ? (
           <div className="flex items-center justify-center gap-2 py-8 text-sm font-bold text-slate-500">
-            <Loader2 className="h-5 w-5 animate-spin text-[#D4AF37]" aria-hidden />
+            <Loader2 className="h-5 w-5 animate-spin text-brand-gold" aria-hidden />
             جاري مسح أعياد الميلاد…
           </div>
         ) : alerts.length === 0 ? (
-          <p className="rounded-xl border border-dashed border-[#D4AF37]/30 bg-white/60 px-4 py-6 text-center text-sm font-bold text-slate-500 dark:bg-[#1A2421]/40 dark:text-slate-400">
+          <p className="rounded-xl border border-dashed border-brand-gold/30 bg-white/60 px-4 py-6 text-center text-sm font-bold text-slate-500 dark:bg-[#1A2421]/40 dark:text-slate-400">
             لا أعياد ميلاد خلال الـ {withinDays} أيام القادمة.
           </p>
         ) : (
@@ -120,11 +120,11 @@ export function BirthdayRadarWidget({ withinDays = 7, className = '' }: Props) {
               <li key={alert.id}>
                 <Link
                   href={`/crm/clients/${encodeURIComponent(alert.id)}`}
-                  className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[#D4AF37]/25 bg-white/90 px-3 py-2.5 transition hover:border-[#D4AF37]/55 hover:shadow-sm dark:bg-[#1A2421]/70"
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-brand-gold/25 bg-white/90 px-3 py-2.5 transition hover:border-brand-gold/55 hover:shadow-sm dark:bg-[#1A2421]/70"
                 >
                   <p className="text-sm font-bold text-[#1C2E3A] dark:text-[#F4EFE6]">
                     العميل{' '}
-                    <span className="text-[#9C7A3C]">{alert.name}</span>
+                    <span className="text-brand-gold">{alert.name}</span>
                     {' — '}
                     يوم ميلاده بتاريخ{' '}
                     <span className="tabular-nums" dir="ltr">
@@ -138,7 +138,7 @@ export function BirthdayRadarWidget({ withinDays = 7, className = '' }: Props) {
                         ? 'bg-rose-100 text-rose-800'
                         : alert.daysUntilBirthday <= 2
                           ? 'bg-amber-100 text-amber-900'
-                          : 'bg-[#D4AF37]/15 text-[#5C4A22]'
+                          : 'bg-brand-gold/15 text-[#5C4A22]'
                     }`}
                   >
                     {alert.daysUntilBirthday === 0

@@ -128,7 +128,7 @@ function ItemRow({
     <Command.Item
       value={`${label} ${subtitle ?? ''}`}
       onSelect={onSelect}
-      className="mx-2 flex cursor-pointer items-center gap-3 rounded-lg px-4 py-3 text-slate-800 outline-none transition-colors hover:bg-slate-100 aria-selected:bg-slate-900 aria-selected:text-white data-[selected=true]:bg-slate-900 data-[selected=true]:text-white dark:text-gray-200 dark:hover:bg-[#1A2421] dark:aria-selected:bg-[#D4AF37]/20 dark:aria-selected:text-[#D4AF37] dark:data-[selected=true]:bg-[#D4AF37]/20 dark:data-[selected=true]:text-[#D4AF37]"
+      className="mx-2 flex cursor-pointer items-center gap-3 rounded-lg px-4 py-3 text-slate-800 outline-none transition-colors hover:bg-slate-100 aria-selected:bg-slate-900 aria-selected:text-white data-[selected=true]:bg-slate-900 data-[selected=true]:text-white dark:text-gray-200 dark:hover:bg-[#1A2421] dark:aria-selected:bg-brand-gold/20 dark:aria-selected:text-brand-gold dark:data-[selected=true]:bg-brand-gold/20 dark:data-[selected=true]:text-brand-gold"
     >
       {Icon ? (
         <Icon className="h-4 w-4 shrink-0 opacity-70" aria-hidden />
@@ -285,6 +285,15 @@ export default function CommandPalette() {
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
+      const target = e.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
         setOpen((prev) => !prev);
@@ -363,7 +372,7 @@ export default function CommandPalette() {
         }}
       >
         <div className="flex items-center gap-2 border-b border-slate-100 px-4 dark:border-[#2D3F3A]">
-          <Search className="h-5 w-5 shrink-0 text-slate-400 dark:text-[#D4AF37]" aria-hidden />
+          <Search className="h-5 w-5 shrink-0 text-slate-400 dark:text-brand-gold" aria-hidden />
           <Command.Input
             value={query}
             onValueChange={setQuery}
@@ -372,7 +381,7 @@ export default function CommandPalette() {
             autoFocus
           />
           {loading ? (
-            <Loader2 className="h-4 w-4 shrink-0 animate-spin text-slate-400 dark:text-[#D4AF37]" aria-hidden />
+            <Loader2 className="h-4 w-4 shrink-0 animate-spin text-slate-400 dark:text-brand-gold" aria-hidden />
           ) : (
             <kbd className="hidden shrink-0 rounded-md border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] font-bold text-slate-400 sm:inline dark:border-[#2D3F3A] dark:bg-[#1A2421]">
               Esc

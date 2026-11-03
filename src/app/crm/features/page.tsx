@@ -4,8 +4,8 @@ export default function SystemFeaturesPage() {
   return (
     <div className="min-h-screen bg-gray-50 p-8 font-sans" dir="rtl">
       {/* رأس الصفحة */}
-      <div className="bg-[#001f3f] text-white rounded-3xl p-10 mb-10 shadow-xl border-b-4 border-[#d4af37]">
-        <h1 className="text-4xl font-extrabold mb-4 text-[#d4af37]">دليل القوة التشغيلية والميزات 🌍</h1>
+      <div className="bg-[#001f3f] text-white rounded-3xl p-10 mb-10 shadow-xl border-b-4 border-brand-gold">
+        <h1 className="text-4xl font-extrabold mb-4 text-brand-gold">دليل القوة التشغيلية والميزات 🌍</h1>
         <p className="text-lg opacity-90 text-gray-200">
           مرجعك الشامل لتفهم قوة النظام الذي بين يديك، وكيف تستخدمه لإغلاق المبيعات وتقديم خدمة VIP لا تُنسى.
         </p>
@@ -14,7 +14,7 @@ export default function SystemFeaturesPage() {
       {/* القسم الأول: ما الذي يميزنا عن السوق؟ */}
       <div className="mb-12">
         <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-          <span className="text-[#d4af37]">⚡</span> كيف نختلف عن المكاتب التقليدية؟ (ميزات الأفراد)
+          <span className="text-brand-gold">⚡</span> كيف نختلف عن المكاتب التقليدية؟ (ميزات الأفراد)
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-6">
           <FeatureCard
@@ -49,7 +49,7 @@ export default function SystemFeaturesPage() {
       {/* القسم الثاني: مميزات القروبات (التسويق الذكي) */}
       <div className="mb-12">
         <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-          <span className="text-[#d4af37]">👥</span> أسلحة المبيعات في القروبات السياحية
+          <span className="text-brand-gold">👥</span> أسلحة المبيعات في القروبات السياحية
         </h2>
         <div className="bg-white rounded-3xl p-8 shadow-sm border border-gray-100">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -70,7 +70,7 @@ export default function SystemFeaturesPage() {
       {/* القسم الثالث: أدوات الموظف */}
       <div>
         <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-          <span className="text-[#d4af37]">🛠️</span> أدواتك كـ "مهندس تجربة سفر"
+          <span className="text-brand-gold">🛠️</span> أدواتك كـ "مهندس تجربة سفر"
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="bg-[#f8fafc] p-6 rounded-2xl border border-gray-200">

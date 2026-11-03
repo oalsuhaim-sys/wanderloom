@@ -19,7 +19,7 @@ export default function VipBookingVoucherExport({ trip: _trip }: VipBookingVouch
       <button
         type="button"
         onClick={handlePrint}
-        className="group flex w-full items-center justify-center gap-2.5 rounded-2xl border-2 border-[#1E2720]/10 bg-[#D4AF37] px-5 py-4 text-sm font-black text-[#1E2720] shadow-[0_8px_24px_rgba(212,175,55,0.35)] transition duration-200 hover:brightness-105 active:scale-[0.99]"
+        className="group flex w-full items-center justify-center gap-2.5 rounded-2xl border-2 border-[#1E2720]/10 bg-brand-gold px-5 py-4 text-sm font-black text-[#1E2720] shadow-[0_8px_24px_rgba(212,175,55,0.35)] transition duration-200 hover:brightness-105 active:scale-[0.99]"
       >
         <Download
           className="h-5 w-5 shrink-0 text-[#1E2720] transition group-hover:scale-110"

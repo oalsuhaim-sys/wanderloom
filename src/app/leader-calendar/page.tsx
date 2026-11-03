@@ -130,7 +130,7 @@ function LeaderCalendarInner() {
       <Toaster position="top-center" toastOptions={{ duration: 3200 }} />
 
       <header className="mb-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-[#2D3F3A] dark:bg-[#22302C]">
-        <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-slate-400 dark:text-[#D4AF37]/70">
+        <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-slate-400 dark:text-brand-gold/70">
           Leader Availability
         </p>
         {loading ? (
@@ -141,7 +141,7 @@ function LeaderCalendarInner() {
         ) : profile ? (
           <div className="mt-3 flex items-center gap-3">
             <div
-              className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-lg font-bold text-slate-700 dark:border-[#D4AF37]/30 dark:bg-[#1A2421] dark:text-[#D4AF37]"
+              className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-lg font-bold text-slate-700 dark:border-brand-gold/30 dark:bg-[#1A2421] dark:text-brand-gold"
               aria-hidden
             >
               {profile.initials}
@@ -152,7 +152,7 @@ function LeaderCalendarInner() {
               </h1>
               {location ? (
                 <p className="mt-0.5 flex items-center gap-1 text-xs font-medium text-slate-500 dark:text-slate-300">
-                  <MapPin className="h-3 w-3 shrink-0 text-[#D4AF37]" aria-hidden />
+                  <MapPin className="h-3 w-3 shrink-0 text-brand-gold" aria-hidden />
                   {location}
                 </p>
               ) : (
@@ -177,7 +177,7 @@ function LeaderCalendarInner() {
       {!error && !loading ? (
         <section className="relative z-0 w-full min-w-[360px] overflow-visible rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5 dark:border-[#2D3F3A] dark:bg-[#22302C]">
           <div className="mb-3 flex items-center gap-2 text-sm font-bold text-slate-900 dark:text-white">
-            <CalendarDays className="h-4 w-4 text-[#D4AF37]" aria-hidden />
+            <CalendarDays className="h-4 w-4 text-brand-gold" aria-hidden />
             تقويم التفرغ
           </div>
           <p className="mb-4 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
@@ -231,7 +231,7 @@ function LeaderCalendarInner() {
                 week: 'grid grid-cols-7 gap-1 text-center w-full',
                 day: 'relative flex items-center justify-center p-0 text-center',
                 day_button: `${DAY_BTN} text-slate-800 dark:text-gray-100 hover:bg-emerald-500/10`,
-                today: '[&>button]:ring-1 [&>button]:ring-[#D4AF37]/50',
+                today: '[&>button]:ring-1 [&>button]:ring-brand-gold/50',
                 outside: '[&>button]:text-slate-300 dark:[&>button]:text-slate-600',
                 selected:
                   '[&>button]:bg-rose-500/15 [&>button]:font-bold [&>button]:text-rose-600 [&>button]:border [&>button]:border-rose-500/30 dark:[&>button]:text-rose-400',
@@ -277,7 +277,7 @@ function LeaderCalendarInner() {
               type="button"
               onClick={() => void handleSave()}
               disabled={saving || loading}
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 py-3.5 text-sm font-bold text-white shadow-sm transition hover:opacity-90 disabled:opacity-60 dark:border dark:border-[#D4AF37]/40 dark:bg-[#D4AF37]/20 dark:text-[#D4AF37]"
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 py-3.5 text-sm font-bold text-white shadow-sm transition hover:opacity-90 disabled:opacity-60 dark:border dark:border-brand-gold/40 dark:bg-brand-gold/20 dark:text-brand-gold"
             >
               {saving ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -298,7 +298,7 @@ export default function LeaderCalendarPage() {
     <Suspense
       fallback={
         <div className="flex min-h-dvh items-center justify-center bg-[#F8FAFC] dark:bg-[#1A2421]">
-          <Loader2 className="h-6 w-6 animate-spin text-[#D4AF37]" />
+          <Loader2 className="h-6 w-6 animate-spin text-brand-gold" />
         </div>
       }
     >

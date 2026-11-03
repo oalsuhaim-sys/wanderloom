@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-import { CLIENT_LIST_SELECT, CLIENT_LIST_SELECT_WITH_STATUS, CLIENT_SELECT_CORE, CLIENT_SELECT_CORE_WITH_STATUS, normalizeVipClient, type VipClientProfile } from '@/lib/clientsTravelDna';
+import { normalizeVipClient, type VipClientProfile } from '@/lib/clientsTravelDna';
 import {
   approximateBirthDateFromAge,
   calculateAge,
@@ -453,61 +453,46 @@ export async function fetchClientDirectoryAction(
     const listLimit = Math.min(Math.max(1, requested), 5000);
     const skipBackfill = options?.skipBackfill !== false;
 
-    // Progressive selects — try `status` first, then CORE without it (keeps lead_source/tags)
-    const selectAttempts = [
-      CLIENT_LIST_SELECT_WITH_STATUS,
-      CLIENT_LIST_SELECT,
-      `${CLIENT_SELECT_CORE_WITH_STATUS}, total_spent, total_profit, lifetime_value, engagement_status, vip_tier, wallet_balance, onboarding_completed`,
-      `${CLIENT_SELECT_CORE}, total_spent, total_profit, lifetime_value, engagement_status, vip_tier, wallet_balance, onboarding_completed`,
-      `${CLIENT_SELECT_CORE}, total_spent, total_profit, vip_tier, wallet_balance, onboarding_completed`,
-      CLIENT_SELECT_CORE_WITH_STATUS,
-      CLIENT_SELECT_CORE,
-      'id, name, phone_wa, email, birth_date, age, created_at, sales_stage, client_type, client_tier, total_trips, total_spent, lifetime_value, engagement_status, travel_dna, dna_interests, lead_source, status, ref_code, used_code, tags, target_trip',
-      'id, name, phone_wa, email, birth_date, age, created_at, sales_stage, client_type, client_tier, total_trips, total_spent, lifetime_value, engagement_status, travel_dna, dna_interests, lead_source, ref_code, used_code, tags, target_trip',
-      'id, name, phone_wa, email, birth_date, age, created_at, sales_stage, client_type, client_tier, total_trips, lead_source, tags, target_trip, travel_dna, ref_code',
-      'id, name, phone_wa, email, birth_date, created_at, sales_stage, client_type, client_tier, total_trips, lead_source, tags, target_trip, ref_code',
-      'id, name, phone_wa, email, birth_date, age, created_at, sales_stage, client_type, total_trips, lead_source, ref_code',
-      'id, name, phone_wa, email, birth_date, created_at, sales_stage, client_type, total_trips',
-      'id, name, phone_wa, birth_date, age, travel_dna, created_at, total_trips, lead_source, ref_code',
-      'id, name, phone_wa, birth_date, created_at',
-      'id, name, phone_wa, created_at',
-    ];
-
-    let data: unknown[] | null = null;
-    let lastError = '';
-
-    for (const select of selectAttempts) {
-      const result = await admin
+    // Direct client columns only — a leads(...) embed fails the whole directory query.
+    let data: unknown[] = [];
+    try {
+      const { data: rows, error } = await admin
         .from('clients')
-        .select(select)
+        .select('*')
         .order('created_at', { ascending: false })
         .limit(listLimit);
 
-      if (!result.error) {
-        data = (result.data ?? []) as unknown[];
-        break;
+      if (error) {
+        console.error('Error fetching clients:', error);
+        return { ok: true, rows: [] };
       }
-
-      lastError = result.error.message || 'select failed';
-      console.warn('[fetchClientDirectoryAction] select failed, retrying leaner:', lastError);
-
-      if (!/column|schema cache|does not exist|relationship|could not find/i.test(lastError)) {
-        return { ok: false, error: lastError };
+      data = (rows ?? []) as unknown[];
+    } catch (queryErr) {
+      console.error('Error fetching clients:', queryErr);
+      const message = queryErr instanceof Error ? queryErr.message : String(queryErr ?? '');
+      if (/fetch failed|network|ECONN|ENOTFOUND|Failed to fetch|getaddrinfo|socket/i.test(message)) {
+        return { ok: false, error: message || 'تعذر الاتصال بقاعدة العملاء.' };
       }
-    }
-
-    if (data == null) {
-      return { ok: false, error: lastError || 'تعذر قراءة جدول العملاء.' };
+      return { ok: true, rows: [] };
     }
 
     const rawClients = data as Record<string, unknown>[];
-    const related = await fetchRelatedBirthDates(
-      admin,
-      rawClients.map((r) => ({
-        id: String(r.id ?? ''),
-        phone_wa: r.phone_wa != null ? String(r.phone_wa) : null,
-      })),
-    );
+    let related: Awaited<ReturnType<typeof fetchRelatedBirthDates>> = {
+      byClientId: new Map(),
+      ageByClientId: new Map(),
+      membersByClientId: new Map(),
+    };
+    try {
+      related = await fetchRelatedBirthDates(
+        admin,
+        rawClients.map((r) => ({
+          id: String(r?.id ?? ''),
+          phone_wa: r?.phone_wa != null ? String(r.phone_wa) : null,
+        })),
+      );
+    } catch (relatedErr) {
+      console.error('Error fetching clients:', relatedErr);
+    }
 
     console.info('[fetchClientDirectoryAction] birth-date enrichment', {
       clients: rawClients.length,
@@ -522,6 +507,7 @@ export async function fetchClientDirectoryAction(
     const backfillAges: { id: string; age: number }[] = [];
 
     for (const raw of rawClients) {
+      if (!raw || typeof raw !== 'object') continue;
       const rowId = String(raw.id ?? '');
       const members = related.membersByClientId.get(rowId) ?? [];
       if (members.length) raw.group_members = members;
@@ -559,7 +545,13 @@ export async function fetchClientDirectoryAction(
         raw.age = resolvedAge;
       }
 
-      const mapped = normalizeVipClient(raw);
+      let mapped: VipClientProfile | null = null;
+      try {
+        mapped = normalizeVipClient(raw);
+      } catch (rowErr) {
+        console.error('Error fetching clients:', rowId, rowErr);
+        continue;
+      }
       if (!mapped) continue;
 
       if (resolvedDob) mapped.birth_date = resolvedDob;
@@ -639,11 +631,12 @@ export async function fetchClientDirectoryAction(
 
     return { ok: true, rows };
   } catch (err) {
-    console.error('[fetchClientDirectoryAction]', err);
-    return {
-      ok: false,
-      error: err instanceof Error ? err.message : 'تعذر تحميل قاعدة العملاء.',
-    };
+    console.error('Error fetching clients:', err);
+    const message = err instanceof Error ? err.message : String(err ?? '');
+    if (/fetch failed|network|ECONN|ENOTFOUND|Failed to fetch|getaddrinfo|socket/i.test(message)) {
+      return { ok: false, error: message || 'تعذر الاتصال بقاعدة العملاء.' };
+    }
+    return { ok: true, rows: [] };
   }
 }
 

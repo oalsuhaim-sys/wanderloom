@@ -17,11 +17,11 @@ export default function TripFinishedNotice({
 }: TripFinishedNoticeProps) {
   return (
     <section
-      className="rounded-2xl border border-[#D4AF37]/25 bg-gradient-to-br from-[#FFFBF0] via-white to-[#FDFBF7] p-6 text-center shadow-sm"
+      className="rounded-2xl border border-brand-gold/25 bg-gradient-to-br from-[#FFFBF0] via-white to-[#FDFBF7] p-6 text-center shadow-sm"
       aria-label="انتهاء الرحلة"
     >
-      <Sparkles className="mx-auto mb-3 h-7 w-7 text-[#D4AF37]" aria-hidden />
-      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-[#D4AF37]/80">
+      <Sparkles className="mx-auto mb-3 h-7 w-7 text-brand-gold" aria-hidden />
+      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-brand-gold/80">
         رحلة مكتملة
       </p>
       <h2 className="mt-2 text-xl font-black text-[#1E2720]">الحمد لله على السلامة</h2>
@@ -34,7 +34,7 @@ export default function TripFinishedNotice({
         <button
           type="button"
           onClick={onOpenProfile}
-          className="mt-5 inline-flex rounded-full bg-[#1E2720] px-6 py-2.5 text-sm font-black text-[#D4AF37] shadow-md transition hover:bg-black"
+          className="mt-5 inline-flex rounded-full bg-[#1E2720] px-6 py-2.5 text-sm font-black text-brand-gold shadow-md transition hover:bg-black"
         >
           الملف الشخصي
         </button>

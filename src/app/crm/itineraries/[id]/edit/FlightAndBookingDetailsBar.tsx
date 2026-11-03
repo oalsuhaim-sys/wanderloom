@@ -170,7 +170,7 @@ export default function FlightAndBookingDetailsBar({
         </label>
       </div>
 
-      <div className="grid grid-cols-1 gap-3 border-t border-[#D4AF37]/40 pt-4 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="grid grid-cols-1 gap-3 border-t border-brand-gold/40 pt-4 sm:grid-cols-2 lg:grid-cols-5">
         <label className="sm:col-span-2">
           <span className={VIP_LABEL}>اسم الفندق</span>
           <input

@@ -106,7 +106,7 @@ export default function ClientMemoryUploadModal({
       <CrmModalPanel className="max-w-md">
         <div className="flex items-start justify-between gap-3 border-b border-[#1E2720]/10 pb-4">
           <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.28em] text-[#D4AF37]">
+            <p className="text-[10px] font-black uppercase tracking-[0.28em] text-brand-gold">
               Polarsteps Journal
             </p>
             <h2 className="mt-1 text-lg font-black text-[#1E2720]">📸 أضف ذكرى</h2>
@@ -130,8 +130,8 @@ export default function ClientMemoryUploadModal({
           <label
             className={`flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed p-4 transition ${
               selectedFile
-                ? 'border-[#D4AF37]/60 bg-[#FFFBF0]'
-                : 'border-gray-200 bg-gray-50 hover:border-[#D4AF37]/40'
+                ? 'border-brand-gold/60 bg-[#FFFBF0]'
+                : 'border-gray-200 bg-gray-50 hover:border-brand-gold/40'
             }`}
           >
             {previewUrl ? (
@@ -146,7 +146,7 @@ export default function ClientMemoryUploadModal({
               </div>
             ) : (
               <div className="flex flex-col items-center gap-2 py-6 text-center">
-                <Camera className="h-8 w-8 text-[#D4AF37]" aria-hidden />
+                <Camera className="h-8 w-8 text-brand-gold" aria-hidden />
                 <p className="text-sm font-black text-[#1E2720]">التقط أو اختر صورة</p>
                 <p className="text-xs font-semibold text-gray-500">JPG · PNG · WebP</p>
               </div>
@@ -167,7 +167,7 @@ export default function ClientMemoryUploadModal({
               value={caption}
               onChange={(e) => setCaption(e.target.value)}
               placeholder="اكتب لحظة لا تُنسى…"
-              className="w-full resize-none rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none focus:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37]/20"
+              className="w-full resize-none rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none focus:border-brand-gold focus:ring-2 focus:ring-brand-gold/20"
             />
           </div>
 
@@ -186,7 +186,7 @@ export default function ClientMemoryUploadModal({
           <button
             type="submit"
             disabled={!selectedFile || uploading || saved}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#1E2720] px-5 py-3 text-sm font-black text-[#D4AF37] transition hover:bg-[#243029] disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#1E2720] px-5 py-3 text-sm font-black text-brand-gold transition hover:bg-[#243029] disabled:cursor-not-allowed disabled:opacity-50"
           >
             {uploading ? (
               <>

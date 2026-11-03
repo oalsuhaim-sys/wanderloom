@@ -25,9 +25,9 @@ import { supabaseClient } from '@/lib/supabaseClient';
 import type { GroupTripRow } from '@/types/group-trip';
 
 const CARD_STYLES = [
-  { ring: 'ring-[#9C7A3C]/20', chip: 'text-[#9C7A3C]' },
-  { ring: 'ring-[#1C2E3A]/10', chip: 'text-[#9C7A3C]' },
-  { ring: 'ring-[#9C7A3C]/15', chip: 'text-[#9C7A3C]' },
+  { ring: 'ring-public-gold/20', chip: 'text-public-gold' },
+  { ring: 'ring-[#1C2E3A]/10', chip: 'text-public-gold' },
+  { ring: 'ring-public-gold/15', chip: 'text-public-gold' },
 ] as const;
 
 type DisplayTrip = GroupTripRow & {
@@ -39,7 +39,7 @@ type DisplayTrip = GroupTripRow & {
 };
 
 const GROUP_TRIPS_SELECT =
-  'id, title_ar, title_en, description_ar, description_en, badge_ar, badge_en, sort_order, leader_id, leader_name';
+  'id, title_ar, title_en, description_ar, description_en, badge_ar, badge_en, sort_order, leader_id, leader_name, is_active';
 
 const INITIAL_REG_FORM = {
   fullName: '',
@@ -50,7 +50,7 @@ const INITIAL_REG_FORM = {
 };
 
 const REG_FIELD_CLASS =
-  'w-full rounded-xl border border-[#1C2E3A]/15 bg-white p-3 text-xs font-bold text-[#1C2E3A] outline-none transition placeholder:text-[#1C2E3A]/40 focus:border-[#9C7A3C] focus:ring-2 focus:ring-[#9C7A3C]/40 disabled:cursor-text disabled:bg-white disabled:text-[#1C2E3A] disabled:opacity-100';
+  'w-full rounded-xl border border-[#1C2E3A]/15 bg-white p-3 text-xs font-bold text-[#1C2E3A] outline-none transition placeholder:text-[#1C2E3A]/40 focus:border-public-gold focus:ring-2 focus:ring-public-gold/40 disabled:cursor-text disabled:bg-white disabled:text-[#1C2E3A] disabled:opacity-100';
 
 const REG_LABEL_CLASS = 'mb-1 block text-xs font-extrabold';
 
@@ -113,6 +113,7 @@ export function GroupTripsSection() {
         return;
       }
 
+      // Public visitors only see trips marked visible (`is_active = true`).
       const { data, error } = await supabaseClient
         .from('group_trips')
         .select(GROUP_TRIPS_SELECT)
@@ -125,7 +126,9 @@ export function GroupTripsSection() {
       if (fetchErr && /leader_/i.test(fetchErr.message ?? '')) {
         const fallback = await supabaseClient
           .from('group_trips')
-          .select('id, title_ar, title_en, description_ar, description_en, badge_ar, badge_en, sort_order')
+          .select(
+            'id, title_ar, title_en, description_ar, description_en, badge_ar, badge_en, sort_order, is_active',
+          )
           .eq('is_active', true)
           .order('sort_order', { ascending: true });
         rows = (fallback.data ?? []).map((row) => ({
@@ -145,7 +148,10 @@ export function GroupTripsSection() {
         return;
       }
 
-      setTrips((rows ?? []) as GroupTripRow[]);
+      const visible = ((rows ?? []) as GroupTripRow[]).filter(
+        (trip) => trip.is_active !== false,
+      );
+      setTrips(visible);
       setLoading(false);
     }
 
@@ -271,10 +277,10 @@ export function GroupTripsSection() {
           {displayTrips.map((trip) => (
             <article
               key={trip.id}
-              className={`wl-lift-card group flex flex-col overflow-hidden rounded-3xl border border-[#1C2E3A]/10 bg-white/80 p-6 shadow-sm backdrop-blur-sm ring-1 transition-all duration-300 hover:border-[#9C7A3C]/40 hover:shadow-xl ${trip.ring}`}
+              className={`wl-lift-card group flex flex-col overflow-hidden rounded-3xl border border-[#1C2E3A]/10 bg-white/80 p-6 shadow-sm backdrop-blur-sm ring-1 transition-all duration-300 hover:border-public-gold/40 hover:shadow-xl ${trip.ring}`}
             >
               <div className="wl-card-media overflow-hidden rounded-2xl bg-gradient-to-br from-[#F4EFE6] via-white to-[#F4EFE6]/60 px-5 py-5">
-                <div className="wl-card-media-icon flex h-12 w-12 items-center justify-center rounded-2xl bg-[#1C2E3A] text-[#9C7A3C] transition-transform duration-500 group-hover:scale-105">
+                <div className="wl-card-media-icon flex h-12 w-12 items-center justify-center rounded-2xl bg-[#1C2E3A] text-public-gold transition-transform duration-500 group-hover:scale-105">
                   <Users className="h-5 w-5" aria-hidden />
                 </div>
               </div>
@@ -332,7 +338,7 @@ export function GroupTripsSection() {
 
                 <div className="space-y-1.5">
                   <span
-                    style={brandGoldBadgeStyle}
+                    style={{ ...brandGoldBadgeStyle, borderColor: '#C59B27', color: '#B8860B' }}
                     className="mb-1 inline-block rounded-md border px-2.5 py-0.5 text-[11px] font-extrabold"
                   >
                     {g.modal.title}
@@ -450,7 +456,7 @@ export function GroupTripsSection() {
                   <button
                     type="submit"
                     disabled={submitting || !isPhoneValid}
-                    style={brandGoldButtonStyle}
+                    style={{ ...brandGoldButtonStyle, backgroundColor: '#C59B27' }}
                     className="mt-4 flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl py-3.5 text-xs font-extrabold shadow-sm transition-all hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {submitting ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : null}

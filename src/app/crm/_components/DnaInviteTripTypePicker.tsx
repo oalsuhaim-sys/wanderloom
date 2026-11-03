@@ -33,8 +33,8 @@ export default function DnaInviteTripTypePicker({
               onClick={() => onChange(option.id)}
               className={`rounded-xl border px-3 py-2.5 text-xs font-black transition disabled:opacity-50 ${
                 selected
-                  ? 'border-[#D4AF37] bg-[#D4AF37]/15 text-[#1E2720] ring-2 ring-[#D4AF37]/35'
-                  : 'border-slate-200 bg-white text-slate-600 hover:border-[#D4AF37]/40 hover:bg-[#FEFDF9]'
+                  ? 'border-brand-gold bg-brand-gold/15 text-[#1E2720] ring-2 ring-brand-gold/35'
+                  : 'border-slate-200 bg-white text-slate-600 hover:border-brand-gold/40 hover:bg-[#FEFDF9]'
               }`}
               aria-pressed={selected}
             >

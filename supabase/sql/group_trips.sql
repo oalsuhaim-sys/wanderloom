@@ -15,6 +15,7 @@ create table if not exists public.group_trips (
   excludes_ar text not null default '',
   excludes_en text not null default '',
   sort_order int not null default 0,
+  -- Site visibility for public listings (CRM toggle: ظاهر / مخفي من الموقع)
   is_active boolean not null default true,
   max_seats integer not null default 0,
   allow_waitlist boolean not null default true,

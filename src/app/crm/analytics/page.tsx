@@ -169,7 +169,7 @@ export default function CRMAnalyticsPage() {
       <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-3">
         <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
           <div className="mb-2 inline-flex items-center gap-2 text-sm font-black text-slate-700">
-            <BarChart3 className="h-4 w-4 text-[#C9A84C]" />
+            <BarChart3 className="h-4 w-4 text-brand-gold" />
             إجمالي الرحلات المصممة
           </div>
           <div className="text-3xl font-black text-slate-900">{totalItineraries}</div>
@@ -177,7 +177,7 @@ export default function CRMAnalyticsPage() {
 
         <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
           <div className="mb-2 inline-flex items-center gap-2 text-sm font-black text-slate-700">
-            <Globe2 className="h-4 w-4 text-[#C9A84C]" />
+            <Globe2 className="h-4 w-4 text-brand-gold" />
             أكثر 3 دول طلباً
           </div>
           <div className="space-y-1">
@@ -196,7 +196,7 @@ export default function CRMAnalyticsPage() {
 
         <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
           <div className="mb-2 inline-flex items-center gap-2 text-sm font-black text-slate-700">
-            <Hotel className="h-4 w-4 text-[#C9A84C]" />
+            <Hotel className="h-4 w-4 text-brand-gold" />
             أكثر 5 فنادق اختياراً
           </div>
           <div className="space-y-1">
@@ -216,7 +216,7 @@ export default function CRMAnalyticsPage() {
 
       <div className="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm">
         <div className="mb-4 inline-flex items-center gap-2 text-base font-black text-slate-800">
-          <TrendingUp className="h-4 w-4 text-[#C9A84C]" />
+          <TrendingUp className="h-4 w-4 text-brand-gold" />
           نمو المبيعات الشهري
         </div>
 

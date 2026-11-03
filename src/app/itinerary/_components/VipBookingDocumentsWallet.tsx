@@ -19,7 +19,7 @@ export default function VipBookingDocumentsWallet({ documents }: Props) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="mb-4 flex w-full items-center justify-center gap-2 rounded-2xl border border-[#D4AF37]/50 bg-gradient-to-l from-[#2A362C] to-[#1E2720] py-4 text-sm font-black text-[#D4AF37] shadow-[0_0_18px_rgba(212,175,55,0.25)] transition hover:border-[#D4AF37]/70"
+        className="mb-4 flex w-full items-center justify-center gap-2 rounded-2xl border border-brand-gold/50 bg-gradient-to-l from-[#2A362C] to-[#1E2720] py-4 text-sm font-black text-brand-gold shadow-[0_0_18px_rgba(212,175,55,0.25)] transition hover:border-brand-gold/70"
       >
         <span className="text-lg" aria-hidden>
           📁
@@ -34,8 +34,8 @@ export default function VipBookingDocumentsWallet({ documents }: Props) {
           aria-modal="true"
           aria-labelledby="vip-wallet-title"
         >
-          <div className="max-h-[85vh] w-full max-w-md overflow-hidden rounded-2xl border border-[#D4AF37]/40 bg-[#FDFBF7] shadow-2xl">
-            <div className="flex items-center justify-between border-b border-[#D4AF37]/20 bg-white px-5 py-4">
+          <div className="max-h-[85vh] w-full max-w-md overflow-hidden rounded-2xl border border-brand-gold/40 bg-[#FDFBF7] shadow-2xl">
+            <div className="flex items-center justify-between border-b border-brand-gold/20 bg-white px-5 py-4">
               <h2 id="vip-wallet-title" className="text-lg font-black text-[#1E2720]">
                 محفظة الحجوزات الرسمية
               </h2>
@@ -55,7 +55,7 @@ export default function VipBookingDocumentsWallet({ documents }: Props) {
                   className="flex items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white p-4"
                 >
                   <div className="flex min-w-0 items-center gap-3">
-                    <FileText className="h-5 w-5 shrink-0 text-[#D4AF37]" aria-hidden />
+                    <FileText className="h-5 w-5 shrink-0 text-brand-gold" aria-hidden />
                     <span className="truncate text-sm font-bold text-gray-900">{doc.name}</span>
                   </div>
                   <a
@@ -63,7 +63,7 @@ export default function VipBookingDocumentsWallet({ documents }: Props) {
                     target="_blank"
                     rel="noreferrer"
                     download
-                    className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-[#1E2720] px-3 py-2 text-xs font-bold text-[#D4AF37]"
+                    className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-[#1E2720] px-3 py-2 text-xs font-bold text-brand-gold"
                   >
                     <Download className="h-3.5 w-3.5" aria-hidden />
                     تحميل

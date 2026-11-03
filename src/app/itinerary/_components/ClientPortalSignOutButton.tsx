@@ -25,8 +25,8 @@ export default function ClientPortalSignOutButton({
 
   const styles =
     variant === 'dark'
-      ? 'border-white/15 bg-white/5 text-white/75 hover:border-[#d4af37]/40 hover:bg-[#d4af37]/10 hover:text-[#d4af37]'
-      : 'border-[#1E2720]/10 bg-white text-[#1E2720]/70 hover:border-[#D4AF37]/40 hover:bg-[#D4AF37]/5 hover:text-[#D4AF37]';
+      ? 'border-white/15 bg-white/5 text-white/75 hover:border-brand-gold/40 hover:bg-brand-gold/10 hover:text-brand-gold'
+      : 'border-[#1E2720]/10 bg-white text-[#1E2720]/70 hover:border-brand-gold/40 hover:bg-brand-gold/5 hover:text-brand-gold';
 
   return (
     <button

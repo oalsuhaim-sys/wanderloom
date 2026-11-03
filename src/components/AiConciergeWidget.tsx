@@ -63,7 +63,7 @@ function saveProfile(profile: StoredProfile) {
 }
 
 const fieldClass =
-  'h-10 w-full rounded-xl border border-[#9C7A3C]/35 bg-white/80 px-3 text-xs font-bold text-[#1C2E3A] outline-none transition focus:border-[#9C7A3C] focus:ring-2 focus:ring-[#9C7A3C]/20';
+  'h-10 w-full rounded-xl border border-brand-gold/35 bg-white/80 px-3 text-xs font-bold text-[#1C2E3A] outline-none transition focus:border-brand-gold focus:ring-2 focus:ring-brand-gold/20';
 
 export function AiConciergeWidget() {
   const [open, setOpen] = useState(false);
@@ -391,7 +391,7 @@ export function AiConciergeWidget() {
             <header className="flex items-start justify-between gap-3 border-b border-[#1C2E3A]/10 bg-[#1C2E3A] px-4 py-3.5 text-[#F4EFE6]">
               <div className="min-w-0">
                 <p className="flex items-center gap-2 text-sm font-black tracking-wide">
-                  <Sparkles className="h-4 w-4 text-[#9C7A3C]" aria-hidden />
+                  <Sparkles className="h-4 w-4 text-brand-gold" aria-hidden />
                   مستشار واندرلوم الفاخر
                 </p>
                 <p className="mt-1 text-[11px] font-medium text-[#F4EFE6]/70">
@@ -411,8 +411,8 @@ export function AiConciergeWidget() {
             </header>
 
             {!isVerified ? (
-              <div className="border-b border-[#9C7A3C]/25 bg-[#F4EFE6] px-4 py-3">
-                <p className="text-[11px] font-bold tracking-wide text-[#9C7A3C]">
+              <div className="border-b border-brand-gold/25 bg-[#F4EFE6] px-4 py-3">
+                <p className="text-[11px] font-bold tracking-wide text-brand-gold">
                   بوابة الدخول
                 </p>
                 <p className="mt-1 text-[11px] font-medium leading-relaxed text-[#1C2E3A]/65">
@@ -472,7 +472,7 @@ export function AiConciergeWidget() {
                       }}
                     />
                     {otpHint ? (
-                      <p className="text-[10px] font-semibold text-[#9C7A3C]">{otpHint}</p>
+                      <p className="text-[10px] font-semibold text-brand-gold">{otpHint}</p>
                     ) : null}
                     <button
                       type="button"
@@ -490,7 +490,7 @@ export function AiConciergeWidget() {
                         setOtpCode('');
                         setOtpHint(null);
                       }}
-                      className="text-[10px] font-bold text-[#9C7A3C] transition hover:text-[#826533]"
+                      className="text-[10px] font-bold text-brand-gold transition hover:text-[#C4A030]"
                     >
                       تعديل الرقم / إعادة الإرسال
                     </button>
@@ -507,7 +507,7 @@ export function AiConciergeWidget() {
                     {preferenceChips.map((chip) => (
                       <span
                         key={chip}
-                        className="rounded-full border border-[#9C7A3C]/35 bg-white/80 px-2.5 py-0.5 text-[10px] font-bold text-[#1C2E3A]"
+                        className="rounded-full border border-brand-gold/35 bg-white/80 px-2.5 py-0.5 text-[10px] font-bold text-[#1C2E3A]"
                       >
                         {chip}
                       </span>
@@ -539,9 +539,9 @@ export function AiConciergeWidget() {
                 <div className="flex justify-end">
                   <div className="inline-flex items-center gap-2 rounded-2xl border border-[#1C2E3A]/10 bg-white/90 px-3.5 py-2.5 text-xs font-bold text-[#1C2E3A]/70">
                     <span className="flex gap-1" aria-hidden>
-                      <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#9C7A3C]" />
-                      <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#9C7A3C] [animation-delay:150ms]" />
-                      <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#9C7A3C] [animation-delay:300ms]" />
+                      <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-brand-gold" />
+                      <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-brand-gold [animation-delay:150ms]" />
+                      <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-brand-gold [animation-delay:300ms]" />
                     </span>
                     يكتب المستشار…
                   </div>
@@ -549,7 +549,7 @@ export function AiConciergeWidget() {
               ) : null}
 
               {showClosingCta && !pending && isVerified ? (
-                <div className="rounded-2xl border border-[#9C7A3C]/35 bg-white/90 p-3.5 shadow-sm">
+                <div className="rounded-2xl border border-brand-gold/35 bg-white/90 p-3.5 shadow-sm">
                   <p className="text-[12px] font-bold leading-relaxed text-[#1C2E3A]">
                     {closingCopy}
                   </p>
@@ -557,7 +557,7 @@ export function AiConciergeWidget() {
                     <a
                       href="/#lead"
                       onClick={() => setOpen(false)}
-                      className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#9C7A3C] px-4 py-3 text-sm font-black text-[#F4EFE6] transition-all hover:bg-[#826533]"
+                      className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-brand-gold px-4 py-3 text-sm font-black text-[#1A3B2A] transition-all hover:bg-[#C4A030]"
                     >
                       <CalendarHeart className="h-4 w-4" aria-hidden />
                       حجز جلسة تصميم خاصة
@@ -568,7 +568,7 @@ export function AiConciergeWidget() {
                         setOpen(false);
                         openInterestModal();
                       }}
-                      className="inline-flex w-full items-center justify-center rounded-full border border-[#9C7A3C] bg-transparent px-4 py-2.5 text-xs font-black text-[#9C7A3C] transition hover:bg-[#9C7A3C]/10"
+                      className="inline-flex w-full items-center justify-center rounded-full border border-brand-gold bg-transparent px-4 py-2.5 text-xs font-black text-brand-gold transition hover:bg-brand-gold/10"
                     >
                       تأكيد طلب التواصل
                     </button>
@@ -594,7 +594,7 @@ export function AiConciergeWidget() {
                 <div className="relative min-w-0 flex-1">
                   {chatLocked ? (
                     <Lock
-                      className="pointer-events-none absolute left-3 top-3 h-3.5 w-3.5 text-[#9C7A3C]/80"
+                      className="pointer-events-none absolute left-3 top-3 h-3.5 w-3.5 text-brand-gold/80"
                       aria-hidden
                     />
                   ) : null}
@@ -612,8 +612,8 @@ export function AiConciergeWidget() {
                     }
                     className={`max-h-28 min-h-[44px] w-full resize-none rounded-2xl border bg-[#F4EFE6] px-3 py-2.5 text-sm font-medium text-[#1C2E3A] outline-none transition placeholder:text-[#1C2E3A]/40 focus:ring-2 disabled:cursor-not-allowed ${
                       chatLocked
-                        ? 'border-[#9C7A3C]/30 pe-3 ps-9 focus:border-[#9C7A3C]/40 focus:ring-[#9C7A3C]/10'
-                        : 'border-[#1C2E3A]/15 focus:border-[#9C7A3C] focus:ring-[#9C7A3C]/25'
+                        ? 'border-brand-gold/30 pe-3 ps-9 focus:border-brand-gold/40 focus:ring-brand-gold/10'
+                        : 'border-[#1C2E3A]/15 focus:border-brand-gold focus:ring-brand-gold/25'
                     }`}
                   />
                 </div>
@@ -626,7 +626,7 @@ export function AiConciergeWidget() {
                   {pending ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : chatLocked ? (
-                    <Lock className="h-4 w-4 text-[#9C7A3C]" />
+                    <Lock className="h-4 w-4 text-brand-gold" />
                   ) : (
                     <Send className="h-4 w-4" />
                   )}
@@ -643,7 +643,7 @@ export function AiConciergeWidget() {
           aria-expanded={open}
           aria-label={open ? 'إغلاق مستشار السفر' : 'فتح مستشار السفر'}
         >
-          {open ? <X className="h-4 w-4" /> : <MessageCircle className="h-4 w-4 text-[#9C7A3C]" />}
+          {open ? <X className="h-4 w-4" /> : <MessageCircle className="h-4 w-4 text-brand-gold" />}
           <span>{open ? 'إغلاق' : 'مستشار السفر'}</span>
         </button>
       </div>

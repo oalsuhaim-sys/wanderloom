@@ -15,7 +15,7 @@ import { supabase } from '@/lib/supabase'
 
 /** Navy badge select for Clients table «المرحلة» column */
 const TABLE_STAGE_SELECT =
-  'appearance-none min-w-[100px] max-w-[11.5rem] cursor-pointer rounded-full bg-slate-900 px-3 py-1.5 pe-8 ps-3 text-xs font-medium text-white shadow-sm outline-none transition focus:ring-2 focus:ring-slate-900/30 disabled:opacity-60 dark:border dark:border-[#D4AF37]/30 dark:bg-[#D4AF37]/20 dark:text-[#D4AF37] dark:focus:ring-[#D4AF37]/25'
+  'appearance-none min-w-[100px] max-w-[11.5rem] cursor-pointer rounded-full bg-slate-900 px-3 py-1.5 pe-8 ps-3 text-xs font-medium text-white shadow-sm outline-none transition focus:ring-2 focus:ring-slate-900/30 disabled:opacity-60 dark:border dark:border-brand-gold/30 dark:bg-brand-gold/20 dark:text-brand-gold dark:focus:ring-brand-gold/25'
 
 type ClientSalesStageControlProps = {
   clientId: string
@@ -106,12 +106,12 @@ export default function ClientSalesStageControl({
         </select>
         {saving ? (
           <Loader2
-            className="pointer-events-none absolute left-2.5 h-3 w-3 animate-spin text-white/80 dark:text-[#D4AF37]/80"
+            className="pointer-events-none absolute left-2.5 h-3 w-3 animate-spin text-white/80 dark:text-brand-gold/80"
             aria-hidden
           />
         ) : (
           <ChevronDown
-            className="pointer-events-none absolute left-2.5 h-3.5 w-3.5 text-white/80 dark:text-[#D4AF37]/80"
+            className="pointer-events-none absolute left-2.5 h-3.5 w-3.5 text-white/80 dark:text-brand-gold/80"
             aria-hidden
           />
         )}
@@ -127,13 +127,13 @@ export default function ClientSalesStageControl({
   return (
     <div dir="rtl" className={`space-y-2 ${className}`}>
       <div className="flex items-center justify-between gap-2">
-        <span className="flex items-center gap-1.5 text-[11px] font-bold text-slate-900 dark:text-[#D4AF37]">
+        <span className="flex items-center gap-1.5 text-[11px] font-bold text-slate-900 dark:text-brand-gold">
           <span className="inline-block select-none fill-none" aria-hidden>
             🎯
           </span>
           مرحلة البيع
         </span>
-        {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin text-[#d4af37]" aria-hidden /> : null}
+        {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin text-brand-gold" aria-hidden /> : null}
       </div>
 
       <div className="flex flex-wrap items-center gap-2">

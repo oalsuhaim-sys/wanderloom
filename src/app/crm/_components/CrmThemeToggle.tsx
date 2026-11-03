@@ -31,14 +31,14 @@ export default function CrmThemeToggle({
       onClick={toggleTheme}
       className={
         compact
-          ? `inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-100 hover:text-slate-900 dark:border-[#2D3F3A] dark:bg-[#2A3834] dark:text-[#D4AF37] dark:hover:border-[#D4AF37]/40 ${className}`
-          : `mb-3 flex w-full items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-right transition-all duration-200 ease-in-out hover:bg-slate-100 dark:border-[#2D3F3A] dark:bg-[#2A3834] dark:hover:border-[#D4AF37]/30 ${className}`
+          ? `inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-100 hover:text-slate-900 dark:border-[#2D3F3A] dark:bg-[#2A3834] dark:text-brand-gold dark:hover:border-brand-gold/40 ${className}`
+          : `mb-3 flex w-full items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-right transition-all duration-200 ease-in-out hover:bg-slate-100 dark:border-[#2D3F3A] dark:bg-[#2A3834] dark:hover:border-brand-gold/30 ${className}`
       }
       aria-label={isDark ? 'التبديل إلى الوضع الفاتح' : 'التبديل إلى الوضع الداكن'}
       title={isDark ? 'الوضع الفاتح' : 'الوضع الداكن'}
     >
       {isDark ? (
-        <Sun className="h-3.5 w-3.5 shrink-0 text-[#D4AF37]" aria-hidden />
+        <Sun className="h-3.5 w-3.5 shrink-0 text-brand-gold" aria-hidden />
       ) : (
         <Moon className="h-3.5 w-3.5 shrink-0 text-slate-400" aria-hidden />
       )}
@@ -47,7 +47,7 @@ export default function CrmThemeToggle({
           <span className="min-w-0 flex-1 truncate text-sm font-medium text-slate-600 dark:text-gray-300">
             {isDark ? 'الوضع الفاتح' : 'الوضع الداكن'}
           </span>
-          <span className="shrink-0 text-[10px] font-medium tracking-wide text-slate-400 dark:text-[#D4AF37]/80">
+          <span className="shrink-0 text-[10px] font-medium tracking-wide text-slate-400 dark:text-brand-gold/80">
             {isDark ? 'Light' : 'Dark'}
           </span>
         </>

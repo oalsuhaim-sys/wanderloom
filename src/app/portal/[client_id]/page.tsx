@@ -20,16 +20,16 @@ function AccessDenied({ reason }: { reason: string }) {
           'radial-gradient(ellipse 80% 50% at 50% -10%, rgba(212,175,55,0.1), transparent)',
       }}
     >
-      <div className="w-full max-w-md rounded-[1.75rem] border border-[#d4af37]/20 bg-gradient-to-b from-[#121816] to-[#0a0d0b] p-8 text-center shadow-[0_24px_80px_rgba(0,0,0,0.45)]">
-        <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-[#d4af37]/25 bg-[#d4af37]/10">
-          <Lock className="h-6 w-6 text-[#d4af37]" aria-hidden />
+      <div className="w-full max-w-md rounded-[1.75rem] border border-brand-gold/20 bg-gradient-to-b from-[#121816] to-[#0a0d0b] p-8 text-center shadow-[0_24px_80px_rgba(0,0,0,0.45)]">
+        <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-brand-gold/25 bg-brand-gold/10">
+          <Lock className="h-6 w-6 text-brand-gold" aria-hidden />
         </span>
-        <p className="mt-5 text-[10px] font-black uppercase tracking-[0.35em] text-[#d4af37]/70">
+        <p className="mt-5 text-[10px] font-black uppercase tracking-[0.35em] text-brand-gold/70">
           Wanderloom Portal
         </p>
         <h1 className="mt-2 text-xl font-black text-white">البوابة غير متاحة بعد</h1>
         <p className="mt-3 text-sm font-semibold leading-relaxed text-white/55">{reason}</p>
-        <div className="mt-6 flex items-center justify-center gap-2 text-[#d4af37]/60">
+        <div className="mt-6 flex items-center justify-center gap-2 text-brand-gold/60">
           <Sparkles className="h-4 w-4" aria-hidden />
           <span className="text-xs font-bold">ننتظرك في اللحظة المناسبة</span>
         </div>

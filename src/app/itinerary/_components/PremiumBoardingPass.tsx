@@ -17,7 +17,7 @@ import {
 } from '@/lib/vip-flight-voucher'
 import type { PublicItinerary } from '@/lib/public-itinerary'
 
-const GOLD = '#C5A059'
+const GOLD = '#D4AF37'
 
 export type PremiumBoardingPassData = {
   passengerName: string
@@ -340,7 +340,7 @@ export default function PremiumBoardingPass({
                 </span>
                 <span
                   className={`text-sm font-bold text-gray-900 ${
-                    'highlight' in item && item.highlight ? 'font-mono text-[#C5A059]' : ''
+                    'highlight' in item && item.highlight ? 'font-mono text-brand-gold' : ''
                   } ${item.label === 'Date' ? 'whitespace-nowrap' : 'truncate'}`}
                   dir={item.ltr ? 'ltr' : textDir(item.value)}
                 >

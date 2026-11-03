@@ -19,6 +19,8 @@ export type SalesPipelinePulse = {
 export type VipInTransit = {
   id: string;
   clientId: string | null;
+  client_id: string | null;
+  id_client: string | null;
   clientName: string;
   destination: string;
   dayNumber: number;
@@ -106,19 +108,24 @@ function resolveItineraryClientName(row: Record<string, unknown>): string {
   return String(row.customer_name ?? row.title ?? 'عميل VIP').trim() || 'عميل VIP';
 }
 
-function resolveItineraryClientId(row: Record<string, unknown>): string | null {
-  if (row.client_id != null && String(row.client_id).trim() !== '') {
-    return String(row.client_id).trim();
-  }
-  const joined = row.clients;
-  if (joined && typeof joined === 'object') {
-    const c = Array.isArray(joined) ? joined[0] : joined;
-    if (c && typeof c === 'object') {
-      const id = (c as Record<string, unknown>).id;
-      if (id != null && String(id).trim() !== '') return String(id).trim();
-    }
+function firstIdToken(...values: unknown[]): string | null {
+  for (const raw of values) {
+    if (raw == null) continue;
+    const text = String(raw).trim();
+    if (!text || text === 'undefined' || text === 'null' || text === 'NaN') continue;
+    return text;
   }
   return null;
+}
+
+function resolveItineraryClientId(row: Record<string, unknown>): string | null {
+  const joined = row.clients;
+  const client =
+    joined && typeof joined === 'object'
+      ? ((Array.isArray(joined) ? joined[0] : joined) as Record<string, unknown> | null)
+      : null;
+
+  return firstIdToken(client?.id, row.client_id, client?.client_id, client?.clientId);
 }
 
 function isOperationalItinerary(row: Record<string, unknown>): boolean {
@@ -207,9 +214,14 @@ export function buildVipsInTransit(
     const totalDays = daysBetweenInclusive(range.start, range.end);
     const dayNumber = Math.min(tripDayNumber(range.start, todayIso), totalDays);
 
+    const resolvedClientId = resolveItineraryClientId(row);
+    const rowId = firstIdToken(row.id);
+
     results.push({
-      id: String(row.id ?? tripTitle),
-      clientId: resolveItineraryClientId(row),
+      id: rowId ?? tripTitle,
+      clientId: resolvedClientId,
+      client_id: resolvedClientId,
+      id_client: resolvedClientId,
       clientName: resolveItineraryClientName(row),
       destination,
       dayNumber,

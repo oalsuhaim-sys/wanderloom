@@ -51,7 +51,9 @@ export type CrmLeadRow = {
   /** Raw DB value — use `normalizeLeadStatus()` from `@/lib/lead-status` */
   status?: string | null;
   referral_code?: string | null;
-  client_id?: number | null;
+  client_id?: number | string | null;
+  /** مسار مرتبط صراحة — يُملأ تلقائياً عند التطابق من لوحة الطلبات */
+  itinerary_id?: number | string | null;
   interview_date?: string | null;
   interview_time?: string | null;
   /** Optional aliases used by some VIP / individual Cal.com writes */
@@ -655,7 +657,7 @@ export async function fetchNewCrmLeads(
   // Radar gate: only pending approval — MUST match bell + dashboard pending
   const withStatus = await supabase
     .from('leads')
-    .select(CRM_LEAD_SELECT)
+    .select(`${CRM_LEAD_SELECT}, client_id`)
     .or(RADAR_INBOX_STATUS_OR)
     .order('created_at', { ascending: false })
     .limit(limit);
@@ -1123,117 +1125,248 @@ export async function fetchNewCrmLeadSummaries(
   }));
 }
 
+export type RequestItineraryCandidate = {
+  id: string | number;
+  client_id?: string | number | null;
+  customer_name?: string | null;
+  clientName?: string | null;
+  expert_id?: string | null;
+  updated_at?: string | null;
+};
+
+export type RequestLinkInput = {
+  itinerary_id?: string | number | null;
+  client_id?: string | number | null;
+  full_name?: string | null;
+};
+
+/** يتجاهل المسافات والهمزات حتى يتطابق «ناصر العجلان» مع اختلاف الكتابة. */
+export function normalizeRequestClientName(value: string | null | undefined): string {
+  return String(value ?? '')
+    .trim()
+    .replace(/[\u064B-\u065F\u0670\u0640]/g, '')
+    .replace(/[أإآٱ]/g, 'ا')
+    .replace(/ؤ/g, 'و')
+    .replace(/ئ/g, 'ي')
+    .replace(/ء/g, '')
+    .replace(/\s+/g, '')
+    .toLowerCase();
+}
+
+function sameLinkId(left: string | number | null | undefined, right: string | number | null | undefined): boolean {
+  const a = String(left ?? '').trim();
+  const b = String(right ?? '').trim();
+  return Boolean(a) && a === b;
+}
+
+/**
+ * ربط حصري لطلب واحد مع مسار واحد:
+ * 1) itinerary_id أو client_id
+ * 2) اسم العميل إذا لم يُسجَّل itinerary_id
+ */
+export function checkIfRequestHasItinerary(
+  request: RequestLinkInput,
+  itineraries: RequestItineraryCandidate[],
+): RequestItineraryCandidate | null {
+  const ordered = [...itineraries].sort((a, b) =>
+    String(b.updated_at ?? '').localeCompare(String(a.updated_at ?? '')),
+  );
+  const requestItineraryId = String(request.itinerary_id ?? '').trim();
+
+  if (requestItineraryId) {
+    const byItineraryId = ordered.find((itinerary) => sameLinkId(itinerary.id, requestItineraryId));
+    if (byItineraryId) return byItineraryId;
+  }
+
+  const requestClientId = String(request.client_id ?? '').trim();
+  if (requestClientId) {
+    const byClientId = ordered.find((itinerary) => sameLinkId(itinerary.client_id, requestClientId));
+    if (byClientId) return byClientId;
+  }
+
+  if (requestItineraryId) return null;
+
+  const requestName = normalizeRequestClientName(request.full_name);
+  if (!requestName) return null;
+
+  return (
+    ordered.find((itinerary) => {
+      const itineraryName = normalizeRequestClientName(
+        itinerary.clientName || itinerary.customer_name,
+      );
+      return Boolean(itineraryName) && itineraryName === requestName;
+    }) ?? null
+  );
+}
+
 export type CrmKanbanLead = CrmLeadWithIntake & {
   kanbanStatus: LeadKanbanColumnId;
   expertName: string | null;
   expertInitials: string | null;
-  /** True when at least one `itineraries` row exists for this lead's client_id */
+  /** True when this request matches one itinerary by id, client, or name */
   hasLinkedItinerary: boolean;
   linkedItineraryCount: number;
-  /** Latest itinerary id for «فتح المسار» shortcut */
+  /** Latest itinerary id for «عرض المسار» */
   linkedItineraryId: string | null;
 };
+
+function joinedClientName(raw: unknown): string | null {
+  if (Array.isArray(raw)) {
+    const name = (raw[0] as { name?: unknown } | undefined)?.name;
+    const text = String(name ?? '').trim();
+    return text || null;
+  }
+  if (raw && typeof raw === 'object' && 'name' in raw) {
+    const text = String((raw as { name?: unknown }).name ?? '').trim();
+    return text || null;
+  }
+  return null;
+}
+
+type LoadedBoardItinerary = RequestItineraryCandidate & { expert_id?: string | null };
+
+async function loadItinerariesForBoard(
+  supabase: SupabaseClient,
+): Promise<LoadedBoardItinerary[]> {
+  const selects = [
+    'id, client_id, customer_name, expert_id, updated_at, clients(name)',
+    'id, client_id, customer_name, expert_id, updated_at',
+    'id, client_id, expert_id, updated_at',
+  ];
+
+  for (const select of selects) {
+    const { data, error } = await supabase
+      .from('itineraries')
+      .select(select)
+      .order('updated_at', { ascending: false })
+      .limit(800);
+    if (error) {
+      console.warn('[kanban itineraries]', error.message);
+      continue;
+    }
+    return (data ?? []).map((row) => {
+      const record = row as Record<string, unknown>;
+      return {
+        id: record.id as string | number,
+        client_id: (record.client_id as string | number | null) ?? null,
+        customer_name: record.customer_name != null ? String(record.customer_name) : null,
+        clientName: joinedClientName(record.clients),
+        updated_at: record.updated_at != null ? String(record.updated_at) : null,
+        expert_id: record.expert_id != null ? String(record.expert_id) : null,
+      };
+    });
+  }
+
+  return [];
+}
+
+function itineraryIdForLeadColumn(id: string | number): number | string {
+  const raw = String(id).trim();
+  return /^\d+$/.test(raw) ? Number(raw) : raw;
+}
+
+async function persistMatchedRequestItineraries(
+  supabase: SupabaseClient,
+  rows: Array<{ leadId: string; itineraryId: string | number }>,
+) {
+  let columnMissing = false;
+  for (const row of rows) {
+    if (columnMissing) return;
+    const { error } = await supabase
+      .from('leads')
+      .update({ itinerary_id: itineraryIdForLeadColumn(row.itineraryId) })
+      .eq('id', row.leadId);
+    if (!error) continue;
+    console.warn('[kanban persist itinerary_id]', error.message);
+    if (/itinerary_id|column|schema cache|does not exist/i.test(error.message ?? '')) {
+      columnMissing = true;
+    }
+  }
+}
+
+function expertInitialsFromName(expertName: string | null): string | null {
+  if (!expertName) return null;
+  return (
+    expertName
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0] ?? '')
+      .join('')
+      .toUpperCase() || null
+  );
+}
 
 async function enrichLeadsWithExperts(
   supabase: SupabaseClient,
   leads: CrmLeadWithIntake[],
 ): Promise<CrmKanbanLead[]> {
-  const clientIds = Array.from(
-    new Set(
-      leads
-        .map((l) => l.client_id)
-        .filter((id): id is number => id != null && Number.isFinite(Number(id))),
-    ),
+  const itineraries = await loadItinerariesForBoard(supabase);
+  const expertIds = Array.from(
+    new Set(itineraries.map((row) => String(row.expert_id ?? '').trim()).filter(Boolean)),
   );
-
-  const expertByClient = new Map<number, { name: string }>();
-  const itineraryCountByClient = new Map<number, number>();
-  const itineraryIdByClient = new Map<number, string>();
-
-  if (clientIds.length) {
-    const { data: itineraryRows } = await supabase
-      .from('itineraries')
-      .select('id, client_id, expert_id, updated_at')
-      .in('client_id', clientIds)
-      .order('updated_at', { ascending: false })
-      .limit(500);
-
-    for (const row of itineraryRows ?? []) {
-      const clientId = Number((row as { client_id?: unknown }).client_id);
-      if (!Number.isFinite(clientId)) continue;
-      itineraryCountByClient.set(clientId, (itineraryCountByClient.get(clientId) ?? 0) + 1);
-      if (!itineraryIdByClient.has(clientId) && (row as { id?: unknown }).id != null) {
-        itineraryIdByClient.set(clientId, String((row as { id: unknown }).id));
-      }
-    }
-
-    const expertIds = Array.from(
-      new Set(
-        (itineraryRows ?? [])
-          .map((row) => String((row as { expert_id?: unknown }).expert_id ?? '').trim())
-          .filter(Boolean),
-      ),
-    );
-
-    const expertNameById = new Map<string, string>();
-    if (expertIds.length) {
-      const { data: experts } = await supabase
-        .from('experts')
-        .select('id, name')
-        .in('id', expertIds);
-      for (const row of experts ?? []) {
-        const id = String((row as { id?: unknown }).id ?? '').trim();
-        const name = String((row as { name?: unknown }).name ?? '').trim();
-        if (id && name) expertNameById.set(id, name);
-      }
-    }
-
-    for (const row of itineraryRows ?? []) {
-      const clientId = Number((row as { client_id?: unknown }).client_id);
-      if (!Number.isFinite(clientId) || expertByClient.has(clientId)) continue;
-      const expertId = String((row as { expert_id?: unknown }).expert_id ?? '').trim();
-      const name = expertNameById.get(expertId);
-      if (name) expertByClient.set(clientId, { name });
+  const expertNameById = new Map<string, string>();
+  if (expertIds.length) {
+    const { data: experts } = await supabase.from('experts').select('id, name').in('id', expertIds);
+    for (const row of experts ?? []) {
+      const id = String((row as { id?: unknown }).id ?? '').trim();
+      const name = String((row as { name?: unknown }).name ?? '').trim();
+      if (id && name) expertNameById.set(id, name);
     }
   }
 
-  return leads
-    .map((lead) => {
-      const clientKey =
-        lead.client_id != null && Number.isFinite(Number(lead.client_id))
-          ? Number(lead.client_id)
-          : null;
-      const expert = clientKey != null ? expertByClient.get(clientKey) : undefined;
-      const expertName = expert?.name ?? null;
-      const expertInitials = expertName
-        ? expertName
-            .split(/\s+/)
-            .filter(Boolean)
-            .slice(0, 2)
-            .map((p) => p[0] ?? '')
-            .join('')
-            .toUpperCase() || null
-        : null;
+  const expertByClient = new Map<string, string>();
+  for (const itinerary of itineraries) {
+    const clientId = String(itinerary.client_id ?? '').trim();
+    if (!clientId || expertByClient.has(clientId)) continue;
+    const name = expertNameById.get(String(itinerary.expert_id ?? '').trim());
+    if (name) expertByClient.set(clientId, name);
+  }
 
+  const pendingLinks: Array<{ leadId: string; itineraryId: string | number }> = [];
+
+  const enriched = leads
+    .map((lead) => {
       const kanbanStatus = normalizeLeadKanbanStatus(lead.status);
       if (!kanbanStatus) return null;
 
-      const linkedItineraryCount =
-        clientKey != null ? (itineraryCountByClient.get(clientKey) ?? 0) : 0;
-      const linkedItineraryId =
-        clientKey != null ? (itineraryIdByClient.get(clientKey) ?? null) : null;
+      const match = checkIfRequestHasItinerary(lead, itineraries);
+      const linkedItineraryId = match ? String(match.id) : null;
+      const linkedItineraryCount = match
+        ? Math.max(
+            1,
+            itineraries.filter((itinerary) => sameLinkId(itinerary.client_id, lead.client_id)).length,
+          )
+        : 0;
+      const storedItineraryId = String(lead.itinerary_id ?? '').trim();
+      if (match && !storedItineraryId) {
+        pendingLinks.push({ leadId: lead.id, itineraryId: match.id });
+      }
+
+      const clientKey = String(lead.client_id ?? '').trim();
+      const expertName =
+        (match?.expert_id ? expertNameById.get(String(match.expert_id)) : undefined) ??
+        (clientKey ? expertByClient.get(clientKey) : undefined) ??
+        null;
 
       return {
         ...lead,
+        itinerary_id: storedItineraryId || linkedItineraryId,
         kanbanStatus,
         expertName,
-        expertInitials,
-        hasLinkedItinerary: linkedItineraryCount > 0,
+        expertInitials: expertInitialsFromName(expertName),
+        hasLinkedItinerary: Boolean(match),
         linkedItineraryCount,
         linkedItineraryId,
       };
     })
     .filter((row): row is CrmKanbanLead => row != null);
+
+  if (pendingLinks.length) {
+    await persistMatchedRequestItineraries(supabase, pendingLinks);
+  }
+
+  return enriched;
 }
 
 /** طلبات مرحلة العروض / المسارات — لمزامنة صفحات Quotes & Itineraries */

@@ -97,10 +97,10 @@ const CARD_TITLE =
   'mb-4 border-b border-slate-100 pb-3 text-lg font-bold text-slate-800 dark:border-[#2D3F3A] dark:text-gray-100';
 
 const TAG =
-  'rounded-md border border-slate-200 bg-slate-50 px-3 py-1 text-sm text-slate-700 dark:border-[#D4AF37]/30 dark:bg-[#1A2421] dark:text-[#D4AF37]';
+  'rounded-md border border-slate-200 bg-slate-50 px-3 py-1 text-sm text-slate-700 dark:border-brand-gold/30 dark:bg-[#1A2421] dark:text-brand-gold';
 
 const BTN_PRIMARY =
-  'inline-flex items-center justify-center gap-2 rounded-lg bg-slate-900 px-5 py-2.5 font-medium text-white shadow-sm transition-all hover:bg-slate-800 dark:border dark:border-[#D4AF37]/50 dark:bg-[#D4AF37]/20 dark:text-[#D4AF37] hover:dark:bg-[#D4AF37]/30';
+  'inline-flex items-center justify-center gap-2 rounded-lg bg-slate-900 px-5 py-2.5 font-medium text-white shadow-sm transition-all hover:bg-slate-800 dark:border dark:border-brand-gold/50 dark:bg-brand-gold/20 dark:text-brand-gold hover:dark:bg-brand-gold/30';
 
 const BTN_SECONDARY =
   'inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-5 py-2.5 text-sm font-medium text-slate-700 shadow-sm transition-all hover:bg-slate-50 dark:border-[#2D3F3A] dark:bg-[#1A2421] dark:text-slate-200 dark:hover:bg-[#2A3834]';
@@ -111,7 +111,7 @@ const KV_VALUE = 'text-base font-medium text-slate-900 dark:text-white';
 const CHIP_IDLE =
   'rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 transition dark:border-[#2D3F3A] dark:bg-[#1A2421] dark:text-slate-300';
 const CHIP_ACTIVE =
-  'rounded-full border border-slate-900 bg-slate-900 px-3 py-1.5 text-xs font-medium text-white transition dark:border-[#D4AF37]/50 dark:bg-[#D4AF37]/20 dark:text-[#D4AF37]';
+  'rounded-full border border-slate-900 bg-slate-900 px-3 py-1.5 text-xs font-medium text-white transition dark:border-brand-gold/50 dark:bg-brand-gold/20 dark:text-brand-gold';
 
 function parseType(raw: string | null): PartnerDnaType | null {
   if (raw === 'leaders' || raw === 'experts' || raw === 'celebrities') return raw;
@@ -641,7 +641,7 @@ function PartnerProfileInner() {
   if (loading) {
     return (
       <div className="flex min-h-[40vh] items-center justify-center gap-2 bg-[#F9FAFB] text-sm font-medium text-slate-500 dark:bg-[#1A2421] dark:text-slate-400">
-        <Loader2 className="h-5 w-5 animate-spin text-slate-400 dark:text-[#D4AF37]" />
+        <Loader2 className="h-5 w-5 animate-spin text-slate-400 dark:text-brand-gold" />
         جاري تحميل الملف…
       </div>
     );
@@ -658,7 +658,7 @@ function PartnerProfileInner() {
         </p>
         <Link
           href="/crm/partners-directory"
-          className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-[#D4AF37]"
+          className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-brand-gold"
         >
           <ArrowRight className="h-4 w-4" />
           دليل الشركاء
@@ -697,7 +697,7 @@ function PartnerProfileInner() {
     >
       <Link
         href={`/crm/partners-directory?tab=${type}`}
-        className="mb-4 inline-flex items-center gap-2 text-sm font-medium text-slate-600 transition hover:text-slate-900 dark:text-gray-300 dark:hover:text-[#D4AF37]"
+        className="mb-4 inline-flex items-center gap-2 text-sm font-medium text-slate-600 transition hover:text-slate-900 dark:text-gray-300 dark:hover:text-brand-gold"
       >
         <ArrowRight className="h-4 w-4" />
         دليل الشركاء
@@ -777,7 +777,7 @@ function PartnerProfileInner() {
 
           <div className="absolute -bottom-12 right-6 sm:right-8">
             <div
-              className="flex h-24 w-24 items-center justify-center rounded-full border-4 border-[#F9FAFB] bg-white text-2xl font-bold text-slate-800 shadow-lg dark:border-[#1A2421] dark:bg-[#22302C] dark:text-[#D4AF37]"
+              className="flex h-24 w-24 items-center justify-center rounded-full border-4 border-[#F9FAFB] bg-white text-2xl font-bold text-slate-800 shadow-lg dark:border-[#1A2421] dark:bg-[#22302C] dark:text-brand-gold"
               aria-hidden
             >
               {partnerInitials(profile.name)}
@@ -863,7 +863,7 @@ function PartnerProfileInner() {
                   onClick={() => setCommissionOpen(true)}
                   className={BTN_SECONDARY}
                 >
-                  <CircleDollarSign className="h-4 w-4 text-[#D4AF37]" aria-hidden />
+                  <CircleDollarSign className="h-4 w-4 text-brand-gold" aria-hidden />
                   تعديل العمولة
                 </button>
               </div>
@@ -920,7 +920,7 @@ function PartnerProfileInner() {
                           href={profile.profileUrl}
                           target="_blank"
                           rel="noreferrer"
-                          className={`${KV_VALUE} break-all text-[#D4AF37] hover:underline`}
+                          className={`${KV_VALUE} break-all text-brand-gold hover:underline`}
                           dir="ltr"
                         >
                           {profile.profileUrl}
@@ -937,7 +937,7 @@ function PartnerProfileInner() {
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3 dark:border-[#2D3F3A]">
               <div>
                 <h2 className="inline-flex items-center gap-2 text-lg font-bold text-slate-800 dark:text-gray-100">
-                  <Sparkles className="h-5 w-5 text-slate-400 dark:text-[#D4AF37]" />
+                  <Sparkles className="h-5 w-5 text-slate-400 dark:text-brand-gold" />
                   بصمة الشريك
                 </h2>
                 <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
@@ -1026,7 +1026,7 @@ function PartnerProfileInner() {
             <section className={CARD}>
               <div className="mb-4 border-b border-slate-100 pb-3 dark:border-[#2D3F3A]">
                 <h2 className="inline-flex items-center gap-2 text-lg font-bold text-slate-800 dark:text-gray-100">
-                  <Compass className="h-5 w-5 text-slate-400 dark:text-[#D4AF37]" />
+                  <Compass className="h-5 w-5 text-slate-400 dark:text-brand-gold" />
                   الرحلات الجماعية المتوافقة
                 </h2>
                 <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
@@ -1055,7 +1055,7 @@ function PartnerProfileInner() {
                         <div className="flex min-w-0 flex-col gap-1">
                           <Link
                             href={detailsHref}
-                            className="truncate text-sm font-bold text-slate-900 transition hover:text-slate-700 dark:text-white dark:hover:text-[#D4AF37]"
+                            className="truncate text-sm font-bold text-slate-900 transition hover:text-slate-700 dark:text-white dark:hover:text-brand-gold"
                           >
                             {trip.title}
                           </Link>
@@ -1076,7 +1076,7 @@ function PartnerProfileInner() {
                           {isCatalogue ? (
                             <Link
                               href={detailsHref}
-                              className="rounded-lg bg-slate-900 px-4 py-2 text-xs font-semibold text-white transition-transform hover:-translate-y-0.5 dark:border dark:border-[#D4AF37]/50 dark:bg-[#D4AF37]/20 dark:text-[#D4AF37]"
+                              className="rounded-lg bg-slate-900 px-4 py-2 text-xs font-semibold text-white transition-transform hover:-translate-y-0.5 dark:border dark:border-brand-gold/50 dark:bg-brand-gold/20 dark:text-brand-gold"
                             >
                               التفاصيل
                             </Link>
@@ -1088,7 +1088,7 @@ function PartnerProfileInner() {
                                 assigningTripId === trip.id ||
                                 assignedToCurrentExpert
                               }
-                              className="rounded-lg bg-slate-900 px-4 py-2 text-xs font-semibold text-white transition-transform hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0 dark:border dark:border-[#D4AF37]/50 dark:bg-[#D4AF37]/20 dark:text-[#D4AF37]"
+                              className="rounded-lg bg-slate-900 px-4 py-2 text-xs font-semibold text-white transition-transform hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0 dark:border dark:border-brand-gold/50 dark:bg-brand-gold/20 dark:text-brand-gold"
                             >
                               {assigningTripId === trip.id ? (
                                 <span className="inline-flex items-center gap-1.5">
@@ -1152,7 +1152,7 @@ function PartnerProfileInner() {
                     <Star className="h-4 w-4" />
                     تقييم الشريك
                   </span>
-                  <span className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-bold text-slate-800 dark:border-[#D4AF37]/30 dark:bg-[#1A2421] dark:text-[#D4AF37]">
+                  <span className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-bold text-slate-800 dark:border-brand-gold/30 dark:bg-[#1A2421] dark:text-brand-gold">
                     <Crown className="h-3 w-3" />
                     VIP
                   </span>
@@ -1266,8 +1266,8 @@ function PartnerProfileInner() {
               </section>
             ) : null}
 
-            <section className="mb-6 overflow-hidden rounded-2xl border border-slate-200 bg-slate-900 p-6 text-white shadow-sm dark:border-[#D4AF37]/30 dark:bg-[#22302C]">
-              <p className="text-[10px] font-medium uppercase tracking-[0.28em] text-white/50 dark:text-[#D4AF37]/80">
+            <section className="mb-6 overflow-hidden rounded-2xl border border-slate-200 bg-slate-900 p-6 text-white shadow-sm dark:border-brand-gold/30 dark:bg-[#22302C]">
+              <p className="text-[10px] font-medium uppercase tracking-[0.28em] text-white/50 dark:text-brand-gold/80">
                 Partner Status
               </p>
               <h3 className="mt-2 text-lg font-semibold dark:text-gray-100">
@@ -1521,7 +1521,7 @@ function PartnerProfileInner() {
               ) : null}
 
               {type === 'leaders' || type === 'experts' ? (
-                <div className="space-y-4 rounded-2xl border border-amber-100 bg-amber-50/50 p-4 dark:border-[#D4AF37]/25 dark:bg-[#D4AF37]/5">
+                <div className="space-y-4 rounded-2xl border border-amber-100 bg-amber-50/50 p-4 dark:border-brand-gold/25 dark:bg-brand-gold/5">
                   <p className="text-sm font-bold text-slate-800 dark:text-gray-100">
                     العمولة والإحالة
                   </p>
@@ -1659,7 +1659,7 @@ export default function PartnerProfilePage() {
     <Suspense
       fallback={
         <div className="flex min-h-[40vh] items-center justify-center">
-          <Loader2 className="h-6 w-6 animate-spin text-slate-400 dark:text-[#D4AF37]" />
+          <Loader2 className="h-6 w-6 animate-spin text-slate-400 dark:text-brand-gold" />
         </div>
       }
     >

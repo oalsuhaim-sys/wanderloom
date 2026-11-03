@@ -35,11 +35,11 @@ export default async function PublicSessionsPage() {
         <div className="flex flex-col items-center gap-3">
           <a
             href={`mailto:${WANDERLOOM_CONTACT_EMAIL}?subject=${encodeURIComponent('استفسار — Wanderloom')}`}
-            className="text-[11px] font-bold text-[#9a7b45] underline decoration-[#cda04c]/40 underline-offset-4 hover:text-[#cda04c]"
+            className="text-[11px] font-bold text-[#9a7b45] underline decoration-public-gold/40 underline-offset-4 hover:text-public-gold"
           >
             {WANDERLOOM_CONTACT_EMAIL}
           </a>
-          <Link href="/#lead" className="text-xs font-black text-[#cda04c]/80 hover:text-[#cda04c]">
+          <Link href="/#lead" className="text-xs font-black text-public-gold/80 hover:text-public-gold">
             نموذج سجّل رحلتك ←
           </Link>
         </div>

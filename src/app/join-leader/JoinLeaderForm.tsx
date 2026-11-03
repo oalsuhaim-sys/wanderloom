@@ -10,7 +10,7 @@ import {
 } from '@/lib/partners'
 
 const INPUT_CLASS =
-  'h-11 w-full rounded-xl border border-gray-200/90 bg-white px-4 text-sm font-semibold text-gray-900 outline-none focus:border-[#cda04c]/70 focus:ring-2 focus:ring-[#cda04c]/25'
+  'h-11 w-full rounded-xl border border-gray-200/90 bg-white px-4 text-sm font-semibold text-gray-900 outline-none focus:border-brand-gold/70 focus:ring-2 focus:ring-brand-gold/25'
 
 export default function JoinLeaderForm() {
   const searchParams = useSearchParams()
@@ -116,7 +116,7 @@ export default function JoinLeaderForm() {
       </label>
 
       {urlDestination ? (
-        <div className="rounded-xl border border-[#cda04c]/30 bg-[#cda04c]/10 px-4 py-3 text-sm font-bold text-[#6b5c38]">
+        <div className="rounded-xl border border-brand-gold/30 bg-brand-gold/10 px-4 py-3 text-sm font-bold text-[#6b5c38]">
           الوجهة المرتبطة بالرابط:{' '}
           <span className="font-black text-[#1e3f20]">{urlDestination}</span>
         </div>
@@ -134,7 +134,7 @@ export default function JoinLeaderForm() {
       <button
         type="submit"
         disabled={pending}
-        className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#1e3f20] py-3 text-sm font-black text-[#cda04c] disabled:opacity-60"
+        className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#1e3f20] py-3 text-sm font-black text-brand-gold disabled:opacity-60"
       >
         {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
         إرسال الطلب

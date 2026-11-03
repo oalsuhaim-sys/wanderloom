@@ -51,13 +51,13 @@ function PermissionCheckboxGrid({
           key={perm.id}
           className={`flex cursor-pointer items-start gap-2.5 rounded-xl border px-3 py-2.5 text-xs font-bold transition ${
             isAdmin || permissions[perm.id]
-              ? 'border-[#cda04c]/45 bg-[#cda04c]/10 text-white'
+              ? 'border-brand-gold/45 bg-brand-gold/10 text-white'
               : 'border-white/10 bg-white/[0.03] text-white/70'
-          } ${disabled ? 'pointer-events-none opacity-50' : 'hover:border-[#cda04c]/35'}`}
+          } ${disabled ? 'pointer-events-none opacity-50' : 'hover:border-brand-gold/35'}`}
         >
           <input
             type="checkbox"
-            className="mt-0.5 h-4 w-4 shrink-0 rounded border-white/20 accent-[#cda04c]"
+            className="mt-0.5 h-4 w-4 shrink-0 rounded border-white/20 accent-brand-gold"
             checked={isAdmin || permissions[perm.id]}
             disabled={disabled || isAdmin}
             onChange={(e) => onTogglePermission(perm.id, e.target.checked)}
@@ -257,8 +257,8 @@ export default function AdminUserManagementClient() {
 
   return (
     <div className="mx-auto max-w-7xl space-y-8" dir="rtl">
-      <header className="rounded-3xl border border-[#cda04c]/25 bg-gradient-to-br from-[#07100D] via-[#0F1E16] to-[#1a2f24] p-7 text-white shadow-[0_18px_50px_rgba(7,16,13,0.45)] sm:p-9">
-        <p className="mb-2 inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.35em] text-[#cda04c]">
+      <header className="rounded-3xl border border-brand-gold/25 bg-gradient-to-br from-[#07100D] via-[#0F1E16] to-[#1a2f24] p-7 text-white shadow-[0_18px_50px_rgba(7,16,13,0.45)] sm:p-9">
+        <p className="mb-2 inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.35em] text-brand-gold">
           <Crown className="h-4 w-4" />
           Admin · RBAC
         </p>
@@ -266,7 +266,7 @@ export default function AdminUserManagementClient() {
         <p className="mt-2 text-sm font-semibold text-white/55">
           إنشاء حسابات الفريق وضبط صلاحيات الوصول لكل قسم — التغييرات تُحفظ فوراً.
         </p>
-        <p className="mt-3 text-xs font-bold text-[#cda04c]/80">{activeCount} عضو نشط</p>
+        <p className="mt-3 text-xs font-bold text-brand-gold/80">{activeCount} عضو نشط</p>
       </header>
 
       {notice ? (
@@ -281,10 +281,10 @@ export default function AdminUserManagementClient() {
         </div>
       ) : null}
 
-      <section className="rounded-3xl border border-[#cda04c]/20 bg-gradient-to-b from-[#0a1410] to-[#0f1e16] p-6 shadow-lg sm:p-8">
+      <section className="rounded-3xl border border-brand-gold/20 bg-gradient-to-b from-[#0a1410] to-[#0f1e16] p-6 shadow-lg sm:p-8">
         <div className="mb-6 flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-[#cda04c]/30 bg-[#cda04c]/10">
-            <UserPlus className="h-5 w-5 text-[#cda04c]" />
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-brand-gold/30 bg-brand-gold/10">
+            <UserPlus className="h-5 w-5 text-brand-gold" />
           </div>
           <div>
             <h2 className="text-lg font-black text-white">إنشاء حساب فريق جديد</h2>
@@ -295,17 +295,17 @@ export default function AdminUserManagementClient() {
         <form onSubmit={(e) => void handleCreateUser(e)} className="space-y-5">
           <div className="grid gap-4 sm:grid-cols-3">
             <label className="block">
-              <span className="mb-1.5 block text-xs font-black text-[#cda04c]/90">الاسم</span>
+              <span className="mb-1.5 block text-xs font-black text-brand-gold/90">الاسم</span>
               <input
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 required
-                className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white outline-none focus:border-[#cda04c]/50 focus:ring-1 focus:ring-[#cda04c]/30"
+                className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white outline-none focus:border-brand-gold/50 focus:ring-1 focus:ring-brand-gold/30"
                 placeholder="مثال: سارة العتيبي"
               />
             </label>
             <label className="block">
-              <span className="mb-1.5 block text-xs font-black text-[#cda04c]/90">البريد الإلكتروني</span>
+              <span className="mb-1.5 block text-xs font-black text-brand-gold/90">البريد الإلكتروني</span>
               <div className="relative">
                 <Mail className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/30" />
                 <input
@@ -313,13 +313,13 @@ export default function AdminUserManagementClient() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  className="w-full rounded-xl border border-white/10 bg-white/5 py-2.5 pl-3 pr-10 text-sm text-white outline-none focus:border-[#cda04c]/50 focus:ring-1 focus:ring-[#cda04c]/30"
+                  className="w-full rounded-xl border border-white/10 bg-white/5 py-2.5 pl-3 pr-10 text-sm text-white outline-none focus:border-brand-gold/50 focus:ring-1 focus:ring-brand-gold/30"
                   placeholder="advisor@wanderloom.com"
                 />
               </div>
             </label>
             <label className="block">
-              <span className="mb-1.5 block text-xs font-black text-[#cda04c]/90">كلمة المرور</span>
+              <span className="mb-1.5 block text-xs font-black text-brand-gold/90">كلمة المرور</span>
               <div className="relative">
                 <Lock className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/30" />
                 <input
@@ -328,7 +328,7 @@ export default function AdminUserManagementClient() {
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   minLength={8}
-                  className="w-full rounded-xl border border-white/10 bg-white/5 py-2.5 pl-3 pr-10 text-sm text-white outline-none focus:border-[#cda04c]/50 focus:ring-1 focus:ring-[#cda04c]/30"
+                  className="w-full rounded-xl border border-white/10 bg-white/5 py-2.5 pl-3 pr-10 text-sm text-white outline-none focus:border-brand-gold/50 focus:ring-1 focus:ring-brand-gold/30"
                   placeholder="8 أحرف على الأقل"
                 />
               </div>
@@ -349,7 +349,7 @@ export default function AdminUserManagementClient() {
           <button
             type="submit"
             disabled={creating}
-            className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-l from-[#cda04c] to-[#b3893d] px-5 py-2.5 text-sm font-black text-[#1e3f20] shadow-md shadow-[#cda04c]/20 transition hover:brightness-110 disabled:opacity-60"
+            className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-l from-brand-gold to-[#C4A030] px-5 py-2.5 text-sm font-black text-[#1e3f20] shadow-md shadow-brand-gold/20 transition hover:brightness-110 disabled:opacity-60"
           >
             {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />}
             {creating ? 'جارٍ الإنشاء...' : 'إنشاء الحساب'}
@@ -357,7 +357,7 @@ export default function AdminUserManagementClient() {
         </form>
       </section>
 
-      <section className="rounded-3xl border border-[#cda04c]/20 bg-white p-4 shadow-lg sm:p-6">
+      <section className="rounded-3xl border border-brand-gold/20 bg-white p-4 shadow-lg sm:p-6">
         <h2 className="mb-4 text-lg font-black text-[#1e3f20]">أعضاء الفريق النشطون</h2>
 
         {loading ? (
@@ -403,7 +403,7 @@ export default function AdminUserManagementClient() {
                           </span>
                         ) : null}
                         {isSelf ? (
-                          <span className="mt-1 inline-block rounded-full bg-[#cda04c]/15 px-2 py-0.5 text-[10px] font-black text-[#9a7b45]">
+                          <span className="mt-1 inline-block rounded-full bg-brand-gold/15 px-2 py-0.5 text-[10px] font-black text-[#9a7b45]">
                             أنت
                           </span>
                         ) : null}
@@ -412,7 +412,7 @@ export default function AdminUserManagementClient() {
                         <td key={perm.id} className="px-2 py-4 text-center">
                           <input
                             type="checkbox"
-                            className="h-4 w-4 accent-[#cda04c] disabled:opacity-40"
+                            className="h-4 w-4 accent-brand-gold disabled:opacity-40"
                             checked={profile.is_admin || profile.permissions[perm.id]}
                             disabled={isSelf || rowBusy || profile.is_suspended || profile.is_admin}
                             onChange={(e) => handleRowPermissionToggle(profile, perm.id, e.target.checked)}

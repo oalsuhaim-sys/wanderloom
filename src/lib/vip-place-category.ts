@@ -33,12 +33,12 @@ export type VipPlaceCategoryMeta = {
 
 const META: Record<string, Omit<VipPlaceCategoryMeta, 'code' | 'label'> & { label?: string }> = {
   h: { Icon: BedDouble, accentClass: 'bg-[#1E2720]/8 text-[#1E2720]', label: '🏨 فندق' },
-  r: { Icon: UtensilsCrossed, accentClass: 'bg-[#D4AF37]/15 text-[#1E2720]', label: '🍽️ مطعم' },
-  c: { Icon: Coffee, accentClass: 'bg-[#D4AF37]/12 text-[#1E2720]', label: '☕ كافيه' },
+  r: { Icon: UtensilsCrossed, accentClass: 'bg-brand-gold/15 text-[#1E2720]', label: '🍽️ مطعم' },
+  c: { Icon: Coffee, accentClass: 'bg-brand-gold/12 text-[#1E2720]', label: '☕ كافيه' },
   s: { Icon: ShoppingBag, accentClass: 'bg-[#1E2720]/6 text-[#1E2720]', label: '🛍️ تسوق' },
-  l: { Icon: Star, accentClass: 'bg-[#D4AF37]/10 text-[#1E2720]', label: '⭐ معلم' },
-  d: { Icon: Sparkles, accentClass: 'bg-[#D4AF37]/15 text-[#1E2720]', label: '🎭 تجربة' },
-  f: { Icon: Utensils, accentClass: 'bg-[#D4AF37]/12 text-[#1E2720]', label: '🍜 طعام' },
+  l: { Icon: Star, accentClass: 'bg-brand-gold/10 text-[#1E2720]', label: '⭐ معلم' },
+  d: { Icon: Sparkles, accentClass: 'bg-brand-gold/15 text-[#1E2720]', label: '🎭 تجربة' },
+  f: { Icon: Utensils, accentClass: 'bg-brand-gold/12 text-[#1E2720]', label: '🍜 طعام' },
   o: { Icon: MapPin, accentClass: 'bg-[#1E2720]/5 text-[#1E2720]/80', label: '🧭 أخرى' },
   transport: { Icon: MapPin, accentClass: 'bg-[#1E2720]/5 text-[#1E2720]/60' },
 };

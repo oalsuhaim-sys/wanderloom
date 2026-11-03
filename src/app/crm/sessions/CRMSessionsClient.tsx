@@ -71,7 +71,7 @@ export default function CRMSessionsClient() {
       >
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-400 dark:text-[#D4AF37]/80">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-400 dark:text-brand-gold/80">
               Sessions
             </p>
             <h1 className="text-2xl font-bold text-slate-900 dark:text-white">الجلسات</h1>

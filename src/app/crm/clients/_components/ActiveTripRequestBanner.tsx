@@ -110,7 +110,7 @@ export default function ActiveTripRequestBanner({
   return (
     <div
       dir="rtl"
-      className={`mb-4 flex flex-wrap items-center gap-3 rounded-xl bg-slate-700/80 px-3 py-3 text-amber-300 shadow-sm dark:bg-[#1A2421]/90 dark:ring-1 dark:ring-[#D4AF37]/25 ${className}`}
+      className={`mb-4 flex flex-wrap items-center gap-3 rounded-xl bg-slate-700/80 px-3 py-3 text-amber-300 shadow-sm dark:bg-[#1A2421]/90 dark:ring-1 dark:ring-brand-gold/25 ${className}`}
       role="status"
       aria-label="طلب رحلة نشط"
     >

@@ -112,16 +112,16 @@ export function GenerateInvoiceModal({ quotation, onClose, onCreated }: Generate
       onClick={onClose}
     >
       <div
-        className="flex max-h-[90vh] w-[95%] max-w-lg flex-col overflow-hidden rounded-t-3xl border border-[#cda04c]/35 bg-gradient-to-b from-[#0a1410] to-[#0f1e16] shadow-2xl sm:rounded-3xl"
+        className="flex max-h-[90vh] w-[95%] max-w-lg flex-col overflow-hidden rounded-t-3xl border border-brand-gold/35 bg-gradient-to-b from-[#0a1410] to-[#0f1e16] shadow-2xl sm:rounded-3xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-start justify-between gap-3 border-b border-[#cda04c]/20 px-5 py-4">
+        <div className="flex items-start justify-between gap-3 border-b border-brand-gold/20 px-5 py-4">
           <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.35em] text-[#cda04c]/80">
+            <p className="text-[10px] font-black uppercase tracking-[0.35em] text-brand-gold/80">
               الفوترة
             </p>
             <h2 className="mt-1 flex items-center gap-2 text-lg font-black text-white">
-              <Receipt className="h-5 w-5 text-[#cda04c]" aria-hidden />
+              <Receipt className="h-5 w-5 text-brand-gold" aria-hidden />
               {createdInvoice ? 'تم الإصدار' : 'إصدار فاتورة'}
             </h2>
             <p className="mt-1 text-xs font-semibold text-white/50">
@@ -155,7 +155,7 @@ export function GenerateInvoiceModal({ quotation, onClose, onCreated }: Generate
               <div className="rounded-2xl border border-white/10 bg-black/25 p-4">
                 <p className="mb-2 text-[11px] font-black text-white/55">رابط الفاتورة</p>
                 <p
-                  className="break-all rounded-xl border border-[#cda04c]/25 bg-[#cda04c]/5 px-3 py-2.5 text-xs font-bold text-[#f5e6c0]"
+                  className="break-all rounded-xl border border-brand-gold/25 bg-brand-gold/5 px-3 py-2.5 text-xs font-bold text-[#f5e6c0]"
                   dir="ltr"
                 >
                   {invoiceUrl}
@@ -204,8 +204,8 @@ export function GenerateInvoiceModal({ quotation, onClose, onCreated }: Generate
                         onClick={() => setType(option)}
                         className={`rounded-xl border px-3 py-2.5 text-xs font-black transition ${
                           selected
-                            ? 'border-[#cda04c] bg-[#cda04c]/20 text-[#f5e6c0] ring-2 ring-[#cda04c]/35'
-                            : 'border-white/15 bg-white/5 text-white/70 hover:border-[#cda04c]/40'
+                            ? 'border-brand-gold bg-brand-gold/20 text-[#f5e6c0] ring-2 ring-brand-gold/35'
+                            : 'border-white/15 bg-white/5 text-white/70 hover:border-brand-gold/40'
                         }`}
                         aria-pressed={selected}
                       >
@@ -226,7 +226,7 @@ export function GenerateInvoiceModal({ quotation, onClose, onCreated }: Generate
                   value={amountInput}
                   onChange={(e) => setAmountInput(e.target.value)}
                   placeholder="0.00"
-                  className="w-full rounded-xl border border-white/15 bg-black/30 px-4 py-3 text-sm font-bold text-white outline-none focus:border-[#cda04c]/60 focus:ring-2 focus:ring-[#cda04c]/20"
+                  className="w-full rounded-xl border border-white/15 bg-black/30 px-4 py-3 text-sm font-bold text-white outline-none focus:border-brand-gold/60 focus:ring-2 focus:ring-brand-gold/20"
                   dir="ltr"
                   required
                 />
@@ -241,7 +241,7 @@ export function GenerateInvoiceModal({ quotation, onClose, onCreated }: Generate
               <button
                 type="submit"
                 disabled={submitting}
-                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#cda04c] px-5 py-3.5 text-sm font-black text-[#0a1410] shadow-lg transition hover:brightness-110 disabled:opacity-60"
+                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-brand-gold px-5 py-3.5 text-sm font-black text-[#0a1410] shadow-lg transition hover:brightness-110 disabled:opacity-60"
               >
                 {submitting ? (
                   <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
@@ -254,7 +254,7 @@ export function GenerateInvoiceModal({ quotation, onClose, onCreated }: Generate
           )}
         </div>
 
-        <div className="border-t border-[#cda04c]/20 p-4">
+        <div className="border-t border-brand-gold/20 p-4">
           <button
             type="button"
             onClick={onClose}

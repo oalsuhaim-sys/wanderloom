@@ -36,10 +36,10 @@ const DARK_STUDIO =
   'shrink-0 rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-[#2D3F3A] dark:bg-[#1A2421]';
 
 const FIELD =
-  'w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-medium text-slate-900 outline-none transition focus:border-slate-300 focus:ring-2 focus:ring-slate-900 dark:border-[#2D3F3A] dark:bg-[#22302C] dark:text-white dark:focus:ring-[#D4AF37]/50';
+  'w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-medium text-slate-900 outline-none transition focus:border-slate-300 focus:ring-2 focus:ring-slate-900 dark:border-[#2D3F3A] dark:bg-[#22302C] dark:text-white dark:focus:ring-brand-gold/50';
 
 const TEXTAREA =
-  'w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-relaxed text-slate-700 outline-none transition focus:ring-2 focus:ring-slate-900 dark:border-[#2D3F3A] dark:bg-[#22302C] dark:text-slate-300 dark:focus:ring-[#D4AF37]/50';
+  'w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-relaxed text-slate-700 outline-none transition focus:ring-2 focus:ring-slate-900 dark:border-[#2D3F3A] dark:bg-[#22302C] dark:text-slate-300 dark:focus:ring-brand-gold/50';
 
 const STATUS_OPTIONS = [
   'جاهز للتوليد',
@@ -109,7 +109,7 @@ const AI_CONFIG: ProductionCardConfig = {
   productionType: 'ai',
   header: 'الذكاء الاصطناعي',
   headerIcon: Sparkles,
-  accentClass: 'text-[#D4AF37]',
+  accentClass: 'text-brand-gold',
   fieldLabel: 'البرومبت',
   fieldPlaceholder: 'اكتب البرومبت البصري لـ Midjourney / Sora…',
   actionLabel: 'نسخ البرومبت',
@@ -148,7 +148,7 @@ const HUMAN_CONFIG: ProductionCardConfig = {
   productionType: 'human',
   header: 'الإنتاج البشري',
   headerIcon: Clapperboard,
-  accentClass: 'text-[#D4AF37]',
+  accentClass: 'text-brand-gold',
   fieldLabel: 'السكريبت',
   fieldPlaceholder: 'اكتب سكريبت التصوير والـ voiceover…',
   actionLabel: 'رفع الفيديو النهائي',
@@ -169,7 +169,7 @@ function MediaBadge({ mediaType }: { mediaType: string }) {
   const Icon = mediaType === 'صورة' ? ImageIcon : Video;
   return (
     <span className={`inline-flex items-center gap-1 ${TAG_BASE}`}>
-      <Icon className="h-3 w-3 text-[#D4AF37]" aria-hidden />
+      <Icon className="h-3 w-3 text-brand-gold" aria-hidden />
       {mediaType}
     </span>
   );
@@ -307,7 +307,7 @@ function EditContentModal({
       >
         <header className="flex items-center justify-between gap-3 border-b border-slate-100 px-5 py-4 dark:border-[#2D3F3A]">
           <div className="min-w-0">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#D4AF37]">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-brand-gold">
               Content Editor
             </p>
             <h2
@@ -333,7 +333,7 @@ function EditContentModal({
         >
           <div className="flex-1 space-y-5 overflow-y-auto px-5 py-5">
             <div>
-              <label className="mb-2 block text-sm font-semibold text-slate-500 dark:text-[#D4AF37]">
+              <label className="mb-2 block text-sm font-semibold text-slate-500 dark:text-brand-gold">
                 العنوان
               </label>
               <input
@@ -345,7 +345,7 @@ function EditContentModal({
             </div>
 
             <div>
-              <label className="mb-2 block text-sm font-semibold text-slate-500 dark:text-[#D4AF37]">
+              <label className="mb-2 block text-sm font-semibold text-slate-500 dark:text-brand-gold">
                 الوسوم
               </label>
               <div className="flex flex-wrap gap-2">
@@ -358,7 +358,7 @@ function EditContentModal({
                       onClick={() => setMediaType(type)}
                       className={`rounded-md px-2.5 py-1 text-xs font-medium transition-all active:scale-[0.98] ${
                         active
-                          ? 'bg-slate-900 text-white shadow-sm dark:bg-[#D4AF37]/20 dark:text-[#D4AF37]'
+                          ? 'bg-slate-900 text-white shadow-sm dark:bg-brand-gold/20 dark:text-brand-gold'
                           : TAG_BASE
                       }`}
                     >
@@ -378,7 +378,7 @@ function EditContentModal({
                         active
                           ? ready
                             ? TAG_READY + ' ring-2 ring-emerald-300/60 dark:ring-emerald-700/50'
-                            : 'bg-slate-900 text-white shadow-sm dark:bg-[#D4AF37]/20 dark:text-[#D4AF37]'
+                            : 'bg-slate-900 text-white shadow-sm dark:bg-brand-gold/20 dark:text-brand-gold'
                           : ready
                             ? TAG_READY + ' opacity-70'
                             : TAG_BASE
@@ -447,7 +447,7 @@ function EditContentModal({
             <button
               type="submit"
               disabled={saving}
-              className="inline-flex items-center gap-2 rounded-xl border border-transparent bg-slate-900 px-5 py-2 font-medium text-white shadow-sm transition-all hover:bg-slate-800 active:scale-[0.98] disabled:opacity-50 dark:border-[#D4AF37]/50 dark:bg-[#D4AF37]/20 dark:text-[#D4AF37] dark:hover:bg-[#D4AF37]/30"
+              className="inline-flex items-center gap-2 rounded-xl border border-transparent bg-slate-900 px-5 py-2 font-medium text-white shadow-sm transition-all hover:bg-slate-800 active:scale-[0.98] disabled:opacity-50 dark:border-brand-gold/50 dark:bg-brand-gold/20 dark:text-brand-gold dark:hover:bg-brand-gold/30"
             >
               {saving ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : null}
               حفظ واعتماد
@@ -676,7 +676,7 @@ function ProductionStudioCard({
           onClick={() =>
             void config.onAction({ item, fieldValue, setItem: syncItem, setBusy, fileInputRef })
           }
-          className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 dark:border dark:border-[#D4AF37]/50 dark:bg-[#D4AF37]/20 dark:text-[#D4AF37] dark:hover:bg-[#D4AF37]/30"
+          className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 dark:border dark:border-brand-gold/50 dark:bg-brand-gold/20 dark:text-brand-gold dark:hover:bg-brand-gold/30"
         >
           {busy ? (
             <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
@@ -702,7 +702,7 @@ function ProductionStudioCard({
             <span className="mb-2 block text-[10px] font-medium text-slate-400">
               أو ارفع الفيديو المُولَّد يدوياً
             </span>
-            <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-2 text-center text-[11px] font-medium text-slate-600 transition hover:border-[#D4AF37]/40 dark:border-[#2D3F3A] dark:bg-[#1A2421] dark:text-slate-400">
+            <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-2 text-center text-[11px] font-medium text-slate-600 transition hover:border-brand-gold/40 dark:border-[#2D3F3A] dark:bg-[#1A2421] dark:text-slate-400">
               اضغط لرفع فيديو AI
             </div>
             <input
@@ -778,7 +778,7 @@ export default function MarketingProductionStudio() {
 
       {loading ? (
         <div className="flex min-h-[280px] flex-col items-center justify-center gap-3 rounded-2xl border border-slate-200 bg-white p-10 shadow-sm dark:border-[#2D3F3A] dark:bg-[#22302C]">
-          <Loader2 className="h-8 w-8 animate-spin text-[#D4AF37]" aria-hidden />
+          <Loader2 className="h-8 w-8 animate-spin text-brand-gold" aria-hidden />
           <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
             جاري تحميل بطاقات الإنتاج…
           </p>

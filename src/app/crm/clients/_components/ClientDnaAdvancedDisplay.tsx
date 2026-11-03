@@ -42,7 +42,7 @@ export default function ClientDnaAdvancedDisplay({
       dir="rtl"
       className={`rounded-xl border border-slate-200 bg-slate-100 p-4 text-slate-900 dark:border-[#2D3F3A] dark:bg-[#22302C] dark:text-white ${className}`}
     >
-      <p className="mb-2 flex items-center gap-2 text-sm font-bold text-[#D4AF37]">
+      <p className="mb-2 flex items-center gap-2 text-sm font-bold text-brand-gold">
         <span className="inline-block select-none fill-none" aria-hidden>
           🧬
         </span>

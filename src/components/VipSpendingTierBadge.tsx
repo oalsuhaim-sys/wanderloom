@@ -46,7 +46,7 @@ export default function VipSpendingTierBadge({
   if (resolved === 'signature') {
     return (
       <span
-        className={`inline-flex items-center rounded-full border border-[#D4AF37]/35 bg-[#D4AF37]/10 px-3 py-1 text-xs font-semibold text-[#8a6f1a] dark:text-[#D4AF37] ${subtleClass} ${className}`}
+        className={`inline-flex items-center rounded-full border border-brand-gold/35 bg-brand-gold/10 px-3 py-1 text-xs font-semibold text-[#8a6f1a] dark:text-brand-gold ${subtleClass} ${className}`}
       >
         {label}
       </span>
@@ -56,7 +56,7 @@ export default function VipSpendingTierBadge({
   if (resolved === 'black') {
     return (
       <span
-        className={`inline-flex items-center rounded-full border border-slate-800/20 bg-slate-900 px-3 py-1 text-xs font-semibold text-[#D4AF37] ${subtleClass} ${className}`}
+        className={`inline-flex items-center rounded-full border border-slate-800/20 bg-slate-900 px-3 py-1 text-xs font-semibold text-brand-gold ${subtleClass} ${className}`}
       >
         {label}
       </span>
@@ -65,7 +65,7 @@ export default function VipSpendingTierBadge({
 
   return (
     <span
-      className={`inline-flex items-center rounded-full border border-[#D4AF37]/30 bg-[#D4AF37]/10 px-3 py-1 text-xs font-semibold text-[#8a6f1a] dark:border-[#D4AF37]/30 dark:bg-[#D4AF37]/10 dark:text-[#D4AF37] ${subtleClass} ${className}`}
+      className={`inline-flex items-center rounded-full border border-brand-gold/30 bg-brand-gold/10 px-3 py-1 text-xs font-semibold text-[#8a6f1a] dark:border-brand-gold/30 dark:bg-brand-gold/10 dark:text-brand-gold ${subtleClass} ${className}`}
     >
       {label}
     </span>
