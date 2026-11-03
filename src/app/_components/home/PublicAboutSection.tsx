@@ -32,7 +32,7 @@ export function PublicAboutSection() {
         <blockquote className="text-xl font-bold leading-[2] sm:text-2xl md:text-[30px] md:leading-[1.9]">{t.about.quote}</blockquote>
         <p className="inline-flex items-center gap-3.5 text-[#D9B238]" aria-hidden>
           <span className="inline-block h-px w-12 bg-[#D9B238]" />
-          <Wordmark className="text-lg sm:text-xl" />
+          <Wordmark className="text-xl sm:text-2xl" arClassName="text-2xl sm:text-[30px]" />
           <span className="inline-block h-px w-12 bg-[#D9B238]" />
         </p>
         <Link
