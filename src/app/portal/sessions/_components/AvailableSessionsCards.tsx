@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { CalendarClock, Loader2, MapPin, Tag, Ticket, Users, X } from 'lucide-react';
+import { formatSessionTimeLabel } from '@/lib/session-time';
 
 import { registerSessionAction } from '@/app/actions/registerSession';
 import { WHATSAPP_INCOMPLETE_ERROR } from '@/lib/phoneUtils';
@@ -199,6 +200,7 @@ export function AvailableSessionsCards({
                   <span className="inline-flex items-center gap-1 rounded-full border border-white/15 bg-white/5 px-2 py-1 text-[11px] text-white/85">
                     <CalendarClock className="h-3.5 w-3.5 text-[#C9A84C]" />
                     {formatSessionDate(String(s.date))}
+                    {formatSessionTimeLabel(s.time, 'ar') ? ` · ${formatSessionTimeLabel(s.time, 'ar')}` : ''}
                   </span>
                   <span className="inline-flex items-center gap-1 rounded-full border border-white/15 bg-white/5 px-2 py-1 text-[11px] text-white/85">
                     <Tag className="h-3.5 w-3.5 text-[#C9A84C]" />

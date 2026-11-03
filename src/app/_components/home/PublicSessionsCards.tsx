@@ -10,6 +10,7 @@ import { WhatsAppInput } from '@/components/WhatsAppInput';
 import { requireValidPhone, WHATSAPP_INCOMPLETE_ERROR } from '@/lib/phoneUtils';
 import { useLanguage } from '@/context/LanguageContext';
 import type { Session } from '@/types/session-tables';
+import { formatSessionTimeLabel } from '@/lib/session-time';
 
 import { requestScrollToTripForm } from './ScrollToLeadOnMount';
 
@@ -57,8 +58,8 @@ function resolveEventCopy(
     (e) => e.matchTitle === raw || normalizeSessionTitle(e.matchTitle) === normalized,
   );
   return {
-    title: entry?.title ?? raw,
-    description: entry?.desc ?? desc,
+    title: session.title_en?.trim() || entry?.title || raw,
+    description: session.description_en?.trim() || entry?.desc || desc,
   };
 }
 
@@ -278,6 +279,9 @@ export function PublicSessionsCards({
                   <span className="inline-flex items-center gap-1.5">
                     <CalendarClock className="h-3.5 w-3.5" aria-hidden />
                     {formatSessionDate(String(session.date), locale)}
+                    {formatSessionTimeLabel(session.time, locale === 'en' ? 'en' : 'ar')
+                      ? ` · ${formatSessionTimeLabel(session.time, locale === 'en' ? 'en' : 'ar')}`
+                      : ''}
                   </span>
                   <span className="inline-flex items-center gap-1.5">
                     <Ticket className="h-3.5 w-3.5" aria-hidden />

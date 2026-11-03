@@ -7,6 +7,7 @@ import {
   persistAffiliateRef,
   readPersistedAffiliateRef,
 } from '@/lib/referral-url';
+import { useLanguage } from '@/context/LanguageContext';
 
 type ReferralCodeFieldProps = {
   value: string;
@@ -31,6 +32,7 @@ export function ReferralCodeField({
   labelClassName = 'block text-xs font-bold text-slate-700',
   labelStyle,
 }: ReferralCodeFieldProps) {
+  const ui = useLanguage().t.ui;
   const prefilledRef = useRef(false);
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
@@ -61,16 +63,16 @@ export function ReferralCodeField({
   }, [autoPrefill, value]);
 
   return (
-    <div className={`space-y-1 text-right ${className}`}>
+    <div className={`space-y-1 text-start ${className}`}>
       <label className={labelClassName} style={labelStyle}>
-        كود الإحالة{' '}
-        <span className="font-normal text-slate-500">(اختياري)</span>
+        {ui.referralCode}{' '}
+        <span className="font-normal text-slate-500">{ui.optional}</span>
       </label>
       <div className="relative flex items-center">
         <input
           type="text"
           name={name}
-          placeholder="مثال: LEADER-12345 أو EXPERT-98765"
+          placeholder={ui.referralPh}
           value={value}
           onChange={(e) => {
             const next = e.target.value.toUpperCase();

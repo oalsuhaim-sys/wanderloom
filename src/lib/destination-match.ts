@@ -80,3 +80,40 @@ export function cityMatches(city: { id: string; labelAr: string }, countryId: Tr
   const b = norm(def.labelAr);
   return a === b || a.includes(b) || b.includes(a);
 }
+
+/**
+ * English names for places-bank city labels (bank labels are Arabic free text).
+ * Used only on English pages so they never show Arabic place names.
+ */
+const PLACE_EN: Record<string, string> = {
+  طوكيو: 'Tokyo', 'كيوتو/أوساكا': 'Kyoto / Osaka', كيوتو: 'Kyoto', أوساكا: 'Osaka', هوكايدو: 'Hokkaido',
+  سيول: 'Seoul', بوسان: 'Busan', جيجو: 'Jeju', 'جزيرة جيجو': 'Jeju Island', غانغوون: 'Gangwon', تشونغتشونغ: 'Chungcheong',
+  شنغهاي: 'Shanghai', غوانزو: 'Guangzhou', كوانزو: 'Guangzhou', بكين: 'Beijing', بالي: 'Bali', جاكرتا: 'Jakarta',
+  لندن: 'London', اسكتلندا: 'Scotland', إدنبرة: 'Edinburgh', باريس: 'Paris', آنسي: 'Annecy', ستراسبورغ: 'Strasbourg', نيس: 'Nice',
+  روما: 'Rome', فلورنسا: 'Florence', ميلانو: 'Milan', فينيسيا: 'Venice', 'شمال إيطاليا': 'Northern Italy',
+  إنترلاكن: 'Interlaken', زيرمات: 'Zermatt', زيورخ: 'Zurich', جنيف: 'Geneva', لوسيرن: 'Lucerne',
+  مدريد: 'Madrid', برشلونة: 'Barcelona', غرناطة: 'Granada', مالقا: 'Málaga', 'ملقا / الأندلس': 'Málaga / Andalusia', بالما: 'Palma',
+  لشبونة: 'Lisbon', بورتو: 'Porto', ميونخ: 'Munich', فرانكفورت: 'Frankfurt', برلين: 'Berlin', دوسلدورف: 'Düsseldorf',
+  شتوتغارت: 'Stuttgart', كولن: 'Cologne', فوسن: 'Füssen', فيينا: 'Vienna', سالزبورغ: 'Salzburg', هالشتات: 'Hallstatt',
+  أمستردام: 'Amsterdam', روتردام: 'Rotterdam', بروكسل: 'Brussels', بروج: 'Bruges', براغ: 'Prague', بودابست: 'Budapest',
+  كراكوف: 'Kraków', وارسو: 'Warsaw', ستوكهولم: 'Stockholm', موسكو: 'Moscow', 'سانت بطرسبرغ': 'Saint Petersburg',
+  'كيب تاون': 'Cape Town', جوهانسبرغ: 'Johannesburg', تورونتو: 'Toronto', فانكوفر: 'Vancouver', مونتريال: 'Montréal',
+  أوتاوا: 'Ottawa', بانف: 'Banff', فيكتوريا: 'Victoria', كيبك: 'Québec', نياغارا: 'Niagara', ويسلر: 'Whistler',
+  نيويورك: 'New York', 'لوس أنجلوس': 'Los Angeles', ميامي: 'Miami',
+};
+const PLACE_EN_NORM = new Map(Object.entries(PLACE_EN).map(([k, v]) => [norm(k), v]));
+
+/** English name for an Arabic place label (city, or a country used as a city), or undefined. */
+export function englishPlaceName(label: string | null | undefined, enCountries?: Record<string, string>): string | undefined {
+  if (!label) return undefined;
+  const hit = PLACE_EN_NORM.get(norm(label));
+  if (hit) return hit;
+  const country = canonicalTripCountryId(label);
+  return country && enCountries ? enCountries[country] : undefined;
+}
+
+/** Canonical TRIP_DESTINATIONS city id for a bank city entry, if one matches. */
+export function canonicalCityId(countryId: TripCountryId, city: { id: string; labelAr: string }): string | undefined {
+  const def = TRIP_DESTINATIONS.find((c) => c.id === countryId);
+  return def?.cities.find((c) => cityMatches(city, countryId, c.id))?.id;
+}

@@ -1,5 +1,9 @@
 import { TRIP_DESTINATIONS, type TripCountryId } from '@/lib/trip-destination-data';
 
+import { COUNTRIES_EN } from './destination-advisor-data-en';
+
+export type AdvisorLocale = 'ar' | 'en';
+
 export type SeasonKey = 'winter' | 'spring' | 'summer' | 'autumn';
 
 export type SeasonStatus = 'recommended' | 'not_recommended';
@@ -43,6 +47,18 @@ const NORTH_MONTHS: Record<SeasonKey, string[]> = {
   autumn: ['سبتمبر', 'أكتوبر', 'نوفمبر'],
 };
 
+const SEASON_NAME_EN: Record<SeasonKey, string> = {
+  winter: 'Winter',
+  spring: 'Spring',
+  summer: 'Summer',
+  autumn: 'Autumn',
+};
+
+const MONTHS_EN: Record<string, string> = {
+  يناير: 'Jan', فبراير: 'Feb', مارس: 'Mar', أبريل: 'Apr', مايو: 'May', يونيو: 'Jun',
+  يوليو: 'Jul', أغسطس: 'Aug', سبتمبر: 'Sep', أكتوبر: 'Oct', نوفمبر: 'Nov', ديسمبر: 'Dec',
+};
+
 /** Southern hemisphere — seasons are reversed. */
 const SOUTH_MONTHS: Record<SeasonKey, string[]> = {
   summer: ['ديسمبر', 'يناير', 'فبراير'],
@@ -65,15 +81,17 @@ type CountrySpec = {
 
 const temp = (lo: number, hi: number) => `${lo}°C – ${hi}°C`;
 
-function build(spec: CountrySpec): CountryAdvisorData {
+function build(id: TripCountryId, spec: CountrySpec, locale: AdvisorLocale): CountryAdvisorData {
   const months = spec.south ? SOUTH_MONTHS : NORTH_MONTHS;
-  const images = spec.images.map((id) => unsplash(id));
+  const images = spec.images.map((photo) => unsplash(photo));
+  const en = locale === 'en' ? COUNTRIES_EN[id] : undefined;
   const seasons = {} as Record<SeasonKey, SeasonAdvisorData>;
   for (const key of SEASON_KEYS) {
-    const [lo, hi, ok, advice, event, acts] = spec.seasons[key];
+    const [lo, hi, ok, arAdvice, arEvent, arActs] = spec.seasons[key];
+    const [advice, event, acts] = en ? en.seasons[key] : [arAdvice, arEvent, arActs];
     seasons[key] = {
-      name: SEASON_NAME[key],
-      months: months[key],
+      name: en ? SEASON_NAME_EN[key] : SEASON_NAME[key],
+      months: en ? months[key].map((m) => MONTHS_EN[m] ?? m) : months[key],
       avgTemp: temp(lo, hi),
       status: ok ? 'recommended' : 'not_recommended',
       advice,
@@ -82,7 +100,7 @@ function build(spec: CountrySpec): CountryAdvisorData {
       images,
     };
   }
-  return { name: spec.name, refCity: spec.refCity, seasons };
+  return { name: en?.name ?? spec.name, refCity: en?.refCity ?? spec.refCity, seasons };
 }
 
 const COUNTRIES: Partial<Record<TripCountryId, CountrySpec>> = {
@@ -595,16 +613,29 @@ const COUNTRIES: Partial<Record<TripCountryId, CountrySpec>> = {
   },
 };
 
-const BUILT = new Map<TripCountryId, CountryAdvisorData>();
+const BUILT = new Map<string, CountryAdvisorData>();
 
 /** Neutral fallback for a destination without curated data yet — no invented specifics. */
-function buildGeneric(name: string): CountryAdvisorData {
+function buildGeneric(name: string, locale: AdvisorLocale = 'ar'): CountryAdvisorData {
   const images = [
     unsplash('photo-1469854523086-cc02fe5d8800'),
     unsplash('photo-1488646953014-85cb44e25828'),
   ];
   const seasons = {} as Record<SeasonKey, SeasonAdvisorData>;
   for (const key of SEASON_KEYS) {
+    if (locale === 'en') {
+      seasons[key] = {
+        name: SEASON_NAME_EN[key],
+        months: NORTH_MONTHS[key].map((m) => MONTHS_EN[m] ?? m),
+        avgTemp: '—',
+        status: 'recommended',
+        advice: `We prepare an accurate read of ${name}'s weather in ${SEASON_NAME_EN[key].toLowerCase()} when we design your trip, based on the cities you choose.`,
+        hiddenEvents: `We suggest ${SEASON_NAME_EN[key].toLowerCase()} events in ${name} once your cities and dates are set.`,
+        activities: [`${name}'s highlights`, 'Local experiences chosen for your taste'],
+        images,
+      };
+      continue;
+    }
     seasons[key] = {
       name: SEASON_NAME[key],
       months: NORTH_MONTHS[key],
@@ -622,19 +653,21 @@ function buildGeneric(name: string): CountryAdvisorData {
 export function getCountryAdvisorData(
   countryId: string,
   displayName?: string,
+  locale: AdvisorLocale = 'ar',
 ): CountryAdvisorData {
   const id = countryId as TripCountryId;
   const spec = COUNTRIES[id];
   if (spec) {
-    let built = BUILT.get(id);
+    const cacheKey = `${locale}:${id}`;
+    let built = BUILT.get(cacheKey);
     if (!built) {
-      built = build(spec);
-      BUILT.set(id, built);
+      built = build(id, spec, locale);
+      BUILT.set(cacheKey, built);
     }
     return built;
   }
   const meta = TRIP_DESTINATIONS.find((c) => c.id === countryId);
-  return buildGeneric(displayName?.trim() || meta?.labelAr || countryId);
+  return buildGeneric(displayName?.trim() || meta?.labelAr || countryId, locale);
 }
 
 export const ADVISOR_COUNTRY_IDS = TRIP_DESTINATIONS.map((c) => c.id) as TripCountryId[];

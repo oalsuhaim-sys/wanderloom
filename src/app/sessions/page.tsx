@@ -1,17 +1,16 @@
 export const dynamic = 'force-dynamic';
 
-import Link from 'next/link';
-
 import { PublicNavbar } from '@/app/_components/home/PublicNavbar';
 import { PublicSessionsIntro } from '@/app/_components/home/PublicSessionsIntro';
 import { LogoWatermarkLayer } from '@/app/_components/home/LogoWatermarkLayer';
-import { WANDERLOOM_CONTACT_EMAIL } from '@/lib/contact-email';
 import { PublicSessionsCards } from '@/app/_components/home/PublicSessionsCards';
 import { fetchPublicSessions } from '@/lib/fetch-public-sessions';
 
+import { SessionsFooter } from './SessionsFooter';
+
 export const metadata = {
-  title: 'الجلسات',
-  description: 'جلسات Wanderloom المتاحة للتسجيل.',
+  title: 'الجلسات | Sessions',
+  description: 'جلسات واندرلوم المتاحة للتسجيل · Wanderloom sessions open for registration.',
 };
 
 export default async function PublicSessionsPage() {
@@ -32,17 +31,7 @@ export default async function PublicSessionsPage() {
         </div>
       </main>
       <footer className="border-t border-[#1e3f20]/10 bg-[#f4efe6] py-10 text-center">
-        <div className="flex flex-col items-center gap-3">
-          <a
-            href={`mailto:${WANDERLOOM_CONTACT_EMAIL}?subject=${encodeURIComponent('استفسار — Wanderloom')}`}
-            className="text-[11px] font-bold text-[#9a7b45] underline decoration-[#cda04c]/40 underline-offset-4 hover:text-[#cda04c]"
-          >
-            {WANDERLOOM_CONTACT_EMAIL}
-          </a>
-          <Link href="/#lead" className="text-xs font-black text-[#cda04c]/80 hover:text-[#cda04c]">
-            نموذج سجّل رحلتك ←
-          </Link>
-        </div>
+        <SessionsFooter />
       </footer>
     </div>
   );

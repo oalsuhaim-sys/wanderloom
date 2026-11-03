@@ -205,6 +205,19 @@ export const UPDATE_CONSULTATION_TOOL = {
 
 export const CONCIERGE_WELCOME_AR = CONCIERGE_IDENTIFICATION_AR;
 
+export const CONCIERGE_IDENTIFICATION_EN =
+  'Welcome to Wanderloom. Before we begin, may we have your name and WhatsApp number so we can stay in touch?';
+export const CONCIERGE_WELCOME_EN = CONCIERGE_IDENTIFICATION_EN;
+export const CONCIERGE_CLOSING_CTA_EN =
+  'What we’ve discussed is only the start. Our team designs your full itinerary around your taste, day by day. Confirm your contact request or book a private design session, and we’ll be in touch soon.';
+
+/** Extra system instruction so the concierge answers in the page language. */
+export function conciergeLanguageInstruction(locale: 'ar' | 'en'): string {
+  return locale === 'en'
+    ? 'LANGUAGE: The client is on the English site. Reply ONLY in natural, polished English (including any expert notes heading — use «Notes for the expert»). Use «Wanderloom» for the brand name. Never reply in Arabic.'
+    : 'LANGUAGE: Reply in natural Arabic. Write the brand name as «واندرلوم».';
+}
+
 export function trimText(value: unknown, max = 500): string {
   return String(value ?? '')
     .trim()

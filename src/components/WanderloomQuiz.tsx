@@ -191,7 +191,7 @@ export default function WanderloomQuiz() {
                   className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[#1C2E3A]/10 bg-white/90 px-3 py-1.5 text-xs font-medium text-[#1C2E3A] shadow-sm transition hover:border-[#9C7A3C] hover:text-[#9C7A3C]"
                 >
                   <ChevronRight className="h-4 w-4" aria-hidden />
-                  رجوع
+                  {t.ui.back}
                 </button>
               ) : (
                 <span className="w-[72px] shrink-0" aria-hidden />

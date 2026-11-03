@@ -2,6 +2,11 @@ export interface Session {
   id?: string;
   title: string;
   date: string;
+  /** وقت الجلسة HH:mm (عمود `time` في Supabase). */
+  time?: string | null;
+  /** English title / description for the English site (optional). */
+  title_en?: string | null;
+  description_en?: string | null;
   session_type: string;
   price: number;
   spots: number;
