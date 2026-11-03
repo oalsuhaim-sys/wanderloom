@@ -14,5 +14,7 @@ does, stop and ask first. Full rules (protected files, palette, copy rules, depl
 
 - Fix logic/data inside protected components but keep their JSX structure and `className`s.
 - Approved slogan, verbatim: «واندرلوم: تفصيل لا تنظيم».
-- Never deploy with `vercel --prod` from a laptop: branch → PR → Vercel preview → owner approves → merge.
+- Start every task with `git pull origin main`.
+- Never run `vercel` / `vercel --prod` from a laptop: branch → PR → Vercel preview → owner approves → merge.
+- `npm run build` runs `scripts/check-design-lock.mjs` first; if it fails, the approved design was changed — do not bypass or edit the check.
 <!-- END:design-lock -->
