@@ -81,7 +81,7 @@ export const TAILOR_COPY = {
     summaryRate: 'سعر اليوم',
     summaryTotal: 'الإجمالي',
     summaryFree: 'اليوم الأول عليك',
-    summaryTier: 'من 12 يوماً فأكثر يصبح اليوم بـ 100 ريال',
+    summaryTier: 'من اليوم الثاني عشر، كل يوم بـ 100 ريال',
     expertLink: 'تفضّل خبيرة تفصّل رحلتك معك؟',
     errors: {
       rate_limited: 'وصلت للحد اليومي من الخطط لهذا الرقم. جرّب غداً أو تواصل معنا.',
@@ -170,7 +170,7 @@ export const TAILOR_COPY = {
     summaryRate: 'Per day',
     summaryTotal: 'Total',
     summaryFree: 'Day 1 is on us',
-    summaryTier: 'From 12 days, each day is SAR 100',
+    summaryTier: 'From day 12, each extra day is SAR 100',
     expertLink: 'Prefer an expert to tailor it with you?',
     errors: {
       rate_limited: 'You’ve reached today’s limit for this number. Try again tomorrow or contact us.',
@@ -205,7 +205,8 @@ export const PLAN_COPY = {
     lockedTitle: 'تُفتح بعد السداد',
     lockedHint: 'محطات هذا اليوم جاهزة للتفصيل حالما يُؤكد التحويل.',
     payTitle: 'افتح باقي أيامك',
-    payBody: (days: number, rate: string) => `خطتك ${days} أيام، اليوم بـ ${rate}. حوّل المبلغ وارفع الإيصال، ونفتح لك باقي الأيام هنا على نفس الرابط.`,
+    payBody: (days: string, long: boolean) =>
+      `خطتك ${days}: ${long ? 'أول 11 يوماً بـ 120 ريال لليوم، وكل يوم بعدها بـ 100 ريال' : 'اليوم بـ 120 ريال'}. حوّل المبلغ وارفع الإيصال، ونفتح لك باقي الأيام هنا على نفس الرابط.`,
     total: 'الإجمالي',
     bank: 'البنك',
     accountName: 'اسم المستفيد',
@@ -242,7 +243,8 @@ export const PLAN_COPY = {
     lockedTitle: 'Opens after payment',
     lockedHint: 'This day is tailored as soon as your transfer is confirmed.',
     payTitle: 'Unlock the rest of your days',
-    payBody: (days: number, rate: string) => `Your plan is ${days} days at ${rate} per day. Transfer the total and upload the receipt, and we’ll open the rest of your days right here at this link.`,
+    payBody: (days: string, long: boolean) =>
+      `Your plan is ${days}: ${long ? 'SAR 120 for each of the first 11 days, then SAR 100 for each day after' : 'SAR 120 per day'}. Transfer the total and upload the receipt, and we’ll open the rest of your days right here at this link.`,
     total: 'Total',
     bank: 'Bank',
     accountName: 'Beneficiary',

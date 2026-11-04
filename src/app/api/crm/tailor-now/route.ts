@@ -11,7 +11,7 @@ export const dynamic = 'force-dynamic';
 export async function GET(request: NextRequest) {
   const auth = await getAuthenticatedCrmUser(request);
   if (!auth.user) return NextResponse.json({ ok: false, error: 'unauthorized' }, { status: 401 });
-  if (!hasCrmPermission(auth.access, 'can_access_payments')) {
+  if (!hasCrmPermission(auth.access, 'can_access_itineraries')) {
     return NextResponse.json({ ok: false, error: 'forbidden' }, { status: 403 });
   }
 

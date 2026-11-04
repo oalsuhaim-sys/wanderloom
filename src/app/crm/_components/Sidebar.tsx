@@ -70,6 +70,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { href: '/crm/quotations', label: 'عروض الأسعار', icon: FileText },
       { href: '/crm/itineraries', label: 'المسارات', icon: Route },
+      { href: '/crm/tailor-now', label: 'مسارات AI', icon: Sparkles },
       { href: '/crm/groups', label: 'القروبات السياحية', icon: Users },
       { href: '/crm/groups/pricing', label: 'حاسبة تسعير القروب', icon: Calculator },
       { href: '/crm/sessions', label: 'الجلسات', icon: CalendarClock },
@@ -112,7 +113,6 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { href: '/crm/analytics', label: 'الإحصائيات', icon: BarChart3 },
       { href: '/crm/finance', label: 'الذكاء المالي', icon: PiggyBank },
-      { href: '/crm/tailor-now', label: 'فصّل الآن', icon: Sparkles },
       { href: '/crm/reports', label: 'التقارير', icon: BarChart3 },
       { href: '/crm/accounts', label: 'إدارة الحسابات', icon: ShieldCheck, adminOnly: true },
       { href: '/crm/settings', label: 'إعدادات الوكالة', icon: Settings, adminOnly: true },

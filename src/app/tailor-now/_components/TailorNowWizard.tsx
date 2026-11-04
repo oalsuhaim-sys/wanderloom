@@ -16,6 +16,7 @@ import {
   tailorTotalPrice,
   TAILOR_FOOD,
   TAILOR_INTERESTS,
+  TAILOR_LONG_TRIP_DAYS,
   TAILOR_MAX_DAYS,
   TAILOR_MIN_DAYS,
   type TailorAnswers,
@@ -117,7 +118,7 @@ export function TailorNowWizard() {
   const season = searchParams.get('season');
   const country = destinations?.find((d) => d.id === countryId) ?? null;
   const daysTotal = tailorDaysTotal(segments);
-  const rate = tailorRatePerDay(Math.max(daysTotal, TAILOR_MIN_DAYS));
+  const rate = tailorRatePerDay();
   const total = tailorTotalPrice(daysTotal);
   const countryName = country ? tailorCountryName(country.id, country.label, countries, lang) : '';
   const cityName = (label: string) => (country ? tailorCityName(label, country, countries, lang, c.variousCities) : label);
@@ -543,7 +544,7 @@ export function TailorNowWizard() {
             </div>
           </dl>
           <p className="mt-4 rounded-xl bg-[#D9B238]/15 px-3 py-2 text-center text-sm font-black text-[#E9CB6A]">{c.summaryFree}</p>
-          <p className="mt-3 text-[11px] font-bold leading-relaxed text-[#C9D1D6]">{c.summaryTier}</p>
+          <p className={`mt-3 text-[11px] font-bold leading-relaxed ${daysTotal >= TAILOR_LONG_TRIP_DAYS ? 'text-[#E9CB6A]' : 'text-[#C9D1D6]'}`}>{c.summaryTier}</p>
           <Link href={expertHref} className="mt-5 block text-center text-xs font-black text-[#E9CB6A] underline decoration-[#E9CB6A]/40 underline-offset-4 hover:text-[#F4EFE6]">
             {c.expertLink}
           </Link>

@@ -11,10 +11,11 @@ export type TailorLocale = 'ar' | 'en';
 export const TAILOR_MIN_DAYS = 3;
 export const TAILOR_MAX_DAYS = 30;
 export const TAILOR_MAX_CITIES = 6;
-/** Per-day price (SAR): trips under TAILOR_LONG_TRIP_DAYS days. */
+/** Price (SAR) for each of the first TAILOR_LONG_TRIP_DAYS - 1 days. */
 export const TAILOR_RATE_SHORT = 120;
-/** Per-day price (SAR): trips of TAILOR_LONG_TRIP_DAYS days or more. */
+/** Price (SAR) for every day from day TAILOR_LONG_TRIP_DAYS onward. */
 export const TAILOR_RATE_LONG = 100;
+/** Day number from which the lower rate applies (so a longer trip never costs less than a shorter one). */
 export const TAILOR_LONG_TRIP_DAYS = 12;
 export const TAILOR_CURRENCY = 'SAR';
 /** A city needs at least this many active places in the bank to be offered. */
@@ -107,12 +108,16 @@ export type TailorDestination = {
   cities: TailorDestinationCity[];
 };
 
-export function tailorRatePerDay(daysTotal: number): number {
-  return daysTotal >= TAILOR_LONG_TRIP_DAYS ? TAILOR_RATE_LONG : TAILOR_RATE_SHORT;
+/** Base daily rate shown to visitors (days 1–11). */
+export function tailorRatePerDay(): number {
+  return TAILOR_RATE_SHORT;
 }
 
+/** Days 1–11 at 120, day 12 onward at 100 — e.g. 11 days = 1,320 · 12 days = 1,420 · 20 days = 2,220. */
 export function tailorTotalPrice(daysTotal: number): number {
-  return Math.max(0, Math.trunc(daysTotal)) * tailorRatePerDay(daysTotal);
+  const days = Math.max(0, Math.trunc(daysTotal));
+  const full = Math.min(days, TAILOR_LONG_TRIP_DAYS - 1);
+  return full * TAILOR_RATE_SHORT + (days - full) * TAILOR_RATE_LONG;
 }
 
 export function tailorDaysTotal(segments: TailorSegment[]): number {

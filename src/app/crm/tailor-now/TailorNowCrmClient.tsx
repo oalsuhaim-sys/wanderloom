@@ -102,7 +102,11 @@ export default function TailorNowCrmClient() {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
       });
-      const json = (await res.json()) as { ok?: boolean };
+      const json = (await res.json()) as { ok?: boolean; error?: string };
+      if (json.error === 'forbidden') {
+        setError('تأكيد التحويل يحتاج صلاحية «المدفوعات والمالية».');
+        return;
+      }
       if (!json.ok) throw new Error('confirm_failed');
       setPlans((list) => list.map((p) => (p.id === plan.id ? { ...p, status: 'paid', paidAt: new Date().toISOString() } : p)));
       await buildDays(plan);
@@ -153,10 +157,10 @@ export default function TailorNowCrmClient() {
     <div dir="rtl" className="mx-auto w-full max-w-[min(100%,88rem)] space-y-6 px-4 pb-10 sm:px-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-400 dark:text-[#D4AF37]/80">Tailor Now</p>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">فصّل الآن</h1>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-400 dark:text-[#D4AF37]/80">AI Itineraries · فصّل الآن</p>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">مسارات AI</h1>
           <p className="mt-1 max-w-2xl text-sm leading-relaxed text-slate-500 dark:text-slate-400">
-            خطط يوماً بيوم: العميل يشوف اليوم الأول، وبعد تأكيد التحويل هنا تُفصَّل باقي الأيام تلقائياً على نفس رابطه.
+            كل خطط «فصّل الآن» محفوظة هنا: العميل يشوف اليوم الأول، وبعد تأكيد التحويل تُفصَّل باقي الأيام تلقائياً على نفس رابطه.
           </p>
         </div>
         <button

@@ -262,7 +262,7 @@ export async function createTailorPlan(
   if (total >= dailyLimit) throw new TailorError('busy', 503);
 
   const token = randomBytes(18).toString('base64url');
-  const rate = tailorRatePerDay(daysTotal);
+  const rate = tailorRatePerDay();
   const totalPrice = tailorTotalPrice(daysTotal);
   const db = admin();
 

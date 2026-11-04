@@ -48,7 +48,7 @@ const COPY = {
     expertCta: 'سجّل رحلتك',
     tailorTitle: 'فصّل الآن',
     tailorBody: 'خطتك يوماً بيوم خلال دقائق، من أماكن اخترناها بعناية. اليوم الأول عليك.',
-    tailorPrice: 'تبدأ من 100 ريال لليوم',
+    tailorPrice: '120 ريال لليوم',
     tailorCta: 'ابدأ الآن',
   },
   en: {
@@ -79,7 +79,7 @@ const COPY = {
     expertCta: 'Log your trip',
     tailorTitle: 'Tailor Now',
     tailorBody: 'Your day-by-day plan in minutes, from places we’ve carefully chosen. Day 1 is on us.',
-    tailorPrice: 'From SAR 100 per day',
+    tailorPrice: 'SAR 120 per day',
     tailorCta: 'Start now',
   },
 };

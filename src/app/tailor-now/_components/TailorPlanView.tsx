@@ -7,7 +7,7 @@ import { Check, Copy, Loader2, Lock, MapPin, MessageCircle, Printer, Upload } fr
 import { useLanguage } from '@/context/LanguageContext';
 import { WANDERLOOM_BANK_DETAILS } from '@/lib/bank-checkout';
 import { supabase } from '@/lib/supabase';
-import { formatSar, type PublicTailorPlan, type TailorDay, type TailorDaySlot } from '@/lib/tailor-now';
+import { formatSar, TAILOR_LONG_TRIP_DAYS, type PublicTailorPlan, type TailorDay, type TailorDaySlot } from '@/lib/tailor-now';
 
 import { BANK_EN, PLAN_COPY, TAILOR_COPY, WANDERLOOM_WA_NUMBER } from './copy';
 import { tailorCityName, tailorCountryName } from './labels';
@@ -264,7 +264,7 @@ export function TailorPlanView({ token }: { token: string }) {
             <span aria-hidden className="absolute inset-x-0 top-0 h-1 bg-[#D9B238]" />
             <h2 className="text-2xl font-black">{p.payTitle}</h2>
             <p className="mt-3 text-[15px] font-semibold leading-[1.9] text-[#C9D1D6]">
-              {p.payBody(plan.daysTotal, formatSar(plan.pricePerDay, lang))}
+              {p.payBody(w.daysUnit(plan.daysTotal), plan.daysTotal >= TAILOR_LONG_TRIP_DAYS)}
             </p>
             <div className="mt-5 flex items-baseline justify-between gap-3 rounded-2xl bg-white/5 px-4 py-3">
               <span className="text-sm font-black text-[#C9D1D6]">{p.total}</span>
