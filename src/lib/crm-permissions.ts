@@ -406,6 +406,7 @@ const CRM_ROUTE_RULES: { prefix: string; permission: CrmRouteGuardKey }[] = [
   { prefix: '/crm/marketing', permission: 'can_access_marketing' },
   { prefix: '/crm/analytics', permission: 'can_access_payments' },
   { prefix: '/crm/finance', permission: 'can_access_payments' },
+  { prefix: '/crm/tailor-now', permission: 'can_access_payments' },
   { prefix: '/crm/reports', permission: 'can_access_payments' },
   { prefix: '/crm/partners-radar', permission: 'can_access_partners' },
   { prefix: '/crm/partners-directory', permission: 'can_access_partners' },

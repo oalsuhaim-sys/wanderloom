@@ -112,6 +112,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { href: '/crm/analytics', label: 'الإحصائيات', icon: BarChart3 },
       { href: '/crm/finance', label: 'الذكاء المالي', icon: PiggyBank },
+      { href: '/crm/tailor-now', label: 'فصّل الآن', icon: Sparkles },
       { href: '/crm/reports', label: 'التقارير', icon: BarChart3 },
       { href: '/crm/accounts', label: 'إدارة الحسابات', icon: ShieldCheck, adminOnly: true },
       { href: '/crm/settings', label: 'إعدادات الوكالة', icon: Settings, adminOnly: true },
