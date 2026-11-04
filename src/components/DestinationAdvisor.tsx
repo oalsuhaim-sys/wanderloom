@@ -194,6 +194,8 @@ export default function DestinationAdvisor() {
   const [countryId, setCountryId] = useState<string | null>(null);
   const [seasonKey, setSeasonKey] = useState<SeasonKey | null>(null);
   const [showPaths, setShowPaths] = useState(false);
+  // «فصّل الآن» is offered only when it's live; otherwise the CTA goes to the expert form as before.
+  const [tailorEnabled, setTailorEnabled] = useState<boolean | null>(null);
 
   // Places-bank ids can be free text («كوريا»); key everything by the canonical id when we know it,
   // but keep the bank id for booking so the registration form recognises the country.
@@ -241,6 +243,12 @@ export default function DestinationAdvisor() {
 
   const selectSeason = (key: SeasonKey) => {
     setShowPaths(false);
+    if (tailorEnabled === null) {
+      fetch('/api/tailor-now/destinations')
+        .then((r) => r.json())
+        .then((j: { enabled?: boolean }) => setTailorEnabled(j.enabled === true))
+        .catch(() => setTailorEnabled(false));
+    }
     setSeasonKey(key);
     setStep(3);
   };
@@ -455,13 +463,20 @@ export default function DestinationAdvisor() {
               <button
                 type="button"
                 aria-expanded={showPaths}
-                onClick={() => setShowPaths((v) => !v)}
+                onClick={() => {
+                  if (tailorEnabled) {
+                    setShowPaths((v) => !v);
+                    return;
+                  }
+                  if (bookingId && requestTripDestination(bookingId)) return;
+                  window.location.href = bookingId ? `/?dest=${encodeURIComponent(bookingId)}#lead` : '/#lead';
+                }}
                 className="wl-gold-cta inline-flex min-h-[56px] items-center justify-center rounded-full px-6 text-base font-black"
               >
                 {c.cta(countryLabel)}
               </button>
 
-              {showPaths ? (
+              {showPaths && tailorEnabled ? (
                 <div className="rounded-[24px] border border-[#9C7A3C]/28 bg-white p-4 shadow-[0_24px_50px_-36px_rgba(28,46,58,0.6)] sm:p-5">
                   <p className="mb-3 text-sm font-black text-[#1C2E3A]">{c.pathsTitle}</p>
                   <div className="grid gap-3 sm:grid-cols-2">

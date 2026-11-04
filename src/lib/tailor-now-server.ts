@@ -120,6 +120,27 @@ type PlaceRow = {
   is_active: boolean | null;
 };
 
+let enabledCache: { at: number; value: boolean } | null = null;
+
+/**
+ * Feature switch: «فصّل الآن» is offered only when its table exists and Claude is configured
+ * (and TAILOR_NOW_ENABLED isn't "false"). Until then the site behaves exactly as before.
+ */
+export async function isTailorEnabled(): Promise<boolean> {
+  if ((process.env.TAILOR_NOW_ENABLED ?? '').trim().toLowerCase() === 'false') return false;
+  if (!(process.env.ANTHROPIC_API_KEY ?? '').trim()) return false;
+  if (enabledCache && Date.now() - enabledCache.at < (enabledCache.value ? 5 * 60_000 : 60_000)) return enabledCache.value;
+  let value = false;
+  try {
+    const { error } = await admin().from(TAILOR_TABLE).select('id', { count: 'exact', head: true }).limit(1);
+    value = !error;
+  } catch {
+    value = false;
+  }
+  enabledCache = { at: Date.now(), value };
+  return value;
+}
+
 let destinationsCache: { at: number; data: TailorDestination[] } | null = null;
 
 /** Countries + cities that have enough places in the bank to build days from. */
@@ -231,6 +252,7 @@ export async function createTailorPlan(
   input: CreateTailorInput,
   meta: { ipHash: string | null; origin: string },
 ): Promise<{ token: string }> {
+  if (!(await isTailorEnabled())) throw new TailorError('unavailable', 503);
   const destinations = await getTailorDestinations();
   const dest = destinations.find((d) => d.id === input.countryId) ??
     destinations.find((d) => d.id === canonicalTripCountryId(input.countryId));
