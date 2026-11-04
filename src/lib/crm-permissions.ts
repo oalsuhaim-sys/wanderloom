@@ -421,6 +421,7 @@ const CRM_ROUTE_RULES: { prefix: string; permission: CrmRouteGuardKey }[] = [
   { prefix: '/crm/pipeline', permission: 'can_access_itineraries' },
   { prefix: '/crm/quotations', permission: 'can_access_itineraries' },
   { prefix: '/crm/itineraries', permission: 'can_access_itineraries' },
+  { prefix: '/crm/tailor-now', permission: 'can_access_itineraries' },
   { prefix: '/crm/groups', permission: 'can_access_itineraries' },
   { prefix: '/crm/sessions', permission: 'can_access_itineraries' },
   { prefix: '/crm/hotels', permission: 'can_access_itineraries' },

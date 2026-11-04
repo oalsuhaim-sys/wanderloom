@@ -70,6 +70,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { href: '/crm/quotations', label: 'عروض الأسعار', icon: FileText },
       { href: '/crm/itineraries', label: 'المسارات', icon: Route },
+      { href: '/crm/tailor-now', label: 'مسارات AI', icon: Sparkles },
       { href: '/crm/groups', label: 'القروبات السياحية', icon: Users },
       { href: '/crm/groups/pricing', label: 'حاسبة تسعير القروب', icon: Calculator },
       { href: '/crm/sessions', label: 'الجلسات', icon: CalendarClock },

@@ -42,6 +42,14 @@ const COPY = {
     activities: 'أنشطة مقترحة',
     alternatives: 'بدائل نرشحها في هذا الموسم',
     cta: (country: string) => `صمّم رحلتي إلى ${country}`,
+    pathsTitle: 'كيف تحب نفصّل رحلتك؟',
+    expertTitle: 'مع خبيرك',
+    expertBody: 'خبيرتنا تفصّل رحلتك معك خطوة بخطوة، من أول مكالمة إلى آخر حجز.',
+    expertCta: 'سجّل رحلتك',
+    tailorTitle: 'فصّل الآن',
+    tailorBody: 'خطتك يوماً بيوم خلال دقائق، من أماكن اخترناها بعناية. اليوم الأول عليك.',
+    tailorPrice: '120 ريال لليوم',
+    tailorCta: 'ابدأ الآن',
   },
   en: {
     fallbackImage: 'Wanderloom destination',
@@ -65,6 +73,14 @@ const COPY = {
     activities: 'Suggested experiences',
     alternatives: 'What we suggest instead this season',
     cta: (country: string) => `Design my trip to ${country}`,
+    pathsTitle: 'How would you like to tailor your trip?',
+    expertTitle: 'With your expert',
+    expertBody: 'Our expert tailors your trip with you step by step, from the first call to the last booking.',
+    expertCta: 'Log your trip',
+    tailorTitle: 'Tailor Now',
+    tailorBody: 'Your day-by-day plan in minutes, from places we’ve carefully chosen. Day 1 is on us.',
+    tailorPrice: 'SAR 120 per day',
+    tailorCta: 'Start now',
   },
 };
 
@@ -177,6 +193,9 @@ export default function DestinationAdvisor() {
   const [step, setStep] = useState<Step>(1);
   const [countryId, setCountryId] = useState<string | null>(null);
   const [seasonKey, setSeasonKey] = useState<SeasonKey | null>(null);
+  const [showPaths, setShowPaths] = useState(false);
+  // «فصّل الآن» is offered only when it's live; otherwise the CTA goes to the expert form as before.
+  const [tailorEnabled, setTailorEnabled] = useState<boolean | null>(null);
 
   // Places-bank ids can be free text («كوريا»); key everything by the canonical id when we know it,
   // but keep the bank id for booking so the registration form recognises the country.
@@ -216,17 +235,26 @@ export default function DestinationAdvisor() {
   const countryIcon = countryId && (FEATURED as string[]).includes(countryId) ? (countryId as LandmarkId) : null;
 
   const selectCountry = (id: string) => {
+    setShowPaths(false);
     setCountryId(id);
     setSeasonKey(null);
     setStep(2);
   };
 
   const selectSeason = (key: SeasonKey) => {
+    setShowPaths(false);
+    if (tailorEnabled === null) {
+      fetch('/api/tailor-now/destinations')
+        .then((r) => r.json())
+        .then((j: { enabled?: boolean }) => setTailorEnabled(j.enabled === true))
+        .catch(() => setTailorEnabled(false));
+    }
     setSeasonKey(key);
     setStep(3);
   };
 
   const goBack = () => {
+    setShowPaths(false);
     if (step === 3) {
       setSeasonKey(null);
       setStep(2);
@@ -432,15 +460,54 @@ export default function DestinationAdvisor() {
                 </div>
               </div>
 
-              <Link
-                href={bookingId ? `/?dest=${encodeURIComponent(bookingId)}#lead` : '/#lead'}
-                onClick={(e) => {
-                  if (bookingId && requestTripDestination(bookingId)) e.preventDefault();
+              <button
+                type="button"
+                aria-expanded={showPaths}
+                onClick={() => {
+                  if (tailorEnabled) {
+                    setShowPaths((v) => !v);
+                    return;
+                  }
+                  if (bookingId && requestTripDestination(bookingId)) return;
+                  window.location.href = bookingId ? `/?dest=${encodeURIComponent(bookingId)}#lead` : '/#lead';
                 }}
                 className="wl-gold-cta inline-flex min-h-[56px] items-center justify-center rounded-full px-6 text-base font-black"
               >
                 {c.cta(countryLabel)}
-              </Link>
+              </button>
+
+              {showPaths && tailorEnabled ? (
+                <div className="rounded-[24px] border border-[#9C7A3C]/28 bg-white p-4 shadow-[0_24px_50px_-36px_rgba(28,46,58,0.6)] sm:p-5">
+                  <p className="mb-3 text-sm font-black text-[#1C2E3A]">{c.pathsTitle}</p>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <Link
+                      href={bookingId ? `/?dest=${encodeURIComponent(bookingId)}#lead` : '/#lead'}
+                      onClick={(e) => {
+                        if (bookingId && requestTripDestination(bookingId)) e.preventDefault();
+                      }}
+                      className="group flex flex-col gap-2 rounded-[18px] border border-[#E8E1D3] bg-[#FBF8F1] p-4 transition hover:border-[#9C7A3C]/60"
+                    >
+                      <span className="text-lg font-black text-[#1C2E3A]">{c.expertTitle}</span>
+                      <span className="text-sm font-semibold leading-relaxed text-[#3E4F5A]">{c.expertBody}</span>
+                      <span className="mt-auto pt-1 text-sm font-black text-[#9C7A3C] underline decoration-[#9C7A3C]/40 underline-offset-4 group-hover:text-[#1C2E3A]">
+                        {c.expertCta}
+                      </span>
+                    </Link>
+                    <Link
+                      href={`/tailor-now?dest=${encodeURIComponent(countryId ?? bookingId ?? '')}${seasonKey ? `&season=${seasonKey}` : ''}`}
+                      className="group relative flex flex-col gap-2 overflow-hidden rounded-[18px] bg-[#1C2E3A] p-4 text-[#F4EFE6] transition hover:brightness-110"
+                    >
+                      <span aria-hidden className="absolute inset-x-0 top-0 h-1 bg-[#D9B238]" />
+                      <span className="text-lg font-black text-[#E9CB6A]">{c.tailorTitle}</span>
+                      <span className="text-sm font-semibold leading-relaxed text-[#C9D1D6]">{c.tailorBody}</span>
+                      <span className="text-xs font-black text-[#F4EFE6]">{c.tailorPrice}</span>
+                      <span className="mt-auto pt-1 text-sm font-black text-[#E9CB6A] underline decoration-[#E9CB6A]/40 underline-offset-4">
+                        {c.tailorCta}
+                      </span>
+                    </Link>
+                  </div>
+                </div>
+              ) : null}
             </div>
 
             <div className="relative grid grid-cols-2 items-start gap-4 pt-4">

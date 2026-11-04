@@ -66,6 +66,7 @@ const LEAD_VALUE_AR: Record<string, string> = {
   trip_log: 'سجّل رحلتك',
   contact: 'تواصل',
   group_trip: 'رحلة جماعية',
+  tailor_now: 'فصّل الآن',
 };
 
 export function translateLeadData(key: string | null | undefined): string {
