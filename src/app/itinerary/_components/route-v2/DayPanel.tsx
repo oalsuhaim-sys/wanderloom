@@ -193,7 +193,7 @@ function StopRow({
               {a.notes?.trim() ? (
                 <div className="mb-3 rounded-xl border-r-4 px-3 py-2.5 text-[13px] font-semibold leading-relaxed" style={{ borderColor: RV.gold, background: RV.goldTint, color: RV.cream }}>
                   <span className="ml-1 font-black" style={{ color: RV.goldText }}>
-                    ملاحظة خبيرتك:
+                    ملاحظة خبيرك:
                   </span>
                   {a.notes.trim()}
                 </div>
@@ -334,7 +334,7 @@ export default function DayPanel({
         <div className="rounded-2xl border p-4" style={{ borderColor: RV.lineStrong, background: RV.goldTint }}>
           <p className="mb-2 flex items-center gap-2 text-xs font-black" style={{ color: RV.goldText }}>
             <Sparkles className="h-4 w-4" aria-hidden />
-            ملاحظات خبيرتك لهذا اليوم
+            ملاحظات خبيرك لهذا اليوم
           </p>
           <ul className="space-y-2">
             {notes.map((n) => (
