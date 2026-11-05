@@ -132,8 +132,9 @@ export async function isTailorEnabled(): Promise<boolean> {
   if (enabledCache && Date.now() - enabledCache.at < (enabledCache.value ? 5 * 60_000 : 60_000)) return enabledCache.value;
   let value = false;
   try {
-    const { error } = await admin().from(TAILOR_TABLE).select('id', { count: 'exact', head: true }).limit(1);
-    value = !error;
+    // A real GET (not HEAD): HEAD requests can come back without an error body for a missing table.
+    const { data, error } = await admin().from(TAILOR_TABLE).select('id').limit(1);
+    value = !error && Array.isArray(data);
   } catch {
     value = false;
   }
