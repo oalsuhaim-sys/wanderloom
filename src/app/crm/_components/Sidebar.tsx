@@ -111,9 +111,8 @@ const NAV_GROUPS: NavGroup[] = [
     key: 'admin',
     title: 'الإدارة والتحليل',
     items: [
-      { href: '/crm/analytics', label: 'الإحصائيات', icon: BarChart3 },
-      { href: '/crm/finance', label: 'الذكاء المالي', icon: PiggyBank },
-      { href: '/crm/reports', label: 'التقارير', icon: BarChart3 },
+      { href: '/crm/financial-reports', label: 'التقارير المالية', icon: PiggyBank },
+      { href: '/crm/company-dashboard', label: 'لوحة الشركة', icon: BarChart3 },
       { href: '/crm/accounts', label: 'إدارة الحسابات', icon: ShieldCheck, adminOnly: true },
       { href: '/crm/settings', label: 'إعدادات الوكالة', icon: Settings, adminOnly: true },
       { href: '/crm/admin', label: 'صلاحيات الفريق', icon: ShieldCheck, adminOnly: true },
@@ -123,8 +122,6 @@ const NAV_GROUPS: NavGroup[] = [
 
 const STANDALONE_BOTTOM: NavItem[] = [
   { href: '/crm/docs', label: 'دليل الخبير', icon: Lightbulb },
-  { href: '/crm/accounts', label: 'إدارة الحسابات', icon: ShieldCheck, adminOnly: true },
-  { href: '/crm/settings', label: 'إعدادات الوكالة', icon: Settings, adminOnly: true },
   { href: '/crm/features', label: 'دليل مميزات النظام', icon: Award },
 ];
 
