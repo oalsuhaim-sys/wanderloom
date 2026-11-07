@@ -11,6 +11,7 @@ import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { Command } from 'cmdk';
 import {
+  BarChart3,
   BookOpen,
   FileText,
   Handshake,
@@ -87,10 +88,17 @@ const QUICK_ACTIONS: QuickAction[] = [
   },
   {
     id: 'finance',
-    label: 'الذكاء المالي',
-    subtitle: 'هوامش الربح والوجهات',
-    href: '/crm/finance',
+    label: 'التقارير المالية',
+    subtitle: 'الإيرادات والأرباح والإيصالات والمصاريف',
+    href: '/crm/financial-reports',
     icon: PiggyBank,
+  },
+  {
+    id: 'company-dashboard',
+    label: 'لوحة الشركة',
+    subtitle: 'الوجهات والطلبات والعملاء والقروبات والجلسات',
+    href: '/crm/company-dashboard',
+    icon: BarChart3,
   },
   {
     id: 'partners',

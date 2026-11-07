@@ -373,6 +373,8 @@ const EXPERT_BLOCKED_PREFIXES = [
   '/crm/analytics',
   '/crm/finance',
   '/crm/reports',
+  '/crm/financial-reports',
+  '/crm/company-dashboard',
   '/crm/admin',
   '/crm/accounts',
   '/crm/settings',
@@ -407,6 +409,8 @@ const CRM_ROUTE_RULES: { prefix: string; permission: CrmRouteGuardKey }[] = [
   { prefix: '/crm/analytics', permission: 'can_access_payments' },
   { prefix: '/crm/finance', permission: 'can_access_payments' },
   { prefix: '/crm/reports', permission: 'can_access_payments' },
+  { prefix: '/crm/financial-reports', permission: 'can_access_payments' },
+  { prefix: '/crm/company-dashboard', permission: 'can_access_payments' },
   { prefix: '/crm/partners-radar', permission: 'can_access_partners' },
   { prefix: '/crm/partners-directory', permission: 'can_access_partners' },
   { prefix: '/crm/partner-radar', permission: 'can_access_partners' },
@@ -526,8 +530,8 @@ export function defaultCrmLandingPath(access: CrmProfileAccess | null | undefine
     { key: 'access_itineraries_view', href: '/crm/itineraries' },
     { key: 'can_access_clients', href: '/crm/clients' },
     { key: 'can_access_marketing', href: '/crm/marketing' },
-    { key: 'access_wallet', href: '/crm/reports' },
-    { key: 'can_access_payments', href: '/crm/reports' },
+    { key: 'access_wallet', href: '/crm/financial-reports' },
+    { key: 'can_access_payments', href: '/crm/financial-reports' },
   ];
   for (const item of order) {
     if (access.permissions[item.key]) return item.href;
