@@ -810,6 +810,15 @@ const SCHEMA_OPTIONAL_ITINERARY_COLUMNS = [
   'end_date',
 ] as const;
 
+/** Geography flags written together; when one is missing they all are, so drop them in one go. */
+const GEO_ITINERARY_COLUMNS = ['geo_trip_type', 'destination_trip_type', 'is_multi_country'] as const;
+
+/** Column named in a PostgREST "Could not find the 'x' column …" (PGRST204) error, if any. */
+function missingColumnFromError(errMsg: string): string | null {
+  const m = /could not find the '([a-z0-9_]+)' column/i.exec(errMsg);
+  return m?.[1] ?? null;
+}
+
 /** يزيل من الحمولة الأعمدة المذكورة صراحةً في رسالة خطأ Supabase فقط */
 export function stripItineraryPayloadForSchemaError(
   errMsg: string,
@@ -817,8 +826,34 @@ export function stripItineraryPayloadForSchemaError(
 ): Record<string, unknown> {
   const next = { ...payload };
   for (const col of SCHEMA_OPTIONAL_ITINERARY_COLUMNS) {
-    if (new RegExp(col, 'i').test(errMsg)) {
+    if (new RegExp(`\\b${col}\\b`, 'i').test(errMsg)) {
       delete next[col];
+    }
+  }
+
+  // Any column PostgREST says is missing (not only the known optional ones).
+  const missing = missingColumnFromError(errMsg);
+  if (missing && missing in next) delete next[missing];
+
+  // The quotation link lives in `quotation_id`; older code writes `quote_id`.
+  if (/\bquote_id\b/i.test(errMsg) && payload.quote_id != null && next.quotation_id == null) {
+    next.quotation_id = payload.quote_id;
+  }
+
+  // Geography: drop the three flag columns together and keep the values in flight_details,
+  // which the loader already reads as a fallback (itinerary-geography.ts).
+  if (GEO_ITINERARY_COLUMNS.some((c) => new RegExp(`\\b${c}\\b`, 'i').test(errMsg))) {
+    const geo: Record<string, unknown> = {};
+    for (const c of GEO_ITINERARY_COLUMNS) {
+      if (payload[c] !== undefined) geo[c] = payload[c];
+      delete next[c];
+    }
+    if (Object.keys(geo).length) {
+      const fd =
+        next.flight_details && typeof next.flight_details === 'object' && !Array.isArray(next.flight_details)
+          ? { ...(next.flight_details as Record<string, unknown>) }
+          : {};
+      next.flight_details = { ...fd, ...geo };
     }
   }
   const expertId =
