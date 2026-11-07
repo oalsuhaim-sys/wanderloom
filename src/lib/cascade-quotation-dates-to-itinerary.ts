@@ -7,7 +7,7 @@ import {
 
 /**
  * When quotation trip dates change, mirror them onto linked itineraries
- * (quote_id match) so the client app stop showing "رحلة مكتملة" on stale end_date.
+ * (quotation_id match) so the client app stop showing "رحلة مكتملة" on stale end_date.
  */
 export async function cascadeQuotationDatesToItineraries(
   sb: SupabaseClient,
@@ -29,7 +29,7 @@ export async function cascadeQuotationDatesToItineraries(
   const { data, error } = await sb
     .from('itineraries')
     .update(patch)
-    .eq('quote_id', qid)
+    .eq('quotation_id', qid)
     .select('id');
 
   if (error) {
@@ -43,7 +43,7 @@ export async function cascadeQuotationDatesToItineraries(
       console.error('[cascade-quotation-dates]', error.message);
       return { updated: 0, error: error.message };
     }
-    const second = await sb.from('itineraries').update(retry).eq('quote_id', qid).select('id');
+    const second = await sb.from('itineraries').update(retry).eq('quotation_id', qid).select('id');
     if (second.error) {
       console.error('[cascade-quotation-dates]', second.error.message);
       return { updated: 0, error: second.error.message };
