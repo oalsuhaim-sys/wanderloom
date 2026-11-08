@@ -24,6 +24,7 @@ import GenerateItineraryAiModal, {
 import { ExpertHandbookHelpLink } from '@/components/crm/ExpertHandbookHelpLink';
 import type { GeneratedItineraryDay } from '@/lib/ai-generate-itinerary';
 import { buildDnaHotelOptions } from '@/lib/dna-hotel-match';
+import { normalizeDestinations } from '@/lib/trip-destination-normalize';
 import { generateDnaProposalAction, generateClaudeProposalAction } from '@/app/actions/generateDnaProposal';
 import {
   applyProposalTemplateContent,
@@ -1205,28 +1206,65 @@ export function QuoteBuilderForm({
       toast.error('اختر العميل أولاً لتوليد العرض من DNA.');
       return;
     }
+    const rebuildId = isQuoteSaved ? persistedQuoteId || editingId : '';
+    if (
+      rebuildId &&
+      !window.confirm(
+        'سيُعاد بناء الأيام والفنادق والأنشطة حسب الوجهات والتواريخ الظاهرة الآن في النموذج.\nالأسعار والطيران والنقل تبقى كما هي.\nأي تعديل آخر غير محفوظ سيضيع — احفظ أولاً إن لزم. متابعة؟',
+      )
+    ) {
+      return;
+    }
     setGeneratingDnaProposal(true);
     setError('');
+    const loadingToast = toast.loading('نفصّل الأيام والفنادق حسب DNA العميل… قد يستغرق دقيقة');
     try {
       const result = await generateDnaProposalAction({
         clientId: cid,
         leadId: initialLeadId || clientContext?.leadId || null,
+        ...(rebuildId
+          ? { quoteId: rebuildId, destinations, startDate: startDate || null, endDate: endDate || null }
+          : destinations.length
+            ? { destinations, startDate: startDate || null, endDate: endDate || null }
+            : {}),
       });
+      toast.dismiss(loadingToast);
       if (!result.ok || !result.editUrl) {
         toast.error(result.error || 'تعذر توليد عرض السعر من DNA.');
         setError(result.error || 'تعذر توليد عرض السعر من DNA.');
         return;
       }
-      toast.success(result.message || 'تم تجهيز مسودة العرض من DNA ✨');
+      toast.success(result.message || 'تم تجهيز مسودة العرض من DNA ✨', { duration: 7000 });
+      if (rebuildId && result.quoteId === rebuildId) {
+        window.location.reload();
+        return;
+      }
       router.push(result.editUrl);
     } catch (e) {
+      toast.dismiss(loadingToast);
       const msg = e instanceof Error ? e.message : 'تعذر توليد عرض السعر من DNA.';
       toast.error(msg);
       setError(msg);
     } finally {
       setGeneratingDnaProposal(false);
     }
-  }, [clientId, clientContext?.leadId, initialClientId, initialLeadId, router]);
+  }, [clientId, clientContext?.leadId, initialClientId, initialLeadId, router, isQuoteSaved, persistedQuoteId, editingId, destinations, startDate, endDate]);
+
+  /** Cities in the days/hotels that are no longer in the destinations (e.g. a removed Jeju). */
+  const routeMismatch = useMemo(() => {
+    const wanted = normalizeDestinations(destinations);
+    if (!wanted.length) return [] as string[];
+    const wantedKeys = new Set(wanted.map((d) => d.key));
+    const seen = new Set<string>();
+    const extra: string[] = [];
+    for (const raw of [...itineraryDays.map((d) => d.city), ...hotelOptions.map((h) => h.city)]) {
+      const d = normalizeDestinations([raw ?? ''])[0];
+      if (!d || wantedKeys.has(d.key) || seen.has(d.key)) continue;
+      seen.add(d.key);
+      extra.push(d.label);
+    }
+    return extra;
+  }, [destinations, itineraryDays, hotelOptions]);
 
   const handleGenerateClaudeProposal = useCallback(async () => {
     const cid = normalizeClientId(clientId || initialClientId);
@@ -2305,6 +2343,23 @@ export function QuoteBuilderForm({
     <div dir="rtl" className="mx-auto max-w-4xl px-4 pb-8 sm:px-6 sm:pb-10">
       <Toaster position="top-center" />
 
+      {routeMismatch.length ? (
+        <div role="alert" className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-900 dark:border-amber-700/60 dark:bg-amber-900/15 dark:text-amber-300">
+          <span>
+            الأيام أو الفنادق ما زالت تحتوي مدناً حذفتها من الوجهات: {routeMismatch.join('، ')}. العميل سيراها في العرض.
+          </span>
+          <button
+            type="button"
+            onClick={() => void handleGenerateFullDnaProposal()}
+            disabled={saving || readOnly || generatingDnaProposal || !isQuoteSaved}
+            title={isQuoteSaved ? '' : 'احفظ العرض أولاً'}
+            className="rounded-xl bg-amber-600 px-3 py-2 text-xs font-black text-white disabled:opacity-50"
+          >
+            أعد بناء الأيام والفنادق حسب الوجهات
+          </button>
+        </div>
+      ) : null}
+
       {/* Top AI + Template action toolbar */}
       <section
         className="mb-5 rounded-2xl border border-[#C9A84C]/35 bg-gradient-to-l from-[#FEFDF9] via-white to-[#FFF8E7] p-3 shadow-sm dark:from-[#1A2421] dark:via-[#22302C] dark:to-[#1A2421] dark:border-[#D4AF37]/30 sm:p-4"
@@ -2428,7 +2483,7 @@ export function QuoteBuilderForm({
             ) : (
               <Sparkles size={14} aria-hidden />
             )}
-            {generatingDnaProposal ? 'جاري التوليد…' : 'توليد عرض سعر من DNA العميل'}
+            {generatingDnaProposal ? 'جاري التفصيل…' : isQuoteSaved ? 'إعادة بناء العرض من DNA العميل' : 'توليد عرض سعر من DNA العميل'}
           </button>
           <button
             type="button"

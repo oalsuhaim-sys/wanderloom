@@ -3,6 +3,9 @@ import { Loader2 } from 'lucide-react';
 
 import NewQuotationClient from './NewQuotationClient';
 
+/** Rebuilding a quote from DNA writes each day with Claude — give the server action room. */
+export const maxDuration = 120;
+
 function PageFallback() {
   return (
     <div

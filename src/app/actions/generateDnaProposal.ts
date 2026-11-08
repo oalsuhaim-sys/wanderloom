@@ -21,7 +21,10 @@ import {
   serializeTransportOptionsForSave,
 } from '@/lib/interactive-quotation';
 import { fetchPlaceCandidates } from '@/lib/dna-place-match';
-import { buildDnaProposalDraft, addDaysIso } from '@/lib/dna-proposal-generator';
+import { buildDnaProposalDraft, addDaysIso, type DnaPlace } from '@/lib/dna-proposal-generator';
+import { polishDnaDaysWithClaude } from '@/lib/dna-proposal-claude';
+import { canonicalTripCountryId } from '@/lib/destination-match';
+import { bankRowMatches, normalizeDestinations, type NormalizedDestination } from '@/lib/trip-destination-normalize';
 import { generateProposalWithClaude } from '@/lib/ai-generate-proposal-claude';
 import { mergeClaudeProposalIntoDraft } from '@/lib/ai-generate-proposal';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
@@ -116,7 +119,7 @@ async function resolveLeadForClient(
   const { data: byClient } = await admin
     .from('leads')
     .select(
-      'id, destinations, travel_date, travel_days, travelers_count, status, full_name, phone_wa, client_id, expert_id, assigned_expert_id, accommodation_type, interests, created_at',
+      'id, destinations, travel_date, travel_days, travelers_count, status, full_name, phone_wa, client_id, accommodation_type, interests, daily_pace, day_start_time, food_preferences, final_thoughts, created_at',
     )
     .eq('client_id', clientId)
     .order('created_at', { ascending: false })
@@ -129,7 +132,7 @@ async function resolveLeadForClient(
 
   const { data: client } = await admin
     .from('clients')
-    .select('phone_wa, phone_number')
+    .select('phone_wa')
     .eq('id', clientId)
     .maybeSingle();
 
@@ -143,7 +146,7 @@ async function resolveLeadForClient(
   const { data: byPhone } = await admin
     .from('leads')
     .select(
-      'id, destinations, travel_date, travel_days, travelers_count, status, full_name, phone_wa, client_id, expert_id, assigned_expert_id, accommodation_type, interests, created_at',
+      'id, destinations, travel_date, travel_days, travelers_count, status, full_name, phone_wa, client_id, accommodation_type, interests, daily_pace, day_start_time, food_preferences, final_thoughts, created_at',
     )
     .eq('phone_wa', phone)
     .order('created_at', { ascending: false })
@@ -160,7 +163,7 @@ async function fetchClientDnaSnapshot(
   const { data } = await admin
     .from('clients')
     .select(
-      'id, name, phone_wa, phone_number, target_trip, hotel_preference, flight_seat, dna_interests, dna_activity_level, travel_dna',
+      'id, name, phone_wa, target_trip, hotel_preference, flight_seat, dna_interests, dna_activity_level, travel_dna',
     )
     .eq('id', clientId)
     .maybeSingle();
@@ -276,96 +279,186 @@ async function insertDraftWithFallbacks(
   return { id: null, error: lastError };
 }
 
+type DnaPlaceRow = { id: string; name: string; name_en: string | null; city: string | null; country: string | null; category: string | null; sub_tag: string | null; tip_ar: string | null; is_active: boolean | null };
+
+/** Places for one destination: exact city (with spelling aliases) — never a country-wide grab bag. */
+async function fetchPlacesForDestination(
+  admin: ReturnType<typeof createSupabaseAdminClient>,
+  dest: NormalizedDestination,
+): Promise<DnaPlace[]> {
+  const select = 'id, name, name_en, city, country, category, sub_tag, tip_ar, is_active';
+  const toPlace = (r: DnaPlaceRow): DnaPlace => ({
+    id: String(r.id),
+    name: String(r.name ?? '').trim(),
+    name_en: String(r.name_en ?? '').trim() || undefined,
+    city: String(r.city ?? '').trim() || undefined,
+    category: String(r.category ?? '').trim() || undefined,
+    sub_tag: String(r.sub_tag ?? '').trim() || undefined,
+    tip: String(r.tip_ar ?? '').trim() || undefined,
+  });
+  const terms = [...new Set([dest.label, ...dest.aliases].map((t) => t.replace(/[%,()]/g, ' ').trim()).filter((t) => t.length >= 2))];
+  const rows: DnaPlaceRow[] = [];
+  if (!dest.countryOnly && terms.length) {
+    const { data } = await admin
+      .from('places')
+      .select(select)
+      .or(terms.map((t) => `city.ilike.%${t}%`).join(','))
+      .limit(3000);
+    rows.push(...(((data ?? []) as unknown as DnaPlaceRow[]).filter((r) => r.is_active !== false && bankRowMatches(dest, r))));
+  }
+  // An area without its own bank city (e.g. «نامي»): places whose name mentions it, in the same country.
+  if (!rows.length && !dest.countryOnly) {
+    const latin = terms.filter((t) => /^[a-z\s]+$/i.test(t));
+    if (latin.length) {
+      const { data } = await admin
+        .from('places')
+        .select(select)
+        .or(latin.flatMap((t) => [`name.ilike.%${t}%`, `name_en.ilike.%${t}%`]).join(','))
+        .limit(60);
+      const word = new RegExp(`\\b(${latin.map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})\\b`, 'i');
+      rows.push(
+        ...(((data ?? []) as unknown as DnaPlaceRow[]).filter(
+          (r) =>
+            r.is_active !== false &&
+            word.test(`${r.name ?? ''} ${r.name_en ?? ''}`) &&
+            (!dest.countryId || canonicalTripCountryId(String(r.country ?? '')) === dest.countryId),
+        )),
+      );
+    }
+  }
+  if (dest.countryOnly && dest.countryId) {
+    const { data } = await admin.from('places').select(select).limit(3000);
+    rows.push(...(((data ?? []) as unknown as DnaPlaceRow[]).filter((r) => r.is_active !== false && canonicalTripCountryId(String(r.country ?? '')) === dest.countryId)));
+  }
+  const seen = new Set<string>();
+  return rows.map(toPlace).filter((p) => p.id && p.name && !seen.has(p.id) && Boolean(seen.add(p.id)));
+}
+
+function lodgingRequest(lead: Record<string, unknown> | null, dna: ClientDnaSnapshot): string {
+  const fromLead = Array.isArray(lead?.accommodation_type)
+    ? (lead!.accommodation_type as unknown[]).map((x) => String(x ?? '').trim()).filter(Boolean).join(' · ')
+    : String(lead?.accommodation_type ?? '').trim();
+  return [fromLead, dna.hotelPreference].filter(Boolean).join(' · ');
+}
+
+function dreamFromLead(lead: Record<string, unknown> | null): { dream: string; firstVisit: boolean } {
+  const text = String(lead?.final_thoughts ?? '').trim();
+  const [first] = text.split(/\n\s*زيارات سابقة/);
+  return { dream: String(first ?? '').trim().slice(0, 300), firstVisit: /لم يسبق/.test(text) };
+}
+
 /**
- * One-click: build a full draft quotation from client DNA + active trip dates.
+ * One-click: build a full draft quotation from client DNA + trip window.
+ * From inside a quote, pass its current destinations/dates (+ quoteId) to rebuild that quote in place.
  */
 export async function generateDnaProposalAction(input: {
   clientId: ClientDbId | string | number | null;
   leadId?: string | null;
+  /** Rebuild this quote in place (keeps prices, transport and flights the expert already filled). */
+  quoteId?: string | null;
+  destinations?: string[] | null;
+  startDate?: string | null;
+  endDate?: string | null;
 }): Promise<GenerateDnaProposalResult> {
   const clientId = coerceClientDbId(input.clientId);
   if (clientId == null) {
-    return {
-      ok: false,
-      quoteId: null,
-      editUrl: null,
-      leadId: null,
-      clientId: null,
-      error: 'معرّف العميل غير صالح.',
-    };
+    return { ok: false, quoteId: null, editUrl: null, leadId: null, clientId: null, error: 'معرّف العميل غير صالح.' };
   }
 
   try {
     const admin = createSupabaseAdminClient();
     const dna = await fetchClientDnaSnapshot(admin, clientId);
     const lead = await resolveLeadForClient(admin, clientId, input.leadId);
-
     const leadId = lead?.id != null ? String(lead.id).trim() : null;
-    const destinations = parseDestinations(
-      lead?.destinations,
-      dna.targetTrip,
-    );
+
+    // The quote's own (edited) destinations and dates win over the original request.
+    const overrideDests = (input.destinations ?? []).map((d) => String(d ?? '').trim()).filter(Boolean);
+    const rawDestinations = overrideDests.length ? overrideDests : parseDestinations(lead?.destinations, dna.targetTrip);
+    const dests = normalizeDestinations(rawDestinations);
+
+    const isoOk = (v: unknown) => /^\d{4}-\d{2}-\d{2}$/.test(String(v ?? '').slice(0, 10));
+    const overrideStart = isoOk(input.startDate) ? String(input.startDate).slice(0, 10) : '';
+    const overrideEnd = isoOk(input.endDate) ? String(input.endDate).slice(0, 10) : '';
     const travelDate = String(lead?.travel_date ?? '').trim().slice(0, 10);
-    const travelDaysRaw = Number(lead?.travel_days);
-    const durationDays =
-      Number.isFinite(travelDaysRaw) && travelDaysRaw > 0
-        ? Math.floor(travelDaysRaw)
-        : Math.max(3, destinations.length * 3);
-
-    const startDate =
-      travelDate && /^\d{4}-\d{2}-\d{2}$/.test(travelDate)
-        ? travelDate
-        : new Date().toISOString().slice(0, 10);
-
-    const hotelFromLead = Array.isArray(lead?.accommodation_type)
-      ? (lead!.accommodation_type as unknown[])
-          .map((x) => String(x ?? '').trim())
-          .filter(Boolean)
-          .join(' · ')
-      : String(lead?.accommodation_type ?? '').trim();
+    const startDate = overrideStart || (isoOk(travelDate) ? travelDate : new Date().toISOString().slice(0, 10));
+    let durationDays = 0;
+    if (overrideStart && overrideEnd && overrideEnd >= overrideStart) {
+      durationDays = Math.round((Date.parse(`${overrideEnd}T00:00:00Z`) - Date.parse(`${overrideStart}T00:00:00Z`)) / 86_400_000) + 1;
+    }
+    if (!durationDays) {
+      const travelDaysRaw = Number(lead?.travel_days);
+      durationDays = Number.isFinite(travelDaysRaw) && travelDaysRaw > 0 ? Math.floor(travelDaysRaw) : Math.max(3, dests.length * 3);
+    }
 
     const leadInterests = parseInterestList(lead?.interests);
     const interests = [...new Set([...dna.dnaInterests, ...leadInterests])];
+    const food = parseInterestList(lead?.food_preferences);
+    const lodging = lodgingRequest(lead, dna);
+    const { dream, firstVisit } = dreamFromLead(lead);
 
-    const hotelBank = await fetchHotelBank(admin);
-
-    const placeBuckets = await Promise.all(
-      (destinations.length ? destinations : [dna.targetTrip || '']).map((dest) =>
-        fetchPlaceCandidates(admin, {
-          destination: dest,
-          interests,
-          limit: 36,
-        }),
-      ),
-    );
-    const seenPlaces = new Set<string>();
-    const placeCandidates = placeBuckets.flat().filter((p) => {
-      if (!p.id || seenPlaces.has(p.id)) return false;
-      seenPlaces.add(p.id);
-      return true;
+    const [hotelBank, placeLists] = await Promise.all([
+      fetchHotelBank(admin),
+      Promise.all(dests.map((d) => fetchPlacesForDestination(admin, d))),
+    ]);
+    const placesByDestination: Record<string, DnaPlace[]> = {};
+    dests.forEach((d, i) => {
+      placesByDestination[d.key] = placeLists[i] ?? [];
     });
+
+    // Rebuilding: keep the expert's nights per city when the cities are unchanged.
+    let existingRow: Record<string, unknown> | null = null;
+    const nightsByDestination: Record<string, number> = {};
+    if (input.quoteId) {
+      const { data } = await admin
+        .from(CRM_QUOTATIONS_TABLE)
+        .select('id, title, itinerary_days, transport_options, flight_proposals, status')
+        .eq('id', input.quoteId)
+        .maybeSingle();
+      existingRow = (data ?? null) as Record<string, unknown> | null;
+      const oldDays = Array.isArray(existingRow?.itinerary_days) ? (existingRow!.itinerary_days as Array<{ city?: string }>) : [];
+      for (const d of oldDays) {
+        const nd = normalizeDestinations([d.city ?? ''])[0];
+        if (nd) nightsByDestination[nd.key] = (nightsByDestination[nd.key] ?? 0) + 1;
+      }
+    }
 
     const draft = buildDnaProposalDraft({
       clientName: dna.name,
-      destinations,
+      destinations: dests.map((d) => d.raw),
       startDate,
       durationDays,
-      hotelPreference: dna.hotelPreference || hotelFromLead,
+      hotelPreference: lodging,
       flightSeat: dna.flightSeat,
       dnaInterests: interests,
-      dnaActivityLevel: dna.dnaActivityLevel,
+      pace: String(lead?.daily_pace ?? dna.dnaActivityLevel ?? ''),
+      dayStart: String(lead?.day_start_time ?? ''),
       hotelBank,
-      placeCandidates,
+      placesByDestination,
+      nightsByDestination,
     });
 
-    // Prefer enriching an existing empty draft for this lead; otherwise insert new.
-    let quoteId: string | null = null;
-    if (leadId) {
+    const polish = await polishDnaDaysWithClaude(draft.itineraryDays, {
+      clientName: dna.name,
+      interests,
+      pace: String(lead?.daily_pace ?? dna.dnaActivityLevel ?? ''),
+      food,
+      lodging,
+      dream,
+      notes: '',
+      firstVisit,
+      travelers: String(lead?.travelers_count ?? '').trim() ? `${String(lead?.travelers_count)} مسافر` : '',
+      country: dests.find((d) => d.countryLabel)?.countryLabel ?? '',
+    });
+    const itineraryDays = polish.days;
+
+    // Target quote: explicit rebuild → that quote; else reuse an empty draft for this lead; else insert.
+    let quoteId: string | null = existingRow ? String(existingRow.id) : null;
+    if (!quoteId && leadId) {
       const existingId = await fetchQuotationIdByLeadIdAdmin(leadId).catch(() => null);
       if (existingId) {
         const { data: existing } = await admin
           .from(CRM_QUOTATIONS_TABLE)
-          .select('id, itinerary_days, hotel_options, status')
+          .select('id, itinerary_days, hotel_options')
           .eq('id', existingId)
           .maybeSingle();
         const row = (existing ?? {}) as Record<string, unknown>;
@@ -374,105 +467,84 @@ export async function generateDnaProposalAction(input: {
         const hasContent =
           days.some((d) => {
             const r = d as Record<string, unknown>;
-            return (
-              String(r?.city ?? '').trim() ||
-              String(r?.title ?? '').trim() ||
-              (Array.isArray(r?.stops) && r.stops.length > 0)
-            );
-          }) ||
-          hotels.some((h) => String((h as { name?: string })?.name ?? '').trim());
-
-        if (!hasContent) {
-          quoteId = existingId;
-        }
+            return String(r?.city ?? '').trim() || String(r?.title ?? '').trim() || (Array.isArray(r?.stops) && r.stops.length > 0);
+          }) || hotels.some((h) => String((h as { name?: string })?.name ?? '').trim());
+        if (!hasContent) quoteId = existingId;
       }
     }
 
-    const expertId = String(
-      lead?.expert_id ?? lead?.assigned_expert_id ?? '',
-    ).trim();
+    const expertId = String(lead?.expert_id ?? lead?.assigned_expert_id ?? '').trim();
+    const hasContent = (v: unknown) =>
+      Array.isArray(v) && v.some((x) => String((x as { name?: string; airline?: string })?.name ?? (x as { airline?: string })?.airline ?? '').trim());
+    const oldTitle = String(existingRow?.title ?? '').trim();
+    const keepTitle = oldTitle && !/^عرض سعر DNA|^رحلة /.test(oldTitle);
 
     const payload: Record<string, unknown> = {
       client_id: clientId,
-      title: draft.title,
+      title: keepTitle ? oldTitle : draft.title,
       destinations: draft.destinations,
       start_date: draft.startDate || null,
       end_date: draft.endDate || null,
-      total_estimated_cost: 0,
-      expected_profit: 0,
-      status: 'draft',
-      flight_proposals: serializeFlightProposalsForSave(draft.flightProposals),
-      hotel_proposals: serializeHotelProposalsForSave(
-        hotelOptionsToProposals(draft.hotelOptions),
-      ),
-      activities: [],
-      transportation: [],
-      itinerary_days: serializeItineraryDaysForSave(draft.itineraryDays),
+      hotel_proposals: serializeHotelProposalsForSave(hotelOptionsToProposals(draft.hotelOptions)),
+      itinerary_days: serializeItineraryDaysForSave(itineraryDays),
       hotel_options: serializeHotelOptionsForSave(draft.hotelOptions),
       activity_options: serializeActivityOptionsForSave(draft.activityOptions),
-      transport_options: serializeTransportOptionsForSave(draft.transportOptions),
-      lead_source: 'dna_auto',
       updated_at: new Date().toISOString(),
+      ...(existingRow
+        ? {
+            ...(hasContent(existingRow.transport_options) ? {} : { transport_options: serializeTransportOptionsForSave(draft.transportOptions) }),
+            ...(hasContent(existingRow.flight_proposals) ? {} : { flight_proposals: serializeFlightProposalsForSave(draft.flightProposals) }),
+          }
+        : {
+            total_estimated_cost: 0,
+            expected_profit: 0,
+            status: 'draft',
+            flight_proposals: serializeFlightProposalsForSave(draft.flightProposals),
+            transport_options: serializeTransportOptionsForSave(draft.transportOptions),
+            activities: [],
+            transportation: [],
+            lead_source: 'dna_auto',
+          }),
       ...(leadId ? { lead_id: leadId } : {}),
       ...(expertId ? { expert_id: expertId } : {}),
     };
 
     if (quoteId) {
-      const { error: updErr } = await admin
-        .from(CRM_QUOTATIONS_TABLE)
-        .update(payload)
-        .eq('id', quoteId);
+      const { error: updErr } = await admin.from(CRM_QUOTATIONS_TABLE).update(payload).eq('id', quoteId);
       if (updErr) {
-        // Retry without interactive columns
         const lean = { ...payload };
         delete lean.itinerary_days;
         delete lean.hotel_options;
         delete lean.activity_options;
         delete lean.transport_options;
-        const { error: leanErr } = await admin
-          .from(CRM_QUOTATIONS_TABLE)
-          .update(lean)
-          .eq('id', quoteId);
+        const { error: leanErr } = await admin.from(CRM_QUOTATIONS_TABLE).update(lean).eq('id', quoteId);
         if (leanErr) {
-          return {
-            ok: false,
-            quoteId: null,
-            editUrl: null,
-            leadId,
-            clientId,
-            error: leanErr.message || updErr.message,
-          };
+          return { ok: false, quoteId: null, editUrl: null, leadId, clientId, error: leanErr.message || updErr.message };
         }
       }
     } else {
       const inserted = await insertDraftWithFallbacks(admin, payload);
       if (!inserted.id) {
-        return {
-          ok: false,
-          quoteId: null,
-          editUrl: null,
-          leadId,
-          clientId,
-          error: inserted.error || 'تعذر إنشاء مسودة عرض السعر.',
-        };
+        return { ok: false, quoteId: null, editUrl: null, leadId, clientId, error: inserted.error || 'تعذر إنشاء مسودة عرض السعر.' };
       }
       quoteId = inserted.id;
     }
 
-    if (leadId) {
-      await updatePipelineStatus(
-        admin,
-        { leadId, clientId, force: true },
-        'quote_stage',
-      ).catch(() => undefined);
+    if (leadId && !existingRow) {
+      await updatePipelineStatus(admin, { leadId, clientId, force: true }, 'quote_stage').catch(() => undefined);
     }
 
     revalidatePath('/crm/quotations');
     revalidatePath(`/crm/quotations/edit/${quoteId}`);
     revalidatePath(`/crm/clients/${clientId}`);
+    revalidatePath(`/proposal/${quoteId}`);
     revalidatePath('/crm');
 
-    const endDate = draft.endDate || (draft.startDate ? addDaysIso(draft.startDate, durationDays - 1) : '');
+    const hotelsCount = draft.hotelOptions.filter((h) => h.name.trim()).length;
+    const gaps = [
+      draft.citiesWithoutHotels.length ? `لا فنادق في البنك لـ: ${draft.citiesWithoutHotels.join('، ')}` : '',
+      draft.citiesWithoutPlaces.length ? `لا أماكن في البنك لـ: ${draft.citiesWithoutPlaces.join('، ')}` : '',
+    ].filter(Boolean);
 
     return {
       ok: true,
@@ -480,13 +552,13 @@ export async function generateDnaProposalAction(input: {
       editUrl: `/crm/quotations/edit/${encodeURIComponent(quoteId)}`,
       leadId,
       clientId,
-      title: draft.title,
+      title: String(payload.title),
       startDate: draft.startDate,
-      endDate,
-      daysCount: draft.itineraryDays.length,
-      hotelsCount: draft.hotelOptions.filter((h) => h.name.trim()).length,
+      endDate: draft.endDate,
+      daysCount: itineraryDays.length,
+      hotelsCount,
       stopsCount: draft.stopsFilled,
-      message: `تم توليد مسودة العرض من DNA: ${draft.itineraryDays.length} أيام · ${draft.hotelOptions.filter((h) => h.name.trim()).length} فنادق · ${draft.stopsFilled} محطات`,
+      message: `${existingRow ? 'أُعيد بناء العرض' : 'تم تجهيز العرض'} من DNA: ${itineraryDays.length} أيام · ${hotelsCount} فنادق · ${draft.stopsFilled} محطات${polish.polished ? '' : ' (النصوص الأساسية — راجعها)'}${gaps.length ? ` · ${gaps.join(' · ')}` : ''}`,
     };
   } catch (err) {
     console.error('[generateDnaProposalAction]', err);
@@ -527,7 +599,7 @@ export async function generateClaudeProposalAction(input: {
     const lead = await resolveLeadForClient(admin, clientId, input.leadId);
 
     const leadId = lead?.id != null ? String(lead.id).trim() : null;
-    const destinations = parseDestinations(lead?.destinations, dna.targetTrip);
+    const destinations = normalizeDestinations(parseDestinations(lead?.destinations, dna.targetTrip)).map((d) => d.label);
     const travelDate = String(lead?.travel_date ?? '').trim().slice(0, 10);
     const travelDaysRaw = Number(lead?.travel_days);
     const durationDays =
