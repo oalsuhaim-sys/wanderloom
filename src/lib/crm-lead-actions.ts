@@ -364,6 +364,7 @@ export function mapLeadRowToQuotationDraft(
     profit_margin: 20,
     service_fee: 0,
     grand_total: 0,
+    pricing_breakdown_saved: false,
     lead_source: 'trip_log',
     referral_code:
       lead.referral_code != null ? String(lead.referral_code).trim() || null : null,

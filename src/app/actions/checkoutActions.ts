@@ -5,6 +5,7 @@ import { SALES_STAGE_PAYMENT_VERIFYING } from '@/lib/client-sales-stage';
 import { fetchAgencyBankDetailsAction } from '@/app/actions/systemSettingsActions';
 import { parseGroupTripPriceNumber } from '@/lib/group-trip-card-ui';
 import type { AgencyBankDetails } from '@/lib/system-settings';
+import { mapQuotationRow, quotationTotalPrice } from '@/lib/crm-quotations';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { assertServiceRoleKeyConfigured } from '@/lib/supabase/server-action-auth';
 
@@ -71,9 +72,11 @@ async function resolveFromQuotations(
   admin: AdminClient,
   clientId: string | number,
 ): Promise<CheckoutExtras> {
+  // '*' — grand_total / profit_margin / service_fee may not exist as columns; the old explicit
+  // select failed on them and left checkout without an amount.
   const quote = await admin
     .from('quotations')
-    .select('grand_total, total_estimated_cost, destinations, start_date, end_date, created_at')
+    .select('*')
     .eq('client_id', clientId)
     .order('created_at', { ascending: false })
     .limit(1)
@@ -84,7 +87,8 @@ async function resolveFromQuotations(
   }
 
   const row = quote.data as Record<string, unknown>;
-  const amount = Number(row.grand_total) || Number(row.total_estimated_cost) || null;
+  // Same client price as the CRM list, invoices and the client page (cost + margin + fee).
+  const amount = quotationTotalPrice(mapQuotationRow(row)) || null;
   const start = String(row.start_date ?? '').slice(0, 10);
   const end = String(row.end_date ?? '').slice(0, 10);
   const datesLabel = start && end ? `${start} → ${end}` : start || end || null;
