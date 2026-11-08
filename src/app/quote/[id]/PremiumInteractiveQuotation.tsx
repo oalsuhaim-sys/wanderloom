@@ -32,6 +32,7 @@ import {
   formatDestinationsLabel,
   formatQuotationDateRange,
   quotationClientName,
+  quotationClientTotalWithSelections,
   quotationTotalPrice,
   type QuotationRow,
 } from '@/lib/crm-quotations';
@@ -406,12 +407,10 @@ export function PremiumInteractiveQuotation({ quotation }: Props) {
     activities.length > 0 ||
     costs.length > 0 ||
     grandTotal > 0;
-  const displayTotal =
-    costSummary.total > 0
-      ? costSummary.total
-      : !hasSelectionPricing && grandTotal > 0
-        ? grandTotal
-        : 0;
+  // Always the client price (cost + Wanderloom margin + fee); picks only move it by their difference.
+  const displayTotal = hasSelectionPricing
+    ? quotationClientTotalWithSelections(quotation, { hotels, transports, activities })
+    : grandTotal;
 
   const toggleHotel = useCallback((id: string) => {
     setHotels((prev) =>
@@ -938,7 +937,7 @@ export function PremiumInteractiveQuotation({ quotation }: Props) {
               {!hasSelectionPricing &&
               (hotels.length > 0 || transports.length > 0 || activities.length > 0) ? (
                 <p className="border-b border-gray-100 px-6 py-4 text-center text-sm text-slate-500">
-                  اختر فندقاً ووسيلة تنقل وفعاليات لإضافة تكلفتها إلى الملخص
+                  اختر فندقاً ووسيلة تنقل وفعاليات، ويتحدّث الإجمالي حسب اختياراتك
                 </p>
               ) : null}
               {costSummary.lines.map((line) => (
@@ -947,9 +946,8 @@ export function PremiumInteractiveQuotation({ quotation }: Props) {
                   className="flex items-center justify-between border-b border-gray-100 px-6 py-4 last:border-0"
                 >
                   <span className="text-sm text-slate-600">{line.label}</span>
-                  <span className={'text-sm font-semibold ' + OLIVE} dir="ltr">
-                    {formatSar(line.price)}
-                  </span>
+                  {/* Supplier prices stay private; the client sees one all-inclusive total. */}
+                  <span className={'text-xs font-semibold ' + OLIVE}>مشمول</span>
                 </div>
               ))}
               <div

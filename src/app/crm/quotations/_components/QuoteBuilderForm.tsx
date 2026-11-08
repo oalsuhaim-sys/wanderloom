@@ -41,6 +41,7 @@ import { updatePipelineStatus } from '@/lib/lead-pipeline-automation';
 import {
   calculateProfitFromMargin,
   calculateQuotationGrandTotal,
+  effectiveQuotePricing,
   createEmptyFlightProposal,
   ensureProposalRows,
   fetchQuotationById,
@@ -889,10 +890,11 @@ export function QuoteBuilderForm({
   const pendingClientId = useRef('');
   const lockedClientIdRef = useRef('');
 
+  // Cost = every priced line, including «تكاليف إضافية» (visa, guides, extra flights…).
   const baseCost = useMemo(
     () =>
-      sumProposalPrices(flights, hotelOptions, activityOptions, transportOptions),
-    [flights, hotelOptions, activityOptions, transportOptions],
+      sumProposalPrices(flights, hotelOptions, activityOptions, transportOptions, costBreakdown),
+    [flights, hotelOptions, activityOptions, transportOptions, costBreakdown],
   );
 
   const marginProfit = useMemo(
@@ -1210,7 +1212,7 @@ export function QuoteBuilderForm({
     if (
       rebuildId &&
       !window.confirm(
-        'سيُعاد بناء الأيام والفنادق والأنشطة حسب الوجهات والتواريخ الظاهرة الآن في النموذج.\nالأسعار والطيران والنقل تبقى كما هي.\nأي تعديل آخر غير محفوظ سيضيع — احفظ أولاً إن لزم. متابعة؟',
+        'سيُعاد بناء الأيام والفنادق والأنشطة حسب الوجهات والتواريخ الظاهرة الآن في النموذج.\nالطيران والنقل والتكاليف الإضافية تبقى، وأسعار الفنادق والأنشطة الباقية تُنقل. الفنادق الجديدة تحتاج سعرها.\nأي تعديل آخر غير محفوظ سيضيع — احفظ أولاً إن لزم. متابعة؟',
       )
     ) {
       return;
@@ -1510,6 +1512,7 @@ export function QuoteBuilderForm({
       profit_margin: Number(marginPercent) || 0,
       service_fee: Number(serviceFee) || 0,
       grand_total: grandTotal,
+      pricing_breakdown_saved: true,
       lead_source: safeTrim(leadSource) || null,
       referral_code: null,
       is_referral_paid: false,
@@ -1891,8 +1894,14 @@ export function QuoteBuilderForm({
         );
         setStartDate(safeTrim(row.start_date));
         setEndDate(safeTrim(row.end_date));
-        setMarginPercent(String(row.profit_margin || 20));
-        setServiceFee(String(row.service_fee || 0));
+        {
+          // Reload exactly what was saved (margin/fee are rebuilt from the saved profit when the
+          // table has no columns for them), so the total never jumps after reopening a quote.
+          const eff = effectiveQuotePricing(row);
+          const hasPricing = row.pricing_breakdown_saved || eff.total > 0;
+          setMarginPercent(String(hasPricing ? eff.profit_margin : 20));
+          setServiceFee(String(hasPricing ? eff.service_fee : 0));
+        }
         setFlights(ensureProposalRows(row.flight_proposals, createEmptyFlightProposal));
         setItineraryDays(sanitizeItineraryDays(row.itinerary_days));
         {
@@ -2131,7 +2140,8 @@ export function QuoteBuilderForm({
         activity_options: activityOptionsSaved,
         cost_breakdown: costBreakdownSaved,
         total_estimated_cost: baseCost,
-        expected_profit: profitAmount,
+        // Wanderloom's full earning on the quote = margin + service fee (what reports and invoices use)
+        expected_profit: Math.round((profitAmount + fee) * 100) / 100,
         profit_margin: margin,
         service_fee: fee,
         grand_total: total,

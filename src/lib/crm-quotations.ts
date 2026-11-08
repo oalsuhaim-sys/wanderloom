@@ -82,6 +82,8 @@ export type QuotationRow = {
   profit_margin: number;
   service_fee: number;
   grand_total: number;
+  /** True when profit_margin / service_fee columns exist and were saved (else derived from expected_profit). */
+  pricing_breakdown_saved: boolean;
   lead_source: string | null;
   referral_code: string | null;
   is_referral_paid: boolean;
@@ -195,6 +197,89 @@ export function calculateProfitFromMargin(cost: number, marginPercent: number): 
   const m = parseMoney(marginPercent);
   if (c <= 0 || m <= 0) return 0;
   return Math.round(((c * m) / 100) * 100) / 100;
+}
+
+/**
+ * Margin % and service fee for a saved quote.
+ * When the columns don't exist in the table, rebuild them from what is always saved
+ * (total_estimated_cost + expected_profit) so the total never changes on reload.
+ */
+export function storedPricingBreakdown(row: Record<string, unknown>): {
+  profit_margin: number;
+  service_fee: number;
+  pricing_breakdown_saved: boolean;
+} {
+  const hasColumns = row.profit_margin !== undefined || row.service_fee !== undefined;
+  if (hasColumns && (row.profit_margin != null || row.service_fee != null)) {
+    return {
+      profit_margin: parseMoney(row.profit_margin),
+      service_fee: parseMoney(row.service_fee),
+      pricing_breakdown_saved: true,
+    };
+  }
+  return { ...splitProfit(parseMoney(row.total_estimated_cost), parseMoney(row.expected_profit)), pricing_breakdown_saved: false };
+}
+
+const COMMON_MARGINS = [5, 10, 12, 15, 18, 20, 25, 30];
+
+/** Without saved columns: a common whole margin with no fee if it fits exactly, else everything as service fee. */
+function splitProfit(cost: number, profit: number): { profit_margin: number; service_fee: number } {
+  if (profit <= 0) return { profit_margin: 0, service_fee: 0 };
+  if (cost > 0) {
+    const pct = (profit / cost) * 100;
+    const hit = COMMON_MARGINS.find((m) => Math.abs(pct - m) < 0.01);
+    if (hit != null) return { profit_margin: hit, service_fee: 0 };
+  }
+  return { profit_margin: 0, service_fee: Math.round(profit * 100) / 100 };
+}
+
+function sumPrices(list: Array<{ price?: unknown }> | null | undefined): number {
+  return (list ?? []).reduce((s, x) => s + parseMoney(x?.price), 0);
+}
+
+/**
+ * The one pricing truth for a saved quote: cost, Wanderloom profit, client total, margin %, fee.
+ *
+ * Cost = every priced line (flights, hotels, activities, transport, «تكاليف إضافية»).
+ * Quotes saved before «تكاليف إضافية» counted as cost keep exactly the total the client saw:
+ * the lines move into cost and the profit becomes whatever is left.
+ */
+export function effectiveQuotePricing(row: QuotationRow): {
+  cost: number;
+  profit: number;
+  total: number;
+  profit_margin: number;
+  service_fee: number;
+} {
+  const r2 = (n: number) => Math.round(n * 100) / 100;
+  const hotels = row.hotel_options?.length ? row.hotel_options : row.hotel_proposals;
+  const transports = row.transport_options?.length ? row.transport_options : row.transport_proposals;
+  const items = sumPrices(row.flight_proposals) + sumPrices(hotels) + sumPrices(row.activity_options) + sumPrices(transports);
+  const lines = sumPrices(row.cost_breakdown);
+  const savedCost = parseMoney(row.total_estimated_cost);
+  const savedProfit = parseMoney(row.expected_profit);
+  const storedTotal =
+    row.grand_total > 0 ? row.grand_total : savedCost + savedProfit > 0 ? savedCost + savedProfit : lines;
+
+  let cost: number;
+  let profit: number;
+  if (lines > 0 && Math.abs(savedCost - items) < 1) {
+    // Saved before the extra lines were part of the cost.
+    cost = items + lines;
+    profit = Math.max(0, storedTotal - cost);
+  } else if (savedCost + savedProfit > 0 || row.grand_total > 0) {
+    cost = savedCost;
+    profit = row.grand_total > 0 ? Math.max(0, row.grand_total - savedCost) : savedProfit;
+  } else {
+    cost = items + lines;
+    profit = 0;
+  }
+  cost = r2(cost);
+  profit = r2(profit);
+  const split = row.pricing_breakdown_saved && Math.abs(calculateProfitFromMargin(cost, row.profit_margin) + row.service_fee - profit) < 1
+    ? { profit_margin: row.profit_margin, service_fee: row.service_fee }
+    : splitProfit(cost, profit);
+  return { cost, profit, total: r2(cost + profit), ...split };
 }
 
 /** الإجمالي للعميل = التكلفة + هامش الربح + رسوم الخدمة */
@@ -747,7 +832,7 @@ export function mapQuotationRow(row: Record<string, unknown>): QuotationRow {
   const trip_category: QuotationTripCategory =
     tripCategoryRaw === 'group' ? 'group' : 'private';
 
-  return {
+  const mapped: QuotationRow = {
     id: normalizeQuotationId(row.id),
     lead_id: leadId,
     client_id:
@@ -790,8 +875,7 @@ export function mapQuotationRow(row: Record<string, unknown>): QuotationRow {
         'transportDetails',
       ),
     ),
-    profit_margin: parseMoney(row.profit_margin ?? 20),
-    service_fee: parseMoney(row.service_fee),
+    ...storedPricingBreakdown(row),
     grand_total: parseMoney(row.grand_total),
     lead_source: row.lead_source != null ? String(row.lead_source).trim() || null : null,
     referral_code:
@@ -824,8 +908,11 @@ export function mapQuotationRow(row: Record<string, unknown>): QuotationRow {
     })(),
     cost_breakdown: parseCostBreakdown(row.cost_breakdown),
     client_feedback: parseClientFeedback(row.client_feedback),
-    clients,
+    clients
   };
+  const eff = effectiveQuotePricing(mapped);
+  return { ...mapped, profit_margin: eff.profit_margin, service_fee: eff.service_fee };
+
 }
 
 export function quotationClientName(row: QuotationRow): string {
@@ -837,13 +924,42 @@ export function quotationClientPhone(row: QuotationRow): string {
   return pickClientPhoneFromRecord(row.clients as Record<string, unknown> | null | undefined);
 }
 
+/**
+ * The client price of a saved quote — the ONE number used by the CRM list, invoices, checkout,
+ * the client page and the reports.  cost + Wanderloom profit (margin + service fee).
+ */
 export function quotationTotalPrice(row: QuotationRow): number {
-  if (row.grand_total > 0) return row.grand_total;
-  return calculateQuotationGrandTotal(
-    row.total_estimated_cost,
-    row.profit_margin,
-    row.service_fee,
-  );
+  return effectiveQuotePricing(row).total;
+}
+
+/**
+ * Client price after the client picks among alternatives (one hotel of two, one car …).
+ * Starts from the saved price and only moves by the cost difference of the picks, marked up by the
+ * saved margin — so the price always includes Wanderloom's margin and fee, never just supplier costs.
+ */
+export function quotationClientTotalWithSelections(
+  row: QuotationRow,
+  current: {
+    hotels: Array<{ price?: number; is_selected_by_client?: boolean }>;
+    transports: Array<{ price?: number; is_selected_by_client?: boolean }>;
+    activities: Array<{ price?: number; is_selected_by_client?: boolean }>;
+  },
+): number {
+  const base = quotationTotalPrice(row);
+  let delta = 0;
+  for (const group of [current.hotels, current.transports, current.activities]) {
+    if (!group.some((x) => x.is_selected_by_client)) continue;
+    const all = group.reduce((s, x) => s + parseMoney(x.price), 0);
+    const picked = group.filter((x) => x.is_selected_by_client).reduce((s, x) => s + parseMoney(x.price), 0);
+    delta += picked - all;
+  }
+  const markup = 1 + Math.max(0, parseMoney(row.profit_margin)) / 100;
+  return Math.max(0, Math.round((base + delta * markup) * 100) / 100);
+}
+
+/** Wanderloom's profit on a saved quote (margin + service fee). */
+export function quotationProfit(row: QuotationRow): number {
+  return effectiveQuotePricing(row).profit;
 }
 
 export function formatDestinationsLabel(destinations: string[]): string {

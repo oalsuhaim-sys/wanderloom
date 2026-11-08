@@ -411,7 +411,7 @@ export async function generateDnaProposalAction(input: {
     if (input.quoteId) {
       const { data } = await admin
         .from(CRM_QUOTATIONS_TABLE)
-        .select('id, title, itinerary_days, transport_options, flight_proposals, status')
+        .select('id, title, itinerary_days, hotel_options, activity_options, transport_options, flight_proposals, cost_breakdown, expected_profit, status')
         .eq('id', input.quoteId)
         .maybeSingle();
       existingRow = (data ?? null) as Record<string, unknown> | null;
@@ -436,6 +436,24 @@ export async function generateDnaProposalAction(input: {
       placesByDestination,
       nightsByDestination,
     });
+
+    // Rebuilding: keep prices the expert already entered for hotels / activities that are still there.
+    if (existingRow) {
+      const key = (name: unknown, city?: unknown) =>
+        `${String(name ?? '').trim().toLowerCase()}|${normalizeDestinations([String(city ?? '')])[0]?.key ?? ''}`;
+      const oldHotelPrice = new Map<string, number>();
+      for (const h of (Array.isArray(existingRow.hotel_options) ? existingRow.hotel_options : []) as Array<Record<string, unknown>>) {
+        const price = Number(h?.price) || 0;
+        if (price > 0) oldHotelPrice.set(key(h.name, h.city), price);
+      }
+      draft.hotelOptions = draft.hotelOptions.map((h) => ({ ...h, price: oldHotelPrice.get(key(h.name, h.city)) ?? h.price }));
+      const oldActivityPrice = new Map<string, number>();
+      for (const a of (Array.isArray(existingRow.activity_options) ? existingRow.activity_options : []) as Array<Record<string, unknown>>) {
+        const price = Number(a?.price) || 0;
+        if (price > 0) oldActivityPrice.set(String(a?.name ?? '').trim().toLowerCase(), price);
+      }
+      draft.activityOptions = draft.activityOptions.map((a) => ({ ...a, price: oldActivityPrice.get(a.name.trim().toLowerCase()) ?? a.price }));
+    }
 
     const polish = await polishDnaDaysWithClaude(draft.itineraryDays, {
       clientName: dna.name,
@@ -494,6 +512,16 @@ export async function generateDnaProposalAction(input: {
         ? {
             ...(hasContent(existingRow.transport_options) ? {} : { transport_options: serializeTransportOptionsForSave(draft.transportOptions) }),
             ...(hasContent(existingRow.flight_proposals) ? {} : { flight_proposals: serializeFlightProposalsForSave(draft.flightProposals) }),
+            // Cost follows the new content (same sum the quote screen shows); Wanderloom's profit is kept.
+            total_estimated_cost: (() => {
+              const sumPrices = (v: unknown) =>
+                (Array.isArray(v) ? v : []).reduce((s: number, x) => s + (Number((x as { price?: unknown })?.price) || 0), 0);
+              const flights = hasContent(existingRow.flight_proposals) ? existingRow.flight_proposals : draft.flightProposals;
+              const transport = hasContent(existingRow.transport_options) ? existingRow.transport_options : draft.transportOptions;
+              return Math.round(
+                (sumPrices(flights) + sumPrices(draft.hotelOptions) + sumPrices(draft.activityOptions) + sumPrices(transport) + sumPrices(existingRow.cost_breakdown)) * 100,
+              ) / 100;
+            })(),
           }
         : {
             total_estimated_cost: 0,

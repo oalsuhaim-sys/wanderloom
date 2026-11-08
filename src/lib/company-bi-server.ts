@@ -18,6 +18,7 @@ import {
   type TailorFact,
 } from '@/lib/company-bi';
 import { parseInvoiceStatus } from '@/lib/crm-invoices';
+import { effectiveQuotePricing, mapQuotationRow } from '@/lib/crm-quotations';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 
 type Row = Record<string, unknown>;
@@ -75,7 +76,7 @@ export async function loadCompanyFacts(): Promise<CompanyFacts> {
 
   const [quotationsRaw, invoicesRaw, clientsRaw, leadsRaw, tailorRaw, groupsRaw, membersRaw, plansRaw, sessionsRaw, regsRaw, legacyRaw, itinerariesRaw, expensesRaw] =
     await Promise.all([
-      readAll(db, 'quotations', 'id, client_id, title, destinations, status, created_at, updated_at, total_estimated_cost, expected_profit, client_name, expert_name, receipt_url', warnings, 'عروض الأسعار'),
+      readAll(db, 'quotations', '*', warnings, 'عروض الأسعار'),
       readAll(db, 'invoices', 'id, client_id, quote_id, amount, type, status, created_at, updated_at, paid_at, receipt_url, trip_title', warnings, 'الفواتير'),
       readAll(db, 'clients', 'id, name, created_at, city, lead_source, client_tier, vip_tier', warnings, 'العملاء'),
       readAll(db, 'leads', 'id, created_at, status, lead_source, form_type, destinations, phone_wa', warnings, 'الطلبات'),
@@ -122,9 +123,11 @@ export async function loadCompanyFacts(): Promise<CompanyFacts> {
   for (const q of quotationsRaw ?? []) {
     const id = str(q.id);
     if (!id) continue;
-    const cost = Math.max(0, num(q.total_estimated_cost));
-    const profit = num(q.expected_profit);
-    const saleValue = round(cost + profit);
+    // Exactly the CRM / client-page price rule (cost + Wanderloom profit).
+    const eff = effectiveQuotePricing(mapQuotationRow(q));
+    const cost = eff.cost;
+    const profit = eff.profit;
+    const saleValue = eff.total;
     const status = str(q.status);
     const client = str(q.client_name) || clientName.get(str(q.client_id)) || 'عميل';
     const invs = invoicesByQuote.get(id) ?? [];
