@@ -12,7 +12,12 @@ import {
   type QuotationHotelOption,
   type QuotationItineraryDay,
 } from '@/lib/interactive-quotation';
-import { filterQuotationHotelsByCity, type QuotationHotelPlace } from '@/lib/crm-quotations';
+import {
+  dedupeQuotationHotelPlaces,
+  filterQuotationHotelsByCity,
+  type QuotationHotelPlace,
+} from '@/lib/crm-quotations';
+import { bankRowMatches, parseDestination } from '@/lib/trip-destination-normalize';
 
 /** Actual `hotels.category` codes in Supabase. */
 export type HotelCategory =
@@ -20,13 +25,6 @@ export type HotelCategory =
   | 'boutique_design'
   | 'apartments_luxe'
   | 'smart_choice';
-
-const CATEGORY_LABEL_AR: Record<HotelCategory, string> = {
-  ultra_luxury: 'فاخر جداً',
-  boutique_design: 'بوتيك مصمّم',
-  apartments_luxe: 'شقق فاخرة',
-  smart_choice: 'خيار ذكي',
-};
 
 /**
  * Map a free-text DNA lodging preference to an ordered list of acceptable
@@ -60,8 +58,9 @@ export function citySequenceFromItinerary(
   const order: string[] = [];
   const nights = new Map<string, number>();
   for (const day of days) {
-    const city = String(day.city ?? '').trim();
-    if (!city) continue;
+    const raw = String(day.city ?? '').trim();
+    if (!raw) continue;
+    const city = parseDestination(raw)?.label ?? raw;
     if (!nights.has(city)) order.push(city);
     nights.set(city, (nights.get(city) ?? 0) + 1);
   }
@@ -94,36 +93,80 @@ function formatArDate(iso: string): string {
   }
 }
 
-/** Pick up to `count` hotels for a city matching the preferred categories, best-fit first. */
+/** Hotel tier read from the bank's mixed category values (codes and Arabic labels). */
+export type HotelTier = 'luxury5' | 'signature' | 'boutique' | 'smart4' | 'apartments';
+
+export const HOTEL_TIER_LABEL_AR: Record<HotelTier, string> = {
+  luxury5: 'فاخر 5 نجوم',
+  signature: 'إقامة استثنائية',
+  boutique: 'بوتيك مصمّم',
+  smart4: '4 نجوم مختار',
+  apartments: 'شقق فاخرة',
+};
+
+export function hotelTier(categoryRaw: unknown): HotelTier {
+  const c = String(categoryRaw ?? '').trim().toLowerCase();
+  if (/apart|شقق|شقة/.test(c)) return 'apartments';
+  if (/boutique|بوتيك/.test(c)) return 'boutique';
+  if (/smart|اقتصاد|ذكي/.test(c)) return 'smart4';
+  if (/تجربة سكن|signature/.test(c)) return 'signature';
+  return 'luxury5'; // ultra_luxury · فاخر جداً · منتجع VIP
+}
+
+/**
+ * Stay types the client asked for, best first. Reads the trip form choices
+ * (star4 / star5 / boutique / ryokan …) and the DNA free text.
+ */
+export function requestedHotelTiers(requestRaw: string): HotelTier[] {
+  const p = String(requestRaw ?? '').toLowerCase();
+  const out: HotelTier[] = [];
+  const add = (...t: HotelTier[]) => t.forEach((x) => (out.includes(x) ? null : out.push(x)));
+  if (/boutique|بوتيك|تصميم|design/.test(p)) add('boutique');
+  if (/star4|4 نجوم|اربع|أربع|four/.test(p)) add('smart4');
+  if (/star5|5 نجوم|خمس|five|فاخر|luxury|vip/.test(p)) add('luxury5', 'signature');
+  if (/ryokan|ريوكان|تراث|اصيل|أصيل|traditional/.test(p)) add('boutique', 'signature');
+  if (/شقة|شقق|apartment|عائل|family|villa|فيلا/.test(p)) add('apartments');
+  if (/اقتصاد|smart|ذكي|value|budget|موفر|معقول/.test(p)) add('smart4');
+  return out.length ? out : ['luxury5', 'boutique', 'signature'];
+}
+
+/** «قريبة من السنتر» → favour hotels in central districts. */
+function wantsCentral(requestRaw: string): boolean {
+  return /سنتر|السنتر|وسط|مركز|center|centre|central|downtown/i.test(String(requestRaw ?? ''));
+}
+
+const CENTRAL_HINTS = /myeongdong|jongno|gwanghwamun|euljiro|sewoon|jung-gu|city hall|shinjuku|ginza|marunouchi|shibuya|tokyo station|gion|namba|umeda|haeundae|seomyeon|nampo|mayfair|covent|soho|opera|louvre|champs/i;
+
+function scoreHotel(h: QuotationHotelPlace, central: boolean): number {
+  return central && CENTRAL_HINTS.test(h.name) ? 1 : 0;
+}
+
+/** Up to `count` hotels for a city: one per requested tier first, never from another city. */
 function pickHotelsForCity(
   cityHotels: QuotationHotelPlace[],
-  preferredCategories: HotelCategory[],
+  tiers: HotelTier[],
   count: number,
-): QuotationHotelPlace[] {
-  const picked: QuotationHotelPlace[] = [];
+  central: boolean,
+): { hotel: QuotationHotelPlace; tier: HotelTier; requested: boolean }[] {
+  const picked: { hotel: QuotationHotelPlace; tier: HotelTier; requested: boolean }[] = [];
   const seen = new Set<string>();
-  const take = (h: QuotationHotelPlace) => {
-    const key = `${h.name}|${h.city}`.toLowerCase();
-    if (seen.has(key)) return;
+  const ranked = [...cityHotels].sort((a, b) => scoreHotel(b, central) - scoreHotel(a, central));
+  const take = (h: QuotationHotelPlace, requested: boolean) => {
+    const key = h.name.trim().toLowerCase();
+    if (seen.has(key) || picked.length >= count) return;
     seen.add(key);
-    picked.push(h);
+    picked.push({ hotel: h, tier: hotelTier(h.category), requested });
   };
-  // 1) exact category preference order
-  for (const cat of preferredCategories) {
-    for (const h of cityHotels) {
-      if (picked.length >= count) break;
-      if (String(h.category ?? '').trim() === cat) take(h);
-    }
-    if (picked.length >= count) break;
+  // 1) one per requested tier, in the client's order
+  for (const t of tiers) {
+    const h = ranked.find((x) => hotelTier(x.category) === t && !seen.has(x.name.trim().toLowerCase()));
+    if (h) take(h, true);
   }
-  // 2) fill remaining with any hotel in the city
-  if (picked.length < count) {
-    for (const h of cityHotels) {
-      if (picked.length >= count) break;
-      take(h);
-    }
-  }
-  return picked.slice(0, count);
+  // 2) more from the requested tiers
+  for (const h of ranked) if (tiers.includes(hotelTier(h.category))) take(h, true);
+  // 3) nothing requested exists in this city → closest available, flagged
+  if (!picked.length) for (const h of ranked) take(h, false);
+  return picked;
 }
 
 export type DnaHotelMatchResult = {
@@ -145,7 +188,8 @@ export function buildDnaHotelOptions(params: {
 }): DnaHotelMatchResult {
   const perCity = Math.max(1, params.perCity ?? 2);
   const sequence = citySequenceFromItinerary(params.itineraryDays);
-  const preferred = hotelCategoriesForPreference(params.hotelPreference);
+  const tiers = requestedHotelTiers(params.hotelPreference);
+  const central = wantsCentral(params.hotelPreference);
 
   const options: QuotationHotelOption[] = [];
   const citiesWithoutHotels: string[] = [];
@@ -157,23 +201,27 @@ export function buildDnaHotelOptions(params: {
     const checkOut = params.startDate ? addDays(params.startDate, cursorNights + nights) : '';
     cursorNights += nights;
 
-    const cityHotels = filterQuotationHotelsByCity(params.hotelBank, city);
+    const dest = parseDestination(city);
+    // Strict: the hotel's own city must match (no country-wide fallback that put Seoul hotels in Jeju).
+    const cityHotels = dest
+      ? dedupeQuotationHotelPlaces(params.hotelBank.filter((h) => bankRowMatches(dest, h)), 'name')
+      : filterQuotationHotelsByCity(params.hotelBank, city);
     if (!cityHotels.length) {
-      citiesWithoutHotels.push(city);
+      citiesWithoutHotels.push(dest?.label ?? city);
       continue;
     }
-    const chosen = pickHotelsForCity(cityHotels, preferred, perCity);
+    const chosen = pickHotelsForCity(cityHotels, tiers, perCity, central);
     if (chosen.length) citiesMatched += 1;
 
-    for (const hotel of chosen) {
-      const catLabel = CATEGORY_LABEL_AR[hotel.category as HotelCategory] ?? hotel.category ?? '';
+    for (const { hotel, tier, requested } of chosen) {
       const dateRange =
         checkIn && checkOut ? ` · ${formatArDate(checkIn)} → ${formatArDate(checkOut)}` : '';
+      const nightsLabel = nights === 1 ? 'ليلة واحدة' : nights === 2 ? 'ليلتان' : `${nights} ليالٍ`;
       options.push({
         ...createEmptyHotelOption(),
-        city,
+        city: dest?.label ?? city,
         name: hotel.name,
-        description: `${nights} ليالٍ · ${catLabel}${dateRange}`,
+        description: `${HOTEL_TIER_LABEL_AR[tier]}${requested ? '' : ' (أقرب خيار متاح)'} · ${nightsLabel}${dateRange}`,
         price: 0,
         is_selected_by_client: false,
       });

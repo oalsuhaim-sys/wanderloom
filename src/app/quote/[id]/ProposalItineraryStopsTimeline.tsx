@@ -9,6 +9,7 @@ import {
   type QuotationItineraryStop,
 } from '@/lib/interactive-quotation';
 import { getVipPlaceCategoryMeta } from '@/lib/vip-place-category';
+import { destinationLabel } from '@/lib/trip-destination-normalize';
 
 function formatStopTime(raw: string): string {
   const text = String(raw ?? '').trim();
@@ -128,6 +129,8 @@ export function ProposalItineraryStopsTimeline({
       <div className="relative space-y-10">
         {days.map((day, index) => {
           const stops = resolveQuotationDayStops(day);
+          // A day with no stops comes back as one synthetic card repeating the day title — show the text instead.
+          const isLegacyOnly = stops.length === 1 && stops[0]!.id.endsWith('-legacy');
           const dateLabel = formatDayDate(day.date);
           const isFirst = index === 0;
 
@@ -156,11 +159,11 @@ export function ProposalItineraryStopsTimeline({
                     {day.city?.trim() ? (
                       <span className="inline-flex items-center gap-1">
                         <MapPin className="h-3 w-3 text-[#b8954d]" aria-hidden />
-                        {day.city.trim()}
+                        {destinationLabel(day.city)}
                       </span>
                     ) : null}
                   </div>
-                  {day.description?.trim() && stops.length > 1 ? (
+                  {day.description?.trim() && !isLegacyOnly ? (
                     <p className="mt-2 line-clamp-2 text-sm leading-6 text-gray-600">
                       {day.description.trim()}
                     </p>
@@ -172,7 +175,11 @@ export function ProposalItineraryStopsTimeline({
               </header>
 
               {/* Stop cards */}
-              {stops.length > 0 ? (
+              {isLegacyOnly ? (
+                <p className="rounded-2xl border border-dashed border-[#E5E0D5] bg-white/70 px-4 py-6 text-center text-sm font-medium leading-7 text-gray-600">
+                  {day.description?.trim() || 'يكتمل تفصيل محطات هذا اليوم مع خبيرك.'}
+                </p>
+              ) : stops.length > 0 ? (
                 <div className="space-y-3">
                   {stops.map((stop) => (
                     <StopCard key={stop.id} stop={stop} />

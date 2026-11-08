@@ -46,6 +46,7 @@ import {
   type QuotationTransportOption,
 } from '@/lib/interactive-quotation';
 import { ProposalItineraryStopsTimeline } from '@/app/quote/[id]/ProposalItineraryStopsTimeline';
+import { destinationLabel, destinationsLine, normalizeDestinations } from '@/lib/trip-destination-normalize';
 
 type FeedbackTarget =
   | { kind: 'day'; id: string; label: string }
@@ -366,12 +367,23 @@ export function PremiumInteractiveQuotation({ quotation }: Props) {
     [quotation.itinerary_days],
   );
   const costs = quotation.cost_breakdown;
+  // The quote's destinations are the source of truth (the expert may have edited them); days are the fallback.
   const routeCities = useMemo(() => {
-    const fromDays = uniqueRouteCities(days);
-    if (fromDays.length > 0) return fromDays;
-    return quotation.destinations.map((d) => String(d).trim()).filter(Boolean);
+    const fromDestinations = normalizeDestinations(quotation.destinations).map((d) => d.label);
+    if (fromDestinations.length > 0) return fromDestinations;
+    return normalizeDestinations(uniqueRouteCities(days)).map((d) => d.label);
   }, [days, quotation.destinations]);
-  const hotelsByCity = useMemo(() => groupHotelsByCity(hotels), [hotels]);
+  // Group by the clean city name («كوريا:سيول» + «كوريا الجنوبية — سيول» → «سيول»), in route order,
+  // and leave out cities that were removed from the destinations.
+  const hotelsByCity = useMemo(() => {
+    const wanted = normalizeDestinations(quotation.destinations);
+    const groups = groupHotelsByCity(hotels.map((h) => ({ ...h, city: destinationLabel(h.city) || h.city })));
+    if (!wanted.length) return groups;
+    const order = wanted.map((d) => d.label);
+    return groups
+      .filter((g) => order.includes(g.city) || g.city === 'وجهات أخرى')
+      .sort((a, b) => order.indexOf(a.city) - order.indexOf(b.city));
+  }, [hotels, quotation.destinations]);
   const clientName = quotationClientName(quotation);
   const grandTotal = quotationTotalPrice(quotation);
   const costSummary = useMemo(
@@ -589,7 +601,7 @@ export function PremiumInteractiveQuotation({ quotation }: Props) {
             {quotation.destinations.length > 0 ? (
               <span className="inline-flex items-center gap-2">
                 <MapPin className={'h-4 w-4 ' + GOLD} aria-hidden />
-                {formatDestinationsLabel(quotation.destinations)}
+                {destinationsLine(quotation.destinations) || formatDestinationsLabel(quotation.destinations)}
               </span>
             ) : null}
           </div>
