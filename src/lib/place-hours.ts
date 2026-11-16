@@ -1,6 +1,7 @@
 /**
  * Opening hours for places-bank rows, cached in `places.opening_hours`.
- * Filled automatically from OpenStreetMap (free) or typed by staff in the places bank.
+ * Filled automatically from the web (official sites, Naver, tourism sites — read by Claude) or typed
+ * by staff in the places bank.
  * Pure helpers — safe on the client and the server.
  */
 
@@ -13,10 +14,12 @@ export type StoredPlaceHours = {
   /** Weekday convention: 0 = Sunday … 6 = Saturday */
   periods?: HoursPeriod[];
   businessStatus?: string | null;
-  /** manual = typed by staff (never overwritten) · osm = OpenStreetMap */
-  source?: 'manual' | 'osm';
-  /** Original OpenStreetMap value, for checking */
+  /** manual = typed by staff (never overwritten) · web = found online */
+  source?: 'manual' | 'web' | 'osm';
+  /** Hours as found (OpenStreetMap syntax), for checking */
   raw?: string | null;
+  /** Page the hours were read from */
+  sourceUrl?: string | null;
 };
 
 export type DayHours =
@@ -60,8 +63,9 @@ export function parseStoredHours(raw: unknown): StoredPlaceHours | null {
     status,
     periods,
     businessStatus: typeof r.businessStatus === 'string' ? r.businessStatus : null,
-    source: r.source === 'manual' ? 'manual' : r.source === 'osm' ? 'osm' : undefined,
+    source: r.source === 'manual' || r.source === 'web' || r.source === 'osm' ? r.source : undefined,
     raw: typeof r.raw === 'string' ? r.raw : null,
+    sourceUrl: typeof r.sourceUrl === 'string' && /^https?:\/\//.test(r.sourceUrl) ? r.sourceUrl : null,
   };
 }
 

@@ -1,29 +1,37 @@
 import 'server-only';
 
+import Anthropic from '@anthropic-ai/sdk';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import { extractJsonObject } from '@/lib/ai-generate-itinerary';
 import { englishPlaceName } from '@/lib/destination-match';
 import { parseOsmOpeningHours, parseStoredHours, type StoredPlaceHours } from '@/lib/place-hours';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { sameCity } from '@/lib/trip-destination-normalize';
 
 /**
- * Opening hours from OpenStreetMap (free, no key), cached per bank place in
- * `places.opening_hours / hours_synced_at` (see supabase/sql/places_opening_hours.sql).
+ * Opening hours read from the web: Claude (the existing ANTHROPIC_API_KEY) searches official sites,
+ * Naver / Kakao place pages and tourism sites, and returns the hours with the page it read them from.
+ * Cached per bank place in `places.opening_hours / hours_synced_at` (supabase/sql/places_opening_hours.sql).
  * Staff can type hours in the places bank; those (source: manual) are never overwritten.
  *
- * Page views only READ the cache. OpenStreetMap is asked only for bank rows whose cache is empty or
- * older than 30 days, a few per request, one request per second (their fair-use rules).
- * Without the columns everything quietly returns nothing.
+ * Page views only READ the cache. A lookup runs only for bank rows with no hours or hours older than
+ * 180 days, a few per request — so each place costs one lookup, about twice a year.
  */
 
 export type HoursLookupItem = { key: string; bankId?: string | null; name?: string | null; city?: string | null };
 
-const REFRESH_MS = 30 * 24 * 60 * 60 * 1000;
+const REFRESH_MS = 180 * 24 * 60 * 60 * 1000;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const USER_AGENT = 'Wanderloom/1.0 (+https://wanderloom-travel.vercel.app)';
-const OVERPASS = ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter'];
 const inFlight = new Set<string>();
+
+export function hoursLookupEnabled(): boolean {
+  return Boolean((process.env.ANTHROPIC_API_KEY ?? '').trim()) && process.env.PLACE_HOURS_LOOKUP !== 'false';
+}
+
+function hoursModel(): string {
+  return (process.env.ANTHROPIC_HOURS_MODEL ?? '').trim() || 'claude-sonnet-5-5';
+}
 
 function admin(): SupabaseClient | null {
   try {
@@ -34,11 +42,6 @@ function admin(): SupabaseClient | null {
 }
 
 type PlaceRow = Record<string, unknown> & { id: string; name?: string; city?: string };
-
-function num(v: unknown): number | null {
-  const n = typeof v === 'number' ? v : Number(String(v ?? '').trim());
-  return Number.isFinite(n) && n !== 0 ? n : null;
-}
 
 function needsSync(row: PlaceRow): boolean {
   if (!row.opening_hours) return true;
@@ -100,135 +103,108 @@ export async function loadPlaceHours(items: HoursLookupItem[]): Promise<{
   return { hours, stale: [...used.values()].filter(needsSync), enabled: true };
 }
 
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+const SYSTEM = `You find the CURRENT regular opening hours of one place (attraction, restaurant, café, shop) for a travel company.
+Search the web. Prefer, in order: the official website, Naver Place / Kakao Map / Google Maps listings, the national tourism site (e.g. VisitKorea, JNTO), then recent reliable listings.
+Rules:
+- Make sure the page is about THIS place (same name, same city, same branch when a branch is given). If unsure, say not found.
+- Answer in OpenStreetMap opening_hours syntax, e.g. "Mo-Fr 10:00-22:00; Sa,Su 09:00-23:00", "Tu-Su 09:00-18:00; Mo off", "24/7", "Mo-Su 11:30-15:00,17:00-22:00", "Fr,Sa 18:00-02:00".
+- Regular weekly hours only. Ignore holidays, last-entry times and seasonal exceptions (mention them in "note").
+- If the place has permanently closed, set "permanently_closed": true.
+- Never guess. If no reliable source states the hours, return found=false.
+Output ONLY JSON: {"found":true|false,"opening_hours":"…","permanently_closed":false,"source_url":"https://…","confidence":"high|medium|low","note":"…"}`;
 
-/** Compare names loosely: «N Seoul Tower» ≡ «N서울타워 (N Seoul Tower)». */
-function normName(v: unknown): string {
-  return String(v ?? '')
-    .toLowerCase()
-    .normalize('NFKC')
-    .replace(/[^\p{L}\p{N}]+/gu, '');
-}
+type LookupAnswer = {
+  found?: boolean;
+  opening_hours?: string;
+  permanently_closed?: boolean;
+  source_url?: string;
+  confidence?: string;
+  note?: string;
+};
 
-function nameScore(target: string, tags: Record<string, string>): number {
-  const t = normName(target);
-  if (t.length < 2) return 0;
-  let best = 0;
-  for (const k of ['name', 'name:en', 'name:ko', 'name:ja', 'name:zh', 'name:ar', 'int_name', 'official_name', 'brand', 'brand:en', 'alt_name']) {
-    const n = normName(tags[k]);
-    if (!n) continue;
-    if (n === t) return 3;
-    if (Math.min(n.length, t.length) >= 4 && (n.includes(t) || t.includes(n))) best = Math.max(best, 2);
-  }
-  return best;
-}
-
-/** Coordinates from the bank row, or from a Google Maps link («@37.55,126.98» / «q=37.55,126.98»). */
-function rowCoords(row: PlaceRow): { lat: number; lng: number } | null {
-  const lat = num(row.lat ?? row.latitude);
-  const lng = num(row.lng ?? row.longitude);
-  if (lat != null && lng != null) return { lat, lng };
-  const url = String(row.map_url ?? row.maps_url ?? row.google_maps_url ?? '');
-  const m = /@(-?\d{1,2}\.\d+),(-?\d{1,3}\.\d+)/.exec(url) ?? /[?&](?:q|query|ll)=(-?\d{1,2}\.\d+),\s*(-?\d{1,3}\.\d+)/.exec(url);
-  return m ? { lat: Number(m[1]), lng: Number(m[2]) } : null;
-}
-
-type OsmElement = { tags?: Record<string, string>; lat?: number; lon?: number; center?: { lat: number; lon: number } };
-
-/** Nearby OpenStreetMap places that have hours, best name match (nearest wins ties). */
-async function overpassNear(name: string, lat: number, lng: number): Promise<OsmElement | null> {
-  const query = `[out:json][timeout:12];nwr(around:300,${lat},${lng})["opening_hours"]["name"];out center tags 100;`;
-  for (const endpoint of OVERPASS) {
-    try {
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'User-Agent': USER_AGENT },
-        body: `data=${encodeURIComponent(query)}`,
-        signal: AbortSignal.timeout(15_000),
-        cache: 'no-store',
-      });
-      if (!res.ok) continue;
-      const json = (await res.json().catch(() => null)) as { elements?: OsmElement[] } | null;
-      const dist = (e: OsmElement) => {
-        const la = e.lat ?? e.center?.lat ?? lat;
-        const lo = e.lon ?? e.center?.lon ?? lng;
-        return (la - lat) ** 2 + (lo - lng) ** 2;
-      };
-      const scored = (json?.elements ?? [])
-        .map((e) => ({ e, score: nameScore(name, e.tags ?? {}) }))
-        .filter((x) => x.score >= 2)
-        .sort((a, b) => b.score - a.score || dist(a.e) - dist(b.e));
-      return scored[0]?.e ?? null;
-    } catch {
-      /* try the next mirror */
-    }
-  }
-  return null;
-}
-
-// Nominatim allows one request per second — keep a single queue per server instance.
-let nominatimChain: Promise<unknown> = Promise.resolve();
-function nominatimSearch(q: string): Promise<Array<{ extratags?: Record<string, string>; name?: string }>> {
-  const run = nominatimChain.then(async () => {
-    try {
-      const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&extratags=1&limit=3&accept-language=en&q=${encodeURIComponent(q)}`;
-      const res = await fetch(url, { headers: { 'User-Agent': USER_AGENT }, signal: AbortSignal.timeout(10_000), cache: 'no-store' });
-      if (!res.ok) throw new Error(`nominatim ${res.status}`);
-      return (await res.json().catch(() => [])) as Array<{ extratags?: Record<string, string>; name?: string }>;
-    } finally {
-      await sleep(1100);
-    }
-  });
-  nominatimChain = run.catch(() => undefined);
-  return run;
-}
-
-async function fetchHoursForRow(row: PlaceRow): Promise<StoredPlaceHours> {
+/** Ask Claude (with web search) for one place's hours. Throws on API problems so the row is retried later. */
+export async function fetchHoursForRow(row: PlaceRow): Promise<StoredPlaceHours> {
   const name = String(row.name ?? '').trim();
-  if (!name) return { status: 'not_found', source: 'osm' };
-  let raw: string | null = null;
+  if (!name) return { status: 'not_found', source: 'web' };
+  const city = String(row.city ?? '').trim();
+  const country = String(row.country ?? '').trim();
+  const lines = [
+    `Place: ${name}`,
+    String(row.branch_name ?? '').trim() ? `Branch / area: ${String(row.branch_name).trim()}` : '',
+    `City: ${city}${englishPlaceName(city) ? ` (${englishPlaceName(city)})` : ''}`,
+    country ? `Country: ${country}${englishPlaceName(country) ? ` (${englishPlaceName(country)})` : ''}` : '',
+    String(row.sub_tag ?? '').trim() ? `About: ${String(row.sub_tag).trim().slice(0, 160)}` : '',
+    String(row.map_url ?? '').trim() ? `Map link: ${String(row.map_url).trim()}` : '',
+  ].filter(Boolean);
 
-  const coords = rowCoords(row);
-  if (coords) raw = (await overpassNear(name, coords.lat, coords.lng))?.tags?.opening_hours ?? null;
+  const client = new Anthropic({ apiKey: (process.env.ANTHROPIC_API_KEY ?? '').trim() });
+  const msg = await client.messages.create(
+    {
+      model: hoursModel(),
+      max_tokens: 1200,
+      system: SYSTEM,
+      tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 3 }],
+      messages: [{ role: 'user', content: lines.join('\n') }],
+    },
+    { signal: AbortSignal.timeout(60_000) },
+  );
+  const text = msg.content
+    .filter((b): b is Anthropic.TextBlock => b.type === 'text')
+    .map((b) => b.text)
+    .join('\n');
+  const ans = (extractJsonObject(text) ?? {}) as LookupAnswer;
+  const sourceUrl = typeof ans.source_url === 'string' && /^https?:\/\//.test(ans.source_url) ? ans.source_url.slice(0, 500) : null;
 
-  if (!raw) {
-    const city = String(row.city ?? '').trim();
-    const country = String(row.country ?? '').trim();
-    const q = [name, String(row.branch_name ?? '').trim(), englishPlaceName(city) ?? city, englishPlaceName(country) ?? country]
-      .filter(Boolean)
-      .join(', ');
-    const results = await nominatimSearch(q);
-    if (!results.length) return { status: 'not_found', source: 'osm' };
-    raw = results.find((r) => r.extratags?.opening_hours)?.extratags?.opening_hours ?? null;
+  if (ans.permanently_closed === true && sourceUrl) {
+    return { status: 'no_hours', source: 'web', businessStatus: 'CLOSED_PERMANENTLY', sourceUrl };
   }
-
+  if (!ans.found || ans.confidence === 'low' || !sourceUrl) return { status: 'not_found', source: 'web' };
+  const raw = String(ans.opening_hours ?? '').trim().slice(0, 300);
   const periods = parseOsmOpeningHours(raw);
-  return periods ? { status: 'ok', source: 'osm', periods, raw } : { status: 'no_hours', source: 'osm', raw };
+  return periods ? { status: 'ok', source: 'web', periods, raw, sourceUrl } : { status: 'no_hours', source: 'web', raw, sourceUrl };
+}
+
+/** Look up one bank place now and save it (staff button in the places bank). */
+export async function refreshPlaceHoursById(id: string): Promise<StoredPlaceHours | null> {
+  const db = admin();
+  if (!db || !hoursLookupEnabled()) return null;
+  const { data, error } = await db.from('places').select('*').eq('id', id).maybeSingle();
+  if (error || !data) return null;
+  const hours = await fetchHoursForRow(data as PlaceRow);
+  const { error: saveError } = await db
+    .from('places')
+    .update({ opening_hours: hours, hours_synced_at: new Date().toISOString() })
+    .eq('id', id);
+  if (saveError) throw new Error(saveError.message);
+  return hours;
 }
 
 /** Refresh hours for stale bank rows (bounded). Safe to run in `after()`. */
 export async function syncPlaceHours(rows: PlaceRow[], opts: { max?: number; budgetMs?: number } = {}): Promise<number> {
   const db = admin();
-  if (!db || !rows.length) return 0;
-  const deadline = Date.now() + (opts.budgetMs ?? 25_000);
-  const todo = rows.filter((r) => !inFlight.has(String(r.id))).slice(0, opts.max ?? 10);
+  if (!db || !rows.length || !hoursLookupEnabled()) return 0;
+  const deadline = Date.now() + (opts.budgetMs ?? 50_000);
+  const todo = rows.filter((r) => !inFlight.has(String(r.id))).slice(0, opts.max ?? 6);
   todo.forEach((r) => inFlight.add(String(r.id)));
   let done = 0;
   try {
-    for (const row of todo) {
-      if (Date.now() > deadline) break;
-      try {
-        const hours = await fetchHoursForRow(row);
-        const { error } = await db
-          .from('places')
-          .update({ opening_hours: hours, hours_synced_at: new Date().toISOString() })
-          .eq('id', row.id);
-        if (error) console.warn('[place-hours] save:', error.message);
-        else done += 1;
-      } catch (err) {
-        // Network / rate-limit problems: leave the row untouched so it is retried later
-        console.warn('[place-hours] osm:', err instanceof Error ? err.message : err);
-      }
+    for (let i = 0; i < todo.length && Date.now() < deadline; i += 3) {
+      await Promise.all(
+        todo.slice(i, i + 3).map(async (row) => {
+          try {
+            const hours = await fetchHoursForRow(row);
+            const { error } = await db
+              .from('places')
+              .update({ opening_hours: hours, hours_synced_at: new Date().toISOString() })
+              .eq('id', row.id);
+            if (error) console.warn('[place-hours] save:', error.message);
+            else done += 1;
+          } catch (err) {
+            // API / network problems: leave the row untouched so it is retried later
+            console.warn('[place-hours] lookup:', err instanceof Error ? err.message : err);
+          }
+        }),
+      );
     }
   } finally {
     todo.forEach((r) => inFlight.delete(String(r.id)));

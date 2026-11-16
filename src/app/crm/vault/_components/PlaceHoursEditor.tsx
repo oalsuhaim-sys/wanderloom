@@ -1,6 +1,6 @@
 'use client';
 
-import { Clock } from 'lucide-react';
+import { Clock, ExternalLink, Loader2, Search } from 'lucide-react';
 
 import {
   formatDayHoursAr,
@@ -15,13 +15,15 @@ export type HoursMode = 'auto' | 'manual';
 const TIME_INPUT =
   'w-[88px] rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-bold text-slate-800 outline-none focus:border-amber-500 disabled:opacity-40 [color-scheme:light] dark:border-[#2D3F3A] dark:bg-[#1A2421] dark:text-gray-100';
 
-/** Opening hours in the places bank: automatic (OpenStreetMap) or typed by staff. */
+/** Opening hours in the places bank: found on the web automatically, or typed by staff. */
 export default function PlaceHoursEditor({
   mode,
   rows,
   current,
   onModeChange,
   onRowsChange,
+  onLookup,
+  lookingUp,
 }: {
   mode: HoursMode;
   rows: HoursRow[];
@@ -29,6 +31,9 @@ export default function PlaceHoursEditor({
   current: StoredPlaceHours | null;
   onModeChange: (mode: HoursMode) => void;
   onRowsChange: (rows: HoursRow[]) => void;
+  /** Look the hours up on the web now. */
+  onLookup?: () => void;
+  lookingUp?: boolean;
 }) {
   const setRow = (i: number, patch: Partial<HoursRow>) => onRowsChange(rows.map((r, j) => (j === i ? { ...r, ...patch } : r)));
   const copyFirst = () => {
@@ -46,7 +51,7 @@ export default function PlaceHoursEditor({
       <div className="mb-3 flex gap-2 text-xs font-bold">
         {(
           [
-            ['auto', 'تلقائي (OpenStreetMap)'],
+            ['auto', 'تلقائي (من الإنترنت)'],
             ['manual', 'إدخال يدوي'],
           ] as const
         ).map(([value, label]) => (
@@ -66,21 +71,52 @@ export default function PlaceHoursEditor({
       </div>
 
       {mode === 'auto' ? (
-        auto?.status === 'ok' ? (
-          <ul className="space-y-0.5 text-xs text-slate-600 dark:text-slate-300">
-            {[0, 1, 2, 3, 4, 5, 6].map((d) => (
-              <li key={d}>
-                <span className="font-bold">{weekdayLabelAr(d)}:</span> {formatDayHoursAr(hoursForWeekday(auto, d))}
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="text-xs leading-relaxed text-slate-500">
-            {auto?.status === 'no_hours' || auto?.status === 'not_found'
-              ? 'لم نجد ساعات هذا المكان في OpenStreetMap. اختر «إدخال يدوي» لكتابتها.'
-              : 'تُجلب تلقائياً أول ما يُستخدم المكان في مسار.'}
-          </p>
-        )
+        <div className="space-y-2">
+          {auto?.status === 'ok' ? (
+            <ul className="space-y-0.5 text-xs text-slate-600 dark:text-slate-300">
+              {[0, 1, 2, 3, 4, 5, 6].map((d) => (
+                <li key={d}>
+                  <span className="font-bold">{weekdayLabelAr(d)}:</span> {formatDayHoursAr(hoursForWeekday(auto, d))}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-xs leading-relaxed text-slate-500">
+              {auto?.businessStatus === 'CLOSED_PERMANENTLY'
+                ? 'المصدر يذكر أن المكان مغلق نهائياً — تأكد منه.'
+                : auto?.status === 'no_hours' || auto?.status === 'not_found'
+                  ? 'لم نجد ساعات موثوقة لهذا المكان على الإنترنت. اختر «إدخال يدوي» لكتابتها.'
+                  : 'تُجلب تلقائياً أول ما يُستخدم المكان في مسار، أو اضغط «ابحث الآن».'}
+            </p>
+          )}
+          <div className="flex items-center justify-between gap-2">
+            {onLookup ? (
+              <button
+                type="button"
+                onClick={onLookup}
+                disabled={lookingUp}
+                className="inline-flex items-center gap-1 text-xs font-bold text-amber-700 hover:underline disabled:opacity-60"
+              >
+                {lookingUp ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden /> : <Search className="h-3.5 w-3.5" aria-hidden />}
+                {lookingUp ? 'جاري البحث…' : auto ? 'ابحث مجدداً' : 'ابحث الآن'}
+              </button>
+            ) : (
+              <span />
+            )}
+            {auto?.sourceUrl ? (
+              <a
+                href={auto.sourceUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex max-w-[60%] items-center gap-1 truncate text-[11px] text-slate-400 hover:text-slate-600"
+                dir="ltr"
+              >
+                <ExternalLink className="h-3 w-3 shrink-0" aria-hidden />
+                <span className="truncate">{auto.sourceUrl.replace(/^https?:\/\/(www\.)?/, '')}</span>
+              </a>
+            ) : null}
+          </div>
+        </div>
       ) : (
         <div className="space-y-1.5">
           {rows.map((r, i) => (
