@@ -40,6 +40,8 @@ type Props = {
   supplierBrief?: SupplierBriefClientContext | null;
   predictiveWishContext?: PredictiveWishContext | null;
   onApplyPredictiveWish?: (place: Record<string, unknown>) => void;
+  /** Trip start date (YYYY-MM-DD) — enables opening-hours checks per stop. */
+  tripStartDate?: string;
 };
 
 export default function SimpleItineraryDayPlanner({
@@ -63,6 +65,7 @@ export default function SimpleItineraryDayPlanner({
   supplierBrief,
   predictiveWishContext,
   onApplyPredictiveWish,
+  tripStartDate,
 }: Props) {
   const hotelOptions = useMemo(
     () => hotels.map((h) => h?.name?.trim()).filter(Boolean) as string[],
@@ -237,6 +240,7 @@ export default function SimpleItineraryDayPlanner({
             onUpdatePlaceImageUrl={onUpdatePlaceImageUrl}
             dayDroppableId={dayDroppableId}
             supplierBrief={supplierBrief}
+            tripStartDate={tripStartDate}
           />
         ))}
       </div>

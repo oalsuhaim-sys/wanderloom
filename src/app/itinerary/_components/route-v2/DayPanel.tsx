@@ -1,8 +1,8 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { BedDouble, Car, ChevronDown, Footprints, MapPin, MessageCircle, Sparkles, TrainFront, Users } from 'lucide-react'
+import { BedDouble, Car, ChevronDown, Clock, Footprints, MapPin, MessageCircle, Sparkles, TrainFront, Users } from 'lucide-react'
 
 import {
   buildGoogleMapsDirectionsUrl,
@@ -13,6 +13,8 @@ import {
   type PublicItineraryActivity,
   type PublicItineraryDay,
 } from '@/lib/public-itinerary'
+import { formatDayHoursAr, hoursForWeekday, tripDayWeekday } from '@/lib/place-hours'
+import { usePlaceHours } from '@/lib/use-place-hours'
 import { getVipPlaceCategoryMeta } from '@/lib/vip-place-category'
 import DayWeatherPill from '../DayWeatherPill'
 import { ActivityActionPills } from '../VipDailyItineraryTimeline'
@@ -115,8 +117,12 @@ function StopRow({
   clientId,
   uploadingId,
   setUploadingId,
+  hoursLine,
+  hoursClosed,
 }: {
   a: PublicItineraryActivity
+  hoursLine?: string | null
+  hoursClosed?: boolean
   order: number
   color: string
   open: boolean
@@ -165,6 +171,12 @@ function StopRow({
               </span>
             ) : null}
           </span>
+          {hoursLine ? (
+            <span className="mt-0.5 flex items-center gap-1.5 text-[11px] font-semibold" style={{ color: hoursClosed ? RV.goldText : RV.muted }}>
+              <Clock className="h-3 w-3 shrink-0" style={{ color: RV.goldSoft }} aria-hidden />
+              <span className="truncate">{hoursLine}</span>
+            </span>
+          ) : null}
         </span>
         <span className="shrink-0 text-xs font-black tabular-nums" style={{ color: time ? RV.cream : RV.muted }} dir="ltr">
           {time || 'مرن'}
@@ -287,6 +299,16 @@ export default function DayPanel({
   const last = day.activities[day.activities.length - 1]
   const showArrival = ground.group && index === 0 && Boolean(ground.leaderName || ground.meetingPoint)
   const subtitle = [city, day.title?.trim() && day.title.trim() !== city ? day.title.trim() : ''].filter(Boolean).join(' · ')
+  const weekday = tripDayWeekday(startDate, index)
+  const hoursItems = useMemo(
+    () => day.activities.map((a) => ({ key: a.id, bankId: a.placesBankId ?? null, name: a.place_name, city })),
+    [day.activities, city],
+  )
+  const placeHours = usePlaceHours(hoursItems)
+  const stopHours = (a: PublicItineraryActivity) => {
+    const dh = weekday == null ? null : hoursForWeekday(placeHours[a.id], weekday)
+    return { hoursLine: formatDayHoursAr(dh), hoursClosed: dh?.kind === 'closed' || dh?.kind === 'closedPermanently' }
+  }
 
   return (
     <motion.section
@@ -393,6 +415,7 @@ export default function DayPanel({
                 clientId={clientId}
                 uploadingId={uploadingId}
                 setUploadingId={setUploadingId}
+                {...stopHours(a)}
               />
             </div>
           ))}
