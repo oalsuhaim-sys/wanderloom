@@ -2,33 +2,28 @@ import 'server-only';
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-import { parseStoredHours, type HoursPeriod, type StoredPlaceHours } from '@/lib/place-hours';
+import { englishPlaceName } from '@/lib/destination-match';
+import { parseOsmOpeningHours, parseStoredHours, type StoredPlaceHours } from '@/lib/place-hours';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { sameCity } from '@/lib/trip-destination-normalize';
 
 /**
- * Opening hours from Google Places (New), cached per bank place in
- * `places.google_place_id / opening_hours / hours_synced_at` (see supabase/sql/places_opening_hours.sql).
+ * Opening hours from OpenStreetMap (free, no key), cached per bank place in
+ * `places.opening_hours / hours_synced_at` (see supabase/sql/places_opening_hours.sql).
+ * Staff can type hours in the places bank; those (source: manual) are never overwritten.
  *
- * Cost control: page views only READ the cache. Google is called only for bank rows whose cache is
- * empty or older than 30 days, at most a few per request — so each place costs one lookup a month.
- * Without a Google key or without the columns everything quietly returns nothing.
+ * Page views only READ the cache. OpenStreetMap is asked only for bank rows whose cache is empty or
+ * older than 30 days, a few per request, one request per second (their fair-use rules).
+ * Without the columns everything quietly returns nothing.
  */
 
 export type HoursLookupItem = { key: string; bankId?: string | null; name?: string | null; city?: string | null };
 
 const REFRESH_MS = 30 * 24 * 60 * 60 * 1000;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const USER_AGENT = 'Wanderloom/1.0 (+https://wanderloom-travel.vercel.app)';
+const OVERPASS = ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter'];
 const inFlight = new Set<string>();
-
-export function googlePlacesKey(): string {
-  const k =
-    (process.env.GOOGLE_PLACES_API_KEY ?? '').trim() ||
-    (process.env.GOOGLE_MAPS_API_KEY ?? '').trim() ||
-    (process.env.NEXT_PUBLIC_GOOGLE_PLACES_API_KEY ?? '').trim() ||
-    (process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? '').trim();
-  return /^AIza[\w-]{20,}$/.test(k) ? k : '';
-}
 
 function admin(): SupabaseClient | null {
   try {
@@ -47,6 +42,7 @@ function num(v: unknown): number | null {
 
 function needsSync(row: PlaceRow): boolean {
   if (!row.opening_hours) return true;
+  if (parseStoredHours(row.opening_hours)?.source === 'manual') return false;
   const at = Date.parse(String(row.hours_synced_at ?? ''));
   return !Number.isFinite(at) || Date.now() - at > REFRESH_MS;
 }
@@ -104,82 +100,135 @@ export async function loadPlaceHours(items: HoursLookupItem[]): Promise<{
   return { hours, stale: [...used.values()].filter(needsSync), enabled: true };
 }
 
-async function googleFetch(url: string, init: RequestInit, key: string, fieldMask: string): Promise<Record<string, unknown> | null> {
-  const res = await fetch(url, {
-    ...init,
-    headers: { 'Content-Type': 'application/json', 'X-Goog-Api-Key': key, 'X-Goog-FieldMask': fieldMask },
-    signal: AbortSignal.timeout(8000),
-    cache: 'no-store',
-  });
-  if (res.status === 404) return {};
-  if (!res.ok) {
-    const body = await res.text().catch(() => '');
-    throw new Error(`google ${res.status}: ${body.slice(0, 160)}`);
-  }
-  return (await res.json().catch(() => null)) as Record<string, unknown> | null;
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/** Compare names loosely: «N Seoul Tower» ≡ «N서울타워 (N Seoul Tower)». */
+function normName(v: unknown): string {
+  return String(v ?? '')
+    .toLowerCase()
+    .normalize('NFKC')
+    .replace(/[^\p{L}\p{N}]+/gu, '');
 }
 
-/** Text Search (IDs only — the free tier) → the Google place id for a bank row. */
-async function findGooglePlaceId(row: PlaceRow, key: string): Promise<string | null> {
-  const textQuery = [row.name, row.branch_name, row.city, row.country]
-    .map((v) => String(v ?? '').trim())
-    .filter(Boolean)
-    .join(' ');
-  if (!textQuery) return null;
+function nameScore(target: string, tags: Record<string, string>): number {
+  const t = normName(target);
+  if (t.length < 2) return 0;
+  let best = 0;
+  for (const k of ['name', 'name:en', 'name:ko', 'name:ja', 'name:zh', 'name:ar', 'int_name', 'official_name', 'brand', 'brand:en', 'alt_name']) {
+    const n = normName(tags[k]);
+    if (!n) continue;
+    if (n === t) return 3;
+    if (Math.min(n.length, t.length) >= 4 && (n.includes(t) || t.includes(n))) best = Math.max(best, 2);
+  }
+  return best;
+}
+
+/** Coordinates from the bank row, or from a Google Maps link («@37.55,126.98» / «q=37.55,126.98»). */
+function rowCoords(row: PlaceRow): { lat: number; lng: number } | null {
   const lat = num(row.lat ?? row.latitude);
   const lng = num(row.lng ?? row.longitude);
-  const body: Record<string, unknown> = { textQuery, pageSize: 1 };
-  if (lat != null && lng != null) body.locationBias = { circle: { center: { latitude: lat, longitude: lng }, radius: 3000 } };
-  const json = await googleFetch('https://places.googleapis.com/v1/places:searchText', { method: 'POST', body: JSON.stringify(body) }, key, 'places.id');
-  const places = Array.isArray(json?.places) ? (json!.places as Array<{ id?: string }>) : [];
-  return places[0]?.id?.trim() || null;
+  if (lat != null && lng != null) return { lat, lng };
+  const url = String(row.map_url ?? row.maps_url ?? row.google_maps_url ?? '');
+  const m = /@(-?\d{1,2}\.\d+),(-?\d{1,3}\.\d+)/.exec(url) ?? /[?&](?:q|query|ll)=(-?\d{1,2}\.\d+),\s*(-?\d{1,3}\.\d+)/.exec(url);
+  return m ? { lat: Number(m[1]), lng: Number(m[2]) } : null;
 }
 
-async function fetchHoursForRow(row: PlaceRow, key: string): Promise<{ googleId: string | null; hours: StoredPlaceHours }> {
-  const googleId = String(row.google_place_id ?? '').trim() || (await findGooglePlaceId(row, key));
-  if (!googleId) return { googleId: null, hours: { status: 'not_found' } };
-  const json = await googleFetch(
-    `https://places.googleapis.com/v1/places/${encodeURIComponent(googleId)}`,
-    { method: 'GET' },
-    key,
-    'regularOpeningHours,businessStatus',
-  );
-  const roh = (json?.regularOpeningHours ?? null) as { periods?: HoursPeriod[] } | null;
-  const businessStatus = typeof json?.businessStatus === 'string' ? json.businessStatus : null;
-  const periods = Array.isArray(roh?.periods) ? roh!.periods : [];
-  return {
-    googleId,
-    hours: periods.length ? { status: 'ok', periods, businessStatus } : { status: 'no_hours', businessStatus },
-  };
+type OsmElement = { tags?: Record<string, string>; lat?: number; lon?: number; center?: { lat: number; lon: number } };
+
+/** Nearby OpenStreetMap places that have hours, best name match (nearest wins ties). */
+async function overpassNear(name: string, lat: number, lng: number): Promise<OsmElement | null> {
+  const query = `[out:json][timeout:12];nwr(around:300,${lat},${lng})["opening_hours"]["name"];out center tags 100;`;
+  for (const endpoint of OVERPASS) {
+    try {
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'User-Agent': USER_AGENT },
+        body: `data=${encodeURIComponent(query)}`,
+        signal: AbortSignal.timeout(15_000),
+        cache: 'no-store',
+      });
+      if (!res.ok) continue;
+      const json = (await res.json().catch(() => null)) as { elements?: OsmElement[] } | null;
+      const dist = (e: OsmElement) => {
+        const la = e.lat ?? e.center?.lat ?? lat;
+        const lo = e.lon ?? e.center?.lon ?? lng;
+        return (la - lat) ** 2 + (lo - lng) ** 2;
+      };
+      const scored = (json?.elements ?? [])
+        .map((e) => ({ e, score: nameScore(name, e.tags ?? {}) }))
+        .filter((x) => x.score >= 2)
+        .sort((a, b) => b.score - a.score || dist(a.e) - dist(b.e));
+      return scored[0]?.e ?? null;
+    } catch {
+      /* try the next mirror */
+    }
+  }
+  return null;
+}
+
+// Nominatim allows one request per second — keep a single queue per server instance.
+let nominatimChain: Promise<unknown> = Promise.resolve();
+function nominatimSearch(q: string): Promise<Array<{ extratags?: Record<string, string>; name?: string }>> {
+  const run = nominatimChain.then(async () => {
+    try {
+      const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&extratags=1&limit=3&accept-language=en&q=${encodeURIComponent(q)}`;
+      const res = await fetch(url, { headers: { 'User-Agent': USER_AGENT }, signal: AbortSignal.timeout(10_000), cache: 'no-store' });
+      if (!res.ok) throw new Error(`nominatim ${res.status}`);
+      return (await res.json().catch(() => [])) as Array<{ extratags?: Record<string, string>; name?: string }>;
+    } finally {
+      await sleep(1100);
+    }
+  });
+  nominatimChain = run.catch(() => undefined);
+  return run;
+}
+
+async function fetchHoursForRow(row: PlaceRow): Promise<StoredPlaceHours> {
+  const name = String(row.name ?? '').trim();
+  if (!name) return { status: 'not_found', source: 'osm' };
+  let raw: string | null = null;
+
+  const coords = rowCoords(row);
+  if (coords) raw = (await overpassNear(name, coords.lat, coords.lng))?.tags?.opening_hours ?? null;
+
+  if (!raw) {
+    const city = String(row.city ?? '').trim();
+    const country = String(row.country ?? '').trim();
+    const q = [name, String(row.branch_name ?? '').trim(), englishPlaceName(city) ?? city, englishPlaceName(country) ?? country]
+      .filter(Boolean)
+      .join(', ');
+    const results = await nominatimSearch(q);
+    if (!results.length) return { status: 'not_found', source: 'osm' };
+    raw = results.find((r) => r.extratags?.opening_hours)?.extratags?.opening_hours ?? null;
+  }
+
+  const periods = parseOsmOpeningHours(raw);
+  return periods ? { status: 'ok', source: 'osm', periods, raw } : { status: 'no_hours', source: 'osm', raw };
 }
 
 /** Refresh hours for stale bank rows (bounded). Safe to run in `after()`. */
 export async function syncPlaceHours(rows: PlaceRow[], opts: { max?: number; budgetMs?: number } = {}): Promise<number> {
-  const key = googlePlacesKey();
   const db = admin();
-  if (!key || !db || !rows.length) return 0;
+  if (!db || !rows.length) return 0;
   const deadline = Date.now() + (opts.budgetMs ?? 25_000);
-  const todo = rows.filter((r) => !inFlight.has(String(r.id))).slice(0, opts.max ?? 12);
+  const todo = rows.filter((r) => !inFlight.has(String(r.id))).slice(0, opts.max ?? 10);
   todo.forEach((r) => inFlight.add(String(r.id)));
   let done = 0;
   try {
-    for (let i = 0; i < todo.length && Date.now() < deadline; i += 3) {
-      await Promise.all(
-        todo.slice(i, i + 3).map(async (row) => {
-          try {
-            const { googleId, hours } = await fetchHoursForRow(row, key);
-            const { error } = await db
-              .from('places')
-              .update({ google_place_id: googleId, opening_hours: hours, hours_synced_at: new Date().toISOString() })
-              .eq('id', row.id);
-            if (error) console.warn('[place-hours] save:', error.message);
-            else done += 1;
-          } catch (err) {
-            // Key / quota problems: leave the row untouched so it is retried later
-            console.warn('[place-hours] google:', err instanceof Error ? err.message : err);
-          }
-        }),
-      );
+    for (const row of todo) {
+      if (Date.now() > deadline) break;
+      try {
+        const hours = await fetchHoursForRow(row);
+        const { error } = await db
+          .from('places')
+          .update({ opening_hours: hours, hours_synced_at: new Date().toISOString() })
+          .eq('id', row.id);
+        if (error) console.warn('[place-hours] save:', error.message);
+        else done += 1;
+      } catch (err) {
+        // Network / rate-limit problems: leave the row untouched so it is retried later
+        console.warn('[place-hours] osm:', err instanceof Error ? err.message : err);
+      }
     }
   } finally {
     todo.forEach((r) => inFlight.delete(String(r.id)));

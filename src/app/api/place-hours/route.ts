@@ -5,7 +5,7 @@ import { loadPlaceHours, syncPlaceHours, type HoursLookupItem } from '@/lib/plac
 /**
  * POST { items: [{ key, bankId?, name?, city? }] } → { hours: { [key]: StoredPlaceHours } }
  * Used by the client itinerary page and the CRM itinerary editor. Reads the cache only; places with
- * no / old hours are refreshed from Google after the response (bank rows only, a few per request).
+ * no / old hours are refreshed from OpenStreetMap after the response (bank rows only, a few per request).
  */
 export const maxDuration = 60;
 
@@ -25,7 +25,7 @@ export async function POST(request: Request) {
     const { hours, stale, enabled } = await loadPlaceHours(items);
     if (enabled && stale.length) {
       after(async () => {
-        await syncPlaceHours(stale, { max: 12, budgetMs: 40_000 });
+        await syncPlaceHours(stale, { max: 10, budgetMs: 45_000 });
       });
     }
     return NextResponse.json({ hours, pending: stale.length }, { headers: { 'Cache-Control': 'no-store' } });
