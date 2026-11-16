@@ -15,8 +15,9 @@ import { sameCity } from '@/lib/trip-destination-normalize';
  * Cached per bank place in `places.opening_hours / hours_synced_at` (supabase/sql/places_opening_hours.sql).
  * Staff can type hours in the places bank; those (source: manual) are never overwritten.
  *
- * Page views only READ the cache. A lookup runs only for bank rows with no hours or hours older than
- * 180 days, a few per request — so each place costs one lookup, about twice a year.
+ * Page views only READ the cache. Lookups run when staff press «ابحث بـ Claude» (itinerary editor or
+ * places bank). Optional background lookups (PLACE_HOURS_AUTO=true) cover rows with no hours or hours
+ * older than 180 days, a few per request.
  */
 
 export type HoursLookupItem = { key: string; bankId?: string | null; name?: string | null; city?: string | null };
@@ -177,6 +178,23 @@ export async function refreshPlaceHoursById(id: string): Promise<StoredPlaceHour
     .eq('id', id);
   if (saveError) throw new Error(saveError.message);
   return hours;
+}
+
+/** Save hours typed by staff (or clear them with null). Manual hours are never overwritten by a lookup. */
+export async function saveManualPlaceHours(id: string, hours: StoredPlaceHours | null): Promise<void> {
+  const db = admin();
+  if (!db) throw new Error('unavailable');
+  const value = hours ? { ...hours, source: 'manual' as const, sourceUrl: null } : null;
+  const { error } = await db
+    .from('places')
+    .update({ opening_hours: value, hours_synced_at: value ? new Date().toISOString() : null })
+    .eq('id', id);
+  if (error) throw new Error(error.message);
+}
+
+/** Background lookups for places opened in itineraries — off unless PLACE_HOURS_AUTO=true (staff use the button). */
+export function autoHoursLookupEnabled(): boolean {
+  return process.env.PLACE_HOURS_AUTO === 'true' && hoursLookupEnabled();
 }
 
 /** Refresh hours for stale bank rows (bounded). Safe to run in `after()`. */

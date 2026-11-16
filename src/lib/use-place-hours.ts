@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 
 import { parseStoredHours, type StoredPlaceHours } from '@/lib/place-hours';
 
@@ -64,4 +64,26 @@ export function usePlaceHours(items: PlaceHoursRequestItem[]): Record<string, St
   }, [signature]);
 
   return hours;
+}
+
+// ── Hours changed by staff in this session (by bank place id), so every day card updates at once ──
+
+type Overrides = Record<string, StoredPlaceHours | null>;
+let overrides: Overrides = {};
+const listeners = new Set<() => void>();
+
+export function setPlaceHoursOverride(bankId: string, hours: StoredPlaceHours | null): void {
+  overrides = { ...overrides, [bankId]: hours };
+  cache.clear();
+  listeners.forEach((l) => l());
+}
+
+const subscribe = (l: () => void) => {
+  listeners.add(l);
+  return () => listeners.delete(l);
+};
+const EMPTY: Overrides = {};
+
+export function usePlaceHoursOverrides(): Overrides {
+  return useSyncExternalStore(subscribe, () => overrides, () => EMPTY);
 }

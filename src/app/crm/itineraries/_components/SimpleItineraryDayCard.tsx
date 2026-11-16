@@ -8,7 +8,7 @@ import { toast } from '@/lib/crm-toast';
 import PlaceHoursHint from '@/app/crm/itineraries/_components/PlaceHoursHint';
 import SupplierWhatsAppButton from '@/app/crm/itineraries/_components/SupplierWhatsAppButton';
 import { tripDayWeekday } from '@/lib/place-hours';
-import { usePlaceHours } from '@/lib/use-place-hours';
+import { usePlaceHours, usePlaceHoursOverrides } from '@/lib/use-place-hours';
 import {
   TRANSPORT_MODES,
   type SimpleItineraryDay,
@@ -21,6 +21,12 @@ import {
   buildDriverSupplierBrief,
   type SupplierBriefClientContext,
 } from '@/lib/supplier-whatsapp-brief';
+
+/** Only real places-bank ids (uuid / numeric) can carry opening hours. */
+function bankPlaceId(id: unknown): string | null {
+  const v = String(id ?? '').trim();
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v) || /^\d+$/.test(v) ? v : null;
+}
 
 function DayHotelStartCard({ hotelName }: { hotelName: string }) {
   return (
@@ -328,6 +334,11 @@ function SimpleItineraryDayCardInner({
     [day.places, day.city],
   );
   const placeHours = usePlaceHours(hoursItems);
+  const hoursOverrides = usePlaceHoursOverrides();
+  const hoursFor = (p: (typeof day.places)[number]) => {
+    const id = p.id != null ? String(p.id) : '';
+    return id && id in hoursOverrides ? hoursOverrides[id] : placeHours[p._dragId];
+  };
   return (
     <div className="relative">
       <span className={CRM_TIMELINE_DOT} aria-hidden />
@@ -541,7 +552,8 @@ function SimpleItineraryDayCardInner({
                                     />
                                   </div>
                                   <PlaceHoursHint
-                                    hours={placeHours[place._dragId]}
+                                    bankId={bankPlaceId(place.id)}
+                                    hours={hoursFor(place)}
                                     weekday={weekday}
                                     visitTime={place.visit_time}
                                   />

@@ -1,11 +1,11 @@
 import { after, NextResponse } from 'next/server';
 
-import { loadPlaceHours, syncPlaceHours, type HoursLookupItem } from '@/lib/place-hours-server';
+import { autoHoursLookupEnabled, loadPlaceHours, syncPlaceHours, type HoursLookupItem } from '@/lib/place-hours-server';
 
 /**
  * POST { items: [{ key, bankId?, name?, city? }] } → { hours: { [key]: StoredPlaceHours } }
- * Used by the client itinerary page and the CRM itinerary editor. Reads the cache only; places with
- * no / old hours are looked up on the web after the response (bank rows only, a few per request).
+ * Used by the client itinerary page and the CRM itinerary editor. Reads the cache only (optional
+ * background lookups when PLACE_HOURS_AUTO=true).
  */
 export const maxDuration = 60;
 
@@ -23,12 +23,12 @@ export async function POST(request: Request) {
       .filter((i) => i.key && (i.bankId || i.name));
 
     const { hours, stale, enabled } = await loadPlaceHours(items);
-    if (enabled && stale.length) {
+    if (enabled && stale.length && autoHoursLookupEnabled()) {
       after(async () => {
         await syncPlaceHours(stale, { max: 6, budgetMs: 50_000 });
       });
     }
-    return NextResponse.json({ hours, pending: stale.length }, { headers: { 'Cache-Control': 'no-store' } });
+    return NextResponse.json({ hours, pending: autoHoursLookupEnabled() ? stale.length : 0 }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (err) {
     console.warn('[api/place-hours]', err instanceof Error ? err.message : err);
     return NextResponse.json({ hours: {}, pending: 0 });

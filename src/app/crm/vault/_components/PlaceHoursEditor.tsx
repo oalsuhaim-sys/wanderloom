@@ -35,11 +35,6 @@ export default function PlaceHoursEditor({
   onLookup?: () => void;
   lookingUp?: boolean;
 }) {
-  const setRow = (i: number, patch: Partial<HoursRow>) => onRowsChange(rows.map((r, j) => (j === i ? { ...r, ...patch } : r)));
-  const copyFirst = () => {
-    const first = rows.find((r) => !r.closed);
-    if (first) onRowsChange(rows.map(() => ({ ...first })));
-  };
   const auto = current && current.source !== 'manual' ? current : null;
 
   return (
@@ -86,7 +81,7 @@ export default function PlaceHoursEditor({
                 ? 'المصدر يذكر أن المكان مغلق نهائياً — تأكد منه.'
                 : auto?.status === 'no_hours' || auto?.status === 'not_found'
                   ? 'لم نجد ساعات موثوقة لهذا المكان على الإنترنت. اختر «إدخال يدوي» لكتابتها.'
-                  : 'تُجلب تلقائياً أول ما يُستخدم المكان في مسار، أو اضغط «ابحث الآن».'}
+                  : 'اضغط «ابحث الآن» ليبحث Claude عن ساعات المكان في الإنترنت.'}
             </p>
           )}
           <div className="flex items-center justify-between gap-2">
@@ -118,27 +113,39 @@ export default function PlaceHoursEditor({
           </div>
         </div>
       ) : (
-        <div className="space-y-1.5">
-          {rows.map((r, i) => (
-            <div key={i} className="flex items-center gap-2 text-xs">
-              <span className="w-16 shrink-0 font-bold text-slate-700 dark:text-slate-300">{weekdayLabelAr(i)}</span>
-              <label className="flex shrink-0 items-center gap-1 text-slate-500">
-                <input type="checkbox" checked={r.closed} onChange={(e) => setRow(i, { closed: e.target.checked })} />
-                مغلق
-              </label>
-              <input type="time" value={r.from} disabled={r.closed} onChange={(e) => setRow(i, { from: e.target.value })} className={TIME_INPUT} dir="ltr" />
-              <span className="text-slate-400">–</span>
-              <input type="time" value={r.to} disabled={r.closed} onChange={(e) => setRow(i, { to: e.target.value })} className={TIME_INPUT} dir="ltr" />
-            </div>
-          ))}
-          <div className="flex items-center justify-between pt-1">
-            <button type="button" onClick={copyFirst} className="text-xs font-bold text-amber-700 hover:underline">
-              نفس الوقت لكل الأيام
-            </button>
-            <span className="text-[11px] text-slate-400">الإغلاق 00:00 = منتصف الليل</span>
-          </div>
-        </div>
+        <HoursRowsEditor rows={rows} onRowsChange={onRowsChange} />
       )}
+    </div>
+  );
+}
+
+/** Seven day rows: closed / from / to. Shared by the places bank and the itinerary editor. */
+export function HoursRowsEditor({ rows, onRowsChange }: { rows: HoursRow[]; onRowsChange: (rows: HoursRow[]) => void }) {
+  const setRow = (i: number, patch: Partial<HoursRow>) => onRowsChange(rows.map((r, j) => (j === i ? { ...r, ...patch } : r)));
+  const copyFirst = () => {
+    const first = rows.find((r) => !r.closed);
+    if (first) onRowsChange(rows.map(() => ({ ...first })));
+  };
+  return (
+    <div className="space-y-1.5">
+      {rows.map((r, i) => (
+        <div key={i} className="flex items-center gap-2 text-xs">
+          <span className="w-16 shrink-0 font-bold text-slate-700 dark:text-slate-300">{weekdayLabelAr(i)}</span>
+          <label className="flex shrink-0 items-center gap-1 text-slate-500">
+            <input type="checkbox" checked={r.closed} onChange={(e) => setRow(i, { closed: e.target.checked })} />
+            مغلق
+          </label>
+          <input type="time" value={r.from} disabled={r.closed} onChange={(e) => setRow(i, { from: e.target.value })} className={TIME_INPUT} dir="ltr" />
+          <span className="text-slate-400">–</span>
+          <input type="time" value={r.to} disabled={r.closed} onChange={(e) => setRow(i, { to: e.target.value })} className={TIME_INPUT} dir="ltr" />
+        </div>
+      ))}
+      <div className="flex items-center justify-between pt-1">
+        <button type="button" onClick={copyFirst} className="text-xs font-bold text-amber-700 hover:underline">
+          نفس الوقت لكل الأيام
+        </button>
+        <span className="text-[11px] text-slate-400">الإغلاق 00:00 = منتصف الليل</span>
+      </div>
     </div>
   );
 }
