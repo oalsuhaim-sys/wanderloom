@@ -78,6 +78,8 @@ export type PublicItineraryActivity = {
   transitDuration: string | null
   /** ملاحظات المحطة الاختيارية — من stop.notes / stop.note */
   notes: string | null
+  /** معرّف المكان في بنك الأماكن — لجلب ساعات العمل */
+  placesBankId?: string | null
 }
 
 export type PublicItineraryDay = {
@@ -1116,6 +1118,7 @@ function parseActivitiesFromPlaceStops(
       transitMode: transit?.mode ?? null,
       transitDuration: transit?.duration ?? null,
       notes: clientNotes,
+      placesBankId: pickStr(s, ['places_bank_id', 'place_id', 'bank_place_id']) || null,
     })
     seq += 1
     placeOrdinal += 1

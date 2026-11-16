@@ -3,7 +3,9 @@
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 
+import PlaceHoursEditor, { type HoursMode, type HoursRow } from './PlaceHoursEditor';
 import { CRM_BTN_PRIMARY, CRM_INPUT, CRM_MODAL_PANEL } from '@/lib/crm-luxury-ui';
+import { parseStoredHours, periodsToWeekRows, weekRowsToStored } from '@/lib/place-hours';
 import { supabase } from '@/lib/supabase';
 
 export type EditablePlace = {
@@ -17,6 +19,7 @@ export type EditablePlace = {
   google_maps_url?: string | null;
   sub_tag?: string | null;
   category?: string | null;
+  opening_hours?: unknown;
 };
 
 type CategoryOption = { id: string; label: string };
@@ -59,6 +62,13 @@ export default function EditPlaceModal({
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [storedHours, setStoredHours] = useState(() => parseStoredHours(place?.opening_hours));
+  const [lookingUp, setLookingUp] = useState(false);
+  const [hoursMode, setHoursMode] = useState<HoursMode>(storedHours?.source === 'manual' ? 'manual' : 'auto');
+  const [hoursRows, setHoursRows] = useState<HoursRow[]>(() =>
+    periodsToWeekRows(storedHours?.source === 'manual' ? storedHours.periods : undefined),
+  );
+  const [hoursDirty, setHoursDirty] = useState(false);
 
   useEffect(() => {
     setFormData({
@@ -70,8 +80,55 @@ export default function EditPlaceModal({
       sub_tag: place?.sub_tag || '',
       category: place?.category || 'o',
     });
+    const h = parseStoredHours(place?.opening_hours);
+    setStoredHours(h);
+    setHoursMode(h?.source === 'manual' ? 'manual' : 'auto');
+    setHoursRows(periodsToWeekRows(h?.source === 'manual' ? h.periods : undefined));
+    setHoursDirty(false);
     setError(null);
   }, [place]);
+
+  /** Look the hours up on the web now (saved straight away as automatic hours). */
+  const lookupHours = async () => {
+    setLookingUp(true);
+    try {
+      const { getClientAccessToken } = await import('@/lib/crm-session-token');
+      const token = await getClientAccessToken();
+      const res = await fetch(`/api/crm/place-hours/${encodeURIComponent(place.id)}`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const json = (await res.json().catch(() => null)) as { ok?: boolean; hours?: unknown } | null;
+      const h = json?.ok ? parseStoredHours(json.hours) : null;
+      if (!h) throw new Error('lookup');
+      setStoredHours(h);
+      if (h.status === 'ok') toast.success('تم جلب ساعات العمل.');
+      else toast('لم نجد ساعات موثوقة — يمكنك إدخالها يدوياً.');
+    } catch {
+      toast.error('تعذر البحث الآن. تأكد من تنفيذ places_opening_hours.sql ثم أعد المحاولة.');
+    } finally {
+      setLookingUp(false);
+    }
+  };
+
+  /** Saved separately so a missing column never blocks the main save. */
+  const saveHours = async (): Promise<string | null> => {
+    if (!supabase || !hoursDirty) return null;
+    const manual = hoursMode === 'manual';
+    // Back to automatic: only clear hours that were typed by hand (keep what was found online)
+    if (!manual && storedHours?.source !== 'manual') return null;
+    const { error: hoursError } = await supabase
+      .from('places')
+      .update({
+        opening_hours: manual ? weekRowsToStored(hoursRows) : null,
+        hours_synced_at: manual ? new Date().toISOString() : null,
+      })
+      .eq('id', place.id);
+    if (!hoursError) return null;
+    return /column|schema cache|does not exist|could not find/i.test(hoursError.message)
+      ? 'تم حفظ المكان، لكن ساعات العمل لم تُحفظ — نفّذ places_opening_hours.sql في Supabase.'
+      : `تم حفظ المكان، لكن ساعات العمل لم تُحفظ: ${hoursError.message}`;
+  };
 
   const save = async () => {
     if (!supabase || !place?.id) return;
@@ -138,11 +195,17 @@ export default function EditPlaceModal({
       }
     }
 
-    setSaving(false);
-
     if (updateError) {
+      setSaving(false);
       setError(updateError.message || 'تعذر حفظ التعديلات.');
       toast.error('تعذر حفظ التعديلات.');
+      return;
+    }
+
+    const hoursProblem = await saveHours();
+    setSaving(false);
+    if (hoursProblem) {
+      setError(hoursProblem);
       return;
     }
 
@@ -238,6 +301,22 @@ export default function EditPlaceModal({
             ))}
           </select>
         </label>
+
+        <PlaceHoursEditor
+          mode={hoursMode}
+          rows={hoursRows}
+          current={storedHours}
+          onModeChange={(m) => {
+            setHoursMode(m);
+            setHoursDirty(true);
+          }}
+          onRowsChange={(r) => {
+            setHoursRows(r);
+            setHoursDirty(true);
+          }}
+          onLookup={() => void lookupHours()}
+          lookingUp={lookingUp}
+        />
 
         {error ? (
           <p className="mb-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-bold text-rose-800 dark:border-rose-900/40 dark:bg-rose-950/30 dark:text-rose-300">

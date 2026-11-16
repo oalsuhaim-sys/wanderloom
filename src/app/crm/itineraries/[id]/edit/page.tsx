@@ -2189,6 +2189,7 @@ export default function EditItineraryPage() {
         </aside>
 
         <SimpleItineraryDayPlanner
+          tripStartDate={tripDateFrom}
           days={itineraryDays}
           hotels={hotels}
           activeDayId={activeDayId}

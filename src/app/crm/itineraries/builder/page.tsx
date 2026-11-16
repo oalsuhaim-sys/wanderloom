@@ -2262,6 +2262,7 @@ function ItineraryBuilderPageContent() {
         </aside>
 
         <SimpleItineraryDayPlanner
+          tripStartDate={tripDateFrom}
           days={itineraryDays}
           hotels={hotels}
           activeDayId={activeDayId}

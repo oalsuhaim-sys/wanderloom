@@ -1,11 +1,14 @@
 'use client';
 
-import React, { memo, useEffect, useRef, useState } from 'react';
+import React, { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { Draggable, Droppable } from '@hello-pangea/dnd';
 import { ChevronDown, ChevronUp, GripVertical, ImagePlus, Pencil, Sparkles, X } from 'lucide-react';
 import { toast } from '@/lib/crm-toast';
 
+import PlaceHoursHint from '@/app/crm/itineraries/_components/PlaceHoursHint';
 import SupplierWhatsAppButton from '@/app/crm/itineraries/_components/SupplierWhatsAppButton';
+import { tripDayWeekday } from '@/lib/place-hours';
+import { usePlaceHours, usePlaceHoursOverrides } from '@/lib/use-place-hours';
 import {
   TRANSPORT_MODES,
   type SimpleItineraryDay,
@@ -18,6 +21,12 @@ import {
   buildDriverSupplierBrief,
   type SupplierBriefClientContext,
 } from '@/lib/supplier-whatsapp-brief';
+
+/** Only real places-bank ids (uuid / numeric) can carry opening hours. */
+function bankPlaceId(id: unknown): string | null {
+  const v = String(id ?? '').trim();
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v) || /^\d+$/.test(v) ? v : null;
+}
 
 function DayHotelStartCard({ hotelName }: { hotelName: string }) {
   return (
@@ -282,6 +291,8 @@ export type SimpleItineraryDayCardProps = {
   onUpdatePlaceImageUrl: (dayId: number, placeIndex: number, imageUrl: string) => void;
   dayDroppableId: (dayId: number) => string;
   supplierBrief?: SupplierBriefClientContext | null;
+  /** Trip start date (YYYY-MM-DD) — to check each stop against the place's opening hours. */
+  tripStartDate?: string;
 };
 
 function SimpleItineraryDayCardInner({
@@ -309,7 +320,25 @@ function SimpleItineraryDayCardInner({
   onUpdatePlaceImageUrl,
   dayDroppableId,
   supplierBrief,
+  tripStartDate,
 }: SimpleItineraryDayCardProps) {
+  const weekday = tripDayWeekday(tripStartDate, dayIdx);
+  const hoursItems = useMemo(
+    () =>
+      day.places.map((p) => ({
+        key: p._dragId,
+        bankId: p.id != null ? String(p.id) : null,
+        name: typeof p.name === 'string' ? p.name : null,
+        city: String(p.city ?? day.city ?? ''),
+      })),
+    [day.places, day.city],
+  );
+  const placeHours = usePlaceHours(hoursItems);
+  const hoursOverrides = usePlaceHoursOverrides();
+  const hoursFor = (p: (typeof day.places)[number]) => {
+    const id = p.id != null ? String(p.id) : '';
+    return id && id in hoursOverrides ? hoursOverrides[id] : placeHours[p._dragId];
+  };
   return (
     <div className="relative">
       <span className={CRM_TIMELINE_DOT} aria-hidden />
@@ -522,6 +551,12 @@ function SimpleItineraryDayCardInner({
                                       className="rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-sm font-bold text-slate-800 outline-none focus:ring-2 focus:ring-[#D4AF37] [color-scheme:light]"
                                     />
                                   </div>
+                                  <PlaceHoursHint
+                                    bankId={bankPlaceId(place.id)}
+                                    hours={hoursFor(place)}
+                                    weekday={weekday}
+                                    visitTime={place.visit_time}
+                                  />
                                   <div className="mt-2">
                                     <input
                                       type="text"
