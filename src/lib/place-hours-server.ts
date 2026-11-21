@@ -7,7 +7,7 @@ import { extractJsonObject } from '@/lib/ai-generate-itinerary';
 import { englishPlaceName } from '@/lib/destination-match';
 import { parseOsmOpeningHours, parseStoredHours, type StoredPlaceHours } from '@/lib/place-hours';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
-import { sameCity } from '@/lib/trip-destination-normalize';
+import { matchBankRows } from '@/lib/places-bank-match-server';
 
 /**
  * Opening hours read from the web: Claude (the existing ANTHROPIC_API_KEY) searches official sites,
@@ -23,7 +23,6 @@ import { sameCity } from '@/lib/trip-destination-normalize';
 export type HoursLookupItem = { key: string; bankId?: string | null; name?: string | null; city?: string | null };
 
 const REFRESH_MS = 180 * 24 * 60 * 60 * 1000;
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const inFlight = new Set<string>();
 
 export function hoursLookupEnabled(): boolean {
@@ -60,42 +59,14 @@ export async function loadPlaceHours(items: HoursLookupItem[]): Promise<{
   const db = admin();
   if (!db || !items.length) return { hours: {}, stale: [], enabled: false };
 
-  const ids = [...new Set(items.map((i) => String(i.bankId ?? '').trim()).filter((id) => UUID_RE.test(id) || /^\d+$/.test(id)))];
-  const rows: PlaceRow[] = [];
-  if (ids.length) {
-    const { data, error } = await db.from('places').select('*').in('id', ids.slice(0, 120));
-    if (error) {
-      console.warn('[place-hours] load by id:', error.message);
-    } else rows.push(...((data ?? []) as PlaceRow[]));
-  }
-  const foundIds = new Set(rows.map((r) => String(r.id)));
-  // Stops without a bank id (or with one that no longer exists) are matched by name + city
-  const names = [
-    ...new Set(
-      items
-        .filter((i) => !i.bankId || !foundIds.has(String(i.bankId)))
-        .map((i) => String(i.name ?? '').trim())
-        .filter(Boolean),
-    ),
-  ];
-  if (names.length) {
-    const { data, error } = await db.from('places').select('*').in('name', names.slice(0, 120));
-    if (error) console.warn('[place-hours] load by name:', error.message);
-    else rows.push(...((data ?? []) as PlaceRow[]));
-  }
+  const { rows, byKey } = await matchBankRows(db, items, 'place-hours');
   // Columns not added yet → feature off
   if (rows.length && !rows.some((r) => 'opening_hours' in r)) return { hours: {}, stale: [], enabled: false };
 
-  const byId = new Map(rows.map((r) => [String(r.id), r]));
   const hours: Record<string, StoredPlaceHours> = {};
   const used = new Map<string, PlaceRow>();
   for (const item of items) {
-    let row = item.bankId ? byId.get(String(item.bankId)) : undefined;
-    if (!row && item.name) {
-      const name = item.name.trim().toLowerCase();
-      const candidates = rows.filter((r) => String(r.name ?? '').trim().toLowerCase() === name);
-      row = candidates.find((r) => item.city && sameCity(String(r.city ?? ''), item.city)) ?? (candidates.length === 1 ? candidates[0] : undefined);
-    }
+    const row = byKey.get(item.key) as PlaceRow | undefined;
     if (!row) continue;
     used.set(String(row.id), row);
     const h = parseStoredHours(row.opening_hours);
