@@ -33,7 +33,7 @@ type Props = {
 /** Map view: every stop of the trip on a real map, one colour per day, with day chips to filter. */
 export default function FullMapView({ days, destination, startDate, initial, onOpenDay }: Props) {
   const [filter, setFilter] = useState<DaySelection>(initial)
-  const { points, total, pending } = useStopPositions(days, destination, filter)
+  const { points, total, pending } = useStopPositions(days, destination)
   const theme = useItineraryTheme()
   const scroller = useRef<HTMLDivElement>(null)
   const chipRefs = useRef<Array<HTMLButtonElement | null>>([])
