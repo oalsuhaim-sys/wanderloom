@@ -1,0 +1,98 @@
+/* Map view of the client itinerary — soft Wanderloom tones on the OpenStreetMap tiles. */
+.wl-fullmap .leaflet-container {
+  background: #efe7d6;
+  font-family: var(--font-tajawal), system-ui, sans-serif;
+}
+.wl-fullmap .leaflet-tile-pane {
+  filter: sepia(0.32) saturate(0.72) brightness(1.04) contrast(0.94) hue-rotate(-6deg);
+}
+.wl-fullmap--dark .leaflet-container {
+  background: #1b1f1d;
+}
+.wl-fullmap--dark .leaflet-tile-pane {
+  filter: invert(0.9) hue-rotate(180deg) sepia(0.28) saturate(0.55) brightness(0.88) contrast(0.92);
+}
+
+.wl-fullmap-pin {
+  background: none;
+  border: none;
+  filter: drop-shadow(0 3px 4px rgba(0, 0, 0, 0.28));
+  transition: transform 0.15s ease;
+}
+.wl-fullmap-pin:hover {
+  transform: translateY(-2px);
+}
+
+.wl-fullmap .leaflet-control-zoom {
+  border: none;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.14);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.wl-fullmap .leaflet-control-zoom a {
+  width: 34px;
+  height: 34px;
+  line-height: 34px;
+  color: #3b3427;
+}
+.wl-fullmap .leaflet-control-attribution {
+  font-size: 10px;
+  background: rgba(255, 255, 255, 0.75);
+}
+
+.wl-fullmap-popup .leaflet-popup-content-wrapper {
+  border-radius: 16px;
+  padding: 0;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.2);
+}
+.wl-fullmap-popup .leaflet-popup-content {
+  margin: 0;
+}
+.wl-pop {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px 10px;
+  text-align: right;
+  font-family: var(--font-tajawal), system-ui, sans-serif;
+}
+.wl-pop-day {
+  align-self: flex-start;
+  border-radius: 999px;
+  padding: 2px 10px;
+  font-size: 11px;
+  font-weight: 800;
+  color: #fff;
+}
+.wl-pop-name {
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1.35;
+  color: #1d1a14;
+}
+.wl-pop-meta {
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b6252;
+}
+.wl-pop-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 4px;
+  border-top: 1px solid #eee6d6;
+  padding-top: 8px;
+  font-size: 12px;
+  font-weight: 800;
+}
+.wl-pop-actions button {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+}
+.wl-pop-actions a {
+  color: #6b6252 !important;
+  text-decoration: none;
+}
