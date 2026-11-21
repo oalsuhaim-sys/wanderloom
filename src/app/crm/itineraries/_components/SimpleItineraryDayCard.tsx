@@ -6,9 +6,11 @@ import { ChevronDown, ChevronUp, GripVertical, ImagePlus, Pencil, Sparkles, X } 
 import { toast } from '@/lib/crm-toast';
 
 import PlaceHoursHint from '@/app/crm/itineraries/_components/PlaceHoursHint';
+import PlacePositionHint from '@/app/crm/itineraries/_components/PlacePositionHint';
 import SupplierWhatsAppButton from '@/app/crm/itineraries/_components/SupplierWhatsAppButton';
 import { tripDayWeekday } from '@/lib/place-hours';
 import { usePlaceHours, usePlaceHoursOverrides } from '@/lib/use-place-hours';
+import { usePlacePositionOverrides, usePlacePositions } from '@/lib/use-place-positions';
 import {
   TRANSPORT_MODES,
   type SimpleItineraryDay,
@@ -335,6 +337,8 @@ function SimpleItineraryDayCardInner({
   );
   const placeHours = usePlaceHours(hoursItems);
   const hoursOverrides = usePlaceHoursOverrides();
+  const { positions: placePositions, kakao: kakaoEnabled } = usePlacePositions(hoursItems);
+  const positionOverrides = usePlacePositionOverrides();
   const hoursFor = (p: (typeof day.places)[number]) => {
     const id = p.id != null ? String(p.id) : '';
     return id && id in hoursOverrides ? hoursOverrides[id] : placeHours[p._dragId];
@@ -556,6 +560,13 @@ function SimpleItineraryDayCardInner({
                                     hours={hoursFor(place)}
                                     weekday={weekday}
                                     visitTime={place.visit_time}
+                                  />
+                                  <PlacePositionHint
+                                    bankId={bankPlaceId(place.id)}
+                                    name={typeof place.name === 'string' ? place.name : ''}
+                                    city={String(place.city ?? day.city ?? '')}
+                                    position={(bankPlaceId(place.id) && positionOverrides[bankPlaceId(place.id)!]) || placePositions[place._dragId]}
+                                    kakao={kakaoEnabled}
                                   />
                                   <div className="mt-2">
                                     <input
