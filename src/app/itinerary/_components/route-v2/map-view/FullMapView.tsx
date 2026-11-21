@@ -1,14 +1,15 @@
 'use client'
 
 import dynamic from 'next/dynamic'
-import { useEffect, useRef, useState } from 'react'
-import { MapPin } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { ExternalLink, MapPin } from 'lucide-react'
 
 import type { PublicItineraryDay } from '@/lib/public-itinerary'
 import type { DaySelection } from '../DayStrip'
 import { useItineraryTheme } from '../theme'
 import { dayDateParts, RV } from '../route-utils'
 import { dayColor } from './day-colors'
+import { googleDayRouteLinks } from './google-route'
 import { useStopPositions } from './use-stop-positions'
 
 const FullMapLeaflet = dynamic(() => import('./FullMapLeaflet'), {
@@ -37,6 +38,12 @@ export default function FullMapView({ days, destination, startDate, initial, onO
   const theme = useItineraryTheme()
   const scroller = useRef<HTMLDivElement>(null)
   const chipRefs = useRef<Array<HTMLButtonElement | null>>([])
+  // Google allows fewer stops per link on phones
+  const [maxPoints, setMaxPoints] = useState(11)
+  useEffect(() => {
+    const phone = window.matchMedia('(pointer: coarse)').matches
+    if (phone) queueMicrotask(() => setMaxPoints(5))
+  }, [])
 
   useEffect(() => {
     const chip = filter === 'all' ? null : chipRefs.current[filter]
@@ -55,6 +62,12 @@ export default function FullMapView({ days, destination, startDate, initial, onO
   const placed = filter === 'all' ? points.length : points.filter((p) => p.dayIndex === filter).length
   // re-frame when the filter changes, and once more when the positions finish loading
   const frameKey = `${filter}|${pending === 0 ? 'done' : 'loading'}|${placed > 0 ? 'some' : 'none'}`
+
+  const googleLinks = useMemo(() => {
+    if (filter === 'all' || !days[filter]) return []
+    const exact = new Map(points.filter((p) => p.dayIndex === filter).map((p) => [p.activity.id, [p.lat, p.lng] as [number, number]]))
+    return googleDayRouteLinks(days[filter]!, destination, exact, maxPoints)
+  }, [filter, days, destination, points, maxPoints])
 
   const chipBase =
     'flex shrink-0 items-center gap-2 rounded-full border px-3.5 py-2 text-[12.5px] font-bold transition-all duration-200 active:scale-95'
@@ -122,6 +135,28 @@ export default function FullMapView({ days, destination, startDate, initial, onO
           </button>
         ) : null}
       </p>
+
+      {filter !== 'all' && googleLinks.length ? (
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          {googleLinks.map((href, i) => (
+            <a
+              key={href}
+              href={href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 rounded-full border px-4 py-2 text-[12.5px] font-bold transition-all duration-200 active:scale-95"
+              style={{ borderColor: dayColor(filter), color: dayColor(filter), background: RV.card }}
+            >
+              <ExternalLink className="h-4 w-4" aria-hidden />
+              {googleLinks.length === 1 ? `افتح مسار اليوم ${filter + 1} في Google Maps` : `مسار اليوم ${filter + 1} في Google Maps · الجزء ${i + 1} من ${googleLinks.length}`}
+            </a>
+          ))}
+        </div>
+      ) : filter === 'all' ? (
+        <p className="mb-3 text-[12px] font-semibold" style={{ color: RV.faint }}>
+          اختر يوماً لفتح مساره كاملاً في Google Maps.
+        </p>
+      ) : null}
 
       <div
         className="relative h-[62vh] min-h-[420px] max-h-[720px] overflow-hidden rounded-[28px] border lg:h-[640px]"
