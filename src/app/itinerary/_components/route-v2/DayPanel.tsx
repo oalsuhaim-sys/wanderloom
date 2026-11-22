@@ -16,6 +16,7 @@ import {
 import { formatDayHoursAr, hoursForWeekday, tripDayWeekday } from '@/lib/place-hours'
 import { ratingSlot, stopRatingKey } from '@/lib/stop-ratings'
 import { usePlaceHours } from '@/lib/use-place-hours'
+import { StopNoteButton, StopNoteEditor } from './StopNote'
 import StopStarRating from './StopStarRating'
 import { dayHasStarted, useStopRatings } from './use-stop-ratings'
 import { getVipPlaceCategoryMeta } from '@/lib/vip-place-category'
@@ -123,12 +124,15 @@ function StopRow({
   hoursLine,
   hoursClosed,
   rating,
+  note,
 }: {
   a: PublicItineraryActivity
   hoursLine?: string | null
   hoursClosed?: boolean
   /** Star rating row (shown once the stop's day has started). */
   rating?: { value: number | undefined; onRate: (v: number) => Promise<boolean> } | null
+  /** The client's note on this stop (replaces the photo button). */
+  note?: { value: string | undefined; onSave: (text: string) => Promise<boolean> } | null
   order: number
   color: string
   open: boolean
@@ -147,6 +151,7 @@ function StopRow({
   useEffect(() => {
     if (open) ref.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
   }, [open])
+  const [noteOpen, setNoteOpen] = useState(false)
 
   return (
     <li ref={ref} className="list-none">
@@ -237,7 +242,13 @@ function StopRow({
                 onUploadStart={setUploadingId}
                 onUploadEnd={() => setUploadingId(null)}
                 tone="dark"
+                replacePhotoWith={
+                  note ? <StopNoteButton hasNote={Boolean(note.value)} open={noteOpen} onClick={() => setNoteOpen((v) => !v)} /> : undefined
+                }
               />
+              {note ? (
+                <StopNoteEditor key={noteOpen ? 'edit' : 'view'} value={note.value} open={noteOpen} onClose={() => setNoteOpen(false)} onSave={note.onSave} />
+              ) : null}
             </div>
           </motion.div>
         ) : null}
@@ -312,7 +323,7 @@ export default function DayPanel({
     [day.activities, city],
   )
   const placeHours = usePlaceHours(hoursItems)
-  const { ratings, rate } = useStopRatings(tripId)
+  const { ratings, rate, notes: stopNotes, saveNote } = useStopRatings(tripId)
   const started = dayHasStarted(startDate, index)
   const stopRating = (a: PublicItineraryActivity) => {
     if (!started || !tripId) return null
@@ -320,6 +331,14 @@ export default function DayPanel({
     return {
       value: ratings[ratingSlot(index, key)],
       onRate: (v: number) => rate(index, key, v, { placeName: a.place_name || a.title, bankId: a.placesBankId ?? null }),
+    }
+  }
+  const stopNote = (a: PublicItineraryActivity) => {
+    if (!tripId) return null
+    const key = stopRatingKey(a.placesBankId, a.place_name || a.title)
+    return {
+      value: stopNotes[ratingSlot(index, key)],
+      onSave: (text: string) => saveNote(index, key, text, { placeName: a.place_name || a.title, bankId: a.placesBankId ?? null }),
     }
   }
   const stopHours = (a: PublicItineraryActivity) => {
@@ -434,6 +453,7 @@ export default function DayPanel({
                 setUploadingId={setUploadingId}
                 {...stopHours(a)}
                 rating={stopRating(a)}
+                note={stopNote(a)}
               />
             </div>
           ))}

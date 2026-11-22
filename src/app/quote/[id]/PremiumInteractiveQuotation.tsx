@@ -120,10 +120,10 @@ function EditFeedbackButton({
           ? 'border-[#b8954d]/50 bg-[#fbf9f2] text-[#b8954d]'
           : 'border-[#e8d9b5] bg-white/80 text-slate-500 hover:border-[#b8954d]/40 hover:bg-[#fbf9f2] hover:text-[#b8954d]')
       }
-      aria-label="إضافة ملاحظة"
+      aria-label="إضافة تعديل"
     >
       <MessageCircle className="h-3.5 w-3.5" aria-hidden />
-      ملاحظة
+      تعديل
     </button>
   );
 }
@@ -158,7 +158,7 @@ function FeedbackPopover({
     >
       <div className="mb-2 flex items-center justify-between gap-2">
         <p className={'text-[11px] font-semibold tracking-wide ' + GOLD}>
-          ملاحظة · {target.label}
+          تعديل · {target.label}
         </p>
         <button
           type="button"
@@ -176,7 +176,7 @@ function FeedbackPopover({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         rows={3}
-        placeholder="اكتب ملاحظتك هنا…"
+        placeholder="اكتب طلب التعديل هنا…"
         className={
           'w-full rounded-xl border border-gray-100 bg-[#FDFBF7] px-3 py-2 text-sm leading-relaxed text-[#243223] outline-none focus:border-[#b8954d] focus:ring-2 focus:ring-[#b8954d]/30'
         }
@@ -523,7 +523,7 @@ export function PremiumInteractiveQuotation({ quotation }: Props) {
           <section>
             <SectionHeading eyebrow="Stay" title="الفنادق المقترحة" />
             <p className="mt-3 text-center text-sm text-slate-500">
-              اضغط على البطاقة لاختيار خيارك · استخدم «ملاحظة» لإضافة ما تريد تعديله
+              اضغط على البطاقة لاختيار خيارك · استخدم «تعديل» لإضافة ملاحظة
             </p>
             <div className="mt-10 space-y-12">
               {hotelsByCity.map(({ city, hotels: cityHotels }) => (

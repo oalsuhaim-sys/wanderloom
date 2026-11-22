@@ -73,14 +73,17 @@ export default function SimpleItineraryDayPlanner({
   itineraryId,
 }: Props) {
   const [clientRatings, setClientRatings] = useState<StopRatingsMap>({});
+  const [clientNotes, setClientNotes] = useState<Record<string, string>>({});
   useEffect(() => {
     if (!itineraryId) return;
     let cancelled = false;
     void (async () => {
       try {
         const res = await fetch(`/api/itinerary/${encodeURIComponent(itineraryId)}/ratings`, { cache: 'no-store' });
-        const json = (await res.json().catch(() => null)) as { ratings?: StopRatingsMap } | null;
-        if (!cancelled && json?.ratings) setClientRatings(json.ratings);
+        const json = (await res.json().catch(() => null)) as { ratings?: StopRatingsMap; notes?: Record<string, string> } | null;
+        if (cancelled) return;
+        if (json?.ratings) setClientRatings(json.ratings);
+        if (json?.notes) setClientNotes(json.notes);
       } catch {
         /* optional */
       }
@@ -265,6 +268,7 @@ export default function SimpleItineraryDayPlanner({
             supplierBrief={supplierBrief}
             tripStartDate={tripStartDate}
             clientRatings={clientRatings}
+            clientNotes={clientNotes}
           />
         ))}
       </div>

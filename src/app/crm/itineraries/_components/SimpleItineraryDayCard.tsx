@@ -296,6 +296,8 @@ export type SimpleItineraryDayCardProps = {
   tripStartDate?: string;
   /** The client's star ratings for this itinerary («day:key» → 1..5). */
   clientRatings?: StopRatingsMap;
+  /** The client's notes for this itinerary («day:key» → text). */
+  clientNotes?: Record<string, string>;
 };
 
 function SimpleItineraryDayCardInner({
@@ -325,6 +327,7 @@ function SimpleItineraryDayCardInner({
   supplierBrief,
   tripStartDate,
   clientRatings,
+  clientNotes,
 }: SimpleItineraryDayCardProps) {
   const weekday = tripDayWeekday(tripStartDate, dayIdx);
   const hoursItems = useMemo(
@@ -562,18 +565,22 @@ function SimpleItineraryDayCardInner({
                                     visitTime={place.visit_time}
                                   />
                                   {(() => {
-                                    const r = clientRatings?.[
-                                      ratingSlot(dayIdx, stopRatingKey(bankPlaceId(place.id), typeof place.name === 'string' ? place.name : ''))
-                                    ];
-                                    return r ? (
-                                      <p className="mt-2 flex items-center gap-1 text-xs font-semibold text-slate-600">
-                                        تقييم العميل:
-                                        <span className="tracking-wider text-[#D4AF37]" aria-label={`${r} من 5`}>
-                                          {'★'.repeat(r)}
-                                          <span className="text-slate-300">{'★'.repeat(5 - r)}</span>
-                                        </span>
-                                      </p>
-                                    ) : null;
+                                    const slot = ratingSlot(dayIdx, stopRatingKey(bankPlaceId(place.id), typeof place.name === 'string' ? place.name : ''));
+                                    const r = clientRatings?.[slot];
+                                    const n = clientNotes?.[slot];
+                                    if (!r && !n) return null;
+                                    return (
+                                      <div className="mt-2 space-y-1 rounded-xl border border-[#D4AF37]/30 bg-[#FFFBF0] px-3 py-2 text-xs text-slate-700">
+                                        <p className="font-bold text-slate-500">رأي العميل</p>
+                                        {r ? (
+                                          <p className="tracking-wider text-[#D4AF37]" aria-label={`${r} من 5`}>
+                                            {'★'.repeat(r)}
+                                            <span className="text-slate-300">{'★'.repeat(5 - r)}</span>
+                                          </p>
+                                        ) : null}
+                                        {n ? <p className="leading-relaxed">«{n}»</p> : null}
+                                      </div>
+                                    );
                                   })()}
                                   <div className="mt-2">
                                     <input
