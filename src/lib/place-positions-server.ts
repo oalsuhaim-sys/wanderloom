@@ -43,6 +43,29 @@ function km(a: LatLng, b: LatLng): number {
   return 2 * R * Math.asin(Math.sqrt(h));
 }
 
+/** A saved Google place link («/maps/place/<name>/data=…!1s0x…:0x<cid>») → its full name and Google cid. */
+export function googlePlaceLinkInfo(row: BankRow): { name: string | null; cid: string | null } {
+  for (const link of mapLinksOf(row)) {
+    const m = /\/maps\/place\/([^/]+)\/?/.exec(link);
+    const f = /!1s0x[0-9a-f]+:0x([0-9a-f]+)/i.exec(link);
+    if (!m && !f) continue;
+    let name: string | null = null;
+    try {
+      name = m ? decodeURIComponent(m[1]!.replace(/\+/g, ' ')).trim() || null : null;
+    } catch {
+      name = null;
+    }
+    let cid: string | null = null;
+    try {
+      cid = f ? BigInt(`0x${f[1]}`).toString() : null;
+    } catch {
+      cid = null;
+    }
+    return { name, cid };
+  }
+  return { name: null, cid: null };
+}
+
 /**
  * Google finds the place from its name, branch and city — the same search as Google Maps — biased
  * to 30 km around the city. A result more than 80 km from the city is refused.
@@ -53,20 +76,32 @@ async function googleFind(row: BankRow): Promise<LatLng | null> {
   if (!key || !name) return null;
   const city = String(row.city ?? '').trim();
   const country = String(row.country ?? '').trim();
-  const textQuery = [name, String(row.branch_name ?? '').trim(), city, country].filter(Boolean).join(', ');
+  // the full name from the saved Google link beats a bank name cut short
+  const link = googlePlaceLinkInfo(row);
+  const textQuery = [link.name || name, link.name ? '' : String(row.branch_name ?? '').trim(), city, country].filter(Boolean).join(', ');
   const center = city ? resolveCityCenter(city, country || city) : null;
-  const body: Record<string, unknown> = { textQuery, pageSize: 1 };
+  const body: Record<string, unknown> = { textQuery, pageSize: link.cid ? 5 : 1 };
   if (center) body.locationBias = { circle: { center: { latitude: center[0], longitude: center[1] }, radius: 30000 } };
   const res = await fetch('https://places.googleapis.com/v1/places:searchText', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-Goog-Api-Key': key, 'X-Goog-FieldMask': 'places.location' },
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Goog-Api-Key': key,
+      'X-Goog-FieldMask': link.cid ? 'places.location,places.googleMapsUri' : 'places.location',
+    },
     body: JSON.stringify(body),
     signal: AbortSignal.timeout(8000),
     cache: 'no-store',
   });
   if (!res.ok) throw new Error(`google ${res.status}: ${(await res.text().catch(() => '')).slice(0, 160)}`);
-  const json = (await res.json().catch(() => null)) as { places?: Array<{ location?: { latitude?: number; longitude?: number } }> } | null;
-  const loc = json?.places?.[0]?.location;
+  const json = (await res.json().catch(() => null)) as {
+    places?: Array<{ location?: { latitude?: number; longitude?: number }; googleMapsUri?: string }>;
+  } | null;
+  const places = json?.places ?? [];
+  // with a saved link: the result must be the very same Google place (same cid)
+  const exact = link.cid ? places.find((p) => String(p.googleMapsUri ?? '').includes(`cid=${link.cid}`)) : undefined;
+  const loc = (exact ?? places[0])?.location;
+  if (exact && loc && Number.isFinite(loc.latitude) && Number.isFinite(loc.longitude)) return [loc.latitude!, loc.longitude!];
   const c: LatLng | null = loc && Number.isFinite(loc.latitude) && Number.isFinite(loc.longitude) ? [loc.latitude!, loc.longitude!] : null;
   if (c && center && km(center, c) > 80) return null;
   return c;

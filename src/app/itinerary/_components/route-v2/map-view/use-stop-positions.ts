@@ -24,7 +24,7 @@ type Job = { key: string; dayIndex: number; order: number; activity: PublicItine
 export function useStopPositions(
   days: PublicItineraryDay[],
   destination: string,
-): { points: StopPoint[]; total: number; pending: number } {
+): { points: StopPoint[]; total: number; pending: number; hotels: Record<number, [number, number]> } {
   const jobs = useMemo<Job[]>(
     () =>
       days.flatMap((day, dayIndex) =>
@@ -40,13 +40,21 @@ export function useStopPositions(
     [days, destination],
   )
 
+  // each day's hotel (start / end of the day on the map), matched in the bank by name
+  const hotelItems = useMemo(
+    () =>
+      days
+        .map((d, i) => ({ key: `hotel:${i}`, name: d.hotelName?.trim() ?? '', city: d.cityLabel || destination }))
+        .filter((h) => h.name),
+    [days, destination],
+  )
   const [found, setFound] = useState<Record<string, [number, number]>>({})
   const [pending, setPending] = useState(0)
 
   useEffect(() => {
     let cancelled = false
     const need = jobs.filter((j) => j.activity.lat == null || j.activity.lng == null)
-    if (!need.length) return
+    if (!need.length && !hotelItems.length) return
     queueMicrotask(() => !cancelled && setPending(need.length))
     void (async () => {
       const out: Record<string, [number, number]> = {}
@@ -55,7 +63,10 @@ export function useStopPositions(
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            items: need.map((j) => ({ key: j.key, bankId: j.activity.placesBankId ?? null, name: j.name, city: j.city })),
+            items: [
+              ...need.map((j) => ({ key: j.key, bankId: j.activity.placesBankId ?? null, name: j.name, city: j.city })),
+              ...hotelItems,
+            ],
           }),
         })
         const json = (await res.json().catch(() => null)) as { positions?: Record<string, [number, number]> } | null
@@ -72,7 +83,7 @@ export function useStopPositions(
     return () => {
       cancelled = true
     }
-  }, [jobs])
+  }, [jobs, hotelItems])
 
   return useMemo(() => {
     const points: StopPoint[] = []
@@ -81,6 +92,8 @@ export function useStopPositions(
       const c = own ?? found[j.key] ?? null
       if (c) points.push({ dayIndex: j.dayIndex, order: j.order, activity: j.activity, lat: c[0], lng: c[1] })
     }
-    return { points, total: jobs.length, pending }
+    const hotels: Record<number, [number, number]> = {}
+    for (const [k, v] of Object.entries(found)) if (k.startsWith('hotel:')) hotels[Number(k.slice(6))] = v
+    return { points, total: jobs.length, pending, hotels }
   }, [jobs, found, pending])
 }

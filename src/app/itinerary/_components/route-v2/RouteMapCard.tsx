@@ -9,13 +9,18 @@ import type { PublicItineraryDay } from '@/lib/public-itinerary'
 import type { VipMapMarker } from '@/lib/vip-map-coordinates'
 import type { DaySelection } from './DayStrip'
 import { detectCountry, loadCountryGeo, type CountryGeo } from './geo'
+import type { StopPoint } from './map-view/use-stop-positions'
+import { dayColor } from './map-view/day-colors'
 import RealMap from './RealMap'
 import StylisedMap from './StylisedMap'
 import { cityOf, dayOrdinal, localScriptFor, RV } from './route-utils'
+import { useItineraryTheme } from './theme'
 
 // The detailed Mapbox map is only loaded when the client opens it.
 const VipMap = dynamic(() => import('../VipMap'), { ssr: false })
 const HAS_MAPBOX = Boolean(process.env.NEXT_PUBLIC_MAPBOX_TOKEN)
+// The day's real street map (exact positions only) — replaces the drawn map when the day has them.
+const DayLeafletMap = dynamic(() => import('./map-view/DayLeafletMap'), { ssr: false })
 
 type RouteMapCardProps = {
   days: PublicItineraryDay[]
@@ -27,6 +32,9 @@ type RouteMapCardProps = {
   hideUber: boolean
   onSelectDay: (s: DaySelection) => void
   onSelectStop: (id: string | null) => void
+  /** Exact positions of every stop (all days) and each day's hotel. */
+  exactPoints?: StopPoint[]
+  hotels?: Record<number, [number, number]>
 }
 
 export default function RouteMapCard({
@@ -39,7 +47,10 @@ export default function RouteMapCard({
   hideUber,
   onSelectDay,
   onSelectStop,
+  exactPoints = [],
+  hotels = {},
 }: RouteMapCardProps) {
+  const theme = useItineraryTheme()
   const [detailOpen, setDetailOpen] = useState(false)
   const isAll = selected === 'all'
   const day = isAll ? null : days[selected]
@@ -65,6 +76,8 @@ export default function RouteMapCard({
     }
   }, [countryId])
   const geo = geoState && geoState.id === countryId ? geoState.geo : null
+  const dayPoints = useMemo(() => (isAll ? [] : exactPoints.filter((p) => p.dayIndex === selected)), [exactPoints, isAll, selected])
+  const streetMap = !isAll && dayPoints.length > 0
 
   const go = (dir: 1 | -1) => {
     if (isAll) {
@@ -98,7 +111,7 @@ export default function RouteMapCard({
       aria-label="خريطة المسار"
     >
       <motion.div
-        drag="x"
+        drag={streetMap ? false : 'x'}
         dragConstraints={{ left: 0, right: 0 }}
         dragElastic={0.12}
         dragSnapToOrigin
@@ -107,23 +120,37 @@ export default function RouteMapCard({
           else if (info.offset.x < -70) go(-1)
         }}
         className="relative aspect-[400/450] touch-pan-y sm:aspect-[16/11] lg:aspect-[400/470]"
-        onClick={() => onSelectStop(null)}
+        onClick={streetMap ? undefined : () => onSelectStop(null)}
       >
         <AnimatePresence initial={false}>
           <motion.div
-            key={geo ? `geo-${geo.id}` : 'stylised'}
+            key={streetMap ? 'street' : geo ? `geo-${geo.id}` : 'stylised'}
             className="absolute inset-0"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.5 }}
           >
-            {geo ? <RealMap geo={geo} {...mapProps} /> : <StylisedMap {...mapProps} />}
+            {streetMap ? (
+              <DayLeafletMap
+                points={dayPoints}
+                hotel={hotels[selected as number] ?? null}
+                hotelName={day?.hotelName}
+                color={dayColor(selected as number)}
+                selectedStopId={selectedStopId}
+                dark={theme === 'dark'}
+                onSelectStop={onSelectStop}
+              />
+            ) : geo ? (
+              <RealMap geo={geo} {...mapProps} />
+            ) : (
+              <StylisedMap {...mapProps} />
+            )}
           </motion.div>
         </AnimatePresence>
 
         {/* header */}
-        <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between p-5" dir="rtl">
+        <div className="pointer-events-none absolute inset-x-0 top-0 z-[500] flex items-start justify-between p-5" dir="rtl">
           <AnimatePresence mode="wait">
             <motion.div
               key={isAll ? 'h-all' : `h${selected}`}
@@ -144,7 +171,7 @@ export default function RouteMapCard({
               </p>
             </motion.div>
           </AnimatePresence>
-          {script ? (
+          {script && !streetMap ? (
             <span
               className="select-none text-[34px] font-black leading-none"
               style={{
@@ -163,7 +190,7 @@ export default function RouteMapCard({
       </motion.div>
 
       {/* controls */}
-      <div className="absolute inset-x-0 bottom-0 flex items-center justify-between p-4" dir="rtl">
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[500] flex items-center justify-between p-4 [&>*]:pointer-events-auto" dir="rtl">
         {HAS_MAPBOX && !isAll ? (
           <button
             type="button"

@@ -8,6 +8,7 @@ import { buildDayMarkersSync, refineDayMarkersWithGeocoding, type VipMapMarker }
 import DayPanel from './DayPanel'
 import DayStrip, { type DaySelection } from './DayStrip'
 import FullMapView from './map-view/FullMapView'
+import { useStopPositions } from './map-view/use-stop-positions'
 import RouteMapCard from './RouteMapCard'
 import TripOverviewList from './TripOverviewList'
 import { buildCityColors, cityOf, readGroundInfo, RV, todayIndex } from './route-utils'
@@ -93,6 +94,8 @@ export default function RouteExperience({ days, destination, startDate, flightDe
   }
   const ground = useMemo(() => readGroundInfo(flightDetails), [flightDetails])
   const cityColors = useMemo(() => buildCityColors(days, destination), [days, destination])
+  // exact positions (places bank) for the day maps and the whole-trip map
+  const positions = useStopPositions(days, destination)
   const topRef = useRef<HTMLDivElement>(null)
 
   // Positions: instant approximations first, refined (geocoded) per visited day.
@@ -162,7 +165,7 @@ export default function RouteExperience({ days, destination, startDate, flightDe
         <div className="mb-4 flex justify-center">
           <ViewToggle view={view} onChange={changeView} />
         </div>
-        <FullMapView days={days} destination={destination} startDate={startDate} initial="all" onOpenDay={openDayInList} />
+        <FullMapView days={days} startDate={startDate} initial="all" onOpenDay={openDayInList} positions={positions} />
       </div>
     )
   }
@@ -186,6 +189,8 @@ export default function RouteExperience({ days, destination, startDate, flightDe
             hideUber={ground.privateDriver}
             onSelectDay={select}
             onSelectStop={setSelectedStopId}
+            exactPoints={positions.points}
+            hotels={positions.hotels}
           />
         </div>
 

@@ -9,7 +9,7 @@ import type { DaySelection } from '../DayStrip'
 import { useItineraryTheme } from '../theme'
 import { dayDateParts, RV } from '../route-utils'
 import { dayColor } from './day-colors'
-import { useStopPositions } from './use-stop-positions'
+import type { StopPoint } from './use-stop-positions'
 
 const FullMapLeaflet = dynamic(() => import('./FullMapLeaflet'), {
   ssr: false,
@@ -22,18 +22,19 @@ const FullMapLeaflet = dynamic(() => import('./FullMapLeaflet'), {
 
 type Props = {
   days: PublicItineraryDay[]
-  destination: string
   startDate: string | null
   /** Day to start on (the list view's current day, or the whole trip). */
   initial: DaySelection
   /** Open a day in the list view. */
   onOpenDay: (dayIndex: number) => void
+  /** Exact stop positions (shared with the list view's day map). */
+  positions: { points: StopPoint[]; total: number; pending: number }
 }
 
 /** Map view: every stop of the trip on a real map, one colour per day, with day chips to filter. */
-export default function FullMapView({ days, destination, startDate, initial, onOpenDay }: Props) {
+export default function FullMapView({ days, startDate, initial, onOpenDay, positions }: Props) {
   const [filter, setFilter] = useState<DaySelection>(initial)
-  const { points, total, pending } = useStopPositions(days, destination)
+  const { points, total, pending } = positions
   const theme = useItineraryTheme()
   const scroller = useRef<HTMLDivElement>(null)
   const chipRefs = useRef<Array<HTMLButtonElement | null>>([])
