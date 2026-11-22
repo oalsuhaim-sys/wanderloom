@@ -29,6 +29,55 @@ export async function savePlacePosition(id: string, c: LatLng): Promise<void> {
   if (error) throw new Error(/column|schema cache/i.test(error.message) ? 'columns_missing' : error.message);
 }
 
+// ── Google place search (server key, Places API (New) Text Search) ───────────────
+
+export function googlePlacesEnabled(): boolean {
+  return /^AIza[\w-]{20,}$/.test((process.env.GOOGLE_PLACES_SERVER_KEY ?? '').trim());
+}
+
+function km(a: LatLng, b: LatLng): number {
+  const R = 6371;
+  const dLat = ((b[0] - a[0]) * Math.PI) / 180;
+  const dLng = ((b[1] - a[1]) * Math.PI) / 180;
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos((a[0] * Math.PI) / 180) * Math.cos((b[0] * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+
+/**
+ * Google finds the place from its name, branch and city — the same search as Google Maps — biased
+ * to 30 km around the city. A result more than 80 km from the city is refused.
+ */
+async function googleFind(row: BankRow): Promise<LatLng | null> {
+  const key = (process.env.GOOGLE_PLACES_SERVER_KEY ?? '').trim();
+  const name = String(row.name ?? '').trim();
+  if (!key || !name) return null;
+  const city = String(row.city ?? '').trim();
+  const country = String(row.country ?? '').trim();
+  const textQuery = [name, String(row.branch_name ?? '').trim(), city, country].filter(Boolean).join(', ');
+  const center = city ? resolveCityCenter(city, country || city) : null;
+  const body: Record<string, unknown> = { textQuery, pageSize: 1 };
+  if (center) body.locationBias = { circle: { center: { latitude: center[0], longitude: center[1] }, radius: 30000 } };
+  const res = await fetch('https://places.googleapis.com/v1/places:searchText', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Goog-Api-Key': key, 'X-Goog-FieldMask': 'places.location' },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(8000),
+    cache: 'no-store',
+  });
+  if (!res.ok) throw new Error(`google ${res.status}: ${(await res.text().catch(() => '')).slice(0, 160)}`);
+  const json = (await res.json().catch(() => null)) as { places?: Array<{ location?: { latitude?: number; longitude?: number } }> } | null;
+  const loc = json?.places?.[0]?.location;
+  const c: LatLng | null = loc && Number.isFinite(loc.latitude) && Number.isFinite(loc.longitude) ? [loc.latitude!, loc.longitude!] : null;
+  if (c && center && km(center, c) > 80) return null;
+  return c;
+}
+
+/** Rows looked up recently without a result are not searched again for 90 days (keeps it free). */
+function recentlyChecked(row: BankRow): boolean {
+  const at = Date.parse(String(row.geo_checked_at ?? ''));
+  return Number.isFinite(at) && Date.now() - at < 90 * 24 * 60 * 60 * 1000;
+}
+
 // ── Kakao Local (free key, Korea) ───────────────────────────────────────────────
 
 export function kakaoEnabled(): boolean {
@@ -144,9 +193,38 @@ export async function loadStopPositions(items: BankMatchItem[]): Promise<Record<
     byRow.set(String(row.id), c);
     void savePlacePosition(String(row.id), c).catch(() => undefined);
   }
+  const unique = [...new Map([...byKey.values()].map((r) => [String(r.id), r])).values()];
+
+  // Still without a position: Google place search — once per place, saved on the row.
+  // Only when the position columns exist (otherwise every visit would search again).
+  const columnsReady = unique.some((r) => 'lat' in r && 'geo_checked_at' in r);
+  if (googlePlacesEnabled() && columnsReady) {
+    const left = unique.filter((r) => !byRow.get(String(r.id)) && !recentlyChecked(r)).slice(0, 30);
+    for (let i = 0; i < left.length; i += 5) {
+      const found = await Promise.all(
+        left.slice(i, i + 5).map(async (r) => {
+          try {
+            return [r, await googleFind(r), true] as const;
+          } catch (err) {
+            console.warn('[place-positions] google:', err instanceof Error ? err.message : err);
+            return [r, null, false] as const; // API problem: not marked, tried again later
+          }
+        }),
+      );
+      for (const [row, c, answered] of found) {
+        if (c) {
+          byRow.set(String(row.id), c);
+          void db.from('places').update({ lat: c[0], lng: c[1], geo_checked_at: new Date().toISOString() }).eq('id', row.id).then(() => undefined);
+        } else if (answered) {
+          void db.from('places').update({ geo_checked_at: new Date().toISOString() }).eq('id', row.id).then(() => undefined);
+        }
+      }
+    }
+  }
+
   // Korean places still without a position: Kakao, exact name matches only
   if (kakaoEnabled()) {
-    const left = [...new Map([...byKey.values()].map((r) => [String(r.id), r])).values()]
+    const left = unique
       .filter((r) => !byRow.get(String(r.id)) && isKorea(r))
       .slice(0, 20);
     for (let i = 0; i < left.length; i += 5) {

@@ -6,7 +6,6 @@ import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import './full-map.css'
 
-import { buildGoogleMapsPlaceSearchUrl } from '@/lib/public-itinerary'
 import { getVipPlaceCategoryMeta } from '@/lib/vip-place-category'
 import type { DaySelection } from '../DayStrip'
 import { dayDateParts, formatTime, placeName } from '../route-utils'
@@ -117,9 +116,6 @@ export default function FullMapLeaflet({ startDate, points, filter, frameKey, da
                     <button type="button" onClick={() => onOpenDay(p.dayIndex)} style={{ color }}>
                       تفاصيل اليوم
                     </button>
-                    <a href={buildGoogleMapsPlaceSearchUrl(p.activity.mapsQuery || name)} target="_blank" rel="noopener noreferrer">
-                      خرائط Google
-                    </a>
                   </span>
                 </div>
               </Popup>
