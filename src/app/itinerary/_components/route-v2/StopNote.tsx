@@ -5,15 +5,15 @@ import { Loader2, MessageCircle } from 'lucide-react'
 
 import { RV } from './route-utils'
 
-/** «ملاحظة» pill — takes the place of the photo button in the stop's panel. */
+/** «ملاحظة» pill — next to «وثّق اللحظة» in the stop's panel. */
 export function StopNoteButton({ hasNote, open, onClick }: { hasNote: boolean; open: boolean; onClick: () => void }) {
   return (
     <button
       type="button"
       onClick={onClick}
       aria-expanded={open}
-      className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-black transition active:scale-95"
-      style={{ background: RV.gold, color: RV.onGold }}
+      className="inline-flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-xs font-black transition active:scale-95"
+      style={{ borderColor: RV.lineStrong, background: RV.goldTint, color: RV.cream }}
     >
       <MessageCircle className="h-3.5 w-3.5" aria-hidden />
       {hasNote ? 'ملاحظتك' : 'ملاحظة'}

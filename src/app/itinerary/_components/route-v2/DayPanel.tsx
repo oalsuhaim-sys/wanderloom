@@ -242,7 +242,7 @@ function StopRow({
                 onUploadStart={setUploadingId}
                 onUploadEnd={() => setUploadingId(null)}
                 tone="dark"
-                replacePhotoWith={
+                extraAction={
                   note ? <StopNoteButton hasNote={Boolean(note.value)} open={noteOpen} onClick={() => setNoteOpen((v) => !v)} /> : undefined
                 }
               />

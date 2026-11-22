@@ -150,7 +150,7 @@ export function ActivityActionPills({
   onUploadStart,
   onUploadEnd,
   tone = 'light',
-  replacePhotoWith,
+  extraAction,
 }: {
   activity: PublicItineraryActivity
   tripId: string
@@ -161,8 +161,8 @@ export function ActivityActionPills({
   onUploadEnd?: () => void
   /** `dark` restyles the pills for the dark route view — behaviour is identical. */
   tone?: 'light' | 'dark'
-  /** Shown instead of the «وثّق اللحظة» photo button (route view: the client's note). */
-  replacePhotoWith?: ReactNode
+  /** An extra pill shown before «وثّق اللحظة» (route view: the client's note). */
+  extraAction?: ReactNode
 }) {
   const dark = tone === 'dark'
   const placeName = activity.place_name?.trim() || activity.title?.trim() || ''
@@ -263,7 +263,7 @@ export function ActivityActionPills({
         </a>
       ) : null}
 
-      {replacePhotoWith ? replacePhotoWith : (
+      {extraAction}
       <button
         type="button"
         onClick={() => {
@@ -278,9 +278,8 @@ export function ActivityActionPills({
         <Camera className="h-3.5 w-3.5" aria-hidden />
         {isUploading ? 'جاري الرفع…' : !canUpload ? 'بانتظار التأكيد' : 'وثّق اللحظة'}
       </button>
-      )}
 
-      {canUpload && !replacePhotoWith ? (
+      {canUpload ? (
         <input
           type="file"
           id={uploadInputId}
