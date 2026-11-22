@@ -62,3 +62,27 @@ export function googleDayRouteLinks(
   }
   return links
 }
+
+/** Google Maps key for the in-page map (Maps Embed API only — free, unlimited). */
+export const GOOGLE_EMBED_KEY = (process.env.NEXT_PUBLIC_GOOGLE_MAPS_EMBED_KEY ?? '').trim()
+
+/**
+ * The day as a Google map inside the page (Maps Embed API, directions mode): Google places each stop
+ * from its name and draws the route in order. Up to 20 waypoints; waypoints must be names.
+ */
+export function googleDayEmbedUrl(day: PublicItineraryDay, destination: string, key: string): string | null {
+  if (!key) return null
+  const points: string[] = []
+  const hotel = day.hotelName?.trim()
+  if (hotel) points.push(hotel)
+  for (const a of day.activities) points.push(stopQuery(day, a, destination))
+  if (!points.length) return null
+  if (points.length === 1) {
+    return `https://www.google.com/maps/embed/v1/place?${new URLSearchParams({ key, q: points[0]!, language: 'ar' })}`
+  }
+  const route = points.slice(0, 22)
+  const params = new URLSearchParams({ key, origin: route[0]!, destination: route[route.length - 1]!, language: 'ar' })
+  const waypoints = route.slice(1, -1)
+  if (waypoints.length) params.set('waypoints', waypoints.join('|'))
+  return `https://www.google.com/maps/embed/v1/directions?${params}`
+}

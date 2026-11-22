@@ -9,7 +9,7 @@ import type { DaySelection } from '../DayStrip'
 import { useItineraryTheme } from '../theme'
 import { dayDateParts, RV } from '../route-utils'
 import { dayColor } from './day-colors'
-import { googleDayRouteLinks } from './google-route'
+import { GOOGLE_EMBED_KEY, googleDayEmbedUrl, googleDayRouteLinks } from './google-route'
 import { useStopPositions } from './use-stop-positions'
 
 const FullMapLeaflet = dynamic(() => import('./FullMapLeaflet'), {
@@ -63,8 +63,14 @@ export default function FullMapView({ days, destination, startDate, initial, onO
   // re-frame when the filter changes, and once more when the positions finish loading
   const frameKey = `${filter}|${pending === 0 ? 'done' : 'loading'}|${placed > 0 ? 'some' : 'none'}`
 
+  // With a Google key the chosen day is shown as a Google map inside the page (no leaving the site)
+  const embedUrl = useMemo(
+    () => (filter === 'all' || !days[filter] ? null : googleDayEmbedUrl(days[filter]!, destination, GOOGLE_EMBED_KEY)),
+    [filter, days, destination],
+  )
+
   const googleLinks = useMemo(() => {
-    if (filter === 'all' || !days[filter]) return []
+    if (GOOGLE_EMBED_KEY || filter === 'all' || !days[filter]) return []
     const exact = new Map(points.filter((p) => p.dayIndex === filter).map((p) => [p.activity.id, [p.lat, p.lng] as [number, number]]))
     return googleDayRouteLinks(days[filter]!, destination, exact, maxPoints)
   }, [filter, days, destination, points, maxPoints])
@@ -128,7 +134,7 @@ export default function FullMapView({ days, destination, startDate, initial, onO
         <MapPin className="h-3.5 w-3.5" style={{ color: RV.goldSoft }} aria-hidden />
         <span>{shown} محطة</span>
         {pending > 0 ? <span>· جاري تحديد المواقع…</span> : null}
-        {pending === 0 && shown - placed > 0 ? <span>· {shown - placed} بدون موقع دقيق للحين</span> : null}
+        {!embedUrl && pending === 0 && shown - placed > 0 ? <span>· {shown - placed} بدون موقع دقيق للحين</span> : null}
         {filter !== 'all' && days[filter] ? (
           <button type="button" onClick={() => onOpenDay(filter)} className="ms-auto font-bold underline-offset-4 hover:underline" style={{ color: RV.goldText }}>
             تفاصيل اليوم {filter + 1} ←
@@ -154,7 +160,7 @@ export default function FullMapView({ days, destination, startDate, initial, onO
         </div>
       ) : filter === 'all' ? (
         <p className="mb-3 text-[12px] font-semibold" style={{ color: RV.faint }}>
-          اختر يوماً لفتح مساره كاملاً في Google Maps.
+          {GOOGLE_EMBED_KEY ? 'اختر يوماً لعرض مساره كاملاً على الخريطة.' : 'اختر يوماً لفتح مساره كاملاً في Google Maps.'}
         </p>
       ) : null}
 
@@ -162,8 +168,28 @@ export default function FullMapView({ days, destination, startDate, initial, onO
         className="relative h-[62vh] min-h-[420px] max-h-[720px] overflow-hidden rounded-[28px] border lg:h-[640px]"
         style={{ borderColor: RV.line, boxShadow: RV.shadow, background: RV.card }}
       >
-        <FullMapLeaflet startDate={startDate} points={points} filter={filter} frameKey={frameKey} dark={theme === 'dark'} onOpenDay={onOpenDay} />
-        {placed === 0 && pending === 0 ? (
+        {embedUrl ? (
+          <>
+            <iframe
+              key={embedUrl}
+              src={embedUrl}
+              title={`مسار اليوم ${(filter as number) + 1}`}
+              className="h-full w-full border-0"
+              loading="lazy"
+              allowFullScreen
+              referrerPolicy="no-referrer-when-downgrade"
+            />
+            <span
+              className="pointer-events-none absolute right-3 top-3 z-10 rounded-full px-3 py-1 text-[11.5px] font-bold text-white shadow"
+              style={{ background: dayColor(filter as number) }}
+            >
+              اليوم {(filter as number) + 1}
+            </span>
+          </>
+        ) : (
+          <FullMapLeaflet startDate={startDate} points={points} filter={filter} frameKey={frameKey} dark={theme === 'dark'} onOpenDay={onOpenDay} />
+        )}
+        {!embedUrl && placed === 0 && pending === 0 ? (
           <div className="pointer-events-none absolute inset-0 z-[500] flex items-center justify-center p-6">
             <p className="rounded-2xl px-4 py-3 text-center text-sm font-semibold" style={{ background: RV.glassStrong, color: RV.text2 }}>
               مواقع محطات هذا اليوم تُضاف قريباً.
