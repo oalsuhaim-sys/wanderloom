@@ -2189,6 +2189,7 @@ export default function EditItineraryPage() {
         </aside>
 
         <SimpleItineraryDayPlanner
+          itineraryId={id || undefined}
           tripStartDate={tripDateFrom}
           days={itineraryDays}
           hotels={hotels}

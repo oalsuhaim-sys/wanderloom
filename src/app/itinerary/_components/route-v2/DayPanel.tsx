@@ -14,7 +14,10 @@ import {
   type PublicItineraryDay,
 } from '@/lib/public-itinerary'
 import { formatDayHoursAr, hoursForWeekday, tripDayWeekday } from '@/lib/place-hours'
+import { ratingSlot, stopRatingKey } from '@/lib/stop-ratings'
 import { usePlaceHours } from '@/lib/use-place-hours'
+import StopStarRating from './StopStarRating'
+import { dayHasStarted, useStopRatings } from './use-stop-ratings'
 import { getVipPlaceCategoryMeta } from '@/lib/vip-place-category'
 import DayWeatherPill from '../DayWeatherPill'
 import { ActivityActionPills } from '../VipDailyItineraryTimeline'
@@ -119,10 +122,13 @@ function StopRow({
   setUploadingId,
   hoursLine,
   hoursClosed,
+  rating,
 }: {
   a: PublicItineraryActivity
   hoursLine?: string | null
   hoursClosed?: boolean
+  /** Star rating row (shown once the stop's day has started). */
+  rating?: { value: number | undefined; onRate: (v: number) => Promise<boolean> } | null
   order: number
   color: string
   open: boolean
@@ -187,6 +193,7 @@ function StopRow({
           aria-hidden
         />
       </button>
+      {rating ? <StopStarRating value={rating.value} onRate={rating.onRate} /> : null}
 
       <AnimatePresence initial={false}>
         {open ? (
@@ -305,6 +312,16 @@ export default function DayPanel({
     [day.activities, city],
   )
   const placeHours = usePlaceHours(hoursItems)
+  const { ratings, rate } = useStopRatings(tripId)
+  const started = dayHasStarted(startDate, index)
+  const stopRating = (a: PublicItineraryActivity) => {
+    if (!started || !tripId) return null
+    const key = stopRatingKey(a.placesBankId, a.place_name || a.title)
+    return {
+      value: ratings[ratingSlot(index, key)],
+      onRate: (v: number) => rate(index, key, v, { placeName: a.place_name || a.title, bankId: a.placesBankId ?? null }),
+    }
+  }
   const stopHours = (a: PublicItineraryActivity) => {
     const dh = weekday == null ? null : hoursForWeekday(placeHours[a.id], weekday)
     return { hoursLine: formatDayHoursAr(dh), hoursClosed: dh?.kind === 'closed' || dh?.kind === 'closedPermanently' }
@@ -416,6 +433,7 @@ export default function DayPanel({
                 uploadingId={uploadingId}
                 setUploadingId={setUploadingId}
                 {...stopHours(a)}
+                rating={stopRating(a)}
               />
             </div>
           ))}

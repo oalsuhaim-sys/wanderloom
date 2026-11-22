@@ -48,6 +48,7 @@ import {
 } from '@/lib/interactive-quotation';
 import { ProposalItineraryStopsTimeline } from '@/app/quote/[id]/ProposalItineraryStopsTimeline';
 import { destinationLabel, destinationsLine, normalizeDestinations } from '@/lib/trip-destination-normalize';
+import ProposalRouteMap from './ProposalRouteMap';
 
 type FeedbackTarget =
   | { kind: 'day'; id: string; label: string }
@@ -119,151 +120,11 @@ function EditFeedbackButton({
           ? 'border-[#b8954d]/50 bg-[#fbf9f2] text-[#b8954d]'
           : 'border-[#e8d9b5] bg-white/80 text-slate-500 hover:border-[#b8954d]/40 hover:bg-[#fbf9f2] hover:text-[#b8954d]')
       }
-      aria-label="إضافة تعديل"
+      aria-label="إضافة ملاحظة"
     >
       <MessageCircle className="h-3.5 w-3.5" aria-hidden />
-      تعديل
+      ملاحظة
     </button>
-  );
-}
-
-/** Premium curved route map connecting itinerary cities */
-function VoyageRouteMap({ cities }: { cities: string[] }) {
-  if (cities.length === 0) return null;
-
-  const W = 900;
-  const H = 260;
-  const padX = 90;
-  const midY = H / 2;
-
-  const nodes = cities.map((city, i) => {
-    const t = cities.length === 1 ? 0.5 : i / (cities.length - 1);
-    const x = padX + t * (W - padX * 2);
-    const wave = cities.length <= 2 ? 0 : Math.sin(t * Math.PI) * -48;
-    const zig = cities.length <= 2 ? 0 : i % 2 === 0 ? -18 : 22;
-    return { city, x, y: midY + wave + zig, i };
-  });
-
-  let pathD = '';
-  if (nodes.length === 1) {
-    pathD = `M ${nodes[0].x} ${nodes[0].y}`;
-  } else {
-    pathD = `M ${nodes[0].x} ${nodes[0].y}`;
-    for (let i = 1; i < nodes.length; i++) {
-      const prev = nodes[i - 1];
-      const curr = nodes[i];
-      const cx = (prev.x + curr.x) / 2;
-      const cy = (prev.y + curr.y) / 2 - 36;
-      pathD += ` Q ${cx} ${cy} ${curr.x} ${curr.y}`;
-    }
-  }
-
-  return (
-    <div
-      className={
-        'overflow-hidden rounded-3xl border border-[#e8d9b5]/80 bg-gradient-to-b from-white to-[#f7f1e6] p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] sm:p-8'
-      }
-    >
-      <div className="mb-4 text-center">
-        <p className={'text-[11px] font-semibold uppercase tracking-[0.28em] ' + GOLD}>
-          Journey Cartography
-        </p>
-        <h3 className={'mt-2 font-serif text-2xl font-semibold ' + OLIVE}>
-          خارطة الرحلة
-        </h3>
-      </div>
-
-      <div className="relative mx-auto w-full max-w-3xl" dir="ltr">
-        <svg
-          viewBox={`0 0 ${W} ${H}`}
-          className="h-auto w-full"
-          role="img"
-          aria-label={`مسار الرحلة: ${cities.join(' ← ')}`}
-        >
-          <defs>
-            <linearGradient id="routeGlow" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="#b8954d" stopOpacity="0.15" />
-              <stop offset="50%" stopColor="#d4af37" stopOpacity="0.55" />
-              <stop offset="100%" stopColor="#b8954d" stopOpacity="0.15" />
-            </linearGradient>
-            <filter id="softGlow" x="-40%" y="-40%" width="180%" height="180%">
-              <feGaussianBlur stdDeviation="4" result="blur" />
-              <feMerge>
-                <feMergeNode in="blur" />
-                <feMergeNode in="SourceGraphic" />
-              </feMerge>
-            </filter>
-          </defs>
-
-          {nodes.length > 1 ? (
-            <>
-              <path
-                d={pathD}
-                fill="none"
-                stroke="url(#routeGlow)"
-                strokeWidth="10"
-                strokeLinecap="round"
-                opacity="0.55"
-              />
-              <path
-                d={pathD}
-                fill="none"
-                stroke="#b8954d"
-                strokeWidth="2.2"
-                strokeLinecap="round"
-                strokeDasharray="7 9"
-                filter="url(#softGlow)"
-              />
-            </>
-          ) : null}
-
-          {nodes.map((node) => {
-            const labelAbove = node.i % 2 === 0;
-            return (
-              <g key={`${node.city}-${node.i}`}>
-                <circle
-                  cx={node.x}
-                  cy={node.y}
-                  r="16"
-                  fill="#FDFBF7"
-                  stroke="#b8954d"
-                  strokeWidth="2"
-                  filter="url(#softGlow)"
-                />
-                <circle cx={node.x} cy={node.y} r="5.5" fill="#b8954d" />
-                <foreignObject
-                  x={node.x - 70}
-                  y={labelAbove ? node.y - 58 : node.y + 22}
-                  width="140"
-                  height="36"
-                >
-                  <div className="flex justify-center" dir="rtl">
-                    <span
-                      className={
-                        'inline-flex max-w-[130px] items-center gap-1 truncate rounded-full border border-[#e8d9b5] bg-white/95 px-3 py-1 text-[11px] font-semibold shadow-sm ' +
-                        OLIVE
-                      }
-                      title={node.city}
-                    >
-                      <span className={GOLD}>
-                        {destinationIcon(node.city, 'h-3 w-3')}
-                      </span>
-                      {node.city}
-                    </span>
-                  </div>
-                </foreignObject>
-              </g>
-            );
-          })}
-        </svg>
-      </div>
-
-      {cities.length > 1 ? (
-        <p className="mt-2 text-center text-xs tracking-wide text-slate-500" dir="rtl">
-          {cities.join('  ←  ')}
-        </p>
-      ) : null}
-    </div>
   );
 }
 
@@ -297,7 +158,7 @@ function FeedbackPopover({
     >
       <div className="mb-2 flex items-center justify-between gap-2">
         <p className={'text-[11px] font-semibold tracking-wide ' + GOLD}>
-          تعديل · {target.label}
+          ملاحظة · {target.label}
         </p>
         <button
           type="button"
@@ -315,7 +176,7 @@ function FeedbackPopover({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         rows={3}
-        placeholder="اكتب طلب التعديل هنا…"
+        placeholder="اكتب ملاحظتك هنا…"
         className={
           'w-full rounded-xl border border-gray-100 bg-[#FDFBF7] px-3 py-2 text-sm leading-relaxed text-[#243223] outline-none focus:border-[#b8954d] focus:ring-2 focus:ring-[#b8954d]/30'
         }
@@ -610,7 +471,14 @@ export function PremiumInteractiveQuotation({ quotation }: Props) {
       <main className="mx-auto max-w-4xl space-y-20 px-6 py-14">
         {routeCities.length > 0 ? (
           <section>
-            <VoyageRouteMap cities={routeCities} />
+            <SectionHeading eyebrow="Journey" title="خارطة الرحلة" />
+            <div className="mt-10">
+              <ProposalRouteMap
+                days={days}
+                cities={routeCities}
+                destination={normalizeDestinations(quotation.destinations)[0]?.countryLabel || routeCities[0] || ''}
+              />
+            </div>
           </section>
         ) : null}
 
@@ -655,7 +523,7 @@ export function PremiumInteractiveQuotation({ quotation }: Props) {
           <section>
             <SectionHeading eyebrow="Stay" title="الفنادق المقترحة" />
             <p className="mt-3 text-center text-sm text-slate-500">
-              اضغط على البطاقة لاختيار خيارك · استخدم «تعديل» لإضافة ملاحظة
+              اضغط على البطاقة لاختيار خيارك · استخدم «ملاحظة» لإضافة ما تريد تعديله
             </p>
             <div className="mt-10 space-y-12">
               {hotelsByCity.map(({ city, hotels: cityHotels }) => (

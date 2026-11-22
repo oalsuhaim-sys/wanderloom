@@ -27,6 +27,12 @@ type RouteMapCardProps = {
   hideUber: boolean
   onSelectDay: (s: DaySelection) => void
   onSelectStop: (id: string | null) => void
+  /** Whole-trip view only (no day navigation) — used on the proposal page. */
+  overviewOnly?: boolean
+  /** Replaces the «N يوم · N مكان» line under the title. */
+  subtitle?: string
+  /** Replaces the card's aspect-ratio classes. */
+  aspectClassName?: string
 }
 
 export default function RouteMapCard({
@@ -39,6 +45,9 @@ export default function RouteMapCard({
   hideUber,
   onSelectDay,
   onSelectStop,
+  overviewOnly = false,
+  subtitle,
+  aspectClassName = 'aspect-[400/450] sm:aspect-[16/11] lg:aspect-[400/470]',
 }: RouteMapCardProps) {
   const [detailOpen, setDetailOpen] = useState(false)
   const isAll = selected === 'all'
@@ -98,7 +107,7 @@ export default function RouteMapCard({
       aria-label="خريطة المسار"
     >
       <motion.div
-        drag="x"
+        drag={overviewOnly ? false : 'x'}
         dragConstraints={{ left: 0, right: 0 }}
         dragElastic={0.12}
         dragSnapToOrigin
@@ -106,8 +115,8 @@ export default function RouteMapCard({
           if (info.offset.x > 70) go(1)
           else if (info.offset.x < -70) go(-1)
         }}
-        className="relative aspect-[400/450] touch-pan-y sm:aspect-[16/11] lg:aspect-[400/470]"
-        onClick={() => onSelectStop(null)}
+        className={`relative touch-pan-y ${aspectClassName}`}
+        onClick={overviewOnly ? undefined : () => onSelectStop(null)}
       >
         <AnimatePresence initial={false}>
           <motion.div
@@ -138,7 +147,9 @@ export default function RouteMapCard({
                 {isAll ? 'الرحلة كاملة' : city}
               </p>
               <p className="mt-0.5 text-xs font-bold" style={{ color: isAll ? RV.goldSoft : color }}>
-                {isAll
+                {subtitle
+                  ? subtitle
+                  : isAll
                   ? `${days.length} يوم · ${totalStops} مكان`
                   : `${dayOrdinal(selected as number)} · ${(markersByDay[selected as number] ?? []).length} محطات`}
               </p>
@@ -163,7 +174,7 @@ export default function RouteMapCard({
       </motion.div>
 
       {/* controls */}
-      <div className="absolute inset-x-0 bottom-0 flex items-center justify-between p-4" dir="rtl">
+      <div className={`absolute inset-x-0 bottom-0 flex items-center justify-between p-4 ${overviewOnly ? 'hidden' : ''}`} dir="rtl">
         {HAS_MAPBOX && !isAll ? (
           <button
             type="button"

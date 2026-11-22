@@ -8,6 +8,7 @@ import { toast } from '@/lib/crm-toast';
 import PlaceHoursHint from '@/app/crm/itineraries/_components/PlaceHoursHint';
 import SupplierWhatsAppButton from '@/app/crm/itineraries/_components/SupplierWhatsAppButton';
 import { tripDayWeekday } from '@/lib/place-hours';
+import { ratingSlot, stopRatingKey, type StopRatingsMap } from '@/lib/stop-ratings';
 import { usePlaceHours, usePlaceHoursOverrides } from '@/lib/use-place-hours';
 import {
   TRANSPORT_MODES,
@@ -293,6 +294,8 @@ export type SimpleItineraryDayCardProps = {
   supplierBrief?: SupplierBriefClientContext | null;
   /** Trip start date (YYYY-MM-DD) — to check each stop against the place's opening hours. */
   tripStartDate?: string;
+  /** The client's star ratings for this itinerary («day:key» → 1..5). */
+  clientRatings?: StopRatingsMap;
 };
 
 function SimpleItineraryDayCardInner({
@@ -321,6 +324,7 @@ function SimpleItineraryDayCardInner({
   dayDroppableId,
   supplierBrief,
   tripStartDate,
+  clientRatings,
 }: SimpleItineraryDayCardProps) {
   const weekday = tripDayWeekday(tripStartDate, dayIdx);
   const hoursItems = useMemo(
@@ -557,6 +561,20 @@ function SimpleItineraryDayCardInner({
                                     weekday={weekday}
                                     visitTime={place.visit_time}
                                   />
+                                  {(() => {
+                                    const r = clientRatings?.[
+                                      ratingSlot(dayIdx, stopRatingKey(bankPlaceId(place.id), typeof place.name === 'string' ? place.name : ''))
+                                    ];
+                                    return r ? (
+                                      <p className="mt-2 flex items-center gap-1 text-xs font-semibold text-slate-600">
+                                        تقييم العميل:
+                                        <span className="tracking-wider text-[#D4AF37]" aria-label={`${r} من 5`}>
+                                          {'★'.repeat(r)}
+                                          <span className="text-slate-300">{'★'.repeat(5 - r)}</span>
+                                        </span>
+                                      </p>
+                                    ) : null;
+                                  })()}
                                   <div className="mt-2">
                                     <input
                                       type="text"
