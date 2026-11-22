@@ -243,3 +243,80 @@ export async function loadStopPositions(items: BankMatchItem[]): Promise<Record<
   }
   return out;
 }
+
+// ── Bulk: fill positions for the whole places bank (staff button in «بنك الأماكن») ─────
+
+export type GeoBatchResult = {
+  processed: number;
+  found: { link: number; google: number; kakao: number };
+  missed: Array<{ id: string; name: string; city: string }>;
+  done: boolean;
+};
+
+export async function placesPositionStats(): Promise<{ total: number; withPosition: number } | 'columns_missing'> {
+  const db = createSupabaseAdminClient();
+  const [all, withPos] = await Promise.all([
+    db.from('places').select('id', { count: 'exact', head: true }),
+    db.from('places').select('id', { count: 'exact', head: true }).not('lat', 'is', null),
+  ]);
+  if (withPos.error) return /column|schema cache|does not exist/i.test(withPos.error.message) ? 'columns_missing' : { total: all.count ?? 0, withPosition: 0 };
+  return { total: all.count ?? 0, withPosition: withPos.count ?? 0 };
+}
+
+/**
+ * One batch: places without a position that were not tried since `runStartedAt`.
+ * Each is tried once per run: its map link → Google place search → Kakao (Korea, exact name).
+ */
+export async function geocodeBankBatch(runStartedAt: string, limit = 15): Promise<GeoBatchResult | 'columns_missing'> {
+  const db = createSupabaseAdminClient();
+  const { data, error } = await db
+    .from('places')
+    .select('*')
+    .is('lat', null)
+    .or(`geo_checked_at.is.null,geo_checked_at.lt."${runStartedAt}"`)
+    .order('id', { ascending: true })
+    .limit(limit);
+  if (error) {
+    if (/column|schema cache|does not exist/i.test(error.message)) return 'columns_missing';
+    throw new Error(error.message);
+  }
+  const rows = (data ?? []) as BankRow[];
+  const result: GeoBatchResult = { processed: 0, found: { link: 0, google: 0, kakao: 0 }, missed: [], done: rows.length < limit };
+
+  for (let i = 0; i < rows.length; i += 5) {
+    await Promise.all(
+      rows.slice(i, i + 5).map(async (row) => {
+        let c: LatLng | null = coordsFromRow(row);
+        let via: keyof GeoBatchResult['found'] | null = c ? 'link' : null;
+        if (!c) {
+          const short = mapLinksOf(row).find((u) => SHORT_LINK.test(u));
+          if (short) {
+            c = await followShortLink(short).catch(() => null);
+            if (c) via = 'link';
+          }
+        }
+        if (!c && googlePlacesEnabled()) {
+          c = await googleFind(row).catch((err) => {
+            console.warn('[places-geocode] google:', err instanceof Error ? err.message : err);
+            return null;
+          });
+          if (c) via = 'google';
+        }
+        if (!c && kakaoEnabled() && isKorea(row)) {
+          c = await kakaoExact(row);
+          if (c) via = 'kakao';
+        }
+        const now = new Date().toISOString();
+        const { error: saveError } = await db
+          .from('places')
+          .update(c ? { lat: c[0], lng: c[1], geo_checked_at: now } : { geo_checked_at: now })
+          .eq('id', row.id);
+        if (saveError) console.warn('[places-geocode] save:', saveError.message);
+        result.processed += 1;
+        if (c && via) result.found[via] += 1;
+        else result.missed.push({ id: String(row.id), name: String(row.name ?? ''), city: String(row.city ?? '') });
+      }),
+    );
+  }
+  return result;
+}

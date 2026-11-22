@@ -17,6 +17,7 @@ import {
 } from '@/lib/places-bank'
 import PlacesCsvUploader from './_components/PlacesCsvUploader'
 import EditPlaceModal from './_components/EditPlaceModal'
+import PlacesPositionsFill from './_components/PlacesPositionsFill'
 
 const categoryOptions = [
   ...PLACE_CATEGORY_OPTIONS,
@@ -226,6 +227,14 @@ export default function VaultPage() {
           <p className="text-xs text-slate-500">{total} مكان · مستكشف موارد فاخر</p>
         </div>
       </header>
+
+      <PlacesPositionsFill
+        onEditPlace={async (id) => {
+          if (!supabase) return
+          const { data } = await supabase.from('places').select('*').eq('id', id).maybeSingle()
+          if (data) setEditing(data as typeof editing)
+        }}
+      />
 
       <div className="grid grid-cols-1 gap-3 rounded-3xl border border-slate-200 bg-white p-4 text-xs shadow-sm md:grid-cols-4">
         <input
