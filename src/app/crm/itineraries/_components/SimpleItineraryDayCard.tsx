@@ -8,6 +8,7 @@ import { toast } from '@/lib/crm-toast';
 import PlaceHoursHint from '@/app/crm/itineraries/_components/PlaceHoursHint';
 import SupplierWhatsAppButton from '@/app/crm/itineraries/_components/SupplierWhatsAppButton';
 import { tripDayWeekday } from '@/lib/place-hours';
+import { ratingSlot, stopRatingKey, type StopRatingsMap } from '@/lib/stop-ratings';
 import { usePlaceHours, usePlaceHoursOverrides } from '@/lib/use-place-hours';
 import {
   TRANSPORT_MODES,
@@ -293,6 +294,10 @@ export type SimpleItineraryDayCardProps = {
   supplierBrief?: SupplierBriefClientContext | null;
   /** Trip start date (YYYY-MM-DD) — to check each stop against the place's opening hours. */
   tripStartDate?: string;
+  /** The client's star ratings for this itinerary («day:key» → 1..5). */
+  clientRatings?: StopRatingsMap;
+  /** The client's notes for this itinerary («day:key» → text). */
+  clientNotes?: Record<string, string>;
 };
 
 function SimpleItineraryDayCardInner({
@@ -321,6 +326,8 @@ function SimpleItineraryDayCardInner({
   dayDroppableId,
   supplierBrief,
   tripStartDate,
+  clientRatings,
+  clientNotes,
 }: SimpleItineraryDayCardProps) {
   const weekday = tripDayWeekday(tripStartDate, dayIdx);
   const hoursItems = useMemo(
@@ -557,6 +564,24 @@ function SimpleItineraryDayCardInner({
                                     weekday={weekday}
                                     visitTime={place.visit_time}
                                   />
+                                  {(() => {
+                                    const slot = ratingSlot(dayIdx, stopRatingKey(bankPlaceId(place.id), typeof place.name === 'string' ? place.name : ''));
+                                    const r = clientRatings?.[slot];
+                                    const n = clientNotes?.[slot];
+                                    if (!r && !n) return null;
+                                    return (
+                                      <div className="mt-2 space-y-1 rounded-xl border border-[#D4AF37]/30 bg-[#FFFBF0] px-3 py-2 text-xs text-slate-700">
+                                        <p className="font-bold text-slate-500">رأي العميل</p>
+                                        {r ? (
+                                          <p className="tracking-wider text-[#D4AF37]" aria-label={`${r} من 5`}>
+                                            {'★'.repeat(r)}
+                                            <span className="text-slate-300">{'★'.repeat(5 - r)}</span>
+                                          </p>
+                                        ) : null}
+                                        {n ? <p className="leading-relaxed">«{n}»</p> : null}
+                                      </div>
+                                    );
+                                  })()}
                                   <div className="mt-2">
                                     <input
                                       type="text"

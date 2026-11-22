@@ -1,6 +1,8 @@
 'use client';
 
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+
+import type { StopRatingsMap } from '@/lib/stop-ratings';
 import { Plus, Trash2 } from 'lucide-react';
 
 import { CrmSlideOver, CRM_DRAWER_SAVE } from '@/app/crm/_components/CrmSlideOver';
@@ -42,6 +44,8 @@ type Props = {
   onApplyPredictiveWish?: (place: Record<string, unknown>) => void;
   /** Trip start date (YYYY-MM-DD) — enables opening-hours checks per stop. */
   tripStartDate?: string;
+  /** Itinerary id — shows the client's star ratings per stop. */
+  itineraryId?: string;
 };
 
 export default function SimpleItineraryDayPlanner({
@@ -66,7 +70,29 @@ export default function SimpleItineraryDayPlanner({
   predictiveWishContext,
   onApplyPredictiveWish,
   tripStartDate,
+  itineraryId,
 }: Props) {
+  const [clientRatings, setClientRatings] = useState<StopRatingsMap>({});
+  const [clientNotes, setClientNotes] = useState<Record<string, string>>({});
+  useEffect(() => {
+    if (!itineraryId) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch(`/api/itinerary/${encodeURIComponent(itineraryId)}/ratings`, { cache: 'no-store' });
+        const json = (await res.json().catch(() => null)) as { ratings?: StopRatingsMap; notes?: Record<string, string> } | null;
+        if (cancelled) return;
+        if (json?.ratings) setClientRatings(json.ratings);
+        if (json?.notes) setClientNotes(json.notes);
+      } catch {
+        /* optional */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [itineraryId]);
+
   const hotelOptions = useMemo(
     () => hotels.map((h) => h?.name?.trim()).filter(Boolean) as string[],
     [hotels],
@@ -241,6 +267,8 @@ export default function SimpleItineraryDayPlanner({
             dayDroppableId={dayDroppableId}
             supplierBrief={supplierBrief}
             tripStartDate={tripStartDate}
+            clientRatings={clientRatings}
+            clientNotes={clientNotes}
           />
         ))}
       </div>

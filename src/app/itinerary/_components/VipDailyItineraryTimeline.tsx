@@ -150,6 +150,7 @@ export function ActivityActionPills({
   onUploadStart,
   onUploadEnd,
   tone = 'light',
+  extraAction,
 }: {
   activity: PublicItineraryActivity
   tripId: string
@@ -160,6 +161,8 @@ export function ActivityActionPills({
   onUploadEnd?: () => void
   /** `dark` restyles the pills for the dark route view — behaviour is identical. */
   tone?: 'light' | 'dark'
+  /** An extra pill shown before «وثّق اللحظة» (route view: the client's note). */
+  extraAction?: ReactNode
 }) {
   const dark = tone === 'dark'
   const placeName = activity.place_name?.trim() || activity.title?.trim() || ''
@@ -260,6 +263,7 @@ export function ActivityActionPills({
         </a>
       ) : null}
 
+      {extraAction}
       <button
         type="button"
         onClick={() => {
