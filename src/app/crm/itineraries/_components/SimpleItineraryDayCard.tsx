@@ -298,6 +298,8 @@ export type SimpleItineraryDayCardProps = {
   clientRatings?: StopRatingsMap;
   /** The client's notes for this itinerary («day:key» → text). */
   clientNotes?: Record<string, string>;
+  /** Stops the client marked «زرت المكان ✓» («day:key» → true). */
+  clientVisited?: Record<string, true>;
 };
 
 function SimpleItineraryDayCardInner({
@@ -328,6 +330,7 @@ function SimpleItineraryDayCardInner({
   tripStartDate,
   clientRatings,
   clientNotes,
+  clientVisited,
 }: SimpleItineraryDayCardProps) {
   const weekday = tripDayWeekday(tripStartDate, dayIdx);
   const hoursItems = useMemo(
@@ -568,10 +571,18 @@ function SimpleItineraryDayCardInner({
                                     const slot = ratingSlot(dayIdx, stopRatingKey(bankPlaceId(place.id), typeof place.name === 'string' ? place.name : ''));
                                     const r = clientRatings?.[slot];
                                     const n = clientNotes?.[slot];
-                                    if (!r && !n) return null;
+                                    const v = Boolean(clientVisited?.[slot] || r);
+                                    if (!r && !n && !v) return null;
                                     return (
                                       <div className="mt-2 space-y-1 rounded-xl border border-[#D4AF37]/30 bg-[#FFFBF0] px-3 py-2 text-xs text-slate-700">
-                                        <p className="font-bold text-slate-500">رأي العميل</p>
+                                        <p className="flex items-center justify-between gap-2 font-bold text-slate-500">
+                                          <span>رأي العميل</span>
+                                          {v ? (
+                                            <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-black text-emerald-700">
+                                              ✓ زار المكان
+                                            </span>
+                                          ) : null}
+                                        </p>
                                         {r ? (
                                           <p className="tracking-wider text-[#D4AF37]" aria-label={`${r} من 5`}>
                                             {'★'.repeat(r)}

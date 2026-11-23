@@ -18,6 +18,8 @@ create table if not exists public.itinerary_stop_ratings (
 -- if the table was created before notes existed
 alter table public.itinerary_stop_ratings add column if not exists note text;
 alter table public.itinerary_stop_ratings alter column rating drop not null;
+-- «زرت المكان ✓» — when the client marked the stop as visited (null = not marked)
+alter table public.itinerary_stop_ratings add column if not exists visited_at timestamptz;
 
 create index if not exists itinerary_stop_ratings_itinerary_idx on public.itinerary_stop_ratings (itinerary_id);
 create index if not exists itinerary_stop_ratings_place_idx on public.itinerary_stop_ratings (places_bank_id);
