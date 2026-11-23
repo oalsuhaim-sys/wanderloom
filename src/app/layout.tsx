@@ -3,7 +3,8 @@ import { Cormorant_Garamond, El_Messiri, Geist, Geist_Mono, Tajawal } from "next
 
 import { LocaleHtmlSync } from "./_components/i18n/LocaleHtmlSync";
 import { PwaServiceWorkerRegister } from "@/components/PwaServiceWorkerRegister";
-import { LanguageProvider, LANGUAGE_STORAGE_KEY } from "@/context/LanguageContext";
+import { LanguageProvider } from "@/context/LanguageContext";
+import { LANGUAGE_STORAGE_KEY } from "@/lib/language-storage-key";
 
 import "./globals.css";
 

@@ -1,6 +1,7 @@
 ﻿'use client';
 
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { Heart, Menu, X } from 'lucide-react';
 
@@ -45,6 +46,17 @@ export function PublicNavbar() {
     [n],
   );
 
+  const pathname = usePathname();
+
+  /** The logo always leads home; on the home page itself it scrolls back to the top. */
+  function onLogoClick(e: React.MouseEvent<HTMLAnchorElement>) {
+    setOpen(false);
+    if (pathname === '/') {
+      e.preventDefault();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }
+
   function openInterest() {
     setInterestOpen(true);
     setOpen(false);
@@ -57,7 +69,7 @@ export function PublicNavbar() {
         className="wl-public-navbar sticky top-0 z-50 border-b bg-white/80 shadow-sm backdrop-blur-md"
       >
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:gap-4 sm:px-8 sm:py-4">
-          <Link href="/#top" aria-label={t.brand.name} className="shrink-0 transition-opacity duration-300 hover:opacity-85">
+          <Link href="/" onClick={onLogoClick} aria-label={t.brand.name} className="shrink-0 transition-opacity duration-300 hover:opacity-85">
             <BrandMark
               size={44}
               wordmarkClassName="hidden text-[20px] text-[#1C2E3A] min-[420px]:inline sm:text-[26px] lg:text-[19px] lg:max-[1239px]:hidden xl:text-[22px] 2xl:text-[26px]"
