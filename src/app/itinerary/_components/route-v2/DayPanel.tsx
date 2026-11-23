@@ -18,6 +18,7 @@ import { ratingSlot, stopRatingKey } from '@/lib/stop-ratings'
 import { usePlaceHours } from '@/lib/use-place-hours'
 import { StopNoteButton, StopNoteEditor } from './StopNote'
 import StopStarRating from './StopStarRating'
+import StopVisitedButton from './StopVisited'
 import { dayHasStarted, useStopRatings } from './use-stop-ratings'
 import { getVipPlaceCategoryMeta } from '@/lib/vip-place-category'
 import DayWeatherPill from '../DayWeatherPill'
@@ -125,12 +126,15 @@ function StopRow({
   hoursClosed,
   rating,
   note,
+  visited,
 }: {
   a: PublicItineraryActivity
   hoursLine?: string | null
   hoursClosed?: boolean
   /** Star rating row (shown once the stop's day has started). */
   rating?: { value: number | undefined; onRate: (v: number) => Promise<boolean> } | null
+  /** «زرت المكان ✓» (shown with the stars once the stop's day has started). */
+  visited?: { value: boolean; onChange: (v: boolean) => Promise<boolean> } | null
   /** The client's note on this stop (replaces the photo button). */
   note?: { value: string | undefined; onSave: (text: string) => Promise<boolean> } | null
   order: number
@@ -198,7 +202,13 @@ function StopRow({
           aria-hidden
         />
       </button>
-      {rating ? <StopStarRating value={rating.value} onRate={rating.onRate} /> : null}
+      {rating ? (
+        <StopStarRating
+          value={rating.value}
+          onRate={rating.onRate}
+          leading={visited ? <StopVisitedButton value={visited.value} onChange={visited.onChange} /> : null}
+        />
+      ) : null}
 
       <AnimatePresence initial={false}>
         {open ? (
@@ -323,7 +333,7 @@ export default function DayPanel({
     [day.activities, city],
   )
   const placeHours = usePlaceHours(hoursItems)
-  const { ratings, rate, notes: stopNotes, saveNote } = useStopRatings(tripId)
+  const { ratings, rate, notes: stopNotes, saveNote, visited, setVisited } = useStopRatings(tripId)
   const started = dayHasStarted(startDate, index)
   const stopRating = (a: PublicItineraryActivity) => {
     if (!started || !tripId) return null
@@ -331,6 +341,15 @@ export default function DayPanel({
     return {
       value: ratings[ratingSlot(index, key)],
       onRate: (v: number) => rate(index, key, v, { placeName: a.place_name || a.title, bankId: a.placesBankId ?? null }),
+    }
+  }
+  const stopVisited = (a: PublicItineraryActivity) => {
+    if (!started || !tripId) return null
+    const key = stopRatingKey(a.placesBankId, a.place_name || a.title)
+    const slot = ratingSlot(index, key)
+    return {
+      value: Boolean(visited[slot] || ratings[slot]),
+      onChange: (v: boolean) => setVisited(index, key, v, { placeName: a.place_name || a.title, bankId: a.placesBankId ?? null }),
     }
   }
   const stopNote = (a: PublicItineraryActivity) => {
@@ -453,6 +472,7 @@ export default function DayPanel({
                 setUploadingId={setUploadingId}
                 {...stopHours(a)}
                 rating={stopRating(a)}
+                visited={stopVisited(a)}
                 note={stopNote(a)}
               />
             </div>

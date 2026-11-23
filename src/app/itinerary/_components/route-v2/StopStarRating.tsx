@@ -1,12 +1,21 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { Star } from 'lucide-react'
 
 import { RV } from './route-utils'
 
 /** «قيّم المحطة ☆☆☆☆☆» under a stop — one tap saves; tapping again changes it. */
-export default function StopStarRating({ value, onRate }: { value: number | undefined; onRate: (v: number) => Promise<boolean> }) {
+export default function StopStarRating({
+  value,
+  onRate,
+  leading,
+}: {
+  value: number | undefined
+  onRate: (v: number) => Promise<boolean>
+  /** Shown first on the same line (the «زرت المكان» check). */
+  leading?: ReactNode
+}) {
   const [hover, setHover] = useState(0)
   const [thanks, setThanks] = useState(false)
   const shown = hover || value || 0
@@ -17,7 +26,8 @@ export default function StopStarRating({ value, onRate }: { value: number | unde
   }
 
   return (
-    <div className="mt-1.5 flex items-center gap-2 ps-[60px] text-[11.5px] font-bold" dir="rtl" style={{ color: RV.muted }}>
+    <div className="mt-1.5 flex flex-wrap items-center gap-2 ps-[60px] text-[11.5px] font-bold" dir="rtl" style={{ color: RV.muted }}>
+      {leading}
       <span>{value ? (thanks ? 'شكراً لتقييمك' : 'تقييمك') : 'قيّم المحطة'}</span>
       <span className="inline-flex items-center" role="radiogroup" aria-label="تقييم المحطة" onMouseLeave={() => setHover(0)}>
         {[1, 2, 3, 4, 5].map((v) => (
