@@ -87,7 +87,9 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: "#1B242F",
-  colorScheme: "dark",
+  // The approved design is light: tell browsers not to darken the site on phones in dark mode
+  // (Samsung Internet, Chrome auto-dark…). Pages with their own dark theme set it per element.
+  colorScheme: "only light",
 };
 
 export default function RootLayout({
