@@ -1,5 +1,7 @@
 'use client';
 
+import { LANGUAGE_STORAGE_KEY } from '@/lib/language-storage-key';
+
 import {
   createContext,
   useCallback,
@@ -26,7 +28,7 @@ type DeepStringify<T> = T extends string
 /** Locale dictionaries share shape; values are plain strings (not JSON string-literal types). */
 export type Dictionary = DeepStringify<typeof ar>;
 
-const STORAGE_KEY = 'wanderloom-locale';
+const STORAGE_KEY = LANGUAGE_STORAGE_KEY;
 
 const dictionaries: Record<Locale, Dictionary> = {
   ar: ar as unknown as Dictionary,
@@ -106,4 +108,4 @@ export function useLanguage(): LanguageContextValue {
   return ctx;
 }
 
-export { STORAGE_KEY as LANGUAGE_STORAGE_KEY };
+export { LANGUAGE_STORAGE_KEY };
