@@ -12,6 +12,7 @@ import {
 } from '@/app/actions/itineraryClientActions';
 import { duplicateItineraryAction } from '@/app/actions/itineraryDuplicateActions';
 import { toast } from '@/lib/crm-toast';
+import { isStaleDeploymentError, STALE_DEPLOYMENT_MESSAGE } from '@/lib/stale-deployment';
 import { useCrmEmployee } from '@/app/crm/_components/CrmEmployeeProvider';
 import { canEditItineraries } from '@/lib/crm-permissions';
 import SimpleItineraryDayPlanner from '@/app/crm/itineraries/_components/SimpleItineraryDayPlanner';
@@ -1202,7 +1203,18 @@ export default function EditItineraryPage() {
 
       const queryId = /^\d+$/.test(id) ? Number(id) : id;
 
-      const linkResult = await saveItineraryClientLinkAction(queryId, rawClientId || null);
+      let linkResult: Awaited<ReturnType<typeof saveItineraryClientLinkAction>>;
+      try {
+        linkResult = await saveItineraryClientLinkAction(queryId, rawClientId || null);
+      } catch (err) {
+        // Page opened before the latest deploy: the old action id is gone. The itinerary save still writes
+        // client_id directly, so carry on and ask for a reload instead of failing the whole save.
+        if (isStaleDeploymentError(err)) {
+          setClientLinkWarning(STALE_DEPLOYMENT_MESSAGE);
+          return { ok: true as const, client_id: null, stale: true as const };
+        }
+        throw err;
+      }
       if (!linkResult.ok) {
         console.error('SUPABASE client_id SAVE ERROR:', linkResult.error);
         setClientLinkWarning(linkResult.error);
@@ -1261,7 +1273,7 @@ export default function EditItineraryPage() {
       router.push(`/crm/itineraries/${result.newId}/edit`);
     } catch (err) {
       console.error(err);
-      setNotice('تعذر استنساخ المسار.');
+      setNotice(isStaleDeploymentError(err) ? STALE_DEPLOYMENT_MESSAGE : 'تعذر استنساخ المسار.');
     } finally {
       setDuplicating(false);
     }
@@ -1406,11 +1418,21 @@ export default function EditItineraryPage() {
         res.data[0]?.client_id != null ? String(res.data[0].client_id) : clientId,
       );
       setClientLinkWarning(null);
-      setNotice('✅ تم حفظ المسار والتعديلات بنجاح!');
-      toast.success('تم حفظ المسار وربط العميل بنجاح!');
+      if ('stale' in linkResult && linkResult.stale) {
+        setNotice(`✅ تم حفظ المسار. ${STALE_DEPLOYMENT_MESSAGE}`);
+        toast.success('تم حفظ المسار بنجاح!');
+        toast(STALE_DEPLOYMENT_MESSAGE, { icon: '🔄', duration: 10000 });
+      } else {
+        setNotice('✅ تم حفظ المسار والتعديلات بنجاح!');
+        toast.success('تم حفظ المسار وربط العميل بنجاح!');
+      }
     } catch (e) {
       console.error('Unexpected save error:', e);
-      const msg = e instanceof Error ? e.message : 'فشل حفظ التعديلات.';
+      const msg = isStaleDeploymentError(e)
+        ? STALE_DEPLOYMENT_MESSAGE
+        : e instanceof Error
+          ? e.message
+          : 'فشل حفظ التعديلات.';
       setNotice(msg);
       if (!msg.includes('فشل الحفظ في قاعدة البيانات') && !msg.includes('فشل ربط العميل')) {
         toast.error(`فشل الحفظ: ${msg}`);
