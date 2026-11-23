@@ -1761,6 +1761,11 @@ input[type='radio'].wanderloom-raw-radio::after {
   --map-label-halo: rgba(15, 23, 19, 0.85);
   --map-pin-ring: #0f1511;
   --map-vignette: 0.6;
+}
+
+/* Dark controls/scrollbars only inside the itinerary's dark theme — never on the site root,
+   which stays light on every device. */
+.wl-theme {
   color-scheme: dark;
 }
 
